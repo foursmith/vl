@@ -33,6 +33,8 @@ Subdirectories and file paths resolve to their enclosing repository.
 
 ## Available now
 
+- Centered block-letter welcome screen with clickable command, file-search, and Source
+  Control shortcuts; compact branding on small terminals.
 - Staged, unstaged, untracked, and conflicted file status; automatic refresh.
 - Source Control groups use folder trees with independent folding for staged
   and worktree changes. Group headers also collapse independently and retain

@@ -161,8 +161,10 @@ func (m *Model) mainLines() []string {
 		content = m.editorLines()
 	} else if m.patch.Raw != "" {
 		content = m.diffView()
+	} else if m.welcomeVisible() {
+		content = m.welcomeLines()
 	} else {
-		message := "Select a file to preview"
+		message := "No changes in this diff"
 		if m.section == changes && len(m.snapshot.Changes) == 0 {
 			message = "Working tree clean"
 		}
@@ -526,6 +528,9 @@ func (m *Model) click(msg tea.MouseClickMsg) tea.Cmd {
 	}
 	m.sidebar = false
 	m.lastClickKey = ""
+	if m.welcomeVisible() {
+		return m.clickWelcome(msg)
+	}
 	if m.showEditor && m.document() != nil && msg.Y >= editorContentRow && msg.Y < m.bodyHeight() {
 		t := &m.tabs[m.activeTab]
 		lines := t.doc.Lines()
