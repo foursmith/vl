@@ -17,6 +17,7 @@ func TestHistoryFileReviewAndReadOnlyActions(t *testing.T) {
 	}
 	drain(t, m, m.refresh())
 	drain(t, m, m.selectSection(history))
+	drain(t, m, m.preview())
 	if m.historyCommit == "" || historyKey("", m.diffCommit) != m.historyCommit || m.diffPath == "" || m.diffChange != nil {
 		t.Fatal("commit did not open a read-only file preview")
 	}

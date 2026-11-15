@@ -326,9 +326,6 @@ func (m *Model) selectSectionInRepository(s section, repository string) tea.Cmd 
 	}
 	m.resize()
 	m.ensureSidebar()
-	if s == changes || s == history {
-		return m.preview()
-	}
 	if s == explorer {
 		return m.refreshTree()
 	}

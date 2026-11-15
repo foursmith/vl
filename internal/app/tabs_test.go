@@ -30,6 +30,51 @@ func tabWorkspace(t *testing.T, count int) *Model {
 	return m
 }
 
+func TestSidebarSectionsPreserveActiveTab(t *testing.T) {
+	for _, content := range []string{"welcome", "file", "diff"} {
+		t.Run(content, func(t *testing.T) {
+			m := tabWorkspace(t, 1)
+			m.snapshot.Changes = []gitservice.Change{{Path: "file0.go", Index: ' ', Worktree: 'M'}}
+			id := strings.Repeat("a", 40)
+			m.snapshot.Commits = []gitservice.Commit{{ID: id, Subject: "initial"}}
+			m.historyStates[historyKey("", id)] = &historyState{
+				loaded: true, expanded: true,
+				files: []gitservice.Change{{Path: "file0.go", Index: 'M', Worktree: ' '}},
+			}
+			switch content {
+			case "file":
+				m.openPreviewFile("file0.go")
+			case "diff":
+				drain(t, m, m.requestDiff(diffTarget{path: "file0.go", preview: true}, func(context.Context) (string, error) {
+					return diffTabText("current"), nil
+				}))
+			}
+			active, count, doc, diff := m.activeTab, len(m.tabs), m.document(), m.diffState
+			for i, key := range []string{"ctrl+3", "ctrl+2", "ctrl+3", "ctrl+2"} {
+				if i < 2 {
+					drain(t, m, press(m, key))
+				} else {
+					target := history
+					if key == "ctrl+2" {
+						target = changes
+					}
+					for _, nav := range m.navigation() {
+						if nav.section == target {
+							drain(t, m, m.click(tea.MouseClickMsg{X: m.sideX() + nav.x, Y: 0, Button: tea.MouseLeft}))
+						}
+					}
+				}
+				if m.activeTab != active || len(m.tabs) != count || m.document() != doc || m.diffState != diff {
+					t.Fatalf("%s changed the active editor tab", key)
+				}
+				if !m.sidebar || !m.sidebarVisible {
+					t.Fatalf("%s did not focus the sidebar", key)
+				}
+			}
+		})
+	}
+}
+
 func TestPreviewReplacesOnlyCleanPreviewAndPromotesOnEdit(t *testing.T) {
 	m := tabWorkspace(t, 4)
 	m.openPreviewFile("file0.go")
