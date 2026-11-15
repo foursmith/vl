@@ -43,7 +43,7 @@ func (m *Model) pickerOverlay(base []string) []string {
 			fg = m.colors.Muted
 		}
 		label := " " + safe(a.label)
-		if m.modal == "files" {
+		if m.modal == "quick" && !m.commandPicker() && a.id != "" {
 			icon := fileicon.For(a.id, m.nerd)
 			name := " " + row(icon.Glyph, 2, icon.Color, surface) + safe(filepath.Base(a.id))
 			label = ansi.Truncate(name, w-2, "…")
@@ -53,7 +53,8 @@ func (m *Model) pickerOverlay(base []string) []string {
 					label += theme.Style(m.colors.Muted, surface).Render(ansi.Truncate(" "+safe(dir), remaining, "…"))
 				}
 			}
-		} else if a.key != "" {
+		}
+		if a.key != "" {
 			key := " " + a.key + " "
 			label = ansi.Truncate(label, max(1, w-ansi.StringWidth(key)-2), "…")
 			label += strings.Repeat(" ", max(1, w-ansi.StringWidth(label)-ansi.StringWidth(key)-1))
@@ -100,7 +101,7 @@ func (m *Model) clickPicker(msg tea.MouseClickMsg) tea.Cmd {
 }
 
 func (m *Model) isPicker() bool {
-	return m.modal == "palette" || m.modal == "files" || m.modal == "refs" || m.modal == "recent"
+	return m.modal == "quick" || m.modal == "remotes" || m.modal == "refs" || m.modal == "recent"
 }
 
 func (m *Model) selectPickerChoice() tea.Cmd {
@@ -113,15 +114,48 @@ func (m *Model) selectPickerChoice() tea.Cmd {
 		m.notice = a.disabled
 		return nil
 	}
+	if m.commandPicker() {
+		m.lastCommand = a.id
+	}
 	m.modal = ""
 	m.input.Blur()
 	return a.run()
 }
 
-func (m *Model) openQuickFiles() tea.Cmd {
+func (m *Model) openQuickFiles() tea.Cmd { return m.openQuickPicker("") }
+
+func (m *Model) commandPicker() bool {
+	return m.modal == "quick" && strings.HasPrefix(m.input.Value(), ">")
+}
+
+func (m *Model) openQuickPicker(value string) tea.Cmd {
 	m.palette = nil
+	cmd := m.prompt("quick", "", value)
+	m.syncQuickPicker()
+	return cmd
+}
+
+func (m *Model) syncQuickPicker() {
+	if m.modal != "quick" {
+		return
+	}
+	title := "打开文件"
+	if m.commandPicker() {
+		title = "Commands"
+	}
+	if m.modalTitle == title && m.palette != nil {
+		return
+	}
+	m.modalTitle = title
+	m.choice = 0
+	if m.commandPicker() {
+		m.input.Placeholder = ""
+		m.palette = m.commandActions()
+		return
+	}
+	m.input.Placeholder = "按名称搜索文件（追加 : 跳转行）"
+	m.palette = make([]action, 0, len(m.snapshot.Files))
 	for _, path := range m.snapshot.Files {
 		m.palette = append(m.palette, action{id: path, label: path, run: func() tea.Cmd { return m.openFileInExplorer(path) }})
 	}
-	return m.prompt("files", "打开文件", "")
 }

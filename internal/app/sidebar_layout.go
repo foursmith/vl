@@ -1,5 +1,7 @@
 package app
 
+import tea "charm.land/bubbletea/v2"
+
 const (
 	minSidebarWidth = 28
 	minMainWidth    = 40
@@ -76,4 +78,14 @@ func (m *Model) dragSidebar(x int) {
 		m.sidebarWidth = w
 		m.resize()
 	}
+}
+
+func (m *Model) toggleSidebar() tea.Cmd {
+	m.stopTextDrag()
+	m.resizingSidebar = false
+	m.hoverX, m.hoverY = -1, -1
+	m.sidebarVisible = !m.sidebarVisible
+	m.sidebar = m.sidebarVisible
+	m.resize()
+	return nil
 }

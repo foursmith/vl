@@ -108,11 +108,11 @@ func TestSidebarRightGeometryAndMouseTargets(t *testing.T) {
 	if m.document() != nil {
 		t.Fatal("right layout tab close missed")
 	}
-	press(m, "ctrl+b")
+	press(m, "ctrl+l")
 	if m.sideShown() || m.mainWidth() != m.width {
 		t.Fatal("hidden sidebar still takes space")
 	}
-	press(m, "ctrl+b")
+	press(m, "ctrl+l")
 	if !m.sideShown() || !m.sidebarRight || m.sideWidth() != 38 {
 		t.Fatal("toggle lost sidebar layout")
 	}
@@ -129,13 +129,20 @@ func TestSidebarRightGeometryAndMouseTargets(t *testing.T) {
 
 func TestSidebarLayoutPaletteAndDragCancellation(t *testing.T) {
 	m := tabWorkspace(t, 0)
-	for _, id := range []string{"view.sidebarRight", "view.sidebarLeft", "view.sidebarResetWidth"} {
+	for _, id := range []string{"view.sidebarRight", "view.sidebarLeft", "view.sidebarResetWidth", "view.sidebar"} {
 		m.SetSidebarLayout(45, false)
 		m.openPalette()
-		m.input.SetValue(id)
+		query := id
+		if id == "view.sidebar" {
+			query = "View: Toggle Sidebar"
+		}
+		m.input.SetValue(">" + query)
 		press(m, "enter")
 		if m.modal != "" {
 			t.Fatal("command did not dismiss palette")
+		}
+		if id == "view.sidebar" && (m.sidebarVisible || m.sidebar) {
+			t.Fatal("toggle command did not hide the sidebar")
 		}
 		if id == "view.sidebarRight" && !m.sidebarRight {
 			t.Fatal("right command failed")
@@ -147,6 +154,7 @@ func TestSidebarLayoutPaletteAndDragCancellation(t *testing.T) {
 			t.Fatal("reset failed")
 		}
 	}
+	press(m, "ctrl+l")
 	m.Update(tea.MouseClickMsg{X: m.dividerX(), Y: 3, Button: tea.MouseLeft})
 	m.openPalette()
 	if m.resizingSidebar {

@@ -142,8 +142,8 @@ Subdirectories and file paths resolve to their enclosing repository.
   The choice is saved on exit in `layout.json` and retained when opening another repository.
   `-theme auto` / `-theme light` / `-theme dark` overrides the saved choice at startup.
 - TextMate syntax highlighting with VS Code Dark Modern / Light Modern token rules, including font styles, for recognized languages up to 256 KiB.
-- Drag the sidebar divider to resize it. Use **View: Move Side Bar Right/Left**
-  in the command palette (**F1**) to change its position, or **View: Reset Side Bar Width**
+- Drag the sidebar divider to resize it. Use **View: Move Sidebar Right/Left**
+  in the command palette (**F1**) to change its position, or **View: Reset Sidebar Width**
   to restore automatic sizing. Width and position are saved on exit in
   `elegit/layout.json` under the OS user configuration directory. Narrow terminals
   keep the single-surface sidebar/content layout.
@@ -172,6 +172,12 @@ Subdirectories and file paths resolve to their enclosing repository.
 - Searchable commands, disabled-command explanations, and Git output panel.
 
 Search files with **Ctrl+P**. Commands are available from **Ctrl+Shift+P** or **F1**.
+Both use the same input: a leading `>` searches commands; remove it to search files.
+Append `:line[:column]` to a filename to jump to that position, or enter
+`:line[:column]` alone to jump within the active text file.
+Commands sort alphabetically by name, with the last used command first; the choice
+is remembered across restarts and repository switches.
+
 Clean tabs close immediately; unsaved files offer **Save / Discard / Cancel**, using either the
 buttons or **S / D / Esc**. File mutations and Git operations run only when requested; refreshing
 the view does not stage, commit, fetch, or change branches.
@@ -184,7 +190,7 @@ the view does not stage, commit, fetch, or change branches.
 | Global | Ctrl+P | Search files |
 | Global | Ctrl+Shift+P or F1 | Commands |
 | Global | F6 / Esc | Switch focus / focus sidebar |
-| Global | Ctrl+B / Ctrl+J | Toggle sidebar / output |
+| Global | Ctrl+L / Ctrl+J | Toggle sidebar / output |
 | Global | Ctrl+D | Toggle unified / side-by-side diff |
 | Global | F5 | Refresh repository |
 | Global | Ctrl+Shift+F / Ctrl+4 | Search workspace sidebar |

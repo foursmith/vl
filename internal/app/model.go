@@ -134,6 +134,7 @@ type Model struct {
 	input                   textinput.Model
 	choice                  int
 	palette                 []action
+	lastCommand             string
 	confirm                 func() tea.Cmd
 	confirmationDetail      string
 	search                  searchState
@@ -164,7 +165,6 @@ type Model struct {
 func New(ctx context.Context, repo *gitservice.Repository, nerd bool) *Model {
 	ctx, cancel := context.WithCancel(ctx)
 	input := textinput.New()
-	input.Prompt = "> "
 	input.CharLimit = 2000
 	m := &Model{colors: theme.Dark(), ctx: ctx, cancel: cancel, repo: repo, width: 120, height: 36, nerd: nerd, sidebar: true, sidebarVisible: true, split: true, diffState: newDiffState(), input: input, activeTab: -1, notice: "Loading repository…"}
 	m.emptyDiff = m.diffState
@@ -642,6 +642,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		if m.modal != "" {
 			var cmd tea.Cmd
 			m.input, cmd = m.input.Update(msg)
+			m.syncQuickPicker()
 			m.choice = 0
 			return m, cmd
 		}
@@ -658,7 +659,7 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	k := msg.String()
 	if m.sidebar && m.section == search {
 		switch k {
-		case "ctrl+q", "ctrl+c", "ctrl+p", "ctrl+r", "ctrl+shift+p", "f1", "ctrl+1", "ctrl+2", "ctrl+3", "ctrl+4", "ctrl+shift+f", "ctrl+shift+h", "ctrl+b", "f6", "ctrl+s", "ctrl+w", "alt+left", "alt+right":
+		case "ctrl+q", "ctrl+c", "ctrl+p", "ctrl+r", "ctrl+shift+p", "f1", "ctrl+1", "ctrl+2", "ctrl+3", "ctrl+4", "ctrl+shift+f", "ctrl+shift+h", "ctrl+l", "f6", "ctrl+s", "ctrl+w", "alt+left", "alt+right":
 		default:
 			return m.searchKey(msg)
 		}
@@ -687,13 +688,8 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		return m.selectSection(changes)
 	case "ctrl+3":
 		return m.selectSection(history)
-	case "ctrl+b":
-		m.sidebarVisible = !m.sidebarVisible
-		if !m.sidebarVisible {
-			m.sidebar = false
-		}
-		m.resize()
-		return nil
+	case "ctrl+l":
+		return m.toggleSidebar()
 	case "f6":
 		m.sidebar = !m.sidebar
 		if m.sidebar {

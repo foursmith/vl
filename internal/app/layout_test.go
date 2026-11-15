@@ -58,8 +58,8 @@ func TestPickerOutsideClickDismissesWithoutClickThrough(t *testing.T) {
 	}
 	m := tabWorkspace(t, 0)
 	executed := false
+	m.openPalette()
 	m.palette = []action{{label: "Run", run: func() tea.Cmd { executed = true; return nil }}}
-	m.prompt("palette", "Commands", "")
 	l := m.pickerLayout(m.filteredActions())
 	m.Update(tea.MouseClickMsg{X: l.x + 2, Y: l.y + 3, Button: tea.MouseLeft})
 	if !executed || m.modal != "" {

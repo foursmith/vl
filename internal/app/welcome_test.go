@@ -49,11 +49,11 @@ func TestWelcomeClicksUseRenderedCoordinates(t *testing.T) {
 			m.Update(tea.MouseClickMsg{X: m.mainX() + x + 1, Y: editorContentRow + y + logoRows + 1 + i, Button: tea.MouseLeft})
 			switch a.command {
 			case "commands":
-				if m.modal != "palette" {
+				if m.modal != "quick" || !m.commandPicker() {
 					t.Fatal("commands link missed")
 				}
 			case "files":
-				if m.modal != "files" {
+				if m.modal != "quick" || m.commandPicker() {
 					t.Fatal("file search link missed")
 				}
 			case "recent":

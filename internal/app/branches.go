@@ -2,8 +2,6 @@ package app
 
 import (
 	"path/filepath"
-	"strconv"
-	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	gitservice "github.com/ourongxing/elegit/internal/git"
@@ -147,7 +145,7 @@ func (m *Model) publishBranchInRepository(target string) tea.Cmd {
 			})
 		}})
 	}
-	return m.prompt("palette", "选择发布分支的远程仓库", "")
+	return m.prompt("remotes", "选择发布分支的远程仓库", "")
 }
 
 func (m *Model) openGitHub() tea.Cmd {
@@ -175,35 +173,6 @@ func (m *Model) createBranch(name string) tea.Cmd {
 		}
 		return repo.CreateBranch(m.ctx, name, start)
 	})
-}
-
-func (m *Model) goToPosition(value string) tea.Cmd {
-	d := m.document()
-	if d == nil {
-		return nil
-	}
-	parts := strings.Split(strings.TrimSpace(value), ":")
-	if len(parts) > 2 {
-		m.notice = "输入行号或 行:列"
-		return nil
-	}
-	line, err := strconv.Atoi(parts[0])
-	if err != nil || line < 1 {
-		m.notice = "行号必须大于 0"
-		return nil
-	}
-	column := 1
-	if len(parts) == 2 {
-		column, err = strconv.Atoi(parts[1])
-		if err != nil || column < 1 {
-			m.notice = "列号必须大于 0"
-			return nil
-		}
-	}
-	d.SetPosition(line-1, column-1)
-	m.sidebar = false
-	m.ensureEditor()
-	return nil
 }
 
 // Switching a repository may also update nested worktrees through Git's recurse

@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -51,9 +52,10 @@ func (m *Model) actions() []action {
 		{"search.replace", "Search: Replace in Files", "Ctrl+Shift+H", "", func() tea.Cmd { return m.openSearch(true) }},
 		{"view.history", "View: Commit History", "Ctrl+3", "", func() tea.Cmd { return m.selectSection(history) }},
 		{"view.diff", "Diff: Toggle Side by Side", "Ctrl+D", "", func() tea.Cmd { m.split = !m.split; m.renderDiff(); return nil }},
-		{"view.sidebarLeft", "View: Move Side Bar Left", "", "", func() tea.Cmd { m.SetSidebarLayout(m.sidebarWidth, false); return nil }},
-		{"view.sidebarRight", "View: Move Side Bar Right", "", "", func() tea.Cmd { m.SetSidebarLayout(m.sidebarWidth, true); return nil }},
-		{"view.sidebarResetWidth", "View: Reset Side Bar Width", "", "", func() tea.Cmd { m.SetSidebarLayout(0, m.sidebarRight); return nil }},
+		{"view.sidebar", "View: Toggle Sidebar", "Ctrl+L", "", m.toggleSidebar},
+		{"view.sidebarLeft", "View: Move Sidebar Left", "", "", func() tea.Cmd { m.SetSidebarLayout(m.sidebarWidth, false); return nil }},
+		{"view.sidebarRight", "View: Move Sidebar Right", "", "", func() tea.Cmd { m.SetSidebarLayout(m.sidebarWidth, true); return nil }},
+		{"view.sidebarResetWidth", "View: Reset Sidebar Width", "", "", func() tea.Cmd { m.SetSidebarLayout(0, m.sidebarRight); return nil }},
 		{"view.output", "View: Toggle Output", "Ctrl+J", "", func() tea.Cmd { m.outputVisible = !m.outputVisible; m.resize(); return nil }},
 		{"git.refresh", "Git: Refresh", "F5", "", m.refresh},
 		{"git.stage", "Git: Stage Selected File", "S", fileReason, func() tea.Cmd { return m.stageSelected(false) }},
@@ -88,13 +90,35 @@ func (m *Model) actions() []action {
 	}
 }
 
-func (m *Model) openPalette() tea.Cmd {
-	m.palette = m.actions()
-	return m.prompt("palette", "Commands", "")
+func (m *Model) LastCommand() string      { return m.lastCommand }
+func (m *Model) SetLastCommand(id string) { m.lastCommand = id }
+
+func (m *Model) commandActions() []action {
+	actions := m.actions()
+	slices.SortFunc(actions, func(a, b action) int {
+		if (a.id == m.lastCommand) != (b.id == m.lastCommand) {
+			if a.id == m.lastCommand {
+				return -1
+			}
+			return 1
+		}
+		return strings.Compare(strings.ToLower(a.label), strings.ToLower(b.label))
+	})
+	return actions
 }
 
+func (m *Model) openPalette() tea.Cmd { return m.openQuickPicker(">") }
+
 func (m *Model) filteredActions() []action {
-	query := strings.ToLower(m.input.Value())
+	query := m.input.Value()
+	if m.commandPicker() {
+		query = strings.TrimSpace(strings.TrimPrefix(query, ">"))
+	} else if m.modal == "quick" {
+		if rows, ok := m.quickPositionActions(query); ok {
+			return rows
+		}
+	}
+	query = strings.ToLower(query)
 	if query == "" {
 		return m.palette
 	}
@@ -114,14 +138,9 @@ func (m *Model) prompt(kind, title, value string) tea.Cmd {
 	m.input.Placeholder = ""
 	m.input.Prompt = "> "
 	m.resizeInput()
-	if m.isPicker() && title != "Commands" {
+	if m.isPicker() {
+		m.input.Prompt = ""
 		m.input.Placeholder = title
-	}
-	if kind == "files" {
-		m.input.Prompt = ""
-		m.input.Placeholder = "按名称搜索文件"
-	} else if kind == "refs" {
-		m.input.Prompt = ""
 	}
 	m.input.CursorEnd()
 	m.choice = 0
@@ -233,6 +252,7 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 	}
 	var cmd tea.Cmd
 	m.input, cmd = m.input.Update(msg)
+	m.syncQuickPicker()
 	m.choice = 0
 	return cmd
 }

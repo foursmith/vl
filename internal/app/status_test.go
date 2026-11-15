@@ -290,7 +290,7 @@ func TestStatusSyncAndPublishTargetChildRepository(t *testing.T) {
 	drain(t, m, m.refresh())
 	m.openFile("child space/README.md")
 	m.clickStatus(statusPart(t, m, "sync").x + 1)
-	if m.modal != "palette" || len(m.palette) != 1 || m.palette[0].id != "origin" {
+	if m.modal != "remotes" || len(m.palette) != 1 || m.palette[0].id != "origin" {
 		t.Fatal("child publish did not use child remotes", m.notice)
 	}
 	publish := m.palette[0].run

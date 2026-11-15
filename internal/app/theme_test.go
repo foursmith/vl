@@ -44,7 +44,7 @@ func TestLightThemePickerAndDiffSurfaces(t *testing.T) {
 	m := tabWorkspace(t, 0)
 	m.SetThemeMode("light")
 	m.openPalette()
-	m.input.SetValue("Color Theme")
+	m.input.SetValue(">Color Theme")
 	rows := m.filteredActions()
 	if len(rows) != 3 {
 		t.Fatal("theme choices are not discoverable")

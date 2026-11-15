@@ -18,6 +18,10 @@ func (m *Model) openFileInExplorer(path string) tea.Cmd {
 	if !m.openDocument(path, false) {
 		return nil
 	}
+	return m.revealDocument(path)
+}
+
+func (m *Model) revealDocument(path string) tea.Cmd {
 	m.section = explorer
 	m.sidebarVisible = true
 	m.rootCollapsed = false
