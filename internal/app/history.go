@@ -196,12 +196,9 @@ func (m *Model) selectHistoryParent(entry item) {
 	if entry.historyChange != nil {
 		path = entry.historyChange.Path
 	}
-	parent := ""
-	if i := strings.LastIndex(path, "/"); i >= 0 {
-		parent = path[:i]
-	}
-	for i, row := range m.items {
-		if parent == entry.repository && row.commit != nil && historyKey(row.repository, row.commit.ID) == entry.historyID || parent != "" && row.historyID == entry.historyID && row.folder == parent {
+	for i := m.selected - 1; i >= 0; i-- {
+		row := m.items[i]
+		if row.historyID == entry.historyID && row.folder != "" && strings.HasPrefix(path, row.folder+"/") || row.commit != nil && historyKey(row.repository, row.commit.ID) == entry.historyID {
 			m.selected = i
 			m.ensureSidebar()
 			return

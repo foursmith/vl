@@ -70,7 +70,7 @@ func (m *Model) explorerItems() []item {
 	}
 	result := make([]item, 0, len(m.treeEntries))
 	for _, entry := range m.treeEntries {
-		row := item{label: filepath.Base(entry.Path), key: entry.Path, depth: entry.Depth, ignored: entry.Ignored, status: statuses[entry.Path]}
+		row := item{label: entry.Label, key: entry.Path, depth: entry.Depth, ignored: entry.Ignored, status: statuses[entry.Path]}
 		if entry.Directory {
 			row.folder = entry.Path
 			if statusPriority(directories[entry.Path]) > statusPriority(row.status) {

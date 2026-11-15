@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 )
 
@@ -20,7 +21,7 @@ func TestTreeIsLazyIncludesIgnoredCandidatesAndSkipsGitMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(entries) != 4 || entries[0].Path != "bin" || entries[1].Path != "cmd" || entries[2].Path != "examples" {
+	if len(entries) != 4 || entries[0].Path != "bin" || entries[1].Path != "cmd" || entries[2].Path != "examples/nested" {
 		t.Fatalf("unexpected root tree: %+v", entries)
 	}
 	entries, err = ReadTree(context.Background(), root, map[string]bool{"cmd": true})
@@ -53,5 +54,40 @@ func TestCreateDoesNotOverwriteOrEscapeWorkspace(t *testing.T) {
 		if err = Create(root, "link/outside", false); err == nil {
 			t.Fatal("followed symlink outside workspace")
 		}
+	}
+}
+
+func TestTreeCompactsOnlySingleDirectoryChains(t *testing.T) {
+	root := t.TempDir()
+	for _, dir := range []string{"apps/web/src/hooks", "apps/web/src/components", "mixed/child", "empty", "metadata/.git", "metadata/child"} {
+		if err := os.MkdirAll(filepath.Join(root, dir), 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, path := range []string{"apps/web/src/hooks/use.go", "mixed/file.go"} {
+		if err := os.WriteFile(filepath.Join(root, path), nil, 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	entries, err := ReadTree(context.Background(), root, map[string]bool{"apps/web/src": true, "apps/web/src/hooks": true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Entry{
+		{Path: "apps/web/src", Label: "apps/web/src", Directory: true},
+		{Path: "apps/web/src/components", Label: "components", Directory: true, Depth: 1},
+		{Path: "apps/web/src/hooks", Label: "hooks", Directory: true, Depth: 1},
+		{Path: "apps/web/src/hooks/use.go", Label: "use.go", Depth: 2},
+		{Path: "empty", Label: "empty", Directory: true},
+		{Path: "metadata/child", Label: "metadata/child", Directory: true},
+		{Path: "mixed", Label: "mixed", Directory: true},
+	}
+	if !reflect.DeepEqual(entries, want) {
+		t.Fatalf("tree: %+v", entries)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := ReadTree(ctx, root, nil); err != context.Canceled {
+		t.Fatalf("cancellation: %v", err)
 	}
 }

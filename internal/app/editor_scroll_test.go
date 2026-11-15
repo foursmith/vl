@@ -95,7 +95,8 @@ func TestSidebarWheelScrollsWithoutSelectionOrPreview(t *testing.T) {
 func TestExplorerRefreshPreservesScrolledViewport(t *testing.T) {
 	m := tabWorkspace(t, 0)
 	for i := 0; i < 200; i++ {
-		m.treeEntries = append(m.treeEntries, files.Entry{Path: fmt.Sprintf("file%03d.go", i)})
+		path := fmt.Sprintf("file%03d.go", i)
+		m.treeEntries = append(m.treeEntries, files.Entry{Path: path, Label: path})
 	}
 	m.rebuildItems()
 	m.selected = 0

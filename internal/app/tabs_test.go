@@ -80,7 +80,7 @@ func TestExplorerSingleAndDoubleClick(t *testing.T) {
 	m := tabWorkspace(t, 3)
 	m.snapshot.Files = []string{"file0.go", "file1.go", "file2.go"}
 	for _, path := range m.snapshot.Files {
-		m.treeEntries = append(m.treeEntries, files.Entry{Path: path})
+		m.treeEntries = append(m.treeEntries, files.Entry{Path: path, Label: path})
 	}
 	m.rebuildItems()
 	click := func(index int) {

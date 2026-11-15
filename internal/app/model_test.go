@@ -214,7 +214,7 @@ func TestReloadCleanTabsAndPreserveUnsavedEdits(t *testing.T) {
 
 func TestExplorerDirectoryReplacementAndCollapse(t *testing.T) {
 	m := New(context.Background(), &gitservice.Repository{Root: "/tmp/repo"}, false)
-	m.treeEntries = []files.Entry{{Path: "replaced", Directory: true}, {Path: "replaced/child.go", Depth: 1}, {Path: "z.go"}}
+	m.treeEntries = []files.Entry{{Path: "replaced", Label: "replaced", Directory: true}, {Path: "replaced/child.go", Label: "child.go", Depth: 1}, {Path: "z.go", Label: "z.go"}}
 	m.expanded["replaced"] = true
 	m.section = explorer
 	m.rebuildItems()

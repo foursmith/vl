@@ -88,6 +88,9 @@ Subdirectories and file paths resolve to their enclosing repository.
 - Expandable repository file tree and text-file tabs with VS Code-style preview
   behavior: a single click reuses one clean preview, double-click/Enter keeps a
   file open, and editing permanently keeps its tab even after undo.
+- Single-child folder chains display as one compact path in Explorer, Source
+  Control, and commit history; branching folders and folders containing files
+  retain their own rows.
 - Explorer folders start collapsed. Ignored paths remain visible in gray; files
   show Git status letters and folders show aggregate change dots. New file,
   new folder, refresh, and collapse-all buttons work from the repository header.

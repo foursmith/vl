@@ -104,6 +104,12 @@ func changeTree(changes []gitservice.Change, repo string, staged bool, collapsed
 		sort.Strings(names)
 		for _, name := range names {
 			node := parent.directories[name]
+			for len(node.files) == 0 && len(node.directories) == 1 {
+				for childName, child := range node.directories {
+					name += "/" + childName
+					node = child
+				}
+			}
 			key := prefix + "directory:" + node.path
 			rows = append(rows, item{label: name, key: key, folder: filepath.ToSlash(filepath.Join(repo, node.path)), repository: repo, depth: depth, staged: staged, status: node.status})
 			if !collapsed[key] {
@@ -163,22 +169,13 @@ func (m *Model) selectParentFolder() {
 	if entry.file != "" {
 		path = entry.file
 	}
-	parent := filepath.ToSlash(filepath.Dir(path))
-	root := "."
-	if entry.repository != "" {
-		root = entry.repository
-	}
-	if m.section == changes && parent == root && !entry.header {
-		for i, row := range m.items {
-			if row.header && !row.repoHeader && row.repository == entry.repository && row.staged == entry.staged {
-				m.selected = i
-				m.ensureSidebar()
-				return
-			}
+	// Walk visible rows backwards: compact folders can skip several path levels.
+	for i := m.selected - 1; i >= 0; i-- {
+		row := m.items[i]
+		if m.section == changes && (row.staged != entry.staged || row.repository != entry.repository) {
+			continue
 		}
-	}
-	for i, row := range m.items {
-		if row.folder == parent && (m.section != changes || row.staged == entry.staged && row.repository == entry.repository) {
+		if row.folder != "" && strings.HasPrefix(path, row.folder+"/") || m.section == changes && row.header && !row.repoHeader {
 			m.selected = i
 			m.ensureSidebar()
 			return

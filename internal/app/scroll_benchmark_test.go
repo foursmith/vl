@@ -53,7 +53,7 @@ func BenchmarkExplorerDecorations(b *testing.B) {
 	m := New(context.Background(), &gitservice.Repository{Root: b.TempDir()}, true)
 	for i := 0; i < 5000; i++ {
 		path := fmt.Sprintf("src/package%03d/file%05d.go", i%100, i)
-		m.treeEntries = append(m.treeEntries, files.Entry{Path: path, Depth: 2})
+		m.treeEntries = append(m.treeEntries, files.Entry{Path: path, Label: filepath.Base(path), Depth: 2})
 		m.snapshot.Changes = append(m.snapshot.Changes, gitservice.Change{Path: path, Index: ' ', Worktree: 'M'})
 	}
 	b.ReportAllocs()

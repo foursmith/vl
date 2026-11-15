@@ -1,6 +1,8 @@
 package app
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -34,7 +36,7 @@ func TestChangeTreeSeparatesIndexAndWorktreeAndRetainsFileIdentity(t *testing.T)
 			workingFile = &working[i]
 		}
 	}
-	if stagedFile == nil || workingFile == nil || stagedFile.key == workingFile.key || stagedFile.depth != 2 || stagedFile.label != "main.go" || stagedFile.change != workingFile.change {
+	if stagedFile == nil || workingFile == nil || stagedFile.key == workingFile.key || stagedFile.depth != 1 || stagedFile.label != "main.go" || stagedFile.change != workingFile.change {
 		t.Fatal("file identity or hierarchy lost")
 	}
 	m.changeCollapsed[changeKey("", false, "directory", "src")] = true
@@ -117,7 +119,7 @@ func TestChangeGroupsCollapseIndependentlyAndKeepFolderState(t *testing.T) {
 		{Path: "README.md", Index: ' ', Worktree: 'M'},
 	}
 	m.rebuildItems()
-	folderKey := changeKey("", false, "directory", "src")
+	folderKey := changeKey("", false, "directory", "src/app")
 	m.changeCollapsed[folderKey] = true
 	m.rebuildItems()
 	clickGroup := func(staged bool) {
@@ -213,5 +215,98 @@ func TestChangeGroupsKeyboardAndCollapsedBatchActions(t *testing.T) {
 	}
 	if !m.changeCollapsed[changeKey("", false, "group", "")] {
 		t.Fatal("batch action reset group state")
+	}
+}
+
+func TestCompactChangeTreeNavigationAndFolding(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	m.section = changes
+	m.snapshot.Changes = []gitservice.Change{
+		{Path: "apps/web/src/hooks/use.go", Index: 'M', Worktree: 'M'},
+		{Path: "apps/web/src/components/view.go", Index: ' ', Worktree: 'M'},
+	}
+	m.rebuildItems()
+	selectFolder := func(path string) {
+		t.Helper()
+		for i, entry := range m.items {
+			if !entry.staged && entry.folder == path {
+				m.selected = i
+				return
+			}
+		}
+		t.Fatalf("missing folder %s", path)
+	}
+	selectFolder("apps/web/src/hooks")
+	if m.current().label != "hooks" {
+		t.Fatal("branch label lost")
+	}
+	m.selectParentFolder()
+	if m.current().folder != "apps/web/src" || m.current().label != "apps/web/src" {
+		t.Fatalf("parent: %+v", m.current())
+	}
+	m.selectParentFolder()
+	if !m.current().header {
+		t.Fatal("compact root did not select group")
+	}
+	selectFolder("apps/web/src")
+	press(m, "left")
+	if !m.changeCollapsed[changeKey("", false, "directory", "apps/web/src")] {
+		t.Fatal("compact folder did not collapse")
+	}
+	press(m, "right")
+	selectFolder("apps/web/src/hooks")
+}
+
+func TestCompactExplorerNavigation(t *testing.T) {
+	m := explorerWorkspace(t)
+	if err := os.MkdirAll(filepath.Join(m.repo.Root, "apps/web/src/hooks"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(m.repo.Root, "apps/web/src/hooks/use.go"), nil, 0644); err != nil {
+		t.Fatal(err)
+	}
+	drain(t, m, m.refreshTree())
+	for i, entry := range m.items {
+		if entry.folder == "apps/web/src/hooks" {
+			m.selected = i
+			break
+		}
+	}
+	if m.current() == nil || m.current().label != "apps/web/src/hooks" {
+		t.Fatal("compact row missing")
+	}
+	drain(t, m, press(m, "right"))
+	press(m, "down")
+	if m.current().file != "apps/web/src/hooks/use.go" {
+		t.Fatal("expanded file missing")
+	}
+	press(m, "left")
+	if m.current().folder != "apps/web/src/hooks" {
+		t.Fatal("parent navigation failed")
+	}
+	drain(t, m, press(m, "left"))
+	if m.expanded["apps/web/src/hooks"] {
+		t.Fatal("collapse failed")
+	}
+}
+
+func TestCompactHistoryParentNavigation(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	m.section = history
+	commit := gitservice.Commit{ID: "compact-history"}
+	id := historyKey("", commit.ID)
+	m.historyStates[id] = &historyState{expanded: true, loaded: true, collapsed: map[string]bool{}, files: []gitservice.Change{{Path: "apps/web/src/hooks/use.go", Index: 'M', Worktree: ' '}}}
+	m.items = append([]item{{commit: &commit}}, m.historyTree(id)...)
+	if len(m.items) != 3 || m.items[1].label != "apps/web/src/hooks" {
+		t.Fatalf("history tree: %+v", m.items)
+	}
+	m.selected = 2
+	m.selectHistoryParent(*m.current())
+	if m.selected != 1 {
+		t.Fatal("file did not select compact folder")
+	}
+	m.selectHistoryParent(*m.current())
+	if m.selected != 0 {
+		t.Fatal("compact folder did not select commit")
 	}
 }

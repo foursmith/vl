@@ -45,9 +45,17 @@ func (m *Model) syncWatch() {
 		return
 	}
 	config := watcher.Config{Directories: []string{m.repo.Root}}
+	seen := map[string]bool{".": true, "": true}
 	for _, entry := range m.treeEntries {
-		if entry.Directory && m.expanded[entry.Path] {
-			config.Directories = append(config.Directories, filepath.Join(m.repo.Root, entry.Path))
+		// Watch compacted ancestors too so adding a sibling splits the row.
+		path := entry.Path
+		if !entry.Directory {
+			path = filepath.ToSlash(filepath.Dir(path))
+		}
+		for !seen[path] {
+			seen[path] = true
+			config.Directories = append(config.Directories, filepath.Join(m.repo.Root, path))
+			path = filepath.ToSlash(filepath.Dir(path))
 		}
 	}
 	for _, t := range m.tabs {

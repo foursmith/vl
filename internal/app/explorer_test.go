@@ -100,7 +100,7 @@ func TestHorizontalNavigationAndFileSearch(t *testing.T) {
 
 func TestExplorerStatusAggregationKeepsConflictPriority(t *testing.T) {
 	m := explorerWorkspace(t)
-	m.treeEntries = []files.Entry{{Path: "src", Directory: true}, {Path: "src/nested", Directory: true}, {Path: "src/nested/typed.go"}}
+	m.treeEntries = []files.Entry{{Path: "src", Label: "src", Directory: true}, {Path: "src/nested", Label: "nested", Directory: true}, {Path: "src/nested/typed.go", Label: "typed.go"}}
 	m.snapshot.Changes = []gitservice.Change{
 		{Path: "src/conflict.go", Index: 'U', Worktree: 'U'},
 		{Path: "src/new.go", Index: '?', Worktree: '?'},
