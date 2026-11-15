@@ -74,6 +74,7 @@ func (m *Model) openDocument(path string, preview bool) bool {
 
 func (m *Model) activateTab(index int) {
 	m.activeTab = index
+	m.lastFileRepository = m.fileRepository(m.tabs[index].doc.Path)
 	m.showEditor = true
 	m.sidebar = false
 	m.ensureEditor()
@@ -188,6 +189,9 @@ func (m *Model) removeTab(doc *editor.Document) {
 			if !m.diffOpen {
 				m.sidebar = true
 			}
+		}
+		if m.showEditor && m.document() != nil {
+			m.lastFileRepository = m.fileRepository(m.document().Path)
 		}
 		m.ensureEditor()
 		m.ensureTabVisible()

@@ -47,6 +47,7 @@ type Snapshot struct {
 	Repositories      []string
 	GitDirectories    []string
 	RepositoryHistory map[string]CommitHistory
+	RepositoryStates  map[string]Snapshot
 }
 
 func Open(ctx context.Context, path string) (*Repository, error) {
@@ -136,6 +137,7 @@ func (r *Repository) Snapshot(ctx context.Context) (Snapshot, error) {
 		state, err := r.readChanges(ctx)
 		s.Changes, s.Repositories, s.GitDirectories = state.changes, state.repositories, state.metadata
 		s.RepositoryHistory = state.history
+		s.RepositoryStates = state.states
 		statusErr = err
 		if err != nil {
 			cancel()

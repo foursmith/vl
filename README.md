@@ -74,6 +74,9 @@ Subdirectories and file paths resolve to their enclosing repository.
 - Click the status-bar branch to search local/remote branches and tags, create
   a branch from HEAD or a selected reference, or check out detached. Remote
   checkout creates a tracking branch; existing local names are never replaced.
+- Status-bar Git indicators and actions follow the active file or diff, including
+  nested submodules; with no active file they retain the most recent file's
+  repository, falling back to the workspace root before any file is opened.
 - Status bar shows staged/unstaged/untracked markers, upstream ahead/behind
   counts, conflicts, cursor position, tab width, UTF-8, line ending and language.
   Click sync to pull with `--ff-only` then push; without an upstream, choose a

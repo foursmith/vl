@@ -77,16 +77,3 @@ func (r *Repository) readCommits(ctx context.Context) ([]Commit, error) {
 	}
 	return commits, nil
 }
-
-func (r *Repository) readHistory(ctx context.Context) (CommitHistory, error) {
-	var result CommitHistory
-	commits, err := r.readCommits(ctx)
-	result.Commits = commits
-	if err != nil {
-		return result, err
-	}
-	var state Snapshot
-	_, err = r.readRefs(ctx, &state)
-	result.Refs = state.Refs
-	return result, err
-}

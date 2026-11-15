@@ -13,20 +13,22 @@ type statusSegment struct {
 }
 
 func (m *Model) statusLayout() []statusSegment {
-	branch := m.snapshot.Branch
+	target := m.statusRepository()
+	state := m.repositoryState(target)
+	branch := state.Branch
 	if branch == "" {
 		branch = "…"
 	}
-	if m.snapshot.Detached {
-		branch = shortOID(m.snapshot.Head) + " (分离)"
+	if state.Detached {
+		branch = shortOID(state.Head) + " (分离)"
 	}
 	staged, unstaged, untracked, conflicts := false, false, false, 0
-	rootChanges := 0
+	repositoryChanges := 0
 	for _, change := range m.snapshot.Changes {
-		if change.Repository != "" {
+		if change.Repository != target {
 			continue
 		}
-		rootChanges++
+		repositoryChanges++
 		staged = staged || change.Staged()
 		unstaged = unstaged || change.Unstaged() && !change.Untracked()
 		untracked = untracked || change.Untracked()
@@ -45,22 +47,29 @@ func (m *Model) statusLayout() []statusSegment {
 		marks += "?"
 	}
 	branchIcon, syncIcon, githubIcon := m.symbol(symbolBranch), m.symbol(symbolSync), m.symbol(symbolGitHub)
-	branch = ansi.Truncate(safe(branch), max(4, min(30, m.width/3)-ansi.StringWidth(marks)-3), "…") + marks
+	branchBudget := max(4, min(30, m.width/3)-ansi.StringWidth(marks)-3)
+	prefix := ""
+	if len(m.snapshot.Repositories) > 0 {
+		branchBudget = max(7, min(48, m.width/3)-ansi.StringWidth(marks)-3)
+		name := ansi.Truncate(safe(m.repositoryName(target)), max(1, min(18, (branchBudget-3)/2)), "…")
+		prefix = name + " · "
+	}
+	branch = prefix + ansi.Truncate(safe(branch), max(1, branchBudget-ansi.StringWidth(prefix)), "…") + marks
 	sync := syncIcon
 	if m.busy {
 		sync = "…"
-	} else if m.snapshot.Upstream == "" && !m.snapshot.Detached {
+	} else if state.Upstream == "" && !state.Detached {
 		sync = m.symbol(symbolPublish) + " 发布"
-	} else if m.snapshot.TrackingKnown {
-		sync = fmt.Sprintf("%s %d%s %d%s", syncIcon, m.snapshot.Behind, m.symbol(symbolArrowDown), m.snapshot.Ahead, m.symbol(symbolUp))
-	} else if m.snapshot.Upstream != "" {
+	} else if state.TrackingKnown {
+		sync = fmt.Sprintf("%s %d%s %d%s", syncIcon, state.Behind, m.symbol(symbolArrowDown), state.Ahead, m.symbol(symbolUp))
+	} else if state.Upstream != "" {
 		sync += " " + m.symbol(symbolWarning)
 	}
 	githubColor := m.colors.Foreground
-	if m.snapshot.GitHubURL == "" {
+	if state.GitHubURL == "" {
 		githubColor = m.colors.Muted
 	}
-	left := []statusSegment{{id: "branch", text: branchIcon + " " + branch, color: m.colors.Foreground}, {id: "sync", text: sync, color: m.colors.Foreground}, {id: "github", text: githubIcon, color: githubColor}, {id: "changes", text: fmt.Sprintf("%s %d", m.symbol(symbolDiff), rootChanges), color: m.colors.Muted}}
+	left := []statusSegment{{id: "branch", text: branchIcon + " " + branch, color: m.colors.Foreground}, {id: "sync", text: sync, color: m.colors.Foreground}, {id: "github", text: githubIcon, color: githubColor}, {id: "changes", text: fmt.Sprintf("%s %d", m.symbol(symbolDiff), repositoryChanges), color: m.colors.Muted}}
 	if conflicts > 0 {
 		left[3].text = fmt.Sprintf("%s %d", m.symbol(symbolWarning), conflicts)
 		left[3].color = m.colors.Deleted
@@ -130,13 +139,13 @@ func (m *Model) clickStatus(x int) tea.Cmd {
 		}
 		switch segment.id {
 		case "branch":
-			return m.openBranchPicker("", "")
+			return m.openBranchPicker(m.statusRepository(), "")
 		case "sync":
 			return m.syncRepository()
 		case "github":
 			return m.openGitHub()
 		case "changes":
-			return m.selectSection(changes)
+			return m.selectSectionInRepository(changes, m.statusRepository())
 		case "position":
 			return m.prompt("position", "转到行 · 行:列", "")
 		}

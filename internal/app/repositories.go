@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
+	gitservice "github.com/ourongxing/elegit/internal/git"
 )
 
 func repositoryKey(path string) string { return "repository:" + path }
@@ -173,4 +174,49 @@ func (m *Model) repositoryBranchAt(entry item, x, width int) bool {
 	}
 	branchWidth := ansi.StringWidth(m.repositoryBranchText(entry, width, buttons))
 	return branchWidth > 0 && x >= width-branchWidth && x < width
+}
+
+// File ownership uses a directory boundary and the deepest known repository.
+// A gitlink itself belongs to its parent, rather than the child it represents.
+func (m *Model) fileRepository(path string) string {
+	if filepath.IsAbs(path) {
+		var err error
+		path, err = filepath.Rel(m.repo.Root, path)
+		if err != nil {
+			return ""
+		}
+	}
+	path = filepath.ToSlash(filepath.Clean(path))
+	owner := ""
+	for _, candidate := range m.snapshot.Repositories {
+		if len(candidate) > len(owner) && strings.HasPrefix(path, candidate+"/") {
+			owner = candidate
+		}
+	}
+	return owner
+}
+
+func (m *Model) statusRepository() string {
+	if m.showEditor && m.document() != nil {
+		return m.fileRepository(m.document().Path)
+	}
+	if m.diffOpen {
+		return m.diffRepository
+	}
+	if m.document() != nil {
+		return m.fileRepository(m.document().Path)
+	}
+	for _, repo := range m.snapshot.Repositories {
+		if repo == m.lastFileRepository {
+			return repo
+		}
+	}
+	return ""
+}
+
+func (m *Model) repositoryState(repo string) gitservice.Snapshot {
+	if repo == "" {
+		return m.snapshot
+	}
+	return m.snapshot.RepositoryStates[repo]
 }

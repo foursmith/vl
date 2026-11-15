@@ -116,6 +116,7 @@ func TestRepositoryBranchLabelsReusePickerAndSwitchOnlyTheirRepository(t *testin
 	if _, err := m.repo.Run(m.ctx, "show-ref", "--verify", "refs/heads/child-from-main"); err == nil {
 		t.Fatal("child branch created in parent")
 	}
+	m.openFile("README.md")
 	for _, s := range m.statusLayout() {
 		if s.id == "branch" {
 			drain(t, m, m.clickStatus(s.x+1))

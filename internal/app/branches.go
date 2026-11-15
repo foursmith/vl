@@ -94,7 +94,9 @@ func (m *Model) checkout(repoPath string, ref gitservice.Ref, detach bool) tea.C
 }
 
 func (m *Model) syncRepository() tea.Cmd {
-	if m.snapshot.Detached {
+	target := m.statusRepository()
+	state := m.repositoryState(target)
+	if state.Detached {
 		m.notice = "分离 HEAD 状态下不能同步分支"
 		return nil
 	}
@@ -102,37 +104,54 @@ func (m *Model) syncRepository() tea.Cmd {
 		m.notice = "先保存或关闭未保存的文件"
 		return nil
 	}
-	if m.snapshot.Upstream == "" {
-		return m.publishBranch()
+	if state.Upstream == "" {
+		return m.publishBranchInRepository(target)
 	}
-	return m.operation("Sync", func() (string, error) { return m.repo.Sync(m.ctx) })
+	return m.operation("Sync", func() (string, error) {
+		repo, err := m.repo.RepositoryAt(m.ctx, target)
+		if err != nil {
+			return "", err
+		}
+		return repo.Sync(m.ctx)
+	})
 }
 
 func (m *Model) publishBranch() tea.Cmd {
-	if m.snapshot.Detached || m.snapshot.Head == "" {
+	return m.publishBranchInRepository(m.statusRepository())
+}
+
+func (m *Model) publishBranchInRepository(target string) tea.Cmd {
+	state := m.repositoryState(target)
+	if state.Detached || state.Head == "" {
 		m.notice = "先创建分支并完成首次提交"
 		return nil
 	}
-	if len(m.snapshot.Remotes) == 0 {
+	if len(state.Remotes) == 0 {
 		m.notice = "没有配置远程仓库"
 		return nil
 	}
 	m.palette = nil
-	branch := m.snapshot.Branch
-	for _, remote := range m.snapshot.Remotes {
+	branch := state.Branch
+	for _, remote := range state.Remotes {
 		m.palette = append(m.palette, action{id: remote.Name, label: remote.Name, key: "发布分支", run: func() tea.Cmd {
 			if m.hasDirtyTabs() {
 				m.notice = "先保存或关闭未保存的文件"
 				return nil
 			}
-			return m.operation("Publish", func() (string, error) { return m.repo.Publish(m.ctx, remote.Name, branch) })
+			return m.operation("Publish", func() (string, error) {
+				repo, err := m.repo.RepositoryAt(m.ctx, target)
+				if err != nil {
+					return "", err
+				}
+				return repo.Publish(m.ctx, remote.Name, branch)
+			})
 		}})
 	}
 	return m.prompt("palette", "选择发布分支的远程仓库", "")
 }
 
 func (m *Model) openGitHub() tea.Cmd {
-	target := m.snapshot.GitHubURL
+	target := m.repositoryState(m.statusRepository()).GitHubURL
 	if target == "" {
 		m.notice = "没有找到 github.com 远程仓库"
 		return nil

@@ -24,6 +24,7 @@ func (m *Model) requestDiff(path string, reset bool, read func(context.Context) 
 	seq := m.diffSeq
 	m.diffOpen, m.diffLoading, m.showEditor = true, true, false
 	m.diffPath = path
+	m.lastFileRepository = m.diffRepository
 	if reset {
 		m.clearDiffContent()
 		m.diffHunk = -1

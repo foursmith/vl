@@ -73,6 +73,12 @@ func TestWorkspaceNestedFilesAndOwningRepositories(t *testing.T) {
 	if s.RepositoryHistory["child space"].Branch != "main" || !strings.Contains(s.RepositoryHistory["child space/nested"].Branch, "(分离)") {
 		t.Fatalf("branches: %+v", s.RepositoryHistory)
 	}
+	if state := s.RepositoryStates["child space"]; state.Branch != "main" || state.Detached || state.Head == "" || len(state.Remotes) == 0 {
+		t.Fatalf("child status metadata: %+v", state)
+	}
+	if state := s.RepositoryStates["child space/nested"]; !state.Detached || state.Head == "" {
+		t.Fatalf("nested status metadata: %+v", state)
+	}
 	c := changeAt(t, s, "child space/file.txt")
 	if c.Repository != "child space" || c.Gitlink {
 		t.Fatalf("owner: %+v", c)

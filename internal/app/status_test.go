@@ -183,3 +183,148 @@ func TestBranchPickerRejectsStaleCheckout(t *testing.T) {
 		t.Fatal("refreshed picker checkout failed", m.notice)
 	}
 }
+
+func statusPart(t *testing.T, m *Model, id string) statusSegment {
+	t.Helper()
+	for _, s := range m.statusLayout() {
+		if s.id == id {
+			return s
+		}
+	}
+	t.Fatalf("missing status segment %q", id)
+	return statusSegment{}
+}
+
+func TestStatusFollowsActiveFileDiffAndLastClosedFile(t *testing.T) {
+	m, child := repositoryBranchWorkspace(t)
+	if _, err := child.Run(m.ctx, "switch", "child-topic"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := child.Run(m.ctx, "remote", "set-url", "origin", "git@github.com:child/project.git"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(child.Root, "README.md"), []byte("child edit\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	drain(t, m, m.refresh())
+	m.openFile("child space/README.md")
+	if got := statusPart(t, m, "branch").text; !strings.Contains(got, "child space · child-topic*") {
+		t.Fatalf("wrong child branch: %q", got)
+	}
+	if got := statusPart(t, m, "changes").text; !strings.HasSuffix(got, " 1") {
+		t.Fatalf("child count includes parent gitlink: %q", got)
+	}
+	called := ""
+	m.openURL = func(_ context.Context, target string) error { called = target; return nil }
+	drain(t, m, m.clickStatus(statusPart(t, m, "github").x+1))
+	if called != "https://github.com/child/project" {
+		t.Fatalf("wrong child remote: %q", called)
+	}
+	m.clickStatus(statusPart(t, m, "branch").x + 1)
+	if m.branchRepository != "child space" {
+		t.Fatal("child branch control targets parent")
+	}
+	press(m, "esc")
+	m.openFile("README.md")
+	if m.statusRepository() != "" || !strings.Contains(statusPart(t, m, "branch").text, filepath.Base(m.repo.Root)+" · main") {
+		t.Fatal("parent file retained child status")
+	}
+	m.activateTab(0)
+	m.clickStatus(statusPart(t, m, "changes").x + 1)
+	if m.current() == nil || !m.current().repoHeader || m.current().repository != "child space" || m.statusRepository() != "child space" {
+		t.Fatal("changes control lost active repository")
+	}
+	// A parent gitlink diff belongs to its parent even though its path names a child.
+	selectChanged(t, m, "child space", false)
+	drain(t, m, m.preview())
+	if m.statusRepository() != "" {
+		t.Fatal("gitlink diff targets child instead of parent")
+	}
+	selectChanged(t, m, "child space/README.md", false)
+	drain(t, m, m.preview())
+	if m.statusRepository() != "child space" {
+		t.Fatal("child diff targets parent")
+	}
+	m.closeDiff()
+	m.activateTab(1)
+	m.closeTab()
+	m.closeTab()
+	if m.document() != nil || m.statusRepository() != "child space" {
+		t.Fatal("closing last file lost most recent repository")
+	}
+	m.snapshot.Repositories = nil
+	if m.statusRepository() != "" {
+		t.Fatal("removed child repository remained active")
+	}
+}
+
+func TestFileRepositoryUsesDeepestDirectoryBoundary(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	m.snapshot.Repositories = []string{"child", "child/nested"}
+	for path, want := range map[string]string{
+		"README.md": "", "child": "", "childish/file.go": "",
+		"child/file.go": "child", "child/nested": "child",
+		"child/nested/file.go": "child/nested",
+	} {
+		if got := m.fileRepository(filepath.Join(m.repo.Root, path)); got != want {
+			t.Errorf("owner of %q = %q, want %q", path, got, want)
+		}
+	}
+}
+
+func TestStatusSyncAndPublishTargetChildRepository(t *testing.T) {
+	m, child := repositoryBranchWorkspace(t)
+	remote := filepath.Join(t.TempDir(), "remote.git")
+	for _, args := range [][]string{
+		{"init", "--bare", remote},
+		{"remote", "set-url", "origin", remote},
+		{"push", "-u", "origin", "main"},
+		{"switch", "child-topic"},
+	} {
+		if _, err := child.Run(m.ctx, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	drain(t, m, m.refresh())
+	m.openFile("child space/README.md")
+	m.clickStatus(statusPart(t, m, "sync").x + 1)
+	if m.modal != "palette" || len(m.palette) != 1 || m.palette[0].id != "origin" {
+		t.Fatal("child publish did not use child remotes", m.notice)
+	}
+	publish := m.palette[0].run
+	press(m, "esc")
+	// Changing files after opening the picker cannot redirect its operation.
+	m.openFile("README.md")
+	drain(t, m, publish())
+	state := m.snapshot.RepositoryStates["child space"]
+	if state.Upstream != "origin/child-topic" || !state.TrackingKnown || state.Ahead != 0 || state.Behind != 0 {
+		t.Fatalf("child publish did not refresh tracking: %+v", state)
+	}
+	if _, err := child.Run(m.ctx, "commit", "--allow-empty", "-m", "ahead"); err != nil {
+		t.Fatal(err)
+	}
+	drain(t, m, m.refresh())
+	m.openFile("child space/README.md")
+	if got := statusPart(t, m, "sync").text; !strings.Contains(got, "1"+m.symbol(symbolUp)) {
+		t.Fatalf("missing child ahead count: %q", got)
+	}
+	parentHead := m.snapshot.Head
+	cmd := m.clickStatus(statusPart(t, m, "sync").x + 1)
+	m.openFile("README.md")
+	drain(t, m, cmd)
+	state = m.snapshot.RepositoryStates["child space"]
+	if !state.TrackingKnown || state.Ahead != 0 || state.Behind != 0 || m.snapshot.Head != parentHead {
+		t.Fatal("sync failed or modified parent", m.notice)
+	}
+	if _, err := child.Run(m.ctx, "switch", "--detach"); err != nil {
+		t.Fatal(err)
+	}
+	drain(t, m, m.refresh())
+	m.openFile("child space/README.md")
+	if !strings.Contains(statusPart(t, m, "branch").text, "分离") {
+		t.Fatal("child detached HEAD is hidden")
+	}
+	if cmd := m.syncRepository(); cmd != nil || !strings.Contains(m.notice, "分离") {
+		t.Fatal("detached child sync was not blocked")
+	}
+}

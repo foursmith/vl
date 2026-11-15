@@ -112,6 +112,8 @@ type Model struct {
 	loading, busy           bool
 	patch                   diff.Patch
 	diffPath                string
+	diffRepository          string
+	lastFileRepository      string
 	diffChange              *gitservice.Change
 	diffStaged              bool
 	diffHunk                int
@@ -299,6 +301,10 @@ func (m *Model) clampSidebarScroll() {
 }
 
 func (m *Model) selectSection(s section) tea.Cmd {
+	return m.selectSectionInRepository(s, "")
+}
+
+func (m *Model) selectSectionInRepository(s section, repository string) tea.Cmd {
 	m.revealFile = ""
 	if m.section == history && s != history {
 		for _, state := range m.historyStates {
@@ -317,7 +323,16 @@ func (m *Model) selectSection(s section) tea.Cmd {
 	m.selected = -1
 	m.sideTop = 0
 	m.rebuildItems()
+	if repository != "" {
+		for i, entry := range m.items {
+			if entry.repoHeader && entry.repository == repository {
+				m.selected = i
+				break
+			}
+		}
+	}
 	m.resize()
+	m.ensureSidebar()
 	if s == changes || s == history {
 		return m.preview()
 	}
@@ -345,6 +360,7 @@ func (m *Model) previewAt(reset bool) tea.Cmd {
 	c, staged := *entry.change, entry.staged
 	m.diffCommit = ""
 	m.diffChange = &c
+	m.diffRepository = c.Repository
 	m.diffStaged = staged
 	return m.requestDiff(c.Path, reset, func(ctx context.Context) (string, error) {
 		return m.repo.Diff(ctx, c, staged)
@@ -874,6 +890,9 @@ func (m *Model) reloadCleanTabs() {
 	}
 	if len(kept) == 0 {
 		m.showEditor = false
+	}
+	if m.showEditor && m.document() != nil {
+		m.lastFileRepository = m.fileRepository(m.document().Path)
 	}
 	m.ensureEditor()
 }

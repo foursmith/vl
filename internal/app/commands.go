@@ -34,7 +34,7 @@ func (m *Model) actions() []action {
 		docReason = "Open a text file first"
 	}
 	githubReason := ""
-	if m.snapshot.GitHubURL == "" {
+	if m.repositoryState(m.statusRepository()).GitHubURL == "" {
 		githubReason = "没有找到 github.com 远程仓库"
 	}
 	return []action{
@@ -470,9 +470,7 @@ func (m *Model) switchTab(delta int) tea.Cmd {
 	if len(m.tabs) == 0 {
 		return nil
 	}
-	m.activeTab = (m.activeTab + delta + len(m.tabs)) % len(m.tabs)
-	m.showEditor = true
-	m.sidebar = false
+	m.activateTab((m.activeTab + delta + len(m.tabs)) % len(m.tabs))
 	m.ensureTabVisible()
 	return nil
 }

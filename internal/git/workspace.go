@@ -133,10 +133,11 @@ type workspaceChanges struct {
 	changes                []Change
 	repositories, metadata []string
 	history                map[string]CommitHistory
+	states                 map[string]Snapshot
 }
 
 func (r *Repository) readChanges(ctx context.Context) (workspaceChanges, error) {
-	state := workspaceChanges{history: map[string]CommitHistory{}}
+	state := workspaceChanges{history: map[string]CommitHistory{}, states: map[string]Snapshot{}}
 	raw, err := r.Run(ctx, "status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignore-submodules=none")
 	if err != nil {
 		return state, err
@@ -178,9 +179,15 @@ func (r *Repository) readChanges(ctx context.Context) (workspaceChanges, error) 
 			}
 			continue
 		}
-		history, historyErr := child.readHistory(ctx)
+		var metadata Snapshot
+		historyErr := child.readMetadata(ctx, &metadata)
+		history := CommitHistory{Branch: metadata.Branch, Commits: metadata.Commits, Refs: metadata.Refs}
 		if historyErr != nil {
 			history.Error = historyErr.Error()
+		}
+		state.states[path] = metadata
+		for descendant, data := range nested.states {
+			state.states[filepath.ToSlash(filepath.Join(path, descendant))] = data
 		}
 		for descendant, data := range nested.history {
 			state.history[filepath.ToSlash(filepath.Join(path, descendant))] = data
@@ -203,16 +210,11 @@ func (r *Repository) readChanges(ctx context.Context) (workspaceChanges, error) 
 			children = append(children, c)
 		}
 		// Keep the parent submodule summary separate from the child file list.
-		branch, branchErr := child.Run(ctx, "symbolic-ref", "--short", "-q", "HEAD")
-		head, err := child.Run(ctx, "rev-parse", "--verify", "HEAD")
-		if branchErr == nil {
-			history.Branch = strings.TrimSpace(branch)
-		} else {
-			id := strings.TrimSpace(head)
-			history.Branch = id[:min(7, len(id))] + " (分离)"
+		if metadata.Detached {
+			history.Branch = metadata.Head[:min(7, len(metadata.Head))] + " (分离)"
 		}
 		state.history[path] = history
-		if err == nil && strings.TrimSpace(head) == oid {
+		if metadata.Head != "" && metadata.Head == oid {
 			for i := range state.changes {
 				c := &state.changes[i]
 				if c.Path == path && !c.Conflicted() && c.Worktree == 'M' {
