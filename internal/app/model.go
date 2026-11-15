@@ -107,6 +107,8 @@ type Model struct {
 	sidebarWidth            int
 	sidebarRight            bool
 	resizingSidebar         bool
+	textDrag                *editor.Document
+	diffDrag                *diffState
 	snapshot                gitservice.Snapshot
 	items                   []item
 	selected, sideTop       int
@@ -352,7 +354,7 @@ func (m *Model) preview() tea.Cmd {
 
 func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 	_, motion := msg.(tea.MouseMotionMsg)
-	m.hoverOnly = motion && !m.resizingSidebar
+	m.hoverOnly = motion && !m.resizingSidebar && m.textDrag == nil && m.diffDrag == nil
 	if !m.hoverOnly {
 		m.hoverRender = hoverRenderCache{}
 	}
@@ -442,6 +444,11 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}
 	case tea.MouseMotionMsg:
 		m.hoverX, m.hoverY = msg.X, msg.Y
+		if msg.Button == tea.MouseLeft {
+			m.dragText(msg.X, msg.Y)
+		} else {
+			m.stopTextDrag()
+		}
 		if m.resizingSidebar {
 			if msg.Button == tea.MouseLeft && m.modal == "" && m.sideShown() {
 				m.dragSidebar(msg.X)
@@ -450,6 +457,10 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			}
 		}
 	case tea.MouseReleaseMsg:
+		if msg.Button == tea.MouseLeft || msg.Button == tea.MouseNone {
+			m.dragText(msg.X, msg.Y)
+		}
+		m.stopTextDrag()
 		if m.resizingSidebar {
 			if msg.Button == tea.MouseLeft || msg.Button == tea.MouseNone {
 				m.dragSidebar(msg.X)
@@ -457,6 +468,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			m.resizingSidebar = false
 		}
 	case tea.BlurMsg:
+		m.stopTextDrag()
 		m.resizingSidebar = false
 		m.hoverX, m.hoverY = -1, -1
 	case browserMsg:
@@ -561,6 +573,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			m.ensureEditor()
 		}
 	case tea.MouseClickMsg:
+		m.stopTextDrag()
 		if m.modal != "" {
 			return m, m.clickModal(msg)
 		}
@@ -644,6 +657,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 }
 
 func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
+	m.stopTextDrag()
 	k := msg.String()
 	if m.sidebar && m.section == search {
 		switch k {
@@ -654,7 +668,7 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	}
 	switch k {
 	case "ctrl+q", "ctrl+c":
-		if k == "ctrl+c" && !m.sidebar && m.editing() {
+		if k == "ctrl+c" && !m.sidebar && (m.editing() || m.diffOpen) {
 			return m.copy(false)
 		}
 		return m.quit()
@@ -930,10 +944,12 @@ func (m *Model) addOutput(text string) {
 
 func (m *Model) copy(cut bool) tea.Cmd {
 	d := m.document()
-	if d == nil {
-		return nil
+	text := ""
+	if d != nil {
+		text = d.SelectedText()
+	} else if m.diffOpen && !cut {
+		text = m.diffSelectedText()
 	}
-	text := d.SelectedText()
 	if text == "" {
 		return nil
 	}
@@ -941,8 +957,8 @@ func (m *Model) copy(cut bool) tea.Cmd {
 		d = nil
 	}
 	return func() tea.Msg { return clipboardMsg{text: text, err: clipboard.WriteAll(text), doc: d, cut: cut} }
-
 }
+
 func (m *Model) paste() tea.Cmd {
 	d := m.document()
 	return func() tea.Msg { text, err := clipboard.ReadAll(); return clipboardMsg{text: text, err: err, doc: d} }

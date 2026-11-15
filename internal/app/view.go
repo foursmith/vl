@@ -243,6 +243,8 @@ func (m *Model) renderDiff() {
 		return
 	}
 	m.diffLayout = key
+	m.diffSelection = diffSelection{}
+	m.diffDrag = nil
 	largest := 1
 	for _, line := range m.patch.Lines {
 		largest = max(largest, line.Old, line.New)
@@ -593,33 +595,13 @@ func (m *Model) click(msg tea.MouseClickMsg) tea.Cmd {
 	if m.welcomeVisible() {
 		return m.clickWelcome(msg)
 	}
-	if m.editing() && msg.Y >= editorContentRow && msg.Y < m.bodyHeight() {
-		t := &m.tabs[m.activeTab]
-		lines := t.doc.Lines()
-		line := min(len(lines)-1, t.top+msg.Y-editorContentRow)
-		goal := max(0, msg.X-m.mainX()-7+t.left)
-		visual, col := 0, 0
-		iter := graphemes.FromString(lines[line])
-		for iter.Next() {
-			cluster := iter.Value()
-			width := ansi.StringWidth(displayCluster(cluster, visual))
-			if visual+width > goal {
-				break
+	if msg.Y >= editorContentRow && msg.Y < m.bodyHeight() {
+		m.beginTextDrag(msg)
+		if !m.editing() && m.diffOpen {
+			i := m.viewport.YOffset() + msg.Y - editorContentRow
+			if i < len(m.diffRowHunks) && m.diffRowHunks[i] >= 0 {
+				m.diffHunk = m.diffRowHunks[i]
 			}
-			visual += width
-			col += utf8.RuneCountInString(cluster)
-		}
-		t.doc.SetPosition(line, col)
-		m.ensureEditor()
-	} else if !m.editing() && msg.Y >= editorContentRow && msg.Y < m.bodyHeight() {
-		i := m.viewport.YOffset() + msg.Y - editorContentRow
-		hunk := -1
-		if i < len(m.diffRowHunks) {
-			hunk = m.diffRowHunks[i]
-		}
-		if hunk >= 0 {
-			m.diffHunk = hunk
-			m.renderDiff()
 		}
 	}
 	return nil

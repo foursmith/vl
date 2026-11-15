@@ -78,7 +78,7 @@ func TestLightThemePickerAndDiffSurfaces(t *testing.T) {
 		if line.Kind != diff.Added {
 			continue
 		}
-		cells := uv.NewStyledString(m.diffRow(line, 50, true)).Lines(ansi.GraphemeWidth)[0]
+		cells := uv.NewStyledString(m.diffRow(line, 50, true, diffRange{})).Lines(ansi.GraphemeWidth)[0]
 		if !sameColor(cells[0].Style.Bg, lipgloss.Color("#FFFFFF")) {
 			t.Fatal("light diff gutter is not white")
 		}

@@ -210,6 +210,7 @@ the view does not stage, commit, fetch, or change branches.
 | Editor | Ctrl+Z / Ctrl+Y | Undo / redo |
 | Editor | Shift+arrows | Select text |
 | Editor | Ctrl+A / C / X / V | Select all / copy / cut / paste |
+| Editor / Diff | Left drag / Shift+click, Ctrl+C | Select and copy source text; split diffs select one side |
 | Editor | Tab | Insert a literal tab |
 
 Printable keys remain text input while an editor has focus. Below 70 columns,

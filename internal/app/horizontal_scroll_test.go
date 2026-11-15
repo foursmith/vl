@@ -65,7 +65,7 @@ func TestDiffHorizontalScrollKeepsGuttersAndSplitBoundary(t *testing.T) {
 			}
 		}
 		line := &m.patch.Lines[2]
-		painted := plain(m.diffRow(line, 40, true))
+		painted := plain(m.diffRow(line, 40, true, diffRange{}))
 		if !strings.Contains(painted[:m.diffGutter], "1+") {
 			t.Fatal("horizontal scroll moved line number")
 		}
@@ -86,7 +86,7 @@ func TestDiffHorizontalClipUsesDisplayColumns(t *testing.T) {
 	code := "\t你e\u0301TAIL"
 	spans := []highlight.Span{{Start: 1, End: 8, Color: "#569CD6", Font: highlight.Bold}}
 	for _, left := range []int{0, 1, 4, 5, 6, 7, 8} {
-		got := diffCode(colors, code, spans, 6, left, colors.AddedBackground, colors.AddedText, diffRange{2, 8})
+		got := diffCode(colors, code, spans, 6, left, colors.AddedBackground, colors.AddedText, diffRange{2, 8}, diffRange{})
 		want := plain(row(ansi.Cut(expandTabs(code), left, left+6), 6, colors.Foreground, colors.AddedBackground))
 		if plain(got) != want || ansi.StringWidth(got) != 6 {
 			t.Fatalf("column %d: got %q, want %q", left, plain(got), want)

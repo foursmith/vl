@@ -93,6 +93,7 @@ func (t tab) path() string {
 func (m *Model) editing() bool { return m.document() != nil }
 
 func (m *Model) activateTab(index int) {
+	m.stopTextDrag()
 	m.activeTab = index
 	m.pendingHistory = ""
 	m.diffState = m.emptyDiff

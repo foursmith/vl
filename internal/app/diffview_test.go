@@ -27,7 +27,7 @@ func TestDiffThemeGuttersSyntaxAndMissingLines(t *testing.T) {
 	for _, pair := range m.diffRows {
 		if pair.Right == nil || pair.Left == nil {
 			foundPlaceholder = true
-			if !strings.Contains(plain(m.diffRow(nil, 40, false)), "╱") {
+			if !strings.Contains(plain(m.diffRow(nil, 40, false, diffRange{})), "╱") {
 				t.Fatal("missing line is not hatched")
 			}
 		}
@@ -35,7 +35,7 @@ func TestDiffThemeGuttersSyntaxAndMissingLines(t *testing.T) {
 			if line == nil || line.Kind != diff.Added && line.Kind != diff.Deleted {
 				continue
 			}
-			rendered := m.diffRow(line, 40, line.Kind == diff.Added)
+			rendered := m.diffRow(line, 40, line.Kind == diff.Added, diffRange{})
 			if ansi.StringWidth(rendered) != 40 {
 				t.Fatal("diff row width changed")
 			}
@@ -70,7 +70,7 @@ func TestDiffThemeGuttersSyntaxAndMissingLines(t *testing.T) {
 		t.Fatalf("syntax=%v placeholder=%v gutter=%d", foundSyntax, foundPlaceholder, m.diffGutter)
 	}
 	for _, width := range []int{1, 4, 6, 20} {
-		if ansi.StringWidth(m.diffRow(&m.patch.Lines[3], width, false)) != width {
+		if ansi.StringWidth(m.diffRow(&m.patch.Lines[3], width, false, diffRange{})) != width {
 			t.Fatalf("narrow width %d overflowed", width)
 		}
 	}
@@ -104,7 +104,7 @@ func TestDiffSyntaxResultsCannotReplaceNewPatch(t *testing.T) {
 }
 
 func TestDiffSyntaxFontsKeepDiffBackground(t *testing.T) {
-	line := diffCode(theme.Dark(), "bold", []highlight.Span{{Start: 0, End: 4, Color: "#569CD6", Font: highlight.Bold}}, 12, 0, theme.Dark().AddedBackground, theme.Dark().AddedText, diffRange{0, 5})
+	line := diffCode(theme.Dark(), "bold", []highlight.Span{{Start: 0, End: 4, Color: "#569CD6", Font: highlight.Bold}}, 12, 0, theme.Dark().AddedBackground, theme.Dark().AddedText, diffRange{0, 5}, diffRange{})
 	cells := uv.NewStyledString(line).Lines(ansi.GraphemeWidth)[0]
 	for i, cell := range cells {
 		if !sameColor(cell.Style.Bg, lipgloss.Color(theme.Dark().AddedText)) {

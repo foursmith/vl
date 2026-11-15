@@ -29,6 +29,7 @@ type diffState struct {
 	diffLeft         int
 	diffWidth        int
 	diffLayout       diffLayoutKey
+	diffSelection    diffSelection
 	diffLoading      bool
 	diffCancel       context.CancelFunc
 	diffSyntaxCancel context.CancelFunc
@@ -54,6 +55,7 @@ func (d *diffState) clearContent() {
 	d.patch = diff.Patch{}
 	d.diffRows, d.diffRowHunks = nil, nil
 	d.diffLayout = diffLayoutKey{}
+	d.diffSelection = diffSelection{}
 	d.diffLeft, d.diffWidth = 0, 0
 	d.diffHunk = -1
 	d.viewport.SetContent("")
@@ -311,16 +313,16 @@ func (m *Model) diffView() []string {
 	for i := m.viewport.YOffset(); i < min(len(m.diffRows), m.viewport.YOffset()+m.contentHeight()); i++ {
 		pair := m.diffRows[i]
 		if !m.diffLayout.split || pair.Left != nil && (pair.Left.Kind == diff.Header || pair.Left.Kind == diff.HunkHeader) {
-			lines = append(lines, m.diffRow(pair.Left, w, false))
+			lines = append(lines, m.diffRow(pair.Left, w, false, m.diffSelectedRange(i, false)))
 		} else {
 			left := (w - 1) / 2
-			lines = append(lines, m.diffRow(pair.Left, left, false)+row("│", 1, m.colors.Border, m.colors.Background)+m.diffRow(pair.Right, w-left-1, true))
+			lines = append(lines, m.diffRow(pair.Left, left, false, m.diffSelectedRange(i, false))+row("│", 1, m.colors.Border, m.colors.Background)+m.diffRow(pair.Right, w-left-1, true, m.diffSelectedRange(i, true)))
 		}
 	}
 	return lines
 }
 
-func (m *Model) diffRow(line *diff.Line, width int, right bool) string {
+func (m *Model) diffRow(line *diff.Line, width int, right bool, selected diffRange) string {
 	gutter := min(width, max(6, m.diffGutter))
 	if line == nil {
 		return row("", gutter, m.colors.LineNumber, m.colors.Background) + row(strings.Repeat("╱", max(0, width-gutter)), width-gutter, m.colors.DiffPlaceholder, m.colors.Background)
@@ -368,12 +370,12 @@ func (m *Model) diffRow(line *diff.Line, width int, right bool) string {
 	} else if line.Kind == diff.Deleted {
 		emphasis = m.colors.DeletedText
 	}
-	return row(label, gutter, m.colors.LineNumber, m.colors.Background) + diffCode(m.colors, code, m.diffSyntax[line], width-gutter, m.diffLeft, bg, emphasis, m.diffEmphasis[line])
+	return row(label, gutter, m.colors.LineNumber, m.colors.Background) + diffCode(m.colors, code, m.diffSyntax[line], width-gutter, m.diffLeft, bg, emphasis, m.diffEmphasis[line], selected)
 }
 
 // Paint token runs only up to the visible right edge, preserving source rune
 // offsets for syntax and emphasis while clipping by terminal display columns.
-func diffCode(colors theme.Palette, code string, spans []highlight.Span, width, left int, bg, emphasis string, changed diffRange) string {
+func diffCode(colors theme.Palette, code string, spans []highlight.Span, width, left int, bg, emphasis string, changed diffRange, selected diffRange) string {
 	if width <= 0 {
 		return ""
 	}
@@ -414,6 +416,9 @@ func diffCode(colors theme.Palette, code string, spans []highlight.Span, width, 
 		nextBG := bg
 		if emphasis != "" && runeColumn >= changed.start && runeColumn < changed.end {
 			nextBG = emphasis
+		}
+		if runeColumn >= selected.start && runeColumn < selected.end {
+			nextBG = colors.Selection
 		}
 		if next != color || nextBG != runBG || nextFont != font {
 			flush()
