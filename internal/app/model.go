@@ -95,9 +95,13 @@ type Model struct {
 	diffHunk                int
 	diffRowHunks            []int
 	diffRows                []diff.Pair
+	diffGutter              int
 	diffLayout              diffLayoutKey
 	diffLoading, split      bool
 	diffCancel              context.CancelFunc
+	diffSyntaxCancel        context.CancelFunc
+	diffSyntax              map[*diff.Line][]highlight.Span
+	diffEmphasis            map[*diff.Line]diffRange
 	diffOpen                bool
 	viewport                viewport.Model
 	tabs                    []tab
@@ -308,6 +312,9 @@ func (m *Model) previewAt(reset bool) tea.Cmd {
 	if m.diffCancel != nil {
 		m.diffCancel()
 	}
+	if m.diffSyntaxCancel != nil {
+		m.diffSyntaxCancel()
+	}
 	ctx, cancel := context.WithCancel(m.ctx)
 	m.diffCancel = cancel
 	m.diffOpen = true
@@ -367,6 +374,10 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		return m, m.startHighlight(msg.request)
 	case highlightResultMsg:
 		m.finishHighlight(msg)
+	case diffSyntaxMsg:
+		if msg.seq == m.diffSeq && msg.raw == m.patch.Raw && msg.ctx.Err() == nil {
+			m.diffSyntax = msg.spans
+		}
 	case tea.MouseMotionMsg:
 		m.hoverX, m.hoverY = msg.X, msg.Y
 	case tea.BlurMsg:
@@ -443,6 +454,9 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		if msg.raw == m.patch.Raw {
 			m.diffTitle, m.diffPath = msg.title, msg.path
 			m.renderDiff()
+			if m.diffSyntax == nil {
+				return m, m.highlightDiff()
+			}
 			return m, nil
 		}
 		m.patch = diff.Parse(msg.raw)
@@ -454,6 +468,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			m.diffHunk = -1
 		}
 		m.renderDiff()
+		return m, m.highlightDiff()
 	case operationMsg:
 		m.busy = false
 		if msg.err != nil {

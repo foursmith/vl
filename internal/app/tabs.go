@@ -482,6 +482,12 @@ func (m *Model) hasDirtyTabs() bool {
 }
 
 func (m *Model) clearDiffContent() {
+	if m.diffSyntaxCancel != nil {
+		m.diffSyntaxCancel()
+		m.diffSyntaxCancel = nil
+	}
+	m.diffSyntax = nil
+	m.diffEmphasis = nil
 	m.patch = diff.Patch{}
 	m.diffRows = nil
 	m.diffLayout = diffLayoutKey{}

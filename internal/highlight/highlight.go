@@ -36,6 +36,11 @@ func Lines(ctx context.Context, path, text string) [][]Span {
 			return nil
 		}
 		color := color(token.Type)
+		// VS Code's Go grammar scopes import as keyword.control.import.go;
+		// Chroma groups it with the blue package/namespace declarations.
+		if lexer.Config().Name == "Go" && token.Type == chroma.KeywordNamespace && token.Value == "import" {
+			color = "#C586C0"
+		}
 		for i, part := range strings.Split(token.Value, "\n") {
 			if i > 0 {
 				lines = append(lines, nil)
@@ -56,18 +61,24 @@ func color(t chroma.TokenType) string {
 	switch {
 	case t.InCategory(chroma.Comment):
 		return "#6A9955"
+	case t == chroma.LiteralStringEscape:
+		return "#D7BA7D"
 	case t.InSubCategory(chroma.LiteralString):
 		return "#CE9178"
 	case t.InSubCategory(chroma.LiteralNumber):
 		return "#B5CEA8"
-	case t == chroma.KeywordType || t == chroma.NameClass || t == chroma.NameBuiltin:
+	case t == chroma.KeywordType || t == chroma.NameClass:
 		return "#4EC9B0"
-	case t == chroma.KeywordNamespace || t == chroma.KeywordDeclaration:
-		return "#C586C0"
-	case t.InCategory(chroma.Keyword):
+	case t == chroma.KeywordNamespace || t == chroma.KeywordDeclaration || t == chroma.KeywordConstant || t == chroma.KeywordPseudo:
 		return "#569CD6"
-	case t.InSubCategory(chroma.NameFunction):
+	case t.InCategory(chroma.Keyword):
+		return "#C586C0"
+	case t.InSubCategory(chroma.NameFunction) || t == chroma.NameBuiltin:
 		return "#DCDCAA"
+	case t == chroma.NameConstant:
+		return "#4FC1FF"
+	case t.InCategory(chroma.Operator):
+		return "#D4D4D4"
 	case t.InCategory(chroma.Name):
 		return "#9CDCFE"
 	}

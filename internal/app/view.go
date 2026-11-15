@@ -203,6 +203,13 @@ func (m *Model) renderDiff() {
 		return
 	}
 	m.diffLayout = key
+	largest := 1
+	for _, line := range m.patch.Lines {
+		largest = max(largest, line.Old, line.New)
+	}
+	m.diffGutter = max(4, len(fmt.Sprint(largest))) + 2
+	pairs := m.patch.Pairs()
+	m.diffEmphasis = diffEmphasis(pairs)
 	m.diffRows = make([]diff.Pair, 0, len(m.patch.Lines))
 	m.diffRowHunks = make([]int, 0, len(m.patch.Lines))
 	hidden := func(line *diff.Line) bool {
@@ -233,7 +240,7 @@ func (m *Model) renderDiff() {
 		content = append(content, ansi.Truncate(text, w, ""))
 	}
 	if key.split {
-		for _, pair := range m.patch.Pairs() {
+		for _, pair := range pairs {
 			if !hidden(pair.Left) {
 				appendRow(pair)
 			}
@@ -258,56 +265,6 @@ func diffSourceText(line *diff.Line) string {
 		return hunkLabel(line.Text)
 	}
 	return safe(line.Text)
-}
-
-func (m *Model) diffView() []string {
-	var lines []string
-	w := m.mainWidth()
-	for i := m.viewport.YOffset(); i < min(len(m.diffRows), m.viewport.YOffset()+m.contentHeight()); i++ {
-		pair := m.diffRows[i]
-		if !m.diffLayout.split || pair.Left != nil && (pair.Left.Kind == diff.Header || pair.Left.Kind == diff.HunkHeader) {
-			lines = append(lines, m.diffRow(pair.Left, w, false))
-		} else {
-			left := (w - 1) / 2
-			lines = append(lines, m.diffRow(pair.Left, left, false)+row("│", 1, theme.Border, theme.Background)+m.diffRow(pair.Right, w-left-1, true))
-		}
-	}
-	return lines
-}
-
-func (m *Model) diffRow(line *diff.Line, width int, right bool) string {
-	if line == nil {
-		return row("", width, theme.Muted, theme.Panel)
-	}
-	fg, bg := theme.Foreground, theme.Background
-	text := safe(line.Text)
-	switch line.Kind {
-	case diff.Header:
-		fg = theme.Muted
-		if m.diffPath != "" && strings.HasPrefix(line.Text, "Binary files ") {
-			text = "  二进制文件已更改"
-		}
-	case diff.HunkHeader:
-		fg, bg = theme.Muted, theme.Panel
-		marker := " "
-		if line.Hunk == m.diffHunk {
-			marker = m.symbol(symbolRight)
-			fg = theme.Foreground
-		}
-		text = " " + marker + " " + hunkLabel(line.Text)
-	case diff.Added:
-		bg = theme.AddedBackground
-	case diff.Deleted:
-		bg = theme.DeletedBackground
-	}
-	if line.Kind == diff.Added || line.Kind == diff.Deleted || line.Kind == diff.Context {
-		number := line.Old
-		if right || line.Kind == diff.Added {
-			number = line.New
-		}
-		text = theme.Style(theme.LineNumber, bg).Render(fmt.Sprintf("%4d ", number)) + text
-	}
-	return row(text, width, fg, bg)
 }
 
 func (m *Model) nextHunk(delta int) {
