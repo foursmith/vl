@@ -49,7 +49,7 @@ func TestStatusBranchPickerCheckoutAndCreateFromReference(t *testing.T) {
 	if m.snapshot.Branch != "topic" || m.document().Text != "# Topic\n" {
 		t.Fatal("checkout did not update branch and clean editor", m.notice)
 	}
-	m.openBranchPicker("base")
+	m.openBranchPicker("", "base")
 	m.input.SetValue("refs/heads/main")
 	drain(t, m, press(m, "enter"))
 	if m.modal != "branch" || m.branchStart == "" {
@@ -60,7 +60,7 @@ func TestStatusBranchPickerCheckoutAndCreateFromReference(t *testing.T) {
 	if m.snapshot.Branch != "from-main" || m.document().Text != "# Workspace\n" {
 		t.Fatal("new branch did not use chosen start", m.notice)
 	}
-	m.openBranchPicker("")
+	m.openBranchPicker("", "")
 	m.input.SetValue("refs/tags/v1")
 	drain(t, m, press(m, "enter"))
 	if !m.snapshot.Detached || !strings.Contains(m.statusLine(), "分离") {
@@ -72,7 +72,7 @@ func TestPickerCannotDiscardUnsavedDocument(t *testing.T) {
 	m := branchWorkspace(t)
 	m.openFile("README.md")
 	press(m, "x")
-	m.openBranchPicker("")
+	m.openBranchPicker("", "")
 	m.input.SetValue("refs/heads/topic")
 	drain(t, m, press(m, "enter"))
 	if m.modal != "refs" || m.busy || m.snapshot.Branch != "main" || !m.document().Dirty() {
@@ -139,7 +139,7 @@ func TestStatusGeometryAndEditorMetadata(t *testing.T) {
 
 func TestReferencePickerMouseSelectionAndFrameWidth(t *testing.T) {
 	m := branchWorkspace(t)
-	m.openBranchPicker("")
+	m.openBranchPicker("", "")
 	m.input.SetValue("refs/heads/topic")
 	layout := m.pickerLayout(m.filteredActions())
 	drain(t, m, m.clickModal(tea.MouseClickMsg{X: layout.x + 2, Y: layout.y + 3, Button: tea.MouseLeft}))
@@ -148,7 +148,7 @@ func TestReferencePickerMouseSelectionAndFrameWidth(t *testing.T) {
 	}
 	for _, width := range []int{30, 48, 80, 120} {
 		m.Update(tea.WindowSizeMsg{Width: width, Height: 24})
-		m.openBranchPicker("")
+		m.openBranchPicker("", "")
 		for _, line := range strings.Split(m.View().Content, "\n") {
 			if ansi.StringWidth(line) != width {
 				t.Fatalf("picker frame width %d: %q", width, plain(line))
@@ -160,7 +160,7 @@ func TestReferencePickerMouseSelectionAndFrameWidth(t *testing.T) {
 func TestBranchPickerRejectsStaleCheckout(t *testing.T) {
 	m := branchWorkspace(t)
 	m.openFile("README.md")
-	m.openBranchPicker("")
+	m.openBranchPicker("", "")
 	m.input.SetValue("refs/heads/topic")
 	if _, err := m.repo.Run(m.ctx, "branch", "-f", "topic", "main"); err != nil {
 		t.Fatal(err)
@@ -170,13 +170,13 @@ func TestBranchPickerRejectsStaleCheckout(t *testing.T) {
 		t.Fatal("picker bypassed stale reference guard", m.notice)
 	}
 	m.document().Insert("// unsaved\n")
-	m.openBranchPicker("")
+	m.openBranchPicker("", "")
 	m.input.SetValue("refs/heads/topic")
 	if cmd := m.selectPickerChoice(); cmd != nil || m.busy {
 		t.Fatal("picker checkout ignored unsaved document")
 	}
 	m.document().Undo()
-	m.openBranchPicker("")
+	m.openBranchPicker("", "")
 	m.input.SetValue("refs/heads/topic")
 	drain(t, m, m.selectPickerChoice())
 	if m.snapshot.Branch != "topic" {

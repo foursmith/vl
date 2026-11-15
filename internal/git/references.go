@@ -29,35 +29,9 @@ func (r *Repository) readReferenceState(ctx context.Context, s *Snapshot) error 
 	if err == nil {
 		s.Head = strings.TrimSpace(head)
 	}
-	raw, err := r.Run(ctx, "for-each-ref", "--sort=-committerdate", "--format=%(refname)%00%(objectname)%00%(HEAD)%00%(symref)%00%(upstream:short)%00%(upstream:remotename)", "refs/heads/", "refs/remotes/", "refs/tags/")
+	upstreamRemote, err := r.readRefs(ctx, s)
 	if err != nil {
 		return err
-	}
-	upstreamRemote := ""
-	for _, line := range strings.Split(strings.TrimSuffix(raw, "\n"), "\n") {
-		fields := strings.Split(line, "\x00")
-		if len(fields) != 6 || fields[3] != "" {
-			continue
-		}
-		ref := Ref{FullName: fields[0], OID: fields[1], Current: fields[2] == "*"}
-		switch {
-		case strings.HasPrefix(ref.FullName, "refs/heads/"):
-			ref.Kind = LocalBranch
-			ref.Name = strings.TrimPrefix(ref.FullName, "refs/heads/")
-		case strings.HasPrefix(ref.FullName, "refs/remotes/"):
-			ref.Kind = RemoteBranch
-			ref.Name = strings.TrimPrefix(ref.FullName, "refs/remotes/")
-		case strings.HasPrefix(ref.FullName, "refs/tags/"):
-			ref.Kind = Tag
-			ref.Name = strings.TrimPrefix(ref.FullName, "refs/tags/")
-		default:
-			continue
-		}
-		if ref.Current {
-			s.Upstream = fields[4]
-			upstreamRemote = fields[5]
-		}
-		s.Refs = append(s.Refs, ref)
 	}
 	if s.Upstream != "" {
 		counts, err := r.Run(ctx, "rev-list", "--left-right", "--count", "HEAD...@{upstream}")
@@ -92,6 +66,40 @@ func (r *Repository) readReferenceState(ctx context.Context, s *Snapshot) error 
 		}
 	}
 	return nil
+}
+
+func (r *Repository) readRefs(ctx context.Context, s *Snapshot) (string, error) {
+	raw, err := r.Run(ctx, "for-each-ref", "--sort=-committerdate", "--format=%(refname)%00%(objectname)%00%(HEAD)%00%(symref)%00%(upstream:short)%00%(upstream:remotename)", "refs/heads/", "refs/remotes/", "refs/tags/")
+	if err != nil {
+		return "", err
+	}
+	upstreamRemote := ""
+	for _, line := range strings.Split(strings.TrimSuffix(raw, "\n"), "\n") {
+		fields := strings.Split(line, "\x00")
+		if len(fields) != 6 || fields[3] != "" {
+			continue
+		}
+		ref := Ref{FullName: fields[0], OID: fields[1], Current: fields[2] == "*"}
+		switch {
+		case strings.HasPrefix(ref.FullName, "refs/heads/"):
+			ref.Kind = LocalBranch
+			ref.Name = strings.TrimPrefix(ref.FullName, "refs/heads/")
+		case strings.HasPrefix(ref.FullName, "refs/remotes/"):
+			ref.Kind = RemoteBranch
+			ref.Name = strings.TrimPrefix(ref.FullName, "refs/remotes/")
+		case strings.HasPrefix(ref.FullName, "refs/tags/"):
+			ref.Kind = Tag
+			ref.Name = strings.TrimPrefix(ref.FullName, "refs/tags/")
+		default:
+			continue
+		}
+		if ref.Current {
+			s.Upstream = fields[4]
+			upstreamRemote = fields[5]
+		}
+		s.Refs = append(s.Refs, ref)
+	}
+	return upstreamRemote, nil
 }
 
 // Read each URL through Git (including insteadOf rules), with at most four

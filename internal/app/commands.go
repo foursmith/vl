@@ -14,6 +14,9 @@ type action struct {
 }
 
 func (m *Model) actions() []action {
+	target := m.selectedRepository()
+	suffix := " · " + m.repositoryName(target)
+	commitLabel, stageAllLabel := "Git: Commit Staged Changes"+suffix, "Git: Stage All Changes"+suffix
 	fileReason := ""
 	if m.current() == nil || m.current().change == nil {
 		fileReason = "Select a file in Source Control"
@@ -50,13 +53,17 @@ func (m *Model) actions() []action {
 		{"git.refresh", "Git: Refresh", "F5", "", m.refresh},
 		{"git.stage", "Git: Stage Selected File", "S", fileReason, func() tea.Cmd { return m.stageSelected(false) }},
 		{"git.unstage", "Git: Unstage Selected File", "U", fileReason, func() tea.Cmd { return m.stageSelected(true) }},
-		{"git.stageAll", "Git: Stage All Changes", "A", "", m.stageAll},
-		{"git.commit", "Git: Commit Staged Changes", "C", "", m.commit},
+		{"git.stageAll", stageAllLabel, "A", "", func() tea.Cmd { return m.stageAllInRepository(target) }},
+		{"git.commit", commitLabel, "C", m.commitDisabled(target), func() tea.Cmd { return m.commitInRepository(target) }},
 		{"git.fetch", "Git: Fetch", "", "", func() tea.Cmd { return m.gitOperation("Fetch", "fetch", "--all", "--prune") }},
 		{"git.pull", "Git: Pull (Fast Forward Only)", "", "", func() tea.Cmd { return m.gitOperation("Pull", "pull", "--ff-only") }},
 		{"git.push", "Git: Push", "", "", func() tea.Cmd { return m.gitOperation("Push", "push") }},
-		{"git.branch", "Git: Create Branch", "", "", func() tea.Cmd { m.branchStart = ""; return m.prompt("branch", "Create and switch to branch", "") }},
-		{"git.checkout", "Git: Checkout Branch or Tag", "", "", func() tea.Cmd { return m.openBranchPicker("") }},
+		{"git.branch", "Git: Create Branch", "", "", func() tea.Cmd {
+			m.branchStart = ""
+			m.branchRepository = ""
+			return m.prompt("branch", "Create and switch to branch", "")
+		}},
+		{"git.checkout", "Git: Checkout Branch or Tag", "", "", func() tea.Cmd { return m.openBranchPicker("", "") }},
 		{"git.sync", "Git: Sync with Upstream", "", "", m.syncRepository},
 		{"git.publish", "Git: Publish Branch", "", "", m.publishBranch},
 		{"github.open", "GitHub: Open Repository", "", githubReason, m.openGitHub},
@@ -152,6 +159,7 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 		return nil
 	}
 	if k == "esc" {
+		m.rememberCommitDraft()
 		m.modal = ""
 		m.confirm = nil
 		m.input.Blur()
@@ -171,6 +179,7 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 		}
 	}
 	if k == "enter" && !m.isPicker() {
+		m.rememberCommitDraft()
 		kind, value := m.modal, strings.TrimSpace(m.input.Value())
 		m.modal = ""
 		m.input.Blur()
@@ -183,7 +192,18 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 			}
 		case "commit":
 			if value != "" {
-				return m.gitOperation("Commit", "commit", "-m", value)
+				target := m.commitRepository
+				if reason := m.commitDisabled(target); reason != "" {
+					m.notice = reason
+					return nil
+				}
+				return m.operation("Commit", func() (string, error) {
+					repo, err := m.repo.RepositoryAt(m.ctx, target)
+					if err != nil {
+						return "", err
+					}
+					return repo.Run(m.ctx, "commit", "-m", value)
+				})
 			}
 		case "branch":
 			if value != "" {
@@ -244,11 +264,24 @@ func (m *Model) gitOperation(title string, args ...string) tea.Cmd {
 
 func (m *Model) stageSelected(unstage bool) tea.Cmd {
 	entry := m.current()
+	if m.section == changes && entry != nil && entry.repoHeader {
+		scope := *entry
+		scope.staged = unstage
+		id := "stage"
+		if unstage {
+			id = "unstage"
+		}
+		return m.runScopeAction(scope, id)
+	}
 	if entry == nil || entry.change == nil {
 		m.notice = "Select a changed file first"
 		return nil
 	}
 	c := *entry.change
+	if !unstage && c.GitlinkDirty {
+		m.notice = "子模块内部文件有更改，请在其仓库中暂存和提交"
+		return nil
+	}
 	if !unstage && m.fileDirty(c.Path) {
 		m.notice = "Save this file before staging"
 		return nil
@@ -268,11 +301,21 @@ func (m *Model) stageSelected(unstage bool) tea.Cmd {
 }
 
 func (m *Model) stageAll() tea.Cmd {
-	if m.hasDirtyTabs() {
+	return m.stageAllInRepository(m.selectedRepository())
+}
+
+func (m *Model) stageAllInRepository(target string) tea.Cmd {
+	if m.hasDirtyTabsInRepository(target) {
 		m.notice = "Save edited files before staging all changes"
 		return nil
 	}
-	return m.gitOperation("Stage all", "add", "--all", "--", ".")
+	return m.operation("Stage all", func() (string, error) {
+		repo, err := m.repo.RepositoryAt(m.ctx, target)
+		if err != nil {
+			return "", err
+		}
+		return repo.Run(m.ctx, "add", "--all", "--", ".")
+	})
 }
 
 func (m *Model) stageHunk(reverse bool) tea.Cmd {
@@ -302,25 +345,15 @@ func (m *Model) stageHunk(reverse bool) tea.Cmd {
 		if current != raw {
 			return "", fmt.Errorf("diff changed; refresh before applying a hunk")
 		}
-		return m.repo.ApplyHunk(m.ctx, patch, reverse)
+		repo, _, err := m.repo.ForChange(m.ctx, c)
+		if err != nil {
+			return "", err
+		}
+		return repo.ApplyHunk(m.ctx, patch, reverse)
 	})
 }
 
-func (m *Model) commit() tea.Cmd {
-	for _, c := range m.snapshot.Changes {
-		if c.Conflicted() {
-			m.notice = "Resolve and stage all conflicts before committing"
-			return nil
-		}
-	}
-	for _, c := range m.snapshot.Changes {
-		if c.Staged() {
-			return m.prompt("commit", "Commit staged changes", "")
-		}
-	}
-	m.notice = "Stage changes before committing"
-	return nil
-}
+func (m *Model) commit() tea.Cmd { return m.commitInRepository(m.selectedRepository()) }
 
 func (m *Model) openSelected() tea.Cmd {
 	entry := m.current()
@@ -361,6 +394,10 @@ func (m *Model) editSelected() tea.Cmd {
 		return m.openFile(entry.file)
 	}
 	if entry.change != nil {
+		if entry.change.Gitlink {
+			m.notice = "子模块提交指针；请在对应仓库中选择文件"
+			return nil
+		}
 		return m.openFile(entry.change.Path)
 	}
 	return nil
@@ -368,6 +405,10 @@ func (m *Model) editSelected() tea.Cmd {
 func (m *Model) editDiff() tea.Cmd {
 	if m.diffCommit != "" {
 		m.notice = "Commit diffs are read-only"
+		return nil
+	}
+	if m.diffChange != nil && m.diffChange.Gitlink {
+		m.notice = "子模块提交指针；请在对应仓库中选择文件"
 		return nil
 	}
 	if m.diffPath != "" {
@@ -382,11 +423,15 @@ func (m *Model) discard() tea.Cmd {
 		return nil
 	}
 	c := *entry.change
+	if c.Gitlink {
+		m.notice = "仓库目录不能作为文件丢弃"
+		return nil
+	}
 	if c.Conflicted() || entry.staged {
 		m.notice = "Select a non-conflicted working-tree file to discard"
 		return nil
 	}
-	if m.hasDirtyTabs() {
+	if m.hasDirtyTabsInRepository(c.Repository) {
 		m.notice = "Save or close edited files before discarding"
 		return nil
 	}
@@ -395,7 +440,7 @@ func (m *Model) discard() tea.Cmd {
 		title = "删除未跟踪文件 " + c.Path + "？"
 	}
 	cmd := m.ask(title, func() tea.Cmd {
-		if m.hasDirtyTabs() {
+		if m.hasDirtyTabsInRepository(c.Repository) {
 			m.notice = "Save or close edited files before discarding"
 			return nil
 		}

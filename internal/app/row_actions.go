@@ -23,6 +23,22 @@ func (m *Model) hoveredChangeRow() int {
 }
 
 func (m *Model) changeRowActions(entry item, w int) []rowAction {
+	if entry.repoHeader {
+		scope := m.scopedChanges(entry)
+		actions := []rowAction{
+			{id: "refresh", glyph: m.symbol(symbolRefresh), label: "刷新仓库"},
+			{id: "commit", glyph: m.symbol(symbolCheck), label: "提交此仓库的暂存更改", disabled: m.commitDisabled(entry.repository)},
+			{id: "stage", glyph: m.symbol(symbolAdd), label: "暂存此仓库的全部更改", disabled: m.changeActionDisabled(entry, "stage", scope)},
+		}
+		branchWidth := ansi.StringWidth(m.repositoryBranchText(entry, w, len(actions)*3))
+		for i := range actions {
+			actions[i].width, actions[i].x = 3, w-branchWidth-(len(actions)-i)*3
+			if m.busy {
+				actions[i].disabled = "等待当前 Git 操作完成"
+			}
+		}
+		return actions
+	}
 	if entry.change == nil && !entry.header && entry.folder == "" {
 		return nil
 	}
@@ -69,7 +85,13 @@ func (m *Model) changeActionRow(entry item, w int, fg, bg string) string {
 		return text
 	}
 	start := actions[0].x
-	label, _ := m.explorerRow(entry, start+3, bg)
+	labelWidth := start + 3
+	labelEntry := entry
+	if entry.repoHeader {
+		labelWidth = start
+		labelEntry.branch = ""
+	}
+	label, _ := m.explorerRow(labelEntry, labelWidth, bg)
 	text := row(ansi.Cut(label, 0, start), start, fg, bg)
 	hoverX := m.hoverX - m.sideX()
 	for _, action := range actions {
@@ -80,6 +102,10 @@ func (m *Model) changeActionRow(entry item, w int, fg, bg string) string {
 			color = "#FFFFFF"
 		}
 		text += row(" "+action.glyph+" ", action.width, color, bg)
+	}
+	if entry.repoHeader {
+		branch := m.repositoryBranchText(entry, w, len(actions)*3)
+		return text + theme.Style(theme.Foreground, bg).Bold(true).Render(branch)
 	}
 	full := row("", w, fg, bg)
 	if !entry.header {
@@ -92,6 +118,15 @@ func (m *Model) changeActionRow(entry item, w int, fg, bg string) string {
 func (m *Model) hoverHint() string {
 	if m.resizingSidebar || m.sidebarDividerAt(m.hoverX, m.hoverY) {
 		return "拖动调整侧边栏宽度"
+	}
+	if index := m.hoveredSidebarRow(); index >= 0 {
+		width := m.sideWidth()
+		if !m.sideShown() {
+			width = m.width
+		}
+		if m.repositoryBranchAt(m.items[index], m.hoverX-m.sideX(), width) {
+			return "切换 " + m.repositoryName(m.items[index].repository) + " 的分支"
+		}
 	}
 	i := m.hoveredChangeRow()
 	if i < 0 {
@@ -114,7 +149,7 @@ func (m *Model) hoverHint() string {
 }
 
 func (m *Model) clickChangeAction(index, x, w int) (tea.Cmd, bool) {
-	if index != m.hoveredChangeRow() {
+	if !m.items[index].repoHeader && index != m.hoveredChangeRow() {
 		return nil, false
 	}
 	for _, action := range m.changeRowActions(m.items[index], w) {
@@ -126,6 +161,14 @@ func (m *Model) clickChangeAction(index, x, w int) (tea.Cmd, bool) {
 		if action.disabled != "" {
 			m.notice = action.disabled
 			return nil, true
+		}
+		if m.items[index].repoHeader {
+			switch action.id {
+			case "commit":
+				return m.commitInRepository(m.items[index].repository), true
+			case "refresh":
+				return m.refresh(), true
+			}
 		}
 		if m.items[index].change == nil {
 			return m.runScopeAction(m.items[index], action.id), true

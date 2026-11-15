@@ -26,9 +26,16 @@ Git, diff, and editor packages do not import Bubble Tea or own widgets. The
 application owns input routing, dialogs, focus, layout, result identity, and
 operation serialization. Highlighting remains presentation data; it cannot
 change document contents. The status-bar reference picker owns branch and tag
-selection through a single checkout path. File search, commands and references
+selection through a single checkout path. Repository-header branch labels reuse
+the same picker with an explicit repository target, retained when selecting a
+create-from reference or entering a new branch name. File search, commands and references
 share one picker layout and click geometry.
 Source Control file, folder and group buttons share action availability rules.
+Changes and History share repository headers. History state and asynchronous
+file-list results use repository plus commit ID as their identity, since the same
+commit can appear in more than one repository. Child history files retain workspace
+paths for display and an owning repository for Git queries; branch/tag labels come
+from that repository's refs.
 
 ## Dependencies
 

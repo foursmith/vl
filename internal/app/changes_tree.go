@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -15,12 +16,12 @@ type changeDirectory struct {
 	status      byte
 }
 
-func changeKey(staged bool, kind, path string) string {
-	prefix := "changes:false:"
-	if staged {
-		prefix = "changes:true:"
-	}
-	return prefix + kind + ":" + path
+func changePrefix(repo string, staged bool) string {
+	return fmt.Sprintf("%schanges:%t:", repositoryPrefix(repo), staged)
+}
+
+func changeKey(repo string, staged bool, kind, path string) string {
+	return changePrefix(repo, staged) + kind + ":" + path
 }
 
 func changeStatus(c *gitservice.Change, staged bool) byte {
@@ -50,30 +51,33 @@ func statusPriority(status byte) int {
 	return 0
 }
 
-func (m *Model) changesTree(staged bool) ([]item, int) {
-	if m.changeCollapsed[changeKey(staged, "group", "")] {
+func (m *Model) repositoryChangesTree(repo string, staged bool) ([]item, int) {
+	if m.changeCollapsed[changeKey(repo, staged, "group", "")] {
 		count := 0
 		for _, c := range m.snapshot.Changes {
-			if staged && c.Staged() || !staged && c.Unstaged() {
+			if c.Repository == repo && (staged && c.Staged() || !staged && c.Unstaged()) {
 				count++
 			}
 		}
 		return nil, count
 	}
-	return changeTree(m.snapshot.Changes, staged, m.changeCollapsed, "")
+	return changeTree(m.snapshot.Changes, repo, staged, m.changeCollapsed, changePrefix(repo, staged))
 }
 
-func changeTree(changes []gitservice.Change, staged bool, collapsed map[string]bool, prefix string) ([]item, int) {
+func changeTree(changes []gitservice.Change, repo string, staged bool, collapsed map[string]bool, prefix string) ([]item, int) {
 	directories := 0
 	root := &changeDirectory{directories: map[string]*changeDirectory{}}
 	count := 0
 	for i := range changes {
 		change := &changes[i]
+		if change.Repository != repo {
+			continue
+		}
 		if staged && !change.Staged() || !staged && !change.Unstaged() {
 			continue
 		}
 		count++
-		parts := strings.Split(change.Path, "/")
+		parts := strings.Split(repositoryFile(change.Path, repo), "/")
 		parent := root
 		status := changeStatus(change, staged)
 		for i, name := range parts[:len(parts)-1] {
@@ -100,15 +104,15 @@ func changeTree(changes []gitservice.Change, staged bool, collapsed map[string]b
 		sort.Strings(names)
 		for _, name := range names {
 			node := parent.directories[name]
-			key := prefix + changeKey(staged, "directory", node.path)
-			rows = append(rows, item{label: name, key: key, folder: node.path, depth: depth, staged: staged, status: node.status})
+			key := prefix + "directory:" + node.path
+			rows = append(rows, item{label: name, key: key, folder: filepath.ToSlash(filepath.Join(repo, node.path)), repository: repo, depth: depth, staged: staged, status: node.status})
 			if !collapsed[key] {
 				visit(node, depth+1)
 			}
 		}
 		sort.Slice(parent.files, func(i, j int) bool { return filepath.Base(parent.files[i].Path) < filepath.Base(parent.files[j].Path) })
 		for _, change := range parent.files {
-			rows = append(rows, item{label: filepath.Base(change.Path), key: prefix + changeKey(staged, "file", change.Path), change: change, staged: staged, depth: depth, status: changeStatus(change, staged)})
+			rows = append(rows, item{label: filepath.Base(change.Path), key: prefix + "file:" + change.Path, change: change, repository: repo, staged: staged, depth: depth, status: changeStatus(change, staged)})
 		}
 	}
 	visit(root, 0)
@@ -117,6 +121,9 @@ func changeTree(changes []gitservice.Change, staged bool, collapsed map[string]b
 
 func (m *Model) folderExpanded(entry item) bool {
 	if m.section == history {
+		if entry.repoHeader {
+			return !m.changeCollapsed[entry.key]
+		}
 		state := m.historyStates[entry.historyID]
 		return state != nil && !state.collapsed[entry.key]
 	}
@@ -135,6 +142,20 @@ func (m *Model) selectParentFolder() {
 		m.selectHistoryParent(*entry)
 		return
 	}
+	if m.section == changes {
+		if entry.repoHeader {
+			return
+		}
+		if entry.header {
+			for i, row := range m.items {
+				if row.repoHeader && row.repository == entry.repository {
+					m.selected = i
+					m.ensureSidebar()
+					return
+				}
+			}
+		}
+	}
 	path := entry.folder
 	if entry.change != nil {
 		path = entry.change.Path
@@ -143,9 +164,13 @@ func (m *Model) selectParentFolder() {
 		path = entry.file
 	}
 	parent := filepath.ToSlash(filepath.Dir(path))
-	if m.section == changes && parent == "." && !entry.header {
+	root := "."
+	if entry.repository != "" {
+		root = entry.repository
+	}
+	if m.section == changes && parent == root && !entry.header {
 		for i, row := range m.items {
-			if row.header && row.staged == entry.staged {
+			if row.header && !row.repoHeader && row.repository == entry.repository && row.staged == entry.staged {
 				m.selected = i
 				m.ensureSidebar()
 				return
@@ -153,7 +178,7 @@ func (m *Model) selectParentFolder() {
 		}
 	}
 	for i, row := range m.items {
-		if row.folder == parent && (m.section != changes || row.staged == entry.staged) {
+		if row.folder == parent && (m.section != changes || row.staged == entry.staged && row.repository == entry.repository) {
 			m.selected = i
 			m.ensureSidebar()
 			return

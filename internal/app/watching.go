@@ -53,6 +53,13 @@ func (m *Model) syncWatch() {
 	for _, t := range m.tabs {
 		config.Directories = append(config.Directories, filepath.Dir(t.doc.Path))
 	}
+	for _, path := range m.snapshot.Repositories {
+		config.Directories = append(config.Directories, filepath.Join(m.repo.Root, path))
+	}
+	config.Directories = append(config.Directories, m.snapshot.GitDirectories...)
+	for _, dir := range m.snapshot.GitDirectories {
+		config.Recursive = append(config.Recursive, filepath.Join(dir, "refs"))
+	}
 	config.Directories = append(config.Directories, m.watchMetadata...)
 	for _, dir := range m.watchMetadata {
 		config.Recursive = append(config.Recursive, filepath.Join(dir, "refs"))

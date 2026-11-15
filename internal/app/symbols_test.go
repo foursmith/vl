@@ -70,7 +70,7 @@ func TestSymbolModesPreserveLayoutAcrossWidthsAndHoverTargets(t *testing.T) {
 				}
 			}
 			// Render the picker too: branch/cloud/tag/current markers share the mode.
-			m.openBranchPicker("")
+			m.openBranchPicker("", "")
 			for _, a := range m.palette {
 				if !nerd {
 					for _, r := range a.label {

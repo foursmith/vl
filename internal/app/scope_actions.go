@@ -15,6 +15,9 @@ func (m *Model) scopedChanges(entry item) []gitservice.Change {
 	}
 	var result []gitservice.Change
 	for _, c := range m.snapshot.Changes {
+		if c.Repository != entry.repository {
+			continue
+		}
 		if entry.staged && !c.Staged() || !entry.staged && !c.Unstaged() {
 			continue
 		}
@@ -35,19 +38,32 @@ func (m *Model) changeActionDisabled(entry item, id string, scope []gitservice.C
 	}
 	switch id {
 	case "open":
+		if entry.change != nil && entry.change.Gitlink {
+			return "子模块提交指针，请查看 diff 或选择子仓库文件"
+		}
 		if c := entry.change; c != nil && (c.Worktree == 'D' || c.Index == 'D' && c.Worktree == ' ') {
 			return "文件已删除"
 		}
 	case "discard":
 		for _, c := range scope {
+			if c.Gitlink {
+				return "仓库目录不能作为文件丢弃"
+			}
 			if c.Conflicted() {
 				return "先解决文件冲突"
 			}
 		}
-		if m.hasDirtyTabs() {
+		if m.hasDirtyTabsInRepository(entry.repository) {
 			return "先保存或关闭未保存的文件"
 		}
 	case "stage":
+		stageable := false
+		for _, c := range scope {
+			stageable = stageable || !c.GitlinkDirty
+		}
+		if !stageable {
+			return "子模块内部文件有更改，请在其仓库中暂存和提交"
+		}
 		for _, c := range scope {
 			if m.fileDirty(c.Path) {
 				return "先保存此范围的文件"
@@ -62,9 +78,22 @@ func (m *Model) runScopeAction(entry item, id string) tea.Cmd {
 	if len(scope) == 0 {
 		return nil
 	}
+	if id == "stage" {
+		stageable := scope[:0]
+		for _, c := range scope {
+			if !c.GitlinkDirty {
+				stageable = append(stageable, c)
+			}
+		}
+		if len(stageable) == 0 {
+			m.notice = "子模块内部文件有更改，请在其仓库中暂存和提交"
+			return nil
+		}
+		scope = stageable
+	}
 	if id == "open" {
 		for _, c := range scope {
-			if c.Worktree != 'D' && !(c.Index == 'D' && c.Worktree == ' ') {
+			if !c.Gitlink && c.Worktree != 'D' && !(c.Index == 'D' && c.Worktree == ' ') {
 				m.openFile(c.Path)
 			}
 		}
@@ -100,7 +129,7 @@ func (m *Model) runScopeAction(entry item, id string) tea.Cmd {
 	}
 	name := entry.folder
 	if name == "" {
-		name = "更改分组"
+		name = m.repositoryName(entry.repository) + " 的更改分组"
 	}
 	cmd := m.ask(fmt.Sprintf("丢弃 %s 中的 %d 个文件更改？", name, len(scope)), run)
 	m.confirmationDetail = "仅处理当前范围；未跟踪文件将被删除，Git 无法恢复。"

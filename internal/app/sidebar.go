@@ -86,6 +86,12 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 	}
 	chevron := m.treeChevron(!m.rootCollapsed)
 	root := " " + chevron + " " + safe(strings.ToUpper(filepath.Base(m.repo.Root)))
+	if m.section == changes {
+		root = " SOURCE CONTROL"
+	}
+	if m.section == history {
+		root = " COMMIT HISTORY"
+	}
 	if m.section == explorer {
 		root = ansi.Truncate(root, max(1, w-13), "…")
 		root = theme.Style(theme.Foreground, theme.Panel).Bold(true).Render(root)
@@ -112,7 +118,7 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 			}
 			if m.section == explorer || m.section == changes {
 				text, fg = m.explorerRow(entry, w, bg)
-				if m.section == changes && i == hovered {
+				if m.section == changes && (i == hovered || entry.repoHeader) {
 					text = m.changeActionRow(entry, w, fg, bg)
 				}
 			} else {
@@ -125,8 +131,15 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 }
 
 func (m *Model) explorerRow(entry item, w int, bg string) (string, string) {
+	if entry.repoHeader {
+		prefix := m.repositoryHeaderPrefix(entry)
+		branch := m.repositoryBranchText(entry, w, 0)
+		nameWidth := max(0, w-ansi.StringWidth(prefix)-ansi.StringWidth(branch))
+		text := prefix + row(safe(entry.label), nameWidth, theme.Foreground, bg) + branch
+		return row(theme.Style(theme.Foreground, bg).Bold(true).Render(text), w, theme.Foreground, bg), theme.Foreground
+	}
 	if entry.header {
-		return row(" "+m.treeChevron(m.folderExpanded(entry))+" "+entry.label, w, theme.Muted, bg), theme.Muted
+		return row(" "+strings.Repeat("  ", entry.depth)+m.treeChevron(m.folderExpanded(entry))+" "+entry.label, w, theme.Muted, bg), theme.Muted
 	}
 	fg := theme.Foreground
 	switch entry.status {
@@ -161,6 +174,9 @@ func (m *Model) explorerRow(entry item, w int, bg string) (string, string) {
 	marker := ""
 	if entry.status != 0 && !entry.ignored {
 		marker = string(entry.status)
+		if entry.change != nil && entry.change.Gitlink {
+			marker = "S"
+		}
 		if entry.folder != "" {
 			marker = m.symbol(symbolDot)
 		}
@@ -209,6 +225,11 @@ func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 	i := m.sideTop + y - sidebarHeaderRows
 	if y < sidebarHeaderRows || i < 0 || i >= len(m.items) {
 		return nil
+	}
+	if m.repositoryBranchAt(m.items[i], msg.X, w) {
+		m.selected = i
+		m.sidebar = true
+		return m.openBranchPicker(m.items[i].repository, "")
 	}
 	if m.section == changes {
 		if cmd, handled := m.clickChangeAction(i, msg.X, w); handled {

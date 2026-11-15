@@ -17,7 +17,7 @@ func TestHistoryFileReviewAndReadOnlyActions(t *testing.T) {
 	}
 	drain(t, m, m.refresh())
 	drain(t, m, m.selectSection(history))
-	if m.historyCommit == "" || m.diffCommit != m.historyCommit || m.diffPath == "" || m.diffChange != nil {
+	if m.historyCommit == "" || historyKey("", m.diffCommit) != m.historyCommit || m.diffPath == "" || m.diffChange != nil {
 		t.Fatal("commit did not open a read-only file preview")
 	}
 	var fileIndex int = -1
@@ -55,8 +55,8 @@ func TestHistoryFileReviewAndReadOnlyActions(t *testing.T) {
 		t.Fatal("folder parent navigation")
 	}
 	drain(t, m, m.openSelected())
-	if len(m.items) != 1 {
-		t.Fatal("commit collapse")
+	if len(m.items) != 2 || !m.items[0].repoHeader || m.items[1].commit == nil {
+		t.Fatal("commit collapse should retain its repository header")
 	}
 	for _, width := range []int{40, 80, 140} {
 		m.width = width
@@ -72,10 +72,10 @@ func TestHistoryFileReviewAndReadOnlyActions(t *testing.T) {
 func TestHistoryIgnoresLateFileLists(t *testing.T) {
 	m := tabWorkspace(t, 0)
 	m.section = history
-	m.historyCommit = "new"
+	m.historyCommit = historyKey("", "new")
 	m.historySeq = 2
-	m.historyStates["new"] = &historyState{seq: 2, loading: true}
-	if cmd := m.applyHistoryFiles(historyFilesMsg{seq: 1, id: "old", files: []gitservice.Change{{Path: "old"}}}); cmd != nil || len(m.historyStates["new"].files) > 0 {
+	m.historyStates[historyKey("", "new")] = &historyState{seq: 2, loading: true}
+	if cmd := m.applyHistoryFiles(historyFilesMsg{seq: 1, id: "old", files: []gitservice.Change{{Path: "old"}}}); cmd != nil || len(m.historyStates[historyKey("", "new")].files) > 0 {
 		t.Fatal("stale commit files applied")
 	}
 	m.selectSection(explorer)
@@ -105,9 +105,9 @@ func TestHistoryKeepsMultipleCommitsExpandedWithIndependentLoads(t *testing.T) {
 	}
 	m.rebuildItems()
 	m.previewHistory(selectCommit(a.ID), true)
-	seqA := m.historyStates[a.ID].seq
+	seqA := m.historyStates[historyKey("", a.ID)].seq
 	m.previewHistory(selectCommit(b.ID), true)
-	seqB := m.historyStates[b.ID].seq
+	seqB := m.historyStates[historyKey("", b.ID)].seq
 	// The earlier request may finish last; both results belong to their own trees.
 	m.applyHistoryFiles(historyFilesMsg{seq: seqB, id: b.ID, files: []gitservice.Change{{Path: "src/b.go", Index: 'M', Worktree: ' '}}})
 	if cmd := m.applyHistoryFiles(historyFilesMsg{seq: seqA, id: a.ID, files: []gitservice.Change{{Path: "src/a.go", Index: 'M', Worktree: ' '}}}); cmd != nil {
@@ -115,7 +115,7 @@ func TestHistoryKeepsMultipleCommitsExpandedWithIndependentLoads(t *testing.T) {
 	}
 	visible := func(id, path string) bool {
 		for _, entry := range m.items {
-			if entry.historyID == id && entry.historyChange != nil && entry.historyChange.Path == path {
+			if entry.historyID == historyKey("", id) && entry.historyChange != nil && entry.historyChange.Path == path {
 				return true
 			}
 		}
@@ -125,7 +125,7 @@ func TestHistoryKeepsMultipleCommitsExpandedWithIndependentLoads(t *testing.T) {
 		t.Fatal("opening one commit closed the other")
 	}
 	for i, entry := range m.items {
-		if entry.historyID == a.ID && entry.folder == "src" {
+		if entry.historyID == historyKey("", a.ID) && entry.folder == "src" {
 			m.selected = i
 			m.openHistory(entry)
 			break
@@ -135,17 +135,17 @@ func TestHistoryKeepsMultipleCommitsExpandedWithIndependentLoads(t *testing.T) {
 		t.Fatal("directory folding leaked across commits")
 	}
 	m.openHistory(selectCommit(a.ID))
-	if m.historyExpanded(a.ID) || !m.historyExpanded(b.ID) {
+	if m.historyExpanded(historyKey("", a.ID)) || !m.historyExpanded(historyKey("", b.ID)) {
 		t.Fatal("commit collapse affected its neighbor")
 	}
 	m.openHistory(selectCommit(a.ID))
-	if !m.historyExpanded(a.ID) || m.historyStates[a.ID].seq != seqA || visible(a.ID, "src/a.go") || !visible(b.ID, "src/b.go") {
+	if !m.historyExpanded(historyKey("", a.ID)) || m.historyStates[historyKey("", a.ID)].seq != seqA || visible(a.ID, "src/a.go") || !visible(b.ID, "src/b.go") {
 		t.Fatal("reopening lost cached files or independent directory state")
 	}
 	drain(t, m, m.selectSection(explorer))
 	m.section = history
 	m.rebuildItems()
-	if !m.historyExpanded(a.ID) || !m.historyExpanded(b.ID) {
+	if !m.historyExpanded(historyKey("", a.ID)) || !m.historyExpanded(historyKey("", b.ID)) {
 		t.Fatal("navigation discarded expanded commits")
 	}
 }

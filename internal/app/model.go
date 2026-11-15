@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"fmt"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -30,8 +29,11 @@ const (
 )
 
 type item struct {
+	branch        string
 	label, key    string
 	header        bool
+	repository    string
+	repoHeader    bool
 	change        *gitservice.Change
 	staged        bool
 	commit        *gitservice.Commit
@@ -145,6 +147,9 @@ type Model struct {
 	lastClickTime           time.Time
 	changeCollapsed         map[string]bool
 	branchStart             string
+	branchRepository        string
+	commitRepository        string
+	commitDrafts            map[string]string
 	openURL                 func(context.Context, string) error
 	hoverX, hoverY          int
 	hoverOnly               bool
@@ -163,6 +168,7 @@ func New(ctx context.Context, repo *gitservice.Repository, nerd bool) *Model {
 	m.resize()
 	m.expanded = map[string]bool{}
 	m.changeCollapsed = map[string]bool{}
+	m.commitDrafts = map[string]string{}
 	m.historyStates = map[string]*historyState{}
 	m.section = explorer
 	m.selected = -1
@@ -204,28 +210,11 @@ func (m *Model) rebuildItems() {
 	m.items = nil
 	switch m.section {
 	case changes:
-		for _, staged := range []bool{true, false} {
-			label := "CHANGES"
-			if staged {
-				label = "STAGED CHANGES"
-			}
-			rows, count := m.changesTree(staged)
-			key := changeKey(staged, "group", "")
-			m.items = append(m.items, item{label: fmt.Sprintf("%s  %d", label, count), header: true, staged: staged, key: key})
-			if !m.changeCollapsed[key] {
-				m.items = append(m.items, rows...)
-			}
-		}
+		m.items = m.changeRepositoryItems()
 	case explorer:
 		m.items = m.explorerItems()
 	case history:
-		for i := range m.snapshot.Commits {
-			c := &m.snapshot.Commits[i]
-			m.items = append(m.items, item{label: c.Subject, key: c.ID, commit: c})
-			if m.historyExpanded(c.ID) {
-				m.items = append(m.items, m.historyTree(c.ID)...)
-			}
-		}
+		m.items = m.historyRepositoryItems()
 	}
 	if m.selected >= 0 || m.section != explorer {
 		m.selected = min(max(0, m.selected), max(0, len(m.items)-1))
@@ -483,8 +472,9 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			m.log(msg.err.Error())
 			return m, nil
 		}
-		changed := !reflect.DeepEqual(m.snapshot.Changes, msg.snapshot.Changes) || !reflect.DeepEqual(m.snapshot.Commits, msg.snapshot.Commits)
+		changed := !reflect.DeepEqual(m.snapshot.Changes, msg.snapshot.Changes) || !reflect.DeepEqual(m.snapshot.Commits, msg.snapshot.Commits) || !reflect.DeepEqual(m.snapshot.RepositoryHistory, msg.snapshot.RepositoryHistory)
 		m.snapshot = msg.snapshot
+		m.reconcileHistoryRepositories()
 		m.syncWatch()
 		m.rebuildItems()
 		initial := m.notice == "Loading repository…"
@@ -545,6 +535,9 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			if strings.TrimSpace(msg.output) != "" {
 				m.addOutput(msg.output)
 			}
+		}
+		if msg.title == "Commit" && msg.err == nil {
+			delete(m.commitDrafts, m.commitRepository)
 		}
 		if msg.title == "Switch branch" || msg.title == "Create branch" || msg.title == "Pull" || msg.title == "Sync" || msg.title == "Stash" || msg.title == "Stash pop" || msg.title == "Discard" {
 			m.reloadCleanTabs()
@@ -705,7 +698,7 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		case "enter":
 			return m.openSelected()
 		case "right":
-			if entry := m.current(); m.section == history && entry != nil && entry.commit != nil && m.historyExpanded(entry.commit.ID) {
+			if entry := m.current(); m.section == history && entry != nil && entry.commit != nil && m.historyExpanded(historyKey(entry.repository, entry.commit.ID)) {
 				return nil
 			}
 			if entry := m.current(); entry != nil && (entry.header || entry.folder != "") && m.folderExpanded(*entry) {
@@ -714,9 +707,10 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 			return m.openSelected()
 		case "left":
 			if entry := m.current(); m.section == history && entry != nil && entry.commit != nil {
-				if m.historyExpanded(entry.commit.ID) {
+				if m.historyExpanded(historyKey(entry.repository, entry.commit.ID)) {
 					return m.openHistory(*entry)
 				}
+				m.selectHistoryParent(*entry)
 				return nil
 			}
 			if entry := m.current(); entry != nil && (entry.header || entry.folder != "") && m.folderExpanded(*entry) {

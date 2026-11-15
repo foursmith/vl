@@ -5,9 +5,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func (r *Repository) Discard(ctx context.Context, change Change) (string, error) {
+	r, change, err := r.ForChange(ctx, change)
+	if err != nil {
+		return "", err
+	}
 	if change.Conflicted() {
 		return "", fmt.Errorf("resolve conflicts before discarding")
 	}
@@ -30,6 +35,15 @@ func (r *Repository) Discard(ctx context.Context, change Change) (string, error)
 		return "", fmt.Errorf("file status changed; refresh before discarding")
 	}
 	if !change.Untracked() {
+		index, err := r.Run(ctx, "ls-files", "--stage", "-z", "--", change.Path)
+		if err != nil {
+			return "", err
+		}
+		for _, record := range strings.Split(index, "\x00") {
+			if strings.HasPrefix(record, "160000 ") {
+				return "", fmt.Errorf("a submodule directory cannot be discarded as a file")
+			}
+		}
 		if info, err := os.Lstat(filepath.Join(r.Root, change.Path)); err == nil && info.IsDir() {
 			return "", fmt.Errorf("only individual files can be discarded")
 		}

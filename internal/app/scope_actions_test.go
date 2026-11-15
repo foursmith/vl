@@ -13,7 +13,7 @@ import (
 func clickScopeAction(t *testing.T, m *Model, folder string, header, staged bool, id string) tea.Cmd {
 	t.Helper()
 	for i, entry := range m.items {
-		if entry.header != header || entry.staged != staged || entry.folder != folder {
+		if entry.repoHeader || entry.header != header || entry.staged != staged || entry.folder != folder {
 			continue
 		}
 		m.selected = i
@@ -52,7 +52,7 @@ func TestFolderHoverActionsIncludeCollapsedDescendantsAndKeepOtherPaths(t *testi
 	}
 	drain(t, m, m.refresh())
 	drain(t, m, m.selectSection(changes))
-	m.changeCollapsed[changeKey(false, "directory", "cmd")] = true
+	m.changeCollapsed[changeKey("", false, "directory", "cmd")] = true
 	m.rebuildItems()
 	drain(t, m, clickScopeAction(t, m, "cmd", false, false, "stage"))
 	for _, c := range m.snapshot.Changes {

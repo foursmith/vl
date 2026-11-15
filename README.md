@@ -61,7 +61,7 @@ Subdirectories and file paths resolve to their enclosing repository.
   context labels; hunk ranges use subdued separators instead of raw patch headers.
 - Stage/unstage a file, stage all, and stage/unstage individual modification
   hunks. Added/deleted/renamed/copied files are staged as a whole.
-- Commit staged changes and inspect the latest 100 commits. History shows branch
+- Commit staged changes and inspect the latest 100 commits per repository. History shows branch
   and tag labels and supports multiple expanded commits, each with its own
   collapsible changed-file tree. Select a file for a read-only parent-to-commit
   diff (first parent for merges). Initial commits compare against an empty tree,
@@ -106,6 +106,28 @@ Subdirectories and file paths resolve to their enclosing repository.
   to restore automatic sizing. Width and position are saved on exit in
   `elegit/layout.json` under the OS user configuration directory. Narrow terminals
   keep the single-surface sidebar/content layout.
+- Source Control uses the same collapsible repository section for ordinary
+  repositories, parents and initialized submodules, including clean repositories. Each section shows
+  its branch, its own staged/worktree file trees, and refresh,
+  commit and stage buttons. Child file paths are relative to that repository.
+- Commit/History uses the same repository sections. Each repository has its own
+  latest 100 commits, branch/tag labels and independently expandable file trees.
+  Historical file diffs read from that repository, including commits absent from
+  the parent's object database. Repository folds are independent between the
+  Changes and History pages. Click a repository header's branch name to open
+  the existing branch/tag picker for that repository, including create-from and
+  detached checkout. The target is retained throughout the picker flow.
+- Commit messages are kept independently per repository until a successful commit.
+  Click the commit button or press C to edit a draft. The commit prompt names
+  the repository and branch; only that repository's staged files are committed.
+  A failed commit keeps its draft.
+- C and A in Source Control commit or stage all in the selected repository.
+  File/folder/group actions, diffs, hunk staging, unstaging and discard also stay
+  within their owning repository. Parent submodule summaries remain visible with
+  an S marker; internal child edits are staged and committed in the child section.
+  Committing a child never stages or commits its parent's new pointer.
+- Repository discovery and refresh are read-only. Explorer retains its normal
+  directory interactions; status-bar branch and remote controls use the workspace root.
 - Searchable commands, disabled-command explanations, and Git output panel.
 
 Search files with **Ctrl+P**. Commands are available from **Ctrl+Shift+P** or **F1**.

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -13,15 +14,24 @@ type browserMsg struct {
 	err    error
 }
 
-func (m *Model) openBranchPicker(mode string) tea.Cmd {
+func (m *Model) openBranchPicker(repoPath, mode string) tea.Cmd {
+	m.branchRepository = repoPath
+	suffix := ""
+	if repoPath != "" {
+		suffix = " · " + m.repositoryName(repoPath)
+	}
 	m.palette = nil
 	if mode == "" {
 		m.palette = append(m.palette,
-			action{id: "branch.create", label: m.symbol(symbolAdd) + " 创建新分支…", run: func() tea.Cmd { m.branchStart = ""; return m.prompt("branch", "新分支名称", "") }},
-			action{id: "branch.createFrom", label: m.symbol(symbolAdd) + " 创建新分支依据…", run: func() tea.Cmd { return m.openBranchPicker("base") }},
-			action{id: "branch.detach", label: "签出已分离…", run: func() tea.Cmd { return m.openBranchPicker("detach") }})
+			action{id: "branch.create", label: m.symbol(symbolAdd) + " 创建新分支…", run: func() tea.Cmd {
+				m.branchStart = ""
+				m.branchRepository = repoPath
+				return m.prompt("branch", "新分支名称"+suffix, "")
+			}},
+			action{id: "branch.createFrom", label: m.symbol(symbolAdd) + " 创建新分支依据…", run: func() tea.Cmd { return m.openBranchPicker(repoPath, "base") }},
+			action{id: "branch.detach", label: "签出已分离…", run: func() tea.Cmd { return m.openBranchPicker(repoPath, "detach") }})
 	}
-	for _, ref := range m.snapshot.Refs {
+	for _, ref := range m.historyData(repoPath).Refs {
 		kind, glyph := "分支", m.symbol(symbolBranch)
 		if ref.Kind == gitservice.RemoteBranch {
 			kind, glyph = "远程分支", m.symbol(symbolCloud)
@@ -35,15 +45,16 @@ func (m *Model) openBranchPicker(mode string) tea.Cmd {
 		}
 		label := glyph + " " + ref.Name + "  " + shortOID(ref.OID) + mark
 		disabled := ""
-		if m.hasDirtyTabs() && mode != "base" && (!ref.Current || mode == "detach") {
+		if m.hasDirtyTabsForCheckout(repoPath) && mode != "base" && (!ref.Current || mode == "detach") {
 			disabled = "先保存或关闭未保存的文件"
 		}
 		m.palette = append(m.palette, action{id: ref.FullName, label: label, key: kind, disabled: disabled, run: func() tea.Cmd {
 			if mode == "base" {
 				m.branchStart = ref.OID
-				return m.prompt("branch", "新分支名称 · 基于 "+ref.Name, "")
+				m.branchRepository = repoPath
+				return m.prompt("branch", "新分支名称 · 基于 "+ref.Name+suffix, "")
 			}
-			return m.checkout(ref, mode == "detach")
+			return m.checkout(repoPath, ref, mode == "detach")
 		}})
 	}
 	title := "选择要签出的分支或标记"
@@ -53,6 +64,7 @@ func (m *Model) openBranchPicker(mode string) tea.Cmd {
 	if mode == "detach" {
 		title = "选择以分离 HEAD 签出的引用"
 	}
+	title += suffix
 	cmd := m.prompt("refs", title, "")
 	m.input.Placeholder = title + " · 输入名称或提交号"
 	return cmd
@@ -60,19 +72,25 @@ func (m *Model) openBranchPicker(mode string) tea.Cmd {
 
 func shortOID(oid string) string { return oid[:min(7, len(oid))] }
 
-func (m *Model) checkout(ref gitservice.Ref, detach bool) tea.Cmd {
+func (m *Model) checkout(repoPath string, ref gitservice.Ref, detach bool) tea.Cmd {
 	if ref.Current && !detach {
 		m.notice = "已在分支 " + ref.Name
 		return nil
 	}
-	if m.hasDirtyTabs() {
+	if m.hasDirtyTabsForCheckout(repoPath) {
 		m.notice = "先保存或关闭未保存的文件"
 		return nil
 	}
 	if detach {
 		ref.Kind = gitservice.Tag
 	}
-	return m.operation("Switch branch", func() (string, error) { return m.repo.Switch(m.ctx, ref) })
+	return m.operation("Switch branch", func() (string, error) {
+		repo, err := m.repo.RepositoryAt(m.ctx, repoPath)
+		if err != nil {
+			return "", err
+		}
+		return repo.Switch(m.ctx, ref)
+	})
 }
 
 func (m *Model) syncRepository() tea.Cmd {
@@ -124,13 +142,20 @@ func (m *Model) openGitHub() tea.Cmd {
 }
 
 func (m *Model) createBranch(name string) tea.Cmd {
-	if m.hasDirtyTabs() {
+	target := m.branchRepository
+	if m.hasDirtyTabsForCheckout(target) {
 		m.notice = "先保存或关闭未保存的文件"
 		return nil
 	}
 	start := m.branchStart
 	m.branchStart = ""
-	return m.operation("Create branch", func() (string, error) { return m.repo.CreateBranch(m.ctx, name, start) })
+	return m.operation("Create branch", func() (string, error) {
+		repo, err := m.repo.RepositoryAt(m.ctx, target)
+		if err != nil {
+			return "", err
+		}
+		return repo.CreateBranch(m.ctx, name, start)
+	})
 }
 
 func (m *Model) goToPosition(value string) tea.Cmd {
@@ -160,4 +185,23 @@ func (m *Model) goToPosition(value string) tea.Cmd {
 	m.sidebar = false
 	m.ensureEditor()
 	return nil
+}
+
+// Switching a repository may also update nested worktrees through Git's recurse
+// setting, so protect dirty descendants while allowing unrelated parent edits.
+func (m *Model) hasDirtyTabsForCheckout(repoPath string) bool {
+	if repoPath == "" {
+		return m.hasDirtyTabs()
+	}
+	root := filepath.Join(m.repo.Root, repoPath)
+	for _, t := range m.tabs {
+		if !t.doc.Dirty() {
+			continue
+		}
+		relative, err := filepath.Rel(root, t.doc.Path)
+		if err == nil && filepath.IsLocal(relative) {
+			return true
+		}
+	}
+	return false
 }

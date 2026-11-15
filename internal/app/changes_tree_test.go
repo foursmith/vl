@@ -18,8 +18,8 @@ func TestChangeTreeSeparatesIndexAndWorktreeAndRetainsFileIdentity(t *testing.T)
 		{Path: "gone/file.go", Index: 'D', Worktree: ' '},
 		{Path: "src", Index: ' ', Worktree: 'D'},
 	}
-	staged, stagedCount := m.changesTree(true)
-	working, workingCount := m.changesTree(false)
+	staged, stagedCount := m.repositoryChangesTree("", true)
+	working, workingCount := m.repositoryChangesTree("", false)
 	if stagedCount != 2 || workingCount != 4 {
 		t.Fatalf("file counts: %d / %d", stagedCount, workingCount)
 	}
@@ -37,8 +37,8 @@ func TestChangeTreeSeparatesIndexAndWorktreeAndRetainsFileIdentity(t *testing.T)
 	if stagedFile == nil || workingFile == nil || stagedFile.key == workingFile.key || stagedFile.depth != 2 || stagedFile.label != "main.go" || stagedFile.change != workingFile.change {
 		t.Fatal("file identity or hierarchy lost")
 	}
-	m.changeCollapsed[changeKey(false, "directory", "src")] = true
-	working, count := m.changesTree(false)
+	m.changeCollapsed[changeKey("", false, "directory", "src")] = true
+	working, count := m.repositoryChangesTree("", false)
 	if count != 4 {
 		t.Fatal("collapse changed group file count")
 	}
@@ -47,7 +47,7 @@ func TestChangeTreeSeparatesIndexAndWorktreeAndRetainsFileIdentity(t *testing.T)
 			t.Fatal("collapsed descendants remain visible")
 		}
 	}
-	staged, _ = m.changesTree(true)
+	staged, _ = m.repositoryChangesTree("", true)
 	found := false
 	for _, row := range staged {
 		if row.change != nil && row.change.Path == "src/app/main.go" {
@@ -117,13 +117,13 @@ func TestChangeGroupsCollapseIndependentlyAndKeepFolderState(t *testing.T) {
 		{Path: "README.md", Index: ' ', Worktree: 'M'},
 	}
 	m.rebuildItems()
-	folderKey := changeKey(false, "directory", "src")
+	folderKey := changeKey("", false, "directory", "src")
 	m.changeCollapsed[folderKey] = true
 	m.rebuildItems()
 	clickGroup := func(staged bool) {
 		t.Helper()
 		for i, entry := range m.items {
-			if entry.header && entry.staged == staged {
+			if entry.header && !entry.repoHeader && entry.staged == staged {
 				m.clickSidebar(tea.MouseClickMsg{X: 2, Y: sidebarHeaderRows + i - m.sideTop, Button: tea.MouseLeft})
 				if m.current() == nil || !m.current().header || m.current().staged != staged {
 					t.Fatal("group focus was lost")
@@ -134,7 +134,7 @@ func TestChangeGroupsCollapseIndependentlyAndKeepFolderState(t *testing.T) {
 		t.Fatal("group header missing")
 	}
 	clickGroup(true)
-	if !m.changeCollapsed[changeKey(true, "group", "")] {
+	if !m.changeCollapsed[changeKey("", true, "group", "")] {
 		t.Fatal("staged group did not collapse")
 	}
 	working := 0
@@ -150,11 +150,11 @@ func TestChangeGroupsCollapseIndependentlyAndKeepFolderState(t *testing.T) {
 		t.Fatalf("worktree rows changed: %d", working)
 	}
 	clickGroup(false)
-	if len(m.items) != 2 {
-		t.Fatal("both collapsed groups must leave two headers")
+	if len(m.items) != 3 {
+		t.Fatal("collapsed groups must leave the repository header and two group headers")
 	}
 	m.rebuildItems()
-	if len(m.items) != 2 || m.current() == nil || !m.current().header {
+	if len(m.items) != 3 || m.current() == nil || !m.current().header {
 		t.Fatal("refresh lost collapse or focus")
 	}
 	clickGroup(false)
@@ -181,15 +181,16 @@ func TestChangeGroupsCollapseIndependentlyAndKeepFolderState(t *testing.T) {
 func TestChangeGroupsKeyboardAndCollapsedBatchActions(t *testing.T) {
 	m := explorerWorkspace(t)
 	drain(t, m, m.selectSection(changes))
-	// Both headers can receive keyboard focus, even when their groups are empty.
+	// Ordinary repositories use the same header and omit empty change groups.
 	m.selected = 0
 	press(m, "left")
-	if !m.changeCollapsed[changeKey(true, "group", "")] {
-		t.Fatal("left did not collapse empty staged group")
+	if !m.changeCollapsed[repositoryKey("")] || len(m.items) != 1 {
+		t.Fatal("left did not collapse repository")
 	}
+	press(m, "right")
 	press(m, "down")
-	if m.current() == nil || !m.current().header || m.current().staged {
-		t.Fatal("keyboard skipped changes header")
+	if m.current() == nil || !m.current().header || m.current().repoHeader || m.current().staged {
+		t.Fatal("keyboard skipped worktree group")
 	}
 	press(m, "enter")
 	if len(m.items) != 2 {
@@ -200,7 +201,7 @@ func TestChangeGroupsKeyboardAndCollapsedBatchActions(t *testing.T) {
 		t.Fatal("right did not expand changes group")
 	}
 	press(m, "right")
-	if m.changeCollapsed[changeKey(false, "group", "")] {
+	if m.changeCollapsed[changeKey("", false, "group", "")] {
 		t.Fatal("right collapsed an expanded group")
 	}
 	press(m, "left")
@@ -210,7 +211,7 @@ func TestChangeGroupsKeyboardAndCollapsedBatchActions(t *testing.T) {
 			t.Fatalf("collapsed batch missed %s", c.Path)
 		}
 	}
-	if !m.changeCollapsed[changeKey(false, "group", "")] {
+	if !m.changeCollapsed[changeKey("", false, "group", "")] {
 		t.Fatal("batch action reset group state")
 	}
 }

@@ -32,6 +32,7 @@ const (
 	symbolPublish
 	symbolWarning
 	symbolDot
+	symbolRepository
 )
 
 var uiSymbols = [...]struct{ plain, nerd string }{
@@ -62,6 +63,8 @@ var uiSymbols = [...]struct{ plain, nerd string }{
 	symbolPublish:   {"^", "\ueac3"},
 	symbolWarning:   {"!", "\uea6c"},
 	symbolDot:       {"*", "\uea71"},
+
+	symbolRepository: {"R", "\uea62"},
 }
 
 func (m *Model) symbol(name uiSymbol) string {

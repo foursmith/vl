@@ -86,6 +86,9 @@ func (p Patch) HunkPatch(index int) (string, error) {
 		return "", fmt.Errorf("select a diff hunk first")
 	}
 	h := p.Hunks[index]
+	if strings.Contains(h.Header, " 160000\n") {
+		return "", fmt.Errorf("stage submodule pointers as a whole file")
+	}
 	if strings.Contains(h.Header, "rename from ") || strings.Contains(h.Header, "copy from ") || strings.Contains(h.Header, "new file mode ") || strings.Contains(h.Header, "deleted file mode ") {
 		return "", fmt.Errorf("stage added, deleted, copied or renamed files as a whole")
 	}

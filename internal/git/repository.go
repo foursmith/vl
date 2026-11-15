@@ -17,6 +17,9 @@ type Repository struct{ Root string }
 
 type Change struct {
 	Path, Original  string
+	Repository      string // Owning repository path relative to the workspace root.
+	Gitlink         bool
+	GitlinkDirty    bool
 	Index, Worktree byte
 }
 
@@ -29,18 +32,21 @@ func (c Change) Unstaged() bool { return c.Worktree != ' ' }
 
 type Commit struct{ ID, Short, Subject string }
 type Snapshot struct {
-	Branch        string
-	Changes       []Change
-	Commits       []Commit
-	Files         []string
-	Head          string
-	Detached      bool
-	Refs          []Ref
-	Remotes       []Remote
-	Upstream      string
-	Ahead, Behind int
-	TrackingKnown bool
-	GitHubURL     string
+	Branch            string
+	Changes           []Change
+	Commits           []Commit
+	Files             []string
+	Head              string
+	Detached          bool
+	Refs              []Ref
+	Remotes           []Remote
+	Upstream          string
+	Ahead, Behind     int
+	TrackingKnown     bool
+	GitHubURL         string
+	Repositories      []string
+	GitDirectories    []string
+	RepositoryHistory map[string]CommitHistory
 }
 
 func Open(ctx context.Context, path string) (*Repository, error) {
@@ -127,10 +133,9 @@ func (r *Repository) Snapshot(ctx context.Context) (Snapshot, error) {
 	var statusErr, metadataErr, filesErr error
 	var tasks sync.WaitGroup
 	tasks.Go(func() {
-		raw, err := r.Run(ctx, "status", "--porcelain=v1", "-z", "--untracked-files=all")
-		if err == nil {
-			s.Changes, err = ParseStatus(raw)
-		}
+		state, err := r.readChanges(ctx)
+		s.Changes, s.Repositories, s.GitDirectories = state.changes, state.repositories, state.metadata
+		s.RepositoryHistory = state.history
 		statusErr = err
 		if err != nil {
 			cancel()
@@ -162,12 +167,8 @@ func (r *Repository) readMetadata(ctx context.Context, s *Snapshot) error {
 	if s.Branch == "" {
 		s.Branch = "unborn"
 	}
-	if raw, err := r.Run(ctx, "log", "-100", "-z", "--format=%H%x00%h%x00%s"); err == nil {
-		fields := strings.Split(raw, "\x00")
-		for i := 0; i+2 < len(fields); i += 3 {
-			s.Commits = append(s.Commits, Commit{ID: fields[i], Short: fields[i+1], Subject: fields[i+2]})
-		}
-	} else if _, headErr := r.Run(ctx, "rev-parse", "--verify", "HEAD"); headErr == nil {
+	s.Commits, err = r.readCommits(ctx)
+	if err != nil {
 		return err
 	}
 	if err = r.readReferenceState(ctx, s); err != nil {
@@ -193,7 +194,12 @@ func (r *Repository) readFiles(ctx context.Context) ([]string, error) {
 }
 
 func (r *Repository) Diff(ctx context.Context, c Change, staged bool) (string, error) {
-	args := []string{"diff", "--no-ext-diff", "--no-textconv", "--no-color", "--find-renames", "--unified=3"}
+	r, c, err := r.ForChange(ctx, c)
+	if err != nil {
+		return "", err
+	}
+
+	args := []string{"diff", "--no-ext-diff", "--no-textconv", "--no-color", "--find-renames", "--unified=3", "--submodule=short", "--ignore-submodules=none"}
 	if c.Untracked() {
 		out, err := r.Run(ctx, append(args, "--no-index", "--", os.DevNull, filepath.Join(r.Root, c.Path))...)
 		var exit *exec.ExitError
@@ -225,6 +231,14 @@ func validObjectID(id string) bool {
 }
 
 func (r *Repository) Stage(ctx context.Context, c Change) (string, error) {
+	if c.GitlinkDirty {
+		return "", fmt.Errorf("stage internal files in their own repository")
+	}
+	r, c, err := r.ForChange(ctx, c)
+	if err != nil {
+		return "", err
+	}
+
 	args := []string{"add", "--all", "--", c.Path}
 	if c.Original != "" {
 		args = append(args, c.Original)
@@ -233,6 +247,11 @@ func (r *Repository) Stage(ctx context.Context, c Change) (string, error) {
 }
 
 func (r *Repository) Unstage(ctx context.Context, c Change) (string, error) {
+	r, c, err := r.ForChange(ctx, c)
+	if err != nil {
+		return "", err
+	}
+
 	args := []string{"reset", "-q", "HEAD", "--", c.Path}
 	if _, err := r.Run(ctx, "rev-parse", "--verify", "HEAD"); err != nil {
 		args = []string{"rm", "--cached", "--", c.Path}
@@ -251,7 +270,7 @@ func (r *Repository) ApplyHunk(ctx context.Context, patch string, reverse bool) 
 	return r.run(ctx, patch, args...)
 }
 
-func (r *Repository) Ignored(ctx context.Context, paths []string) (map[string]bool, error) {
+func (r *Repository) ignored(ctx context.Context, paths []string) (map[string]bool, error) {
 	result := map[string]bool{}
 	if len(paths) == 0 {
 		return result, nil

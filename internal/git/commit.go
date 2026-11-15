@@ -41,9 +41,52 @@ func (r *Repository) CommitFileDiff(ctx context.Context, id string, c Change) (s
 	if !validObjectID(id) {
 		return "", errors.New("invalid commit object ID")
 	}
-	args := []string{"show", "--format=", "--diff-merges=first-parent", "--root", "--no-ext-diff", "--no-textconv", "--no-color", "--find-renames", "--unified=3", id, "--", c.Path}
+	r, c, err := r.ForChange(ctx, c)
+	if err != nil {
+		return "", err
+	}
+	args := []string{"show", "--format=", "--diff-merges=first-parent", "--root", "--no-ext-diff", "--no-textconv", "--no-color", "--find-renames", "--unified=3", "--submodule=short", id, "--", c.Path}
 	if c.Original != "" {
 		args = append(args, c.Original)
 	}
 	return r.Run(ctx, args...)
+}
+
+type CommitHistory struct {
+	Branch  string
+	Commits []Commit
+	Refs    []Ref
+	Error   string
+}
+
+func (r *Repository) readCommits(ctx context.Context) ([]Commit, error) {
+	raw, err := r.Run(ctx, "log", "-100", "-z", "--format=%H%x00%h%x00%s")
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		if _, headErr := r.Run(ctx, "rev-parse", "--verify", "HEAD"); headErr == nil {
+			return nil, err
+		}
+		return nil, nil // Unborn repository.
+	}
+	fields := strings.Split(raw, "\x00")
+	var commits []Commit
+	for i := 0; i+2 < len(fields); i += 3 {
+		commits = append(commits, Commit{ID: fields[i], Short: fields[i+1], Subject: fields[i+2]})
+	}
+	return commits, nil
+}
+
+func (r *Repository) readHistory(ctx context.Context) (CommitHistory, error) {
+	var result CommitHistory
+	commits, err := r.readCommits(ctx)
+	result.Commits = commits
+	if err != nil {
+		return result, err
+	}
+	var state Snapshot
+	_, err = r.readRefs(ctx, &state)
+	result.Refs = state.Refs
+	return result, err
 }

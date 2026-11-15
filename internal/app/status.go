@@ -22,7 +22,12 @@ func (m *Model) statusLayout() []statusSegment {
 		branch = shortOID(m.snapshot.Head) + " (分离)"
 	}
 	staged, unstaged, untracked, conflicts := false, false, false, 0
+	rootChanges := 0
 	for _, change := range m.snapshot.Changes {
+		if change.Repository != "" {
+			continue
+		}
+		rootChanges++
 		staged = staged || change.Staged()
 		unstaged = unstaged || change.Unstaged() && !change.Untracked()
 		untracked = untracked || change.Untracked()
@@ -56,7 +61,7 @@ func (m *Model) statusLayout() []statusSegment {
 	if m.snapshot.GitHubURL == "" {
 		githubColor = theme.Muted
 	}
-	left := []statusSegment{{id: "branch", text: branchIcon + " " + branch, color: theme.Foreground}, {id: "sync", text: sync, color: theme.Foreground}, {id: "github", text: githubIcon, color: githubColor}, {id: "changes", text: fmt.Sprintf("%s %d", m.symbol(symbolDiff), len(m.snapshot.Changes)), color: theme.Muted}}
+	left := []statusSegment{{id: "branch", text: branchIcon + " " + branch, color: theme.Foreground}, {id: "sync", text: sync, color: theme.Foreground}, {id: "github", text: githubIcon, color: githubColor}, {id: "changes", text: fmt.Sprintf("%s %d", m.symbol(symbolDiff), rootChanges), color: theme.Muted}}
 	if conflicts > 0 {
 		left[3].text = fmt.Sprintf("%s %d", m.symbol(symbolWarning), conflicts)
 		left[3].color = theme.Deleted
@@ -126,7 +131,7 @@ func (m *Model) clickStatus(x int) tea.Cmd {
 		}
 		switch segment.id {
 		case "branch":
-			return m.openBranchPicker("")
+			return m.openBranchPicker("", "")
 		case "sync":
 			return m.syncRepository()
 		case "github":

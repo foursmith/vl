@@ -12,8 +12,9 @@ the acceptance scope; unchecked capabilities are not implied by the first build.
 - [x] Unified and paired side-by-side text patches.
 - [x] File stage/unstage and stage all, including unborn repositories.
 - [x] Modification-hunk stage/unstage with stale-diff rejection.
-- [x] Commit staged changes and inspect the latest 100 commits, with independently
-      expandable file trees, ref labels and per-file read-only diffs.
+- [x] Commit staged changes and inspect the latest 100 commits per repository,
+      with repository sections, independently expandable file trees, repository-scoped
+      ref labels and per-file read-only diffs.
 - [x] Local branches: list, create, switch.
 - [x] Status-bar branch picker: local/remote branches, tags, detached checkout,
       create from a selected reference, and remote tracking checkout.
@@ -26,6 +27,8 @@ the acceptance scope; unchecked capabilities are not implied by the first build.
 - [x] File tree, tabs, grapheme-aware Unicode editing, selection, clipboard, undo/redo, save.
 - [x] External file monitoring, clean-buffer reload and dirty-buffer conflict protection.
 - [x] Palette, output, current-content find, responsive focus/layout.
+- [x] Separate Source Control sections for submodules, with independent branches,
+      staged/worktree trees, message drafts and commits; file actions use the owning repository.
 
 ## Diff completeness — next
 
@@ -47,7 +50,7 @@ the acceptance scope; unchecked capabilities are not implied by the first build.
 - [ ] Merge/rebase, continue/abort/skip, interactive rebase editing.
 - [ ] Stash list, inspect, apply/pop/drop selected stash.
 - [ ] Tags, remotes, upstream/ahead/behind state, push options and authentication UX.
-- [ ] Worktrees, submodules, ignored files, sparse checkouts and LFS behavior.
+- [ ] Worktrees, submodule lifecycle management, ignored files, sparse checkouts and LFS behavior.
 - [ ] Per-file history, blame, reflog, bisect.
 - [ ] In-progress operation discovery and recovery after restarting elegit.
 
