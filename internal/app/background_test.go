@@ -2,7 +2,9 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"image/color"
+	"strings"
 	"testing"
 
 	"charm.land/lipgloss/v2"
@@ -10,6 +12,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"github.com/ourongxing/elegit/internal/editor"
 	gitservice "github.com/ourongxing/elegit/internal/git"
+	"github.com/ourongxing/elegit/internal/highlight"
 	"github.com/ourongxing/elegit/internal/theme"
 )
 
@@ -80,5 +83,62 @@ func TestRowPreservesExplicitHighlightBackgrounds(t *testing.T) {
 		if !sameColor(cell.Style.Bg, lipgloss.Color(want)) {
 			t.Fatalf("cell %d (%q) background %v, want %s", i, cell.Content, cell.Style.Bg, want)
 		}
+	}
+}
+
+func TestEditorRunsKeepSyntaxSelectionCursorAndFocus(t *testing.T) {
+	m := New(context.Background(), &gitservice.Repository{Root: "/tmp/repo"}, false)
+	d := &editor.Document{Path: "/tmp/repo/test.go", Text: "ab\t中\nsecond", Cursor: 2, Anchor: 0}
+	m.tabs = []tab{{doc: d}}
+	m.activeTab = 0
+	m.showEditor = true
+	m.sidebar = false
+	m.ensureEditor()
+	m.tabs[0].highlightText = d.Text
+	m.tabs[0].spans = [][]highlight.Span{{{Start: 0, End: 2, Color: theme.GitAdded}}}
+	first := uv.NewStyledString(m.editorLines()[0]).Lines(ansi.GraphemeWidth)[0]
+	selected, cursor := false, false
+	for _, cell := range first {
+		if cell.Content == "a" {
+			selected = true
+			if !sameColor(cell.Style.Fg, lipgloss.Color(theme.GitAdded)) || !sameColor(cell.Style.Bg, lipgloss.Color(theme.Selection)) {
+				t.Fatal("run rendering lost syntax or selection color")
+			}
+		}
+		cursor = cursor || cell.Style.Attrs&uv.AttrReverse != 0
+	}
+	if !selected || !cursor {
+		t.Fatal("selected text or cursor missing")
+	}
+	m.sidebar = true
+	second := uv.NewStyledString(m.editorLines()[0]).Lines(ansi.GraphemeWidth)[0]
+	for _, cell := range second {
+		if cell.Style.Attrs&uv.AttrReverse != 0 {
+			t.Fatal("cached editor cursor remained after focus moved to sidebar")
+		}
+	}
+	d.Anchor = -1
+	m.editorLines()
+	third := uv.NewStyledString(m.editorLines()[0]).Lines(ansi.GraphemeWidth)[0]
+	for _, cell := range third {
+		if cell.Content == "a" && sameColor(cell.Style.Bg, lipgloss.Color(theme.Selection)) {
+			t.Fatal("cache kept a cleared selection")
+		}
+	}
+}
+
+func TestLargeOutputKeepsOnlyRecentLines(t *testing.T) {
+	m := New(context.Background(), &gitservice.Repository{Root: "/tmp/repo"}, false)
+	var text strings.Builder
+	for i := 0; i < 1000; i++ {
+		fmt.Fprintf(&text, "line %d\n", i)
+	}
+	m.addOutput(text.String())
+	if len(m.output) != 200 || m.output[0] != "line 800" || m.output[199] != "line 999" {
+		t.Fatal("output retained the wrong tail")
+	}
+	m.log("latest")
+	if len(m.output) != 200 || !strings.Contains(m.output[199], "latest") {
+		t.Fatal("output grew beyond its display history limit")
 	}
 }

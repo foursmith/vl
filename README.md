@@ -36,7 +36,8 @@ Subdirectories and file paths resolve to their enclosing repository.
 - Staged, unstaged, untracked, and conflicted file status; automatic refresh.
 - Source Control groups use folder trees with independent folding for staged
   and worktree changes. Group headers also collapse independently and retain
-  their file counts and batch actions while collapsed. Click or press Enter to
+  their file counts and batch actions while collapsed. Mouse-wheel scrolling
+  moves the sidebar viewport without selecting files or requesting diffs. Click or press Enter to
   toggle a group or folder; Left collapses
   it or selects its parent, and Right expands it. File status and staging actions
   retain their worktree/index identities across refreshes.
@@ -143,11 +144,13 @@ resolution, line staging, and the other remaining capabilities are in the roadma
 make build
 make test
 make check  # go vet + race-enabled tests
+go test ./internal/app -run '^$' -bench 'Benchmark(ScrollFrame|ExplorerDecorations)$' -benchmem
 ```
 
 Tests use temporary repositories for real Git operations, plus editor and diff
 unit tests and deterministic model/view tests. Interactive terminal acceptance is
-separate from these checks.
+separate from these checks. Performance measurements, reproduction commands and
+remaining cost boundaries are in [docs/PERFORMANCE.md](docs/PERFORMANCE.md).
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

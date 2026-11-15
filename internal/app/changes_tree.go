@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -17,7 +16,11 @@ type changeDirectory struct {
 }
 
 func changeKey(staged bool, kind, path string) string {
-	return fmt.Sprintf("changes:%t:%s:%s", staged, kind, path)
+	prefix := "changes:false:"
+	if staged {
+		prefix = "changes:true:"
+	}
+	return prefix + kind + ":" + path
 }
 
 func changeStatus(c *gitservice.Change, staged bool) byte {
@@ -37,7 +40,7 @@ func statusPriority(status byte) int {
 	switch status {
 	case '!':
 		return 4
-	case 'M', 'D', 'R', 'C':
+	case 'M', 'D', 'R', 'C', 'T':
 		return 3
 	case 'U':
 		return 2
@@ -48,6 +51,16 @@ func statusPriority(status byte) int {
 }
 
 func (m *Model) changesTree(staged bool) ([]item, int) {
+	if m.changeCollapsed[changeKey(staged, "group", "")] {
+		count := 0
+		for _, c := range m.snapshot.Changes {
+			if staged && c.Staged() || !staged && c.Unstaged() {
+				count++
+			}
+		}
+		return nil, count
+	}
+	directories := 0
 	root := &changeDirectory{directories: map[string]*changeDirectory{}}
 	count := 0
 	for i := range m.snapshot.Changes {
@@ -64,6 +77,7 @@ func (m *Model) changesTree(staged bool) ([]item, int) {
 			if node == nil {
 				node = &changeDirectory{path: strings.Join(parts[:i+1], "/"), directories: map[string]*changeDirectory{}}
 				parent.directories[name] = node
+				directories++
 			}
 			if statusPriority(status) > statusPriority(node.status) {
 				node.status = status
@@ -72,7 +86,7 @@ func (m *Model) changesTree(staged bool) ([]item, int) {
 		}
 		parent.files = append(parent.files, change)
 	}
-	var rows []item
+	rows := make([]item, 0, count+directories)
 	var visit func(*changeDirectory, int)
 	visit = func(parent *changeDirectory, depth int) {
 		var names []string

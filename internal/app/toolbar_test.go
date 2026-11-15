@@ -64,3 +64,34 @@ func TestDiffToolbarControlAndWidth(t *testing.T) {
 		t.Fatal("diff layout button did not toggle mode")
 	}
 }
+
+func TestLargeDiffPaintsOnlyViewportAndKeepsHunkSelection(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	m.patch = benchmarkPatch()
+	m.diffPath = "file.go"
+	m.diffOpen = true
+	m.renderDiff()
+	if strings.Contains(m.viewport.GetContent(), "\x1b") {
+		t.Fatal("diff layout eagerly painted offscreen ANSI rows")
+	}
+	if len(m.diffView()) > m.contentHeight() {
+		t.Fatal("diff rendered beyond its viewport")
+	}
+	m.nextHunk(1)
+	if m.diffHunk != 0 || !strings.Contains(plain(strings.Join(m.diffView(), "\n")), m.symbol(symbolRight)) {
+		t.Fatal("current hunk marker missing after navigation")
+	}
+	m.nextHunk(1)
+	if m.diffHunk != 1 {
+		t.Fatal("hunk navigation lost index")
+	}
+	m.find = "new value 19"
+	m.findNext()
+	if !strings.Contains(plain(strings.Join(m.diffView(), "\n")), "new value 19") {
+		t.Fatal("search no longer maps plain content to rendered diff rows")
+	}
+	m.closeDiff()
+	if len(m.diffRows) != 0 || m.diffLayout.raw != "" {
+		t.Fatal("closed diff retained a large layout")
+	}
+}

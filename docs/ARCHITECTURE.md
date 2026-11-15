@@ -48,7 +48,8 @@ does not install hooks or alter a repository's configuration.
 
 - Only `Update` changes product state. Commands capture immutable request data
   and return typed messages.
-- Snapshot and diff generations reject obsolete results.
+- Snapshot and diff generations reject obsolete results and cancel replaced
+  requests. Snapshot reads are bounded parallel tasks.
 - Only one Git mutation runs at a time. Background polling pauses during it;
   success or failure is followed by a refresh.
 - Hunk application first checks the current diff against the displayed diff.
@@ -57,6 +58,17 @@ does not install hooks or alter a repository's configuration.
 - Save uses a same-directory temporary file, mode preservation, fsync, external
   content checks, and replacement. It is not a lock against other editors: a
   concurrent write can still occur between the final check and rename.
+- Document line offsets are indexed once per text change. Dirty checks compare
+  saved text and encoding flags without serializing the file on every frame.
+- Syntax tokenization runs in cancellable, debounced commands with document/text
+  identity checks. Its completion never changes scroll position or editor focus.
+- Diff layout holds plain search rows; only viewport rows receive ANSI painting.
+  Hunk navigation reuses the layout, and unchanged Git output reuses parsed data.
+- Editor rendering groups equal styles into runs and caches only visible rows.
+  Text, cursor, selection, focus and horizontal layout changes invalidate rows;
+  scrolling evicts rows outside the viewport.
+- Sidebar wheel events scroll the viewport without selection or diff requests.
+  Git decorations use one path index instead of a nested file/change scan.
 - Undo uses bounded text snapshots (128 entries / approximately 8 MiB retained),
   suitable for the basic editor rather than a large-file document engine.
 
@@ -91,3 +103,5 @@ invalidates pending replies and prevents periodic refresh from reopening it.
 
 Expand modules when a subsystem has a concrete state/lifecycle boundary. Avoid
 repeating ttt's concentration of all product behavior in one application model.
+
+Measured workloads and current cost boundaries are in [PERFORMANCE.md](PERFORMANCE.md).

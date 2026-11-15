@@ -52,6 +52,7 @@ func (m *Model) openDocument(path string, preview bool) tea.Cmd {
 	if preview {
 		for i := range m.tabs {
 			if m.tabs[i].preview && !m.tabs[i].doc.Dirty() {
+				m.tabs[i].highlightJob.stop()
 				m.tabs[i] = next
 				m.activateTab(i)
 				return nil
@@ -165,6 +166,7 @@ func (m *Model) removeTab(doc *editor.Document) {
 		if t.doc != doc {
 			continue
 		}
+		m.tabs[i].highlightJob.stop()
 		m.tabs = append(m.tabs[:i], m.tabs[i+1:]...)
 		if i < m.activeTab {
 			m.activeTab--
@@ -186,14 +188,17 @@ func (m *Model) removeTab(doc *editor.Document) {
 
 func (m *Model) closeDiff() {
 	m.diffOpen = false
+	if m.diffCancel != nil {
+		m.diffCancel()
+		m.diffCancel = nil
+	}
 	m.diffSeq++
 	m.diffLoading = false
 	m.diffTitle = ""
 	m.diffPath = ""
 	m.diffChange = nil
-	m.patch = diff.Patch{}
+	m.clearDiffContent()
 	m.diffHunk = -1
-	m.viewport.SetContent("")
 	if !m.showEditor {
 		if m.document() != nil {
 			m.showEditor = true
@@ -474,4 +479,12 @@ func (m *Model) hasDirtyTabs() bool {
 		}
 	}
 	return false
+}
+
+func (m *Model) clearDiffContent() {
+	m.patch = diff.Patch{}
+	m.diffRows = nil
+	m.diffLayout = diffLayoutKey{}
+	m.diffRowHunks = nil
+	m.viewport.SetContent("")
 }

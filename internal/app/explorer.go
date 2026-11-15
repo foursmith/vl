@@ -3,7 +3,6 @@ package app
 import (
 	"maps"
 	"path/filepath"
-	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/ourongxing/elegit/internal/files"
@@ -40,40 +39,33 @@ func (m *Model) explorerItems() []item {
 	if m.rootCollapsed {
 		return nil
 	}
-	var result []item
+	// Index statuses once instead of scanning every change for every visible entry.
+	statuses := make(map[string]byte, len(m.snapshot.Changes))
+	directories := make(map[string]byte)
+	for i := range m.snapshot.Changes {
+		change := &m.snapshot.Changes[i]
+		status := changeStatus(change, change.Worktree == ' ')
+		statuses[change.Path] = status
+		for parent := filepath.ToSlash(filepath.Dir(change.Path)); parent != "."; parent = filepath.ToSlash(filepath.Dir(parent)) {
+			if statusPriority(status) > statusPriority(directories[parent]) {
+				directories[parent] = status
+			}
+		}
+	}
+	result := make([]item, 0, len(m.treeEntries))
 	for _, entry := range m.treeEntries {
-		row := item{label: filepath.Base(entry.Path), key: entry.Path, depth: entry.Depth, ignored: entry.Ignored}
+		row := item{label: filepath.Base(entry.Path), key: entry.Path, depth: entry.Depth, ignored: entry.Ignored, status: statuses[entry.Path]}
 		if entry.Directory {
 			row.folder = entry.Path
+			if statusPriority(directories[entry.Path]) > statusPriority(row.status) {
+				row.status = directories[entry.Path]
+			}
 		} else {
 			row.file = entry.Path
 		}
-		for _, change := range m.snapshot.Changes {
-			if change.Path == entry.Path {
-				row.status = change.Worktree
-				if row.status == ' ' {
-					row.status = change.Index
-				}
-				if change.Untracked() {
-					row.status = 'U'
-				}
-				if change.Conflicted() {
-					row.status = '!'
-				}
-			} else if entry.Directory && strings.HasPrefix(change.Path, entry.Path+"/") {
-				if row.status == 0 {
-					row.status = 'M'
-				}
-				if change.Untracked() {
-					row.status = 'U'
-				}
-				if change.Conflicted() {
-					row.status = '!'
-				}
-			}
-		}
 		result = append(result, row)
 	}
+
 	return result
 }
 

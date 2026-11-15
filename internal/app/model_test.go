@@ -18,11 +18,25 @@ import (
 
 func drain(t *testing.T, m *Model, cmd tea.Cmd) {
 	t.Helper()
-	for i := 0; cmd != nil; i++ {
-		if i > 10 {
+	queue := []tea.Cmd{cmd}
+	for i := 0; len(queue) > 0; i++ {
+		if i > 100 {
 			t.Fatal("command chain did not settle")
 		}
-		_, cmd = m.Update(cmd())
+		current := queue[0]
+		queue = queue[1:]
+		if current == nil {
+			continue
+		}
+		msg := current()
+		if batch, ok := msg.(tea.BatchMsg); ok {
+			queue = append(queue, batch...)
+			continue
+		}
+		_, next := m.Update(msg)
+		if next != nil {
+			queue = append(queue, next)
+		}
 	}
 }
 func press(m *Model, key string) tea.Cmd {
@@ -211,5 +225,45 @@ func TestExplorerDirectoryReplacementAndCollapse(t *testing.T) {
 	m.openSelected()
 	if m.expanded["replaced"] {
 		t.Fatal("folder did not collapse")
+	}
+}
+
+func TestNewDiffRequestCancelsPreviousPreview(t *testing.T) {
+	m := explorerWorkspace(t)
+	drain(t, m, m.selectSection(changes))
+	for i, entry := range m.items {
+		if entry.change != nil {
+			m.selected = i
+			break
+		}
+	}
+	previous := m.preview()
+	current := m.preview()
+	if previous == nil || current == nil {
+		t.Fatal("preview did not schedule Git work")
+	}
+	stale := previous().(diffMsg)
+	if stale.err == nil {
+		t.Fatal("old Git request was not cancelled")
+	}
+	m.Update(stale)
+	drain(t, m, current)
+	if m.patch.Raw == "" {
+		t.Fatal("latest preview did not load")
+	}
+}
+
+func TestRepeatedRefreshCancelsObsoleteSnapshot(t *testing.T) {
+	m := explorerWorkspace(t)
+	old := m.refresh()
+	latest := m.refresh()
+	stale := old().(snapshotMsg)
+	if stale.err == nil {
+		t.Fatal("superseded snapshot kept running")
+	}
+	m.Update(stale)
+	drain(t, m, latest)
+	if m.snapshot.Branch != "main" {
+		t.Fatal("latest snapshot did not load", m.notice)
 	}
 }

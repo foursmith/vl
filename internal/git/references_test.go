@@ -2,6 +2,8 @@ package git
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -189,5 +191,31 @@ func TestSyncPushesOnlySelectedBranchWithMatchingPushDefault(t *testing.T) {
 	out, err := exec.Command("git", "--git-dir", bare, "rev-parse", "refs/heads/other").Output()
 	if err != nil || strings.TrimSpace(string(out)) != initial {
 		t.Fatal("sync published an unrelated branch")
+	}
+}
+
+func TestRemoteReadsKeepOrderAndGitURLRewrites(t *testing.T) {
+	r := repository(t)
+	ctx := context.Background()
+	run(t, r, "config", "url.https://github.com/.insteadOf", "gh:")
+	for i := 0; i < 9; i++ {
+		run(t, r, "remote", "add", fmt.Sprintf("remote%02d", i), fmt.Sprintf("gh:owner/repo%d.git", i))
+	}
+	s, err := r.Snapshot(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(s.Remotes) != 9 {
+		t.Fatal("remote batch omitted entries")
+	}
+	for i, remote := range s.Remotes {
+		if remote.Name != fmt.Sprintf("remote%02d", i) || remote.URL != fmt.Sprintf("https://github.com/owner/repo%d.git", i) {
+			t.Fatalf("remote %d changed order or URL semantics: %+v", i, remote)
+		}
+	}
+	cancelled, cancel := context.WithCancel(ctx)
+	cancel()
+	if _, err := r.Snapshot(cancelled); !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancelled snapshot returned %v", err)
 	}
 }

@@ -10,11 +10,13 @@ import (
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/ourongxing/elegit/internal/diff"
-	"github.com/ourongxing/elegit/internal/highlight"
 	"github.com/ourongxing/elegit/internal/theme"
 )
 
 func safe(text string) string {
+	if strings.IndexFunc(text, unicode.IsControl) < 0 {
+		return text
+	}
 	var b strings.Builder
 	for _, r := range text {
 		switch r {
@@ -36,6 +38,9 @@ func plain(s string) string { return ansi.Strip(s) }
 func row(text string, width int, fg, bg string) string {
 	width = max(0, width)
 	text = ansi.Truncate(text, width, "")
+	if !strings.ContainsRune(text, '\x1b') {
+		return theme.Style(fg, bg).Render(text + strings.Repeat(" ", max(0, width-ansi.StringWidth(text))))
+	}
 	base := uv.Style{Fg: lipgloss.Color(fg), Bg: lipgloss.Color(bg)}
 	var out strings.Builder
 	var pen uv.Style
@@ -124,10 +129,7 @@ func (m *Model) View() tea.View {
 	}
 	if h := m.outputHeight(); h > 0 {
 		lines = append(lines, row("  OUTPUT   ·   Git", m.width, theme.Foreground, theme.Panel))
-		var output []string
-		for _, s := range m.output {
-			output = append(output, strings.Split(s, "\n")...)
-		}
+		output := m.output
 		start := max(0, len(output)-(h-1))
 		for i := 0; i < h-1; i++ {
 			text := ""
@@ -157,10 +159,11 @@ func (m *Model) mainLines() []string {
 	lines := []string{m.tabBar()}
 	lines = append(lines, m.contentToolbar())
 	var content []string
-	if m.showEditor && m.document() != nil {
+	editing := m.showEditor && m.document() != nil
+	if editing {
 		content = m.editorLines()
 	} else if m.patch.Raw != "" {
-		content = strings.Split(m.viewport.View(), "\n")
+		content = m.diffView()
 	} else {
 		message := "Select a file to preview"
 		if m.section == changes && len(m.snapshot.Changes) == 0 {
@@ -178,19 +181,30 @@ func (m *Model) mainLines() []string {
 		if i < len(content) {
 			text = content[i]
 		}
-		lines = append(lines, row(text, w, theme.Foreground, theme.Background))
+		if editing {
+			lines = append(lines, text)
+		} else {
+			lines = append(lines, row(text, w, theme.Foreground, theme.Background))
+		}
 	}
 	return lines[:h]
 }
 
+type diffLayoutKey struct {
+	raw, path string
+	width     int
+	split     bool
+}
+
 func (m *Model) renderDiff() {
 	w := m.mainWidth()
-	var lines []string
-	m.diffRowHunks = nil
-	appendLine := func(text string, hunk int) {
-		lines = append(lines, text)
-		m.diffRowHunks = append(m.diffRowHunks, hunk)
+	key := diffLayoutKey{m.patch.Raw, m.diffPath, w, m.split && w >= 68}
+	if m.diffRows != nil && m.diffLayout == key {
+		return
 	}
+	m.diffLayout = key
+	m.diffRows = make([]diff.Pair, 0, len(m.patch.Lines))
+	m.diffRowHunks = make([]int, 0, len(m.patch.Lines))
 	hidden := func(line *diff.Line) bool {
 		if m.diffPath == "" || line == nil {
 			return false
@@ -208,28 +222,57 @@ func (m *Model) renderDiff() {
 		}
 		return false
 	}
-	if m.split && w >= 68 {
-		left := (w - 1) / 2
-		right := w - left - 1
+	content := make([]string, 0, len(m.patch.Lines))
+	appendRow := func(pair diff.Pair) {
+		m.diffRows = append(m.diffRows, pair)
+		m.diffRowHunks = append(m.diffRowHunks, pair.Hunk)
+		text := diffSourceText(pair.Left)
+		if key.split && pair.Right != nil && pair.Right != pair.Left {
+			text += " " + diffSourceText(pair.Right)
+		}
+		content = append(content, ansi.Truncate(text, w, ""))
+	}
+	if key.split {
 		for _, pair := range m.patch.Pairs() {
-			if hidden(pair.Left) {
-				continue
+			if !hidden(pair.Left) {
+				appendRow(pair)
 			}
-			if pair.Left != nil && (pair.Left.Kind == diff.Header || pair.Left.Kind == diff.HunkHeader) {
-				appendLine(m.diffRow(pair.Left, w, false), pair.Hunk)
-				continue
-			}
-			appendLine(m.diffRow(pair.Left, left, false)+row("│", 1, theme.Border, theme.Background)+m.diffRow(pair.Right, right, true), pair.Hunk)
 		}
 	} else {
 		for i := range m.patch.Lines {
-			if hidden(&m.patch.Lines[i]) {
-				continue
+			line := &m.patch.Lines[i]
+			if !hidden(line) {
+				appendRow(diff.Pair{Left: line, Hunk: line.Hunk})
 			}
-			appendLine(m.diffRow(&m.patch.Lines[i], w, false), m.patch.Lines[i].Hunk)
 		}
 	}
-	m.viewport.SetContent(strings.Join(lines, "\n"))
+	// Bubbles owns scrolling/search offsets; ANSI painting is limited to visible rows.
+	m.viewport.SetContentLines(content)
+}
+
+func diffSourceText(line *diff.Line) string {
+	if line == nil {
+		return ""
+	}
+	if line.Kind == diff.HunkHeader {
+		return hunkLabel(line.Text)
+	}
+	return safe(line.Text)
+}
+
+func (m *Model) diffView() []string {
+	var lines []string
+	w := m.mainWidth()
+	for i := m.viewport.YOffset(); i < min(len(m.diffRows), m.viewport.YOffset()+m.contentHeight()); i++ {
+		pair := m.diffRows[i]
+		if !m.diffLayout.split || pair.Left != nil && (pair.Left.Kind == diff.Header || pair.Left.Kind == diff.HunkHeader) {
+			lines = append(lines, m.diffRow(pair.Left, w, false))
+		} else {
+			left := (w - 1) / 2
+			lines = append(lines, m.diffRow(pair.Left, left, false)+row("│", 1, theme.Border, theme.Background)+m.diffRow(pair.Right, w-left-1, true))
+		}
+	}
+	return lines
 }
 
 func (m *Model) diffRow(line *diff.Line, width int, right bool) string {
@@ -272,7 +315,6 @@ func (m *Model) nextHunk(delta int) {
 		return
 	}
 	m.diffHunk = min(max(0, m.diffHunk+delta), len(m.patch.Hunks)-1)
-	m.renderDiff()
 	for i, hunk := range m.diffRowHunks {
 		if hunk == m.diffHunk {
 			m.viewport.SetYOffset(i)
@@ -286,19 +328,20 @@ func (m *Model) ensureEditor() {
 		return
 	}
 	t := &m.tabs[m.activeTab]
-	if t.highlightText != t.doc.Text {
-		t.highlightText = t.doc.Text
-		t.spans = highlight.Lines(t.doc.Path, t.doc.Text)
-	}
 	line, col := t.doc.Position()
-	lines := strings.Split(t.doc.Text, "\n")
+	t.doc.Lines()
 	if line < t.top {
 		t.top = line
 	}
 	if line >= t.top+m.contentHeight() {
 		t.top = line - m.contentHeight() + 1
 	}
-	visual := ansi.StringWidth(expandTabs(string([]rune(lines[line])[:col])))
+	m.clampEditorScroll(t)
+	visual := col
+	if !t.doc.PlainASCII(line) {
+		start, end := t.doc.ByteOffset(t.doc.LineOffset(line)), t.doc.ByteOffset(t.doc.Cursor)
+		visual = ansi.StringWidth(expandTabs(t.doc.Text[start:end]))
+	}
 	w := max(1, m.mainWidth()-7)
 	if visual < t.left {
 		t.left = visual
@@ -307,6 +350,12 @@ func (m *Model) ensureEditor() {
 		t.left = visual - w + 1
 	}
 	m.ensureTabVisible()
+}
+
+// Keep the final line within the last full screen, including after edits/resizes.
+func (m *Model) clampEditorScroll(t *tab) {
+	lines := len(t.doc.Lines())
+	t.top = min(max(0, t.top), max(0, lines-m.contentHeight()))
 }
 
 func expandTabs(text string) string {
@@ -325,35 +374,82 @@ func expandTabs(text string) string {
 	return b.String()
 }
 
+// Cached rows are bounded to the current viewport; edits, selection, focus and
+// horizontal layout changes invalidate them together.
+type editorRenderKey struct {
+	text                        string
+	cursor, anchor, width, left int
+	focused                     bool
+}
+
 func (m *Model) editorLines() []string {
 	t := &m.tabs[m.activeTab]
 	d := t.doc
-	source := strings.Split(d.Text, "\n")
+	source := d.Lines()
 	line, col := d.Position()
 	a, b := d.Selection()
-	var lines []string
-	offset := 0
-	for i := 0; i < t.top && i < len(source); i++ {
-		offset += len([]rune(source[i])) + 1
+	key := editorRenderKey{d.Text, d.Cursor, d.Anchor, m.mainWidth(), t.left, !m.sidebar}
+	if t.renderedRows == nil || t.renderKey != key {
+		t.renderKey = key
+		t.renderedRows = make(map[int]string, m.contentHeight())
 	}
+	for i := range t.renderedRows {
+		if i < t.top || i >= t.top+m.contentHeight() {
+			delete(t.renderedRows, i)
+		}
+	}
+	var lines []string
 	for y := 0; y < m.contentHeight(); y++ {
 		i := t.top + y
 		if i >= len(source) {
-			lines = append(lines, "")
+			lines = append(lines, row("", m.mainWidth(), theme.Foreground, theme.Background))
 			continue
 		}
+		if rendered, ok := t.renderedRows[i]; ok {
+			lines = append(lines, rendered)
+			continue
+		}
+		offset := d.LineOffset(i)
 		bg := theme.Background
 		if i == line {
 			bg = "#252526"
 		}
-		var text strings.Builder
-		visual := 0
-		for j, r := range []rune(source[i]) {
+		var text, run strings.Builder
+		runFG, runBG, runReverse := "", "", false
+		flush := func() {
+			if run.Len() == 0 {
+				return
+			}
+			style := theme.Style(runFG, runBG).Reverse(runReverse)
+			text.WriteString(style.Render(run.String()))
+			run.Reset()
+		}
+		appendRun := func(s, fg, bg string, reverse bool) {
+			if fg != runFG || bg != runBG || reverse != runReverse {
+				flush()
+				runFG, runBG, runReverse = fg, bg, reverse
+			}
+			run.WriteString(s)
+		}
+		spanIndex := 0
+		visual, runeIndex := 0, 0
+		input := source[i]
+		if d.PlainASCII(i) {
+			start := min(t.left, len(input))
+			input = input[start:]
+			visual, runeIndex = start, start
+		}
+		for _, r := range input {
+			j := runeIndex
+			runeIndex++
 			start := visual
 			if start >= t.left+max(1, m.mainWidth()-7) {
 				break
 			}
-			s := safe(string(r))
+			s := string(r)
+			if unicode.IsControl(r) {
+				s = safe(s)
+			}
 			if r == '\t' {
 				s = strings.Repeat(" ", 4-visual%4)
 			}
@@ -365,33 +461,33 @@ func (m *Model) editorLines() []string {
 				s = strings.Repeat(" ", visual-t.left)
 			}
 			fg := theme.Foreground
-			if i < len(t.spans) {
-				for _, span := range t.spans[i] {
-					if j >= span.Start && j < span.End {
-						fg = span.Color
-						break
-					}
+			if t.highlightText == d.Text && i < len(t.spans) {
+				spans := t.spans[i]
+				for spanIndex < len(spans) && j >= spans[spanIndex].End {
+					spanIndex++
+				}
+				if spanIndex < len(spans) && j >= spans[spanIndex].Start {
+					fg = spans[spanIndex].Color
 				}
 			}
-			style := theme.Style(fg, bg)
+			cellBG := bg
 			if offset+j >= a && offset+j < b {
-				style = style.Background(lipgloss.Color(theme.Selection))
+				cellBG = theme.Selection
 			}
-			if !m.sidebar && i == line && j == col {
-				style = style.Reverse(true)
-			}
-			text.WriteString(style.Render(s))
+			appendRun(s, fg, cellBG, !m.sidebar && i == line && j == col)
 		}
-		if !m.sidebar && i == line && col == len([]rune(source[i])) {
-			text.WriteString(theme.Style(theme.Foreground, bg).Reverse(true).Render(" "))
+		if !m.sidebar && i == line && col == d.LineRuneCount(i) {
+			appendRun(" ", theme.Foreground, bg, true)
 		}
+		flush()
 		numberColor := theme.LineNumber
 		if i == line {
 			numberColor = theme.Foreground
 		}
 		gutter := theme.Style(numberColor, theme.Background).Render(fmt.Sprintf("%5d  ", i+1))
-		lines = append(lines, gutter+row(text.String(), max(1, m.mainWidth()-7), theme.Foreground, bg))
-		offset += len([]rune(source[i])) + 1
+		rendered := row(gutter+row(text.String(), max(1, m.mainWidth()-7), theme.Foreground, bg), m.mainWidth(), theme.Foreground, theme.Background)
+		t.renderedRows[i] = rendered
+		lines = append(lines, rendered)
 	}
 	return lines
 }
@@ -487,7 +583,7 @@ func (m *Model) click(msg tea.MouseClickMsg) tea.Cmd {
 	m.lastClickKey = ""
 	if m.showEditor && m.document() != nil && msg.Y >= editorContentRow && msg.Y < m.bodyHeight() {
 		t := &m.tabs[m.activeTab]
-		lines := strings.Split(t.doc.Text, "\n")
+		lines := t.doc.Lines()
 		line := min(len(lines)-1, t.top+msg.Y-editorContentRow)
 		goal := max(0, msg.X-m.mainX()-7+t.left)
 		visual, col := 0, 0

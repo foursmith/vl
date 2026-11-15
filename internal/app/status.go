@@ -5,7 +5,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/elegit/internal/highlight"
 	"github.com/ourongxing/elegit/internal/theme"
 )
 
@@ -80,7 +79,7 @@ func (m *Model) statusLayout() []statusSegment {
 		if d.CRLF {
 			eol = "CRLF"
 		}
-		language := highlight.Language(d.Path).Name
+		language := m.language(d.Path).Name
 		candidates = []statusSegment{{id: "position", text: fmt.Sprintf("行 %d, 列 %d", line+1, col+1)}, {id: "encoding", text: "UTF-8"}, {id: "eol", text: eol}, {id: "indent", text: "Tab: 4"}, {id: "language", text: language}}
 	} else {
 		candidates = []statusSegment{{id: "theme", text: "Modern Dark"}}

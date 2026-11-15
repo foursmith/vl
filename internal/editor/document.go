@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -14,12 +15,20 @@ import (
 const MaxFileSize = 4 << 20
 
 type Document struct {
-	Path           string
-	Text           string
-	saved          []byte
-	CRLF, BOM      bool
-	Cursor, Anchor int
-	undo, redo     []editState
+	Path                string
+	Text                string
+	saved               []byte
+	savedText           string
+	savedCRLF, savedBOM bool
+	indexedText         string
+	lines               []string
+	lineOffsets         []int
+	byteOffsets         []int
+	plainASCII          []bool
+	runeCount           int
+	CRLF, BOM           bool
+	Cursor, Anchor      int
+	undo, redo          []editState
 }
 
 type editState struct {
@@ -56,8 +65,9 @@ func Open(path string) (*Document, error) {
 	if bytes.ContainsRune(normalized, '\r') {
 		return nil, errors.New("legacy CR line endings are not supported by the basic editor")
 	}
-	d := &Document{Path: real, saved: bytes.Clone(data), CRLF: bytes.Contains(data, []byte("\r\n")), BOM: bytes.HasPrefix(data, []byte{0xef, 0xbb, 0xbf}), Anchor: -1}
+	d := &Document{Path: real, saved: data, CRLF: bytes.Contains(data, []byte("\r\n")), BOM: bytes.HasPrefix(data, []byte{0xef, 0xbb, 0xbf}), Anchor: -1}
 	d.Text = strings.TrimPrefix(string(normalized), "\xef\xbb\xbf")
+	d.savedText, d.savedCRLF, d.savedBOM = d.Text, d.CRLF, d.BOM
 	return d, nil
 }
 
@@ -72,7 +82,55 @@ func (d *Document) Bytes() []byte {
 	return []byte(text)
 }
 
-func (d *Document) Dirty() bool { return !bytes.Equal(d.Bytes(), d.saved) }
+func (d *Document) Dirty() bool {
+	return d.Text != d.savedText || d.CRLF != d.savedCRLF || d.BOM != d.savedBOM
+}
+
+// Lines is a read-only view, rebuilt only when document text changes.
+func (d *Document) Lines() []string {
+	if d.lines == nil || d.indexedText != d.Text {
+		d.indexedText = d.Text
+		d.lines = strings.Split(d.Text, "\n")
+		d.lineOffsets = make([]int, len(d.lines))
+		d.byteOffsets = make([]int, len(d.lines))
+		d.plainASCII = make([]bool, len(d.lines))
+		offset, byteOffset := 0, 0
+		for i, line := range d.lines {
+			d.lineOffsets[i] = offset
+			d.byteOffsets[i] = byteOffset
+			byteOffset += len(line) + 1
+			length := utf8.RuneCountInString(line)
+			plain := length == len(line)
+			if plain {
+				for j := 0; j < len(line); j++ {
+					if line[j] < 32 || line[j] > 126 {
+						plain = false
+						break
+					}
+				}
+			}
+			d.plainASCII[i] = plain
+			offset += length + 1
+		}
+		d.runeCount = offset - 1
+	}
+	return d.lines
+}
+
+func (d *Document) LineOffset(line int) int {
+	d.Lines()
+	return d.lineOffsets[min(max(0, line), len(d.lineOffsets)-1)]
+}
+
+func (d *Document) LineRuneCount(line int) int {
+	d.Lines()
+	if line+1 < len(d.lineOffsets) {
+		return d.lineOffsets[line+1] - d.lineOffsets[line] - 1
+	}
+	return d.runeCount - d.lineOffsets[line]
+}
+
+func (d *Document) PlainASCII(line int) bool { d.Lines(); return d.plainASCII[line] }
 
 func (d *Document) Edit(text string) {
 	if text == d.Text {
@@ -83,6 +141,7 @@ func (d *Document) Edit(text string) {
 	for i := len(d.undo) - 1; i >= 0; i-- {
 		budget += len(d.undo[i].text)
 		if i < len(d.undo)-1 && (budget > 8<<20 || len(d.undo)-i > 128) {
+			clear(d.undo[:i+1])
 			d.undo = d.undo[i+1:]
 			break
 		}
@@ -99,8 +158,10 @@ func (d *Document) Undo() {
 		return
 	}
 	d.redo = append(d.redo, d.state())
-	d.restore(d.undo[len(d.undo)-1])
-	d.undo = d.undo[:len(d.undo)-1]
+	last := len(d.undo) - 1
+	d.restore(d.undo[last])
+	d.undo[last] = editState{}
+	d.undo = d.undo[:last]
 }
 
 func (d *Document) Redo() {
@@ -108,8 +169,10 @@ func (d *Document) Redo() {
 		return
 	}
 	d.undo = append(d.undo, d.state())
-	d.restore(d.redo[len(d.redo)-1])
-	d.redo = d.redo[:len(d.redo)-1]
+	last := len(d.redo) - 1
+	d.restore(d.redo[last])
+	d.redo[last] = editState{}
+	d.redo = d.redo[:last]
 }
 
 func (d *Document) Selection() (int, int) {
@@ -119,48 +182,61 @@ func (d *Document) Selection() (int, int) {
 	return min(d.Cursor, d.Anchor), max(d.Cursor, d.Anchor)
 }
 
-func (d *Document) SelectedText() string { a, b := d.Selection(); return string([]rune(d.Text)[a:b]) }
-func (d *Document) SelectAll()           { d.Anchor = 0; d.Cursor = utf8.RuneCountInString(d.Text) }
+// ByteOffset translates the editor's rune cursor using only its containing line.
+func (d *Document) ByteOffset(cursor int) int {
+	d.Lines()
+	cursor = min(max(0, cursor), d.runeCount)
+	line := sort.Search(len(d.lineOffsets), func(i int) bool { return d.lineOffsets[i] > cursor }) - 1
+	offset := d.byteOffsets[line]
+	remaining := cursor - d.lineOffsets[line]
+	if d.plainASCII[line] {
+		return offset + remaining
+	}
+	for byteIndex := range d.lines[line] {
+		if remaining == 0 {
+			return offset + byteIndex
+		}
+		remaining--
+	}
+	return offset + len(d.lines[line])
+}
+
+func (d *Document) SelectedText() string {
+	a, b := d.Selection()
+	return d.Text[d.ByteOffset(a):d.ByteOffset(b)]
+}
+func (d *Document) SelectAll() { d.Lines(); d.Anchor = 0; d.Cursor = d.runeCount }
 
 func (d *Document) Insert(text string) {
 	a, b := d.Selection()
-	runes := []rune(d.Text)
+	start, end := d.ByteOffset(a), d.ByteOffset(b)
 	text = strings.ReplaceAll(text, "\r\n", "\n")
-	d.Edit(string(runes[:a]) + text + string(runes[b:]))
-	d.Cursor = a + utf8.RuneCountInString(text)
-	d.Anchor = -1
+	d.Edit(d.Text[:start] + text + d.Text[end:])
+	d.Cursor, d.Anchor = a+utf8.RuneCountInString(text), -1
 }
 
 func (d *Document) Delete(backward bool) {
 	a, b := d.Selection()
 	if a == b {
+		d.Lines()
 		if backward && a > 0 {
 			a--
-		} else if !backward && b < utf8.RuneCountInString(d.Text) {
+		} else if !backward && b < d.runeCount {
 			b++
 		} else {
 			return
 		}
 	}
-	runes := []rune(d.Text)
-	d.Edit(string(runes[:a]) + string(runes[b:]))
+	start, end := d.ByteOffset(a), d.ByteOffset(b)
+	d.Edit(d.Text[:start] + d.Text[end:])
 	d.Cursor, d.Anchor = a, -1
 }
 
 func (d *Document) Position() (int, int) {
-	line, col := 0, 0
-	for i, r := range []rune(d.Text) {
-		if i >= d.Cursor {
-			break
-		}
-		if r == '\n' {
-			line++
-			col = 0
-		} else {
-			col++
-		}
-	}
-	return line, col
+	d.Lines()
+	cursor := min(max(0, d.Cursor), d.runeCount)
+	line := sort.Search(len(d.lineOffsets), func(i int) bool { return d.lineOffsets[i] > cursor }) - 1
+	return line, cursor - d.lineOffsets[line]
 }
 
 func (d *Document) Move(key string, selectText bool) {
@@ -171,14 +247,10 @@ func (d *Document) Move(key string, selectText bool) {
 	} else {
 		d.Anchor = -1
 	}
-	runes := []rune(d.Text)
-	start, end := d.Cursor, d.Cursor
-	for start > 0 && runes[start-1] != '\n' {
-		start--
-	}
-	for end < len(runes) && runes[end] != '\n' {
-		end++
-	}
+	d.Lines()
+	line, col := d.Position()
+	start := d.lineOffsets[line]
+	end := start + d.LineRuneCount(line)
 	switch key {
 	case "left":
 		d.Cursor--
@@ -191,49 +263,59 @@ func (d *Document) Move(key string, selectText bool) {
 	case "ctrl+home":
 		d.Cursor = 0
 	case "ctrl+end":
-		d.Cursor = len(runes)
+		d.Cursor = d.runeCount
 	case "up":
-		if start > 0 {
-			prev := start - 1
-			for prev > 0 && runes[prev-1] != '\n' {
-				prev--
-			}
-			d.Cursor = min(prev+d.Cursor-start, start-1)
+		if line > 0 {
+			d.Cursor = d.lineOffsets[line-1] + min(col, d.LineRuneCount(line-1))
 		}
 	case "down":
-		if end < len(runes) {
-			next := end + 1
-			for next < len(runes) && runes[next] != '\n' {
-				next++
-			}
-			d.Cursor = min(end+1+d.Cursor-start, next)
+		if line+1 < len(d.lines) {
+			d.Cursor = d.lineOffsets[line+1] + min(col, d.LineRuneCount(line+1))
 		}
 	case "ctrl+left":
-		for d.Cursor > 0 && unicode.IsSpace(runes[d.Cursor-1]) {
+		offset := d.ByteOffset(d.Cursor)
+		for offset > 0 {
+			r, size := utf8.DecodeLastRuneInString(d.Text[:offset])
+			if !unicode.IsSpace(r) {
+				break
+			}
+			offset -= size
 			d.Cursor--
 		}
-		for d.Cursor > 0 && !unicode.IsSpace(runes[d.Cursor-1]) {
+		for offset > 0 {
+			r, size := utf8.DecodeLastRuneInString(d.Text[:offset])
+			if unicode.IsSpace(r) {
+				break
+			}
+			offset -= size
 			d.Cursor--
 		}
 	case "ctrl+right":
-		for d.Cursor < len(runes) && !unicode.IsSpace(runes[d.Cursor]) {
+		offset := d.ByteOffset(d.Cursor)
+		for offset < len(d.Text) {
+			r, size := utf8.DecodeRuneInString(d.Text[offset:])
+			if unicode.IsSpace(r) {
+				break
+			}
+			offset += size
 			d.Cursor++
 		}
-		for d.Cursor < len(runes) && unicode.IsSpace(runes[d.Cursor]) {
+		for offset < len(d.Text) {
+			r, size := utf8.DecodeRuneInString(d.Text[offset:])
+			if !unicode.IsSpace(r) {
+				break
+			}
+			offset += size
 			d.Cursor++
 		}
 	}
-	d.Cursor = min(max(0, d.Cursor), len(runes))
+	d.Cursor = min(max(0, d.Cursor), d.runeCount)
 }
 
 func (d *Document) SetPosition(row, col int) {
-	lines := strings.Split(d.Text, "\n")
+	lines := d.Lines()
 	row = min(max(0, row), len(lines)-1)
-	pos := 0
-	for i := 0; i < row; i++ {
-		pos += utf8.RuneCountInString(lines[i]) + 1
-	}
-	d.Cursor = pos + min(max(0, col), utf8.RuneCountInString(lines[row]))
+	d.Cursor = d.LineOffset(row) + min(max(0, col), d.LineRuneCount(row))
 	d.Anchor = -1
 }
 
@@ -282,6 +364,7 @@ func (d *Document) Save() error {
 	if err = os.Rename(tmp.Name(), d.Path); err != nil {
 		return err
 	}
-	d.saved = bytes.Clone(data)
+	d.saved = data
+	d.savedText, d.savedCRLF, d.savedBOM = d.Text, d.CRLF, d.BOM
 	return nil
 }

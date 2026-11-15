@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -76,6 +77,10 @@ func (r *Repository) run(ctx context.Context, input string, args ...string) (str
 		literal = "0"
 	}
 	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "GIT_LITERAL_PATHSPECS="+literal)
+	// Status polling must not write-refresh the index alongside explicit mutations.
+	if args[0] == "status" {
+		cmd.Env = append(cmd.Env, "GIT_OPTIONAL_LOCKS=0")
+	}
 	if input != "" {
 		cmd.Stdin = strings.NewReader(input)
 	}
@@ -116,15 +121,38 @@ func ParseStatus(raw string) ([]Change, error) {
 }
 
 func (r *Repository) Snapshot(ctx context.Context) (Snapshot, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	var s Snapshot
-	raw, err := r.Run(ctx, "status", "--porcelain=v1", "-z", "--untracked-files=all")
-	if err != nil {
-		return s, err
-	}
-	s.Changes, err = ParseStatus(raw)
-	if err != nil {
-		return s, err
-	}
+	var statusErr, metadataErr, filesErr error
+	var tasks sync.WaitGroup
+	tasks.Go(func() {
+		raw, err := r.Run(ctx, "status", "--porcelain=v1", "-z", "--untracked-files=all")
+		if err == nil {
+			s.Changes, err = ParseStatus(raw)
+		}
+		statusErr = err
+		if err != nil {
+			cancel()
+		}
+	})
+	tasks.Go(func() {
+		metadataErr = r.readMetadata(ctx, &s)
+		if metadataErr != nil {
+			cancel()
+		}
+	})
+	tasks.Go(func() {
+		s.Files, filesErr = r.readFiles(ctx)
+		if filesErr != nil {
+			cancel()
+		}
+	})
+	tasks.Wait()
+	return s, errors.Join(statusErr, metadataErr, filesErr)
+}
+
+func (r *Repository) readMetadata(ctx context.Context, s *Snapshot) error {
 	branch, err := r.Run(ctx, "symbolic-ref", "--short", "-q", "HEAD")
 	if err != nil {
 		s.Detached = true
@@ -134,29 +162,34 @@ func (r *Repository) Snapshot(ctx context.Context) (Snapshot, error) {
 	if s.Branch == "" {
 		s.Branch = "unborn"
 	}
-	if raw, err = r.Run(ctx, "log", "-100", "-z", "--format=%H%x00%h%x00%s"); err == nil {
+	if raw, err := r.Run(ctx, "log", "-100", "-z", "--format=%H%x00%h%x00%s"); err == nil {
 		fields := strings.Split(raw, "\x00")
 		for i := 0; i+2 < len(fields); i += 3 {
 			s.Commits = append(s.Commits, Commit{ID: fields[i], Short: fields[i+1], Subject: fields[i+2]})
 		}
 	} else if _, headErr := r.Run(ctx, "rev-parse", "--verify", "HEAD"); headErr == nil {
-		return s, err
+		return err
 	}
-	if err = r.readReferenceState(ctx, &s); err != nil {
-		return s, err
+	if err = r.readReferenceState(ctx, s); err != nil {
+		return err
 	}
-	raw, err = r.Run(ctx, "ls-files", "-z", "--cached", "--others", "--exclude-standard")
+	return nil
+}
+
+func (r *Repository) readFiles(ctx context.Context) ([]string, error) {
+	raw, err := r.Run(ctx, "ls-files", "-z", "--cached", "--others", "--exclude-standard")
 	if err != nil {
-		return s, err
+		return nil, err
 	}
+	var files []string
 	seen := map[string]bool{}
 	for _, path := range strings.Split(raw, "\x00") {
 		if path != "" && !seen[path] {
-			s.Files = append(s.Files, path)
+			files = append(files, path)
 			seen[path] = true
 		}
 	}
-	return s, nil
+	return files, nil
 }
 
 func (r *Repository) Diff(ctx context.Context, c Change, staged bool) (string, error) {

@@ -120,7 +120,7 @@ func (m *Model) explorerRow(entry item, w int, bg string) (string, string) {
 	switch entry.status {
 	case 'U', 'A':
 		fg = theme.GitAdded
-	case 'M', 'R', 'C':
+	case 'M', 'R', 'C', 'T':
 		fg = theme.GitModified
 	case 'D', '!':
 		fg = theme.Deleted

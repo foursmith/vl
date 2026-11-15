@@ -49,6 +49,9 @@ type tab struct {
 	top, left     int
 	highlightText string
 	spans         [][]highlight.Span
+	highlightJob  highlightJob
+	renderKey     editorRenderKey
+	renderedRows  map[int]string
 }
 type snapshotMsg struct {
 	seq      int
@@ -83,6 +86,7 @@ type Model struct {
 	items                   []item
 	selected, sideTop       int
 	refreshSeq, diffSeq     int
+	refreshCancel           context.CancelFunc
 	loading, busy           bool
 	patch                   diff.Patch
 	diffTitle, diffPath     string
@@ -90,12 +94,17 @@ type Model struct {
 	diffStaged              bool
 	diffHunk                int
 	diffRowHunks            []int
+	diffRows                []diff.Pair
+	diffLayout              diffLayoutKey
 	diffLoading, split      bool
+	diffCancel              context.CancelFunc
 	diffOpen                bool
 	viewport                viewport.Model
 	tabs                    []tab
 	activeTab               int
 	showEditor              bool
+	languagePath            string
+	languageInfo            highlight.LanguageInfo
 	notice                  string
 	output                  []string
 	outputVisible           bool
@@ -139,10 +148,15 @@ func (m *Model) Init() tea.Cmd { return tea.Batch(m.refresh(), tick()) }
 func tick() tea.Cmd            { return tea.Tick(3*time.Second, func(t time.Time) tea.Msg { return tickMsg(t) }) }
 
 func (m *Model) refresh() tea.Cmd {
+	if m.refreshCancel != nil {
+		m.refreshCancel()
+	}
+	ctx, cancel := context.WithCancel(m.ctx)
+	m.refreshCancel = cancel
 	m.refreshSeq++
 	seq := m.refreshSeq
 	m.loading = true
-	return func() tea.Msg { s, err := m.repo.Snapshot(m.ctx); return snapshotMsg{seq, s, err} }
+	return func() tea.Msg { defer cancel(); s, err := m.repo.Snapshot(ctx); return snapshotMsg{seq, s, err} }
 }
 
 func (m *Model) rebuildItems() {
@@ -217,7 +231,11 @@ func (m *Model) rebuildItems() {
 			}
 		}
 	}
-	m.ensureSidebar()
+	if found {
+		m.clampSidebarScroll()
+	} else {
+		m.ensureSidebar()
+	}
 }
 
 func (m *Model) current() *item {
@@ -248,6 +266,11 @@ func (m *Model) ensureSidebar() {
 		m.sideTop = m.selected - h + 1
 	}
 	m.sideTop = max(0, m.sideTop)
+}
+
+func (m *Model) clampSidebarScroll() {
+	height := max(1, m.bodyHeight()-sidebarHeaderRows)
+	m.sideTop = min(max(0, m.sideTop), max(0, len(m.items)-height))
 }
 
 func (m *Model) selectSection(s section) tea.Cmd {
@@ -282,6 +305,11 @@ func (m *Model) previewAt(reset bool) tea.Cmd {
 	if !reset && !m.diffOpen {
 		return nil
 	}
+	if m.diffCancel != nil {
+		m.diffCancel()
+	}
+	ctx, cancel := context.WithCancel(m.ctx)
+	m.diffCancel = cancel
 	m.diffOpen = true
 	m.diffSeq++
 	seq := m.diffSeq
@@ -302,11 +330,11 @@ func (m *Model) previewAt(reset bool) tea.Cmd {
 		}
 		m.diffTitle, m.diffPath = title, c.Path
 		if reset {
-			m.patch = diff.Patch{}
-			m.viewport.SetContent("")
+			m.clearDiffContent()
 		}
 		return func() tea.Msg {
-			raw, err := m.repo.Diff(m.ctx, c, staged)
+			defer cancel()
+			raw, err := m.repo.Diff(ctx, c, staged)
 			return diffMsg{seq: seq, title: title, path: c.Path, raw: raw, err: err}
 		}
 	}
@@ -314,18 +342,31 @@ func (m *Model) previewAt(reset bool) tea.Cmd {
 	m.diffChange = nil
 	m.diffTitle, m.diffPath = c.Short+"  "+c.Subject, ""
 	if reset {
-		m.patch = diff.Patch{}
-		m.viewport.SetContent("")
+		m.clearDiffContent()
 	}
 	return func() tea.Msg {
-		raw, err := m.repo.CommitDiff(m.ctx, c.ID)
+		defer cancel()
+		raw, err := m.repo.CommitDiff(ctx, c.ID)
 		return diffMsg{seq: seq, title: c.Short + "  " + c.Subject, raw: raw, err: err}
 	}
 }
 
-func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	defer m.keepEditedTabs()
+func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
+	defer func() {
+		m.keepEditedTabs()
+		if cmd := m.scheduleHighlight(); cmd != nil {
+			if next == nil {
+				next = cmd
+			} else {
+				next = tea.Batch(next, cmd)
+			}
+		}
+	}()
 	switch msg := msg.(type) {
+	case highlightStartMsg:
+		return m, m.startHighlight(msg.request)
+	case highlightResultMsg:
+		m.finishHighlight(msg)
 	case tea.MouseMotionMsg:
 		m.hoverX, m.hoverY = msg.X, msg.Y
 	case tea.BlurMsg:
@@ -380,9 +421,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.diffSeq++
 				m.diffLoading = false
 				m.diffChange = nil
-				m.patch = diff.Patch{}
+				m.clearDiffContent()
 				m.diffTitle = ""
-				m.viewport.SetContent("")
 			} else if changed || m.section == changes {
 				wasEditor := m.showEditor
 				cmd := m.previewAt(changed || initial)
@@ -398,6 +438,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.diffLoading = false
 		if msg.err != nil {
 			m.log(msg.err.Error())
+			return m, nil
+		}
+		if msg.raw == m.patch.Raw {
+			m.diffTitle, m.diffPath = msg.title, msg.path
+			m.renderDiff()
 			return m, nil
 		}
 		m.patch = diff.Parse(msg.raw)
@@ -416,7 +461,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.log(msg.title + " completed")
 			if strings.TrimSpace(msg.output) != "" {
-				m.output = append(m.output, msg.output)
+				m.addOutput(msg.output)
 			}
 		}
 		if msg.title == "Switch branch" || msg.title == "Create branch" || msg.title == "Pull" || msg.title == "Sync" || msg.title == "Stash" || msg.title == "Stash pop" || msg.title == "Discard" {
@@ -452,22 +497,24 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		}
+		if msg.Button != tea.MouseWheelUp && msg.Button != tea.MouseWheelDown {
+			return m, nil
+		}
 		if m.sidebarAt(msg.X) {
-			delta := 1
+			delta := 3
 			if msg.Button == tea.MouseWheelUp {
-				delta = -1
+				delta = -3
 			}
-			m.moveSelection(delta)
-			if m.section == changes || m.section == history {
-				return m, m.preview()
-			}
+			m.sideTop += delta
+			m.clampSidebarScroll()
 		} else if m.showEditor && m.activeTab >= 0 {
 			delta := 3
 			if msg.Button == tea.MouseWheelUp {
 				delta = -3
 			}
 			t := &m.tabs[m.activeTab]
-			t.top = max(0, t.top+delta)
+			t.top += delta
+			m.clampEditorScroll(t)
 		} else {
 			var cmd tea.Cmd
 			m.viewport, cmd = m.viewport.Update(msg)
@@ -693,6 +740,7 @@ func (m *Model) reloadCleanTabs() {
 	for _, t := range m.tabs {
 		wasActive := t.doc == active
 		if !t.doc.Dirty() {
+			t.highlightJob.stop()
 			d, err := editor.Open(t.doc.Path)
 			if err != nil {
 				m.log("Closed " + filepath.Base(t.doc.Path) + ": " + err.Error())
@@ -722,9 +770,23 @@ func (m *Model) reloadCleanTabs() {
 
 func (m *Model) log(text string) {
 	m.notice = text
-	m.output = append(m.output, time.Now().Format("15:04:05")+"  "+text)
+	m.addOutput(time.Now().Format("15:04:05") + "  " + text)
+}
+
+// Bound stored output by displayed lines, and detach the retained tail from
+// large command buffers so scrolling never rescans an entire command log.
+func (m *Model) addOutput(text string) {
+	lines := strings.Split(strings.TrimSuffix(text, "\n"), "\n")
+	if len(lines) > 200 {
+		lines = lines[len(lines)-200:]
+	}
+	for _, line := range lines {
+		m.output = append(m.output, strings.Clone(line))
+	}
 	if len(m.output) > 200 {
-		m.output = m.output[len(m.output)-200:]
+		drop := len(m.output) - 200
+		clear(m.output[:drop])
+		m.output = m.output[drop:]
 	}
 }
 

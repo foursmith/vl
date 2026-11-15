@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/ourongxing/elegit/internal/files"
 	gitservice "github.com/ourongxing/elegit/internal/git"
 )
 
@@ -94,5 +95,19 @@ func TestHorizontalNavigationPreservesViewAndQuickOpen(t *testing.T) {
 	drain(t, m, press(m, "enter"))
 	if m.document() == nil || !strings.HasSuffix(m.document().Path, "README.md") {
 		t.Fatal("file search did not open selected file")
+	}
+}
+
+func TestExplorerStatusAggregationKeepsConflictPriority(t *testing.T) {
+	m := explorerWorkspace(t)
+	m.treeEntries = []files.Entry{{Path: "src", Directory: true}, {Path: "src/nested", Directory: true}, {Path: "src/nested/typed.go"}}
+	m.snapshot.Changes = []gitservice.Change{
+		{Path: "src/conflict.go", Index: 'U', Worktree: 'U'},
+		{Path: "src/new.go", Index: '?', Worktree: '?'},
+		{Path: "src/nested/typed.go", Index: ' ', Worktree: 'T'},
+	}
+	rows := m.explorerItems()
+	if rows[0].status != '!' || rows[1].status != 'T' || rows[2].status != 'T' {
+		t.Fatalf("status aggregation lost severity: %+v", rows)
 	}
 }

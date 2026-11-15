@@ -1,6 +1,7 @@
 package highlight
 
 import (
+	"context"
 	"strings"
 	"unicode/utf8"
 
@@ -14,8 +15,10 @@ type Span struct {
 }
 
 // Highlighting is optional presentation data; it never rewrites source text.
-func Lines(path, text string) [][]Span {
-	if len(text) > 256<<10 {
+const MaxBytes = 256 << 10
+
+func Lines(ctx context.Context, path, text string) [][]Span {
+	if len(text) > MaxBytes || ctx.Err() != nil {
 		return nil
 	}
 	lexer := lexers.Match(path)
@@ -29,6 +32,9 @@ func Lines(path, text string) [][]Span {
 	lines := [][]Span{{}}
 	col := 0
 	for token := iterator(); token != chroma.EOF; token = iterator() {
+		if ctx.Err() != nil {
+			return nil
+		}
 		color := color(token.Type)
 		for i, part := range strings.Split(token.Value, "\n") {
 			if i > 0 {

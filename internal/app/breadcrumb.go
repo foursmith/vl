@@ -14,6 +14,7 @@ func (m *Model) breadcrumb(path string, width int) string {
 	if width <= 0 {
 		return ""
 	}
+	language := m.language(path)
 	if filepath.IsAbs(path) {
 		if relative, err := filepath.Rel(m.repo.Root, path); err == nil {
 			path = relative
@@ -24,7 +25,6 @@ func (m *Model) breadcrumb(path string, width int) string {
 	separator := theme.Style(theme.Muted, theme.Background).Render(" " + m.symbol(symbolRight) + " ")
 	iconText := row(icon.Glyph, 2, icon.Color, theme.Background)
 	name := safe(filepath.Base(path))
-	language := highlight.Language(path)
 	languageText := theme.Style(theme.Muted, theme.Background).Render(m.symbol(symbolWrench) + " " + language.ID)
 	file := iconText + name
 	tail := file + separator + languageText
@@ -56,4 +56,14 @@ func (m *Model) breadcrumb(path string, width int) string {
 		}
 	}
 	return row(" "+content, width, theme.Muted, theme.Background)
+}
+
+// Breadcrumb and footer share the current file's language lookup, including
+// unknown extensions whose Chroma filename matching is comparatively expensive.
+func (m *Model) language(path string) highlight.LanguageInfo {
+	if m.languagePath != path || m.languageInfo.ID == "" {
+		m.languagePath = path
+		m.languageInfo = highlight.Language(path)
+	}
+	return m.languageInfo
 }

@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 type RefKind string
@@ -71,19 +72,9 @@ func (r *Repository) readReferenceState(ctx context.Context, s *Snapshot) error 
 			}
 		}
 	}
-	raw, err = r.Run(ctx, "remote")
+	s.Remotes, err = r.readRemotes(ctx)
 	if err != nil {
 		return err
-	}
-	for _, name := range strings.Split(strings.TrimSuffix(raw, "\n"), "\n") {
-		if name == "" {
-			continue
-		}
-		remoteURL, err := r.Run(ctx, "remote", "get-url", "--", name)
-		if err != nil {
-			return err
-		}
-		s.Remotes = append(s.Remotes, Remote{Name: name, URL: strings.TrimSpace(remoteURL)})
 	}
 	preferences := []string{"origin", ""}
 	if upstreamRemote != "" {
@@ -101,6 +92,40 @@ func (r *Repository) readReferenceState(ctx context.Context, s *Snapshot) error 
 		}
 	}
 	return nil
+}
+
+// Read each URL through Git (including insteadOf rules), with at most four
+// subprocesses at once and deterministic remote ordering.
+func (r *Repository) readRemotes(ctx context.Context) ([]Remote, error) {
+	raw, err := r.Run(ctx, "remote")
+	if err != nil {
+		return nil, err
+	}
+	raw = strings.TrimSuffix(raw, "\n")
+	if raw == "" {
+		return nil, nil
+	}
+	names := strings.Split(raw, "\n")
+	remotes := make([]Remote, len(names))
+	failures := make([]error, len(names))
+	for start := 0; start < len(names); start += 4 {
+		var tasks sync.WaitGroup
+		end := min(start+4, len(names))
+		for i := start; i < end; i++ {
+			tasks.Go(func() {
+				value, err := r.Run(ctx, "remote", "get-url", "--", names[i])
+				remotes[i] = Remote{Name: names[i], URL: strings.TrimSpace(value)}
+				failures[i] = err
+			})
+		}
+		tasks.Wait()
+		for i := start; i < end; i++ {
+			if failures[i] != nil {
+				return nil, failures[i]
+			}
+		}
+	}
+	return remotes, nil
 }
 
 func GitHubRepositoryURL(raw string) (string, error) {

@@ -80,9 +80,13 @@ func (m *Model) openPalette() tea.Cmd {
 }
 
 func (m *Model) filteredActions() []action {
+	query := strings.ToLower(m.input.Value())
+	if query == "" {
+		return m.palette
+	}
 	var result []action
 	for _, a := range m.palette {
-		if strings.Contains(strings.ToLower(a.label+" "+a.id), strings.ToLower(m.input.Value())) {
+		if strings.Contains(strings.ToLower(a.label), query) || a.id != a.label && strings.Contains(strings.ToLower(a.id), query) {
 			result = append(result, a)
 		}
 	}
@@ -186,8 +190,16 @@ func (m *Model) operation(title string, run func() (string, error)) tea.Cmd {
 	m.busy = true
 	m.notice = title + "…"
 	m.refreshSeq++
+	if m.refreshCancel != nil {
+		m.refreshCancel()
+		m.refreshCancel = nil
+	}
 	m.loading = false
 	m.diffSeq++
+	if m.diffCancel != nil {
+		m.diffCancel()
+		m.diffCancel = nil
+	}
 	m.diffLoading = false
 	return func() tea.Msg { output, err := run(); return operationMsg{title, output, err} }
 }
