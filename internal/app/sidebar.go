@@ -94,10 +94,7 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 		}
 	}
 	lines := []string{row(nav.String(), w, theme.Foreground, theme.Panel), row(root, w, theme.Foreground, theme.Panel)}
-	hovered := m.hoveredChangeRow()
-	if m.section == explorer {
-		hovered = m.hoveredSidebarRow()
-	}
+	hovered := m.hoveredSidebarRow()
 	for y := sidebarHeaderRows; y < h; y++ {
 		i := m.sideTop + y - sidebarHeaderRows
 		text := ""

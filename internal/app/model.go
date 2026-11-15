@@ -147,6 +147,8 @@ type Model struct {
 	branchStart             string
 	openURL                 func(context.Context, string) error
 	hoverX, hoverY          int
+	hoverOnly               bool
+	hoverRender             hoverRenderCache
 }
 
 func New(ctx context.Context, repo *gitservice.Repository, nerd bool) *Model {
@@ -346,6 +348,11 @@ func (m *Model) previewAt(reset bool) tea.Cmd {
 }
 
 func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
+	_, motion := msg.(tea.MouseMotionMsg)
+	m.hoverOnly = motion && !m.resizingSidebar
+	if !m.hoverOnly {
+		m.hoverRender = hoverRenderCache{}
+	}
 	defer func() {
 		m.keepEditedTabs()
 		if cmd := m.reloadCleanConflicts(); cmd != nil {
@@ -370,6 +377,11 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			} else {
 				next = tea.Batch(next, cmd)
 			}
+		}
+		// Maintenance can change visible state even during a mouse message.
+		if next != nil {
+			m.hoverOnly = false
+			m.hoverRender = hoverRenderCache{}
 		}
 	}()
 	switch msg := msg.(type) {

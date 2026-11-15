@@ -89,6 +89,8 @@ func (m *Model) bodyHeight() int    { return max(1, m.height-1-m.outputHeight())
 func (m *Model) contentHeight() int { return max(1, m.bodyHeight()-editorContentRow) }
 
 func (m *Model) resize() {
+	m.hoverOnly = false
+	m.hoverRender = hoverRenderCache{}
 	m.viewport.SetWidth(m.mainWidth())
 	m.viewport.SetHeight(m.contentHeight())
 	m.resizeInput()
@@ -98,6 +100,20 @@ func (m *Model) resize() {
 	m.ensureTabVisible()
 }
 
+// Reuse the previous frame only across passive mouse motion. All other messages
+// invalidate it, including asynchronous file, Git and syntax updates.
+type hoverRenderCache struct {
+	main []string
+	view tea.View
+	key  hoverRenderKey
+}
+
+type hoverRenderKey struct {
+	row     int
+	hint    string
+	divider bool
+}
+
 func (m *Model) View() tea.View {
 	if m.width < 30 || m.height < 8 {
 		v := tea.NewView(row("Resize terminal to at least 30 × 8", m.width, theme.Foreground, theme.Background))
@@ -105,9 +121,20 @@ func (m *Model) View() tea.View {
 		v.BackgroundColor = lipgloss.Color(theme.Panel)
 		return v
 	}
+	key := hoverRenderKey{
+		row: m.hoveredSidebarRow(), hint: m.hoverHint(),
+		divider: m.sidebarDividerAt(m.hoverX, m.hoverY),
+	}
+	if m.hoverOnly && m.hoverRender.main != nil && m.hoverRender.key == key {
+		return m.hoverRender.view
+	}
 	var lines []string
 	side := m.sidebarLines()
-	main := m.mainLines()
+	main := m.hoverRender.main
+	// In narrow terminals the main surface itself contains the sidebar.
+	if !m.hoverOnly || main == nil || m.width < 70 && m.sidebar && m.sidebarVisible {
+		main = m.mainLines()
+	}
 	for y := 0; y < m.bodyHeight(); y++ {
 		line := main[y]
 		if m.sideShown() {
@@ -147,6 +174,7 @@ func (m *Model) View() tea.View {
 	v.BackgroundColor = lipgloss.Color(theme.Panel)
 	v.MouseMode = tea.MouseModeAllMotion
 	v.ReportFocus = true
+	m.hoverRender = hoverRenderCache{main: main, view: v, key: key}
 	return v
 }
 
