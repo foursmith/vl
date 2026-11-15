@@ -53,7 +53,11 @@ does not install hooks or alter a repository's configuration.
 - Only `Update` changes product state. Commands capture immutable request data
   and return typed messages.
 - Snapshot and diff generations reject obsolete results and cancel replaced
-  requests. Snapshot reads are bounded parallel tasks.
+  requests. Snapshot reads are bounded parallel tasks. Working-tree, index and
+  commit file diffs share one request lifecycle and renderer.
+- Each expanded commit owns its file cache, directory folds and file-list request
+  identity. Late lists can populate their own tree but cannot replace another
+  commit's active diff. Commit rows never carry mutable Source Control targets.
 - Only one Git mutation runs at a time. Background polling pauses during it;
   success or failure is followed by a refresh.
 - Hunk application first checks the current diff against the displayed diff.

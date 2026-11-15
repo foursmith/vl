@@ -326,6 +326,9 @@ func (m *Model) openSelected() tea.Cmd {
 	if entry == nil {
 		return nil
 	}
+	if m.section == history {
+		return m.openHistory(*entry)
+	}
 	if entry.header && m.section == changes {
 		m.changeCollapsed[entry.key] = !m.changeCollapsed[entry.key]
 		m.rebuildItems()
@@ -362,6 +365,10 @@ func (m *Model) editSelected() tea.Cmd {
 	return nil
 }
 func (m *Model) editDiff() tea.Cmd {
+	if m.diffCommit != "" {
+		m.notice = "Commit diffs are read-only"
+		return nil
+	}
 	if m.diffPath != "" {
 		return m.openFile(m.diffPath)
 	}

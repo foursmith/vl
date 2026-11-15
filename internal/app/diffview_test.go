@@ -114,3 +114,34 @@ func TestDiffSyntaxFontsKeepDiffBackground(t *testing.T) {
 		}
 	}
 }
+
+func TestCommitAndChangesShareDiffRenderingAndHunkNavigation(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	m.diffOpen = true
+	m.diffPath = "file.go"
+	m.patch = diff.Parse("diff --git a/file.go b/file.go\n--- a/file.go\n+++ b/file.go\n@@ -1,2 +1,2 @@\n-old\n+new\n same\n@@ -20,2 +20,3 @@\n before\n-old again\n+new again\n+extra\n")
+	for _, split := range []bool{false, true} {
+		m.split = split
+		m.width = 180
+		m.height = 30
+		m.diffCommit = ""
+		m.diffHunk = 0
+		m.renderDiff()
+		m.viewport.GotoTop()
+		changes := strings.Join(m.diffView(), "\n")
+		m.diffCommit = strings.Repeat("a", 40)
+		m.renderDiff()
+		m.viewport.GotoTop()
+		if got := strings.Join(m.diffView(), "\n"); got != changes {
+			t.Fatal("commit uses a different diff renderer")
+		}
+		m.nextHunk(1)
+		if m.diffHunk != 1 {
+			t.Fatal("commit hunk navigation differs")
+		}
+		m.nextHunk(-1)
+		if m.diffHunk != 0 {
+			t.Fatal("commit previous hunk navigation differs")
+		}
+	}
+}

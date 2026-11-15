@@ -171,11 +171,13 @@ func (m *Model) mainLines() []string {
 			message = "Working tree clean"
 		}
 		if m.diffLoading {
-			message = "Loading diff…"
+			message = ""
 		}
 		content = make([]string, m.contentHeight())
 		middle := max(0, m.contentHeight()/2-2)
-		content[middle] = theme.Style(theme.Foreground, theme.Background).Render("  " + message)
+		if message != "" {
+			content[middle] = theme.Style(theme.Foreground, theme.Background).Render("  " + message)
+		}
 	}
 	for i := 0; i < h-editorContentRow; i++ {
 		text := ""

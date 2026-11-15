@@ -30,16 +30,18 @@ const (
 )
 
 type item struct {
-	label, key string
-	header     bool
-	change     *gitservice.Change
-	staged     bool
-	commit     *gitservice.Commit
-	file       string
-	folder     string
-	depth      int
-	ignored    bool
-	status     byte
+	label, key    string
+	header        bool
+	change        *gitservice.Change
+	staged        bool
+	commit        *gitservice.Commit
+	historyID     string
+	historyChange *gitservice.Change
+	file          string
+	folder        string
+	depth         int
+	ignored       bool
+	status        byte
 }
 
 type tab struct {
@@ -61,9 +63,9 @@ type snapshotMsg struct {
 	err      error
 }
 type diffMsg struct {
-	seq              int
-	title, path, raw string
-	err              error
+	seq       int
+	path, raw string
+	err       error
 }
 type operationMsg struct {
 	title, output string
@@ -98,7 +100,7 @@ type Model struct {
 	refreshCancel           context.CancelFunc
 	loading, busy           bool
 	patch                   diff.Patch
-	diffTitle, diffPath     string
+	diffPath                string
 	diffChange              *gitservice.Change
 	diffStaged              bool
 	diffHunk                int
@@ -112,6 +114,10 @@ type Model struct {
 	diffSyntax              map[*diff.Line][]highlight.Span
 	diffEmphasis            map[*diff.Line]diffRange
 	diffOpen                bool
+	diffCommit              string
+	historyCommit           string
+	historyStates           map[string]*historyState
+	historySeq              int
 	viewport                viewport.Model
 	tabs                    []tab
 	activeTab               int
@@ -152,6 +158,7 @@ func New(ctx context.Context, repo *gitservice.Repository, nerd bool) *Model {
 	m.resize()
 	m.expanded = map[string]bool{}
 	m.changeCollapsed = map[string]bool{}
+	m.historyStates = map[string]*historyState{}
 	m.section = explorer
 	m.selected = -1
 	m.openURL = platform.OpenURL
@@ -209,7 +216,10 @@ func (m *Model) rebuildItems() {
 	case history:
 		for i := range m.snapshot.Commits {
 			c := &m.snapshot.Commits[i]
-			m.items = append(m.items, item{label: c.Short + "  " + c.Subject, key: c.ID, commit: c})
+			m.items = append(m.items, item{label: c.Subject, key: c.ID, commit: c})
+			if m.historyExpanded(c.ID) {
+				m.items = append(m.items, m.historyTree(c.ID)...)
+			}
 		}
 	}
 	if m.selected >= 0 || m.section != explorer {
@@ -284,6 +294,17 @@ func (m *Model) clampSidebarScroll() {
 
 func (m *Model) selectSection(s section) tea.Cmd {
 	m.revealFile = ""
+	if m.section == history && s != history {
+		for _, state := range m.historyStates {
+			if state.cancel != nil {
+				state.cancel()
+				state.cancel = nil
+			}
+			state.loading = false
+			state.seq = 0
+		}
+		m.historyCommit = ""
+	}
 	m.section = s
 	m.sidebar = true
 	m.sidebarVisible = true
@@ -309,59 +330,19 @@ func (m *Model) previewAt(reset bool) tea.Cmd {
 	if entry == nil {
 		return nil
 	}
-	if entry.change == nil && entry.commit == nil {
+	if m.section == history {
+		return m.previewHistory(*entry, reset)
+	}
+	if entry.change == nil || !reset && !m.diffOpen {
 		return nil
 	}
-	if !reset && !m.diffOpen {
-		return nil
-	}
-	if m.diffCancel != nil {
-		m.diffCancel()
-	}
-	if m.diffSyntaxCancel != nil {
-		m.diffSyntaxCancel()
-	}
-	ctx, cancel := context.WithCancel(m.ctx)
-	m.diffCancel = cancel
-	m.diffOpen = true
-	m.diffSeq++
-	seq := m.diffSeq
-	m.diffLoading = true
-	m.showEditor = false
-	m.ensureTabVisible()
-	if reset {
-		m.diffHunk = -1
-		m.viewport.GotoTop()
-	}
-	if entry.change != nil {
-		c, staged := *entry.change, entry.staged
-		m.diffChange = &c
-		m.diffStaged = staged
-		title := c.Path + " (Working Tree)"
-		if staged {
-			title = c.Path + " (Index)"
-		}
-		m.diffTitle, m.diffPath = title, c.Path
-		if reset {
-			m.clearDiffContent()
-		}
-		return func() tea.Msg {
-			defer cancel()
-			raw, err := m.repo.Diff(ctx, c, staged)
-			return diffMsg{seq: seq, title: title, path: c.Path, raw: raw, err: err}
-		}
-	}
-	c := *entry.commit
-	m.diffChange = nil
-	m.diffTitle, m.diffPath = c.Short+"  "+c.Subject, ""
-	if reset {
-		m.clearDiffContent()
-	}
-	return func() tea.Msg {
-		defer cancel()
-		raw, err := m.repo.CommitDiff(ctx, c.ID)
-		return diffMsg{seq: seq, title: c.Short + "  " + c.Subject, raw: raw, err: err}
-	}
+	c, staged := *entry.change, entry.staged
+	m.diffCommit = ""
+	m.diffChange = &c
+	m.diffStaged = staged
+	return m.requestDiff(c.Path, reset, func(ctx context.Context) (string, error) {
+		return m.repo.Diff(ctx, c, staged)
+	})
 }
 
 func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
@@ -500,7 +481,6 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 				m.diffLoading = false
 				m.diffChange = nil
 				m.clearDiffContent()
-				m.diffTitle = ""
 			} else if changed || m.section == changes {
 				wasEditor := m.showEditor
 				cmd := m.previewAt(changed || initial)
@@ -509,6 +489,8 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 				return m, cmd
 			}
 		}
+	case historyFilesMsg:
+		return m, m.applyHistoryFiles(msg)
 	case diffMsg:
 		if msg.seq != m.diffSeq {
 			return m, nil
@@ -519,7 +501,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			return m, nil
 		}
 		if msg.raw == m.patch.Raw {
-			m.diffTitle, m.diffPath = msg.title, msg.path
+			m.diffPath = msg.path
 			m.renderDiff()
 			if m.diffSyntax == nil {
 				return m, m.highlightDiff()
@@ -527,7 +509,6 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			return m, nil
 		}
 		m.patch = diff.Parse(msg.raw)
-		m.diffTitle = msg.title
 		m.diffPath = msg.path
 		if len(m.patch.Hunks) > 0 {
 			m.diffHunk = min(max(0, m.diffHunk), len(m.patch.Hunks)-1)
@@ -703,11 +684,20 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		case "enter":
 			return m.openSelected()
 		case "right":
+			if entry := m.current(); m.section == history && entry != nil && entry.commit != nil && m.historyExpanded(entry.commit.ID) {
+				return nil
+			}
 			if entry := m.current(); entry != nil && (entry.header || entry.folder != "") && m.folderExpanded(*entry) {
 				return nil
 			}
 			return m.openSelected()
 		case "left":
+			if entry := m.current(); m.section == history && entry != nil && entry.commit != nil {
+				if m.historyExpanded(entry.commit.ID) {
+					return m.openHistory(*entry)
+				}
+				return nil
+			}
 			if entry := m.current(); entry != nil && (entry.header || entry.folder != "") && m.folderExpanded(*entry) {
 				return m.openSelected()
 			}

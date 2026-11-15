@@ -13,6 +13,33 @@ import (
 	"github.com/ourongxing/elegit/internal/theme"
 )
 
+// Both review sources share request cancellation, result identity and viewport state.
+func (m *Model) requestDiff(path string, reset bool, read func(context.Context) (string, error)) tea.Cmd {
+	if m.diffCancel != nil {
+		m.diffCancel()
+	}
+	ctx, cancel := context.WithCancel(m.ctx)
+	m.diffCancel = cancel
+	m.diffSeq++
+	seq := m.diffSeq
+	m.diffOpen, m.diffLoading, m.showEditor = true, true, false
+	m.diffPath = path
+	if reset {
+		m.clearDiffContent()
+		m.diffHunk = -1
+		m.viewport.GotoTop()
+	} else if m.diffSyntaxCancel != nil {
+		m.diffSyntaxCancel()
+		m.diffSyntaxCancel = nil
+	}
+	m.ensureTabVisible()
+	return func() tea.Msg {
+		defer cancel()
+		raw, err := read(ctx)
+		return diffMsg{seq: seq, path: path, raw: raw, err: err}
+	}
+}
+
 type diffSyntaxMsg struct {
 	seq   int
 	raw   string

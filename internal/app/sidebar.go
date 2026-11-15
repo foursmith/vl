@@ -119,7 +119,7 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 					text = m.changeActionRow(entry, w, fg, bg)
 				}
 			} else {
-				text = "  " + safe(entry.label)
+				text, fg = m.historyRow(entry, w, bg)
 			}
 		}
 		lines = append(lines, row(text, w, fg, bg))
@@ -147,6 +147,8 @@ func (m *Model) explorerRow(entry item, w int, bg string) (string, string) {
 	path := entry.file
 	if entry.change != nil {
 		path = entry.change.Path
+	} else if entry.historyChange != nil {
+		path = entry.historyChange.Path
 	}
 	icon := fileicon.For(path, m.nerd)
 	chevron := "  "
@@ -233,6 +235,9 @@ func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 		return cmd
 	}
 	m.lastClickKey = ""
+	if m.section == history && entry.commit != nil {
+		return m.openHistory(*entry)
+	}
 	if m.section == explorer || entry.folder != "" {
 		return m.openSelected()
 	}

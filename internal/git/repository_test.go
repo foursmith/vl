@@ -112,7 +112,7 @@ func TestWorkflowAndHunkRoundTrip(t *testing.T) {
 	if err != nil || len(s.Changes) != 0 || len(s.Commits) != 2 {
 		t.Fatalf("post-commit snapshot: %+v %v", s, err)
 	}
-	if _, err = r.CommitDiff(ctx, s.Commits[0].ID); err != nil {
+	if _, err = r.CommitFileDiff(ctx, s.Commits[0].ID, c); err != nil {
 		t.Fatal(err)
 	}
 	run(t, r, "switch", "-c", "topic")

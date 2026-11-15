@@ -212,13 +212,6 @@ func (r *Repository) Diff(ctx context.Context, c Change, staged bool) (string, e
 	return r.Run(ctx, args...)
 }
 
-func (r *Repository) CommitDiff(ctx context.Context, id string) (string, error) {
-	if !validObjectID(id) {
-		return "", errors.New("invalid commit object ID")
-	}
-	return r.Run(ctx, "show", "--format=fuller", "--no-ext-diff", "--no-textconv", "--no-color", "--find-renames", id, "--")
-}
-
 func validObjectID(id string) bool {
 	if len(id) != 40 && len(id) != 64 {
 		return false

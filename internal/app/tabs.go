@@ -203,7 +203,7 @@ func (m *Model) closeDiff() {
 	}
 	m.diffSeq++
 	m.diffLoading = false
-	m.diffTitle = ""
+	m.diffCommit = ""
 	m.diffPath = ""
 	m.diffChange = nil
 	m.clearDiffContent()
@@ -231,10 +231,10 @@ func (m *Model) tabLabel(index int) string {
 			if m.diffStaged {
 				suffix = " · 暂存"
 			}
+			if m.diffCommit != "" {
+				return safe(filepath.Base(m.diffPath)) + " (parent) ↔ " + m.diffCommit[:min(7, len(m.diffCommit))]
+			}
 			return safe(filepath.Base(m.diffPath)) + suffix
-		}
-		if m.diffTitle != "" {
-			return safe(m.diffTitle)
 		}
 		return "Changes"
 	}
@@ -267,7 +267,11 @@ func (m *Model) tabLayout() []tabSlot {
 		if all[i].index >= 0 && m.tabs[all[i].index].doc.Dirty() {
 			extra = 2
 		}
-		all[i].width = min(28, max(12, ansi.StringWidth(all[i].label)+extra+7))
+		maxWidth := 28
+		if all[i].index < 0 && m.diffCommit != "" {
+			maxWidth = 60
+		}
+		all[i].width = min(maxWidth, max(12, ansi.StringWidth(all[i].label)+extra+7))
 		total += all[i].width
 	}
 	overflow := total > w

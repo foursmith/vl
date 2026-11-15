@@ -60,11 +60,15 @@ func (m *Model) changesTree(staged bool) ([]item, int) {
 		}
 		return nil, count
 	}
+	return changeTree(m.snapshot.Changes, staged, m.changeCollapsed, "")
+}
+
+func changeTree(changes []gitservice.Change, staged bool, collapsed map[string]bool, prefix string) ([]item, int) {
 	directories := 0
 	root := &changeDirectory{directories: map[string]*changeDirectory{}}
 	count := 0
-	for i := range m.snapshot.Changes {
-		change := &m.snapshot.Changes[i]
+	for i := range changes {
+		change := &changes[i]
 		if staged && !change.Staged() || !staged && !change.Unstaged() {
 			continue
 		}
@@ -96,15 +100,15 @@ func (m *Model) changesTree(staged bool) ([]item, int) {
 		sort.Strings(names)
 		for _, name := range names {
 			node := parent.directories[name]
-			key := changeKey(staged, "directory", node.path)
+			key := prefix + changeKey(staged, "directory", node.path)
 			rows = append(rows, item{label: name, key: key, folder: node.path, depth: depth, staged: staged, status: node.status})
-			if !m.changeCollapsed[key] {
+			if !collapsed[key] {
 				visit(node, depth+1)
 			}
 		}
 		sort.Slice(parent.files, func(i, j int) bool { return filepath.Base(parent.files[i].Path) < filepath.Base(parent.files[j].Path) })
 		for _, change := range parent.files {
-			rows = append(rows, item{label: filepath.Base(change.Path), key: changeKey(staged, "file", change.Path), change: change, staged: staged, depth: depth, status: changeStatus(change, staged)})
+			rows = append(rows, item{label: filepath.Base(change.Path), key: prefix + changeKey(staged, "file", change.Path), change: change, staged: staged, depth: depth, status: changeStatus(change, staged)})
 		}
 	}
 	visit(root, 0)
@@ -112,6 +116,10 @@ func (m *Model) changesTree(staged bool) ([]item, int) {
 }
 
 func (m *Model) folderExpanded(entry item) bool {
+	if m.section == history {
+		state := m.historyStates[entry.historyID]
+		return state != nil && !state.collapsed[entry.key]
+	}
 	if m.section == changes {
 		return !m.changeCollapsed[entry.key]
 	}
@@ -121,6 +129,10 @@ func (m *Model) folderExpanded(entry item) bool {
 func (m *Model) selectParentFolder() {
 	entry := m.current()
 	if entry == nil {
+		return
+	}
+	if m.section == history {
+		m.selectHistoryParent(*entry)
 		return
 	}
 	path := entry.folder

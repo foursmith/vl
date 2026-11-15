@@ -28,8 +28,8 @@ func (m *Model) diffContext() string {
 	if m.diffStaged {
 		context = "暂存区"
 	}
-	if m.diffPath == "" {
-		context = "提交"
+	if m.diffCommit != "" {
+		context = "提交 · " + m.diffCommit[:min(7, len(m.diffCommit))] + " · 只读"
 	}
 	for _, line := range strings.Split(m.patch.Raw, "\n") {
 		if strings.HasPrefix(line, "new file mode ") {
@@ -94,11 +94,6 @@ func (m *Model) contentToolbar() string {
 	left := row("", leftWidth, theme.Muted, theme.Background)
 	if m.diffPath != "" {
 		left = m.breadcrumb(m.diffPath, leftWidth)
-	} else {
-		left = row(" "+safe(m.diffTitle), leftWidth, theme.Muted, theme.Background)
-	}
-	if m.diffLoading {
-		left = row(" 载入中…", leftWidth, theme.Muted, theme.Background)
 	}
 	text := left + row(stats, min(statsWidth, button.x), theme.Muted, theme.Background)
 	buttonColor := theme.Foreground

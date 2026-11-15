@@ -12,7 +12,8 @@ the acceptance scope; unchecked capabilities are not implied by the first build.
 - [x] Unified and paired side-by-side text patches.
 - [x] File stage/unstage and stage all, including unborn repositories.
 - [x] Modification-hunk stage/unstage with stale-diff rejection.
-- [x] Commit staged changes and inspect the latest 100 commits.
+- [x] Commit staged changes and inspect the latest 100 commits, with independently
+      expandable file trees, ref labels and per-file read-only diffs.
 - [x] Local branches: list, create, switch.
 - [x] Status-bar branch picker: local/remote branches, tags, detached checkout,
       create from a selected reference, and remote tracking checkout.
@@ -36,7 +37,7 @@ the acceptance scope; unchecked capabilities are not implied by the first build.
 - [ ] Renames/copies/mode changes and binary files as explicit presentations.
 - [ ] Conflict-side views and a merge-resolution workflow.
 - [ ] Word-level change highlighting and linked split-pane navigation.
-- [ ] History detail file tree, lazy full-file endpoints, pagination, graph.
+- [ ] History full-file endpoints, pagination and commit topology graph.
 - [ ] Patch export/import and clipboard copy.
 
 ## Git completeness

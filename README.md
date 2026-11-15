@@ -55,7 +55,11 @@ Subdirectories and file paths resolve to their enclosing repository.
   context labels; hunk ranges use subdued separators instead of raw patch headers.
 - Stage/unstage a file, stage all, and stage/unstage individual modification
   hunks. Added/deleted/renamed/copied files are staged as a whole.
-- Commit staged changes, inspect the latest 100 commits and their patches.
+- Commit staged changes and inspect the latest 100 commits. History shows branch
+  and tag labels and supports multiple expanded commits, each with its own
+  collapsible changed-file tree. Select a file for a read-only parent-to-commit
+  diff (first parent for merges). Initial commits compare against an empty tree,
+  and renames keep their original path.
 - List local branches, switch branches, create and switch to a new branch.
 - Click the status-bar branch to search local/remote branches and tags, create
   a branch from HEAD or a selected reference, or check out detached. Remote
@@ -148,9 +152,10 @@ of its associations/colors with Nerd Font equivalents, not the original SVG
 shapes or its entire association catalog. `-icons=false` keeps the colors and
 uses plain text markers. No GUI/WebView or terminal image protocol is required.
 
-The initial diff surface clips long lines to pane width and shows Git's default
-three lines of context. Horizontal scrolling, full-file diff context, conflict
-resolution, line staging, and the other remaining capabilities are in the roadmap.
+All file diffs share the same unified/side-by-side renderer and Git's default
+three lines of context. The diff surface clips long lines to pane width.
+Horizontal scrolling, full-file diff context, conflict resolution, line staging,
+and the other remaining capabilities are in the roadmap.
 
 ## Development
 
