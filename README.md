@@ -78,7 +78,13 @@ Subdirectories and file paths resolve to their enclosing repository.
   The navigation search icon opens a searchable file picker.
 - Visible tab close buttons, middle-click close, close others/all, and overflow
   arrows that keep the active tab and its close button accessible.
-- UTF-8 editing, Tab insertion, Unicode cursor movement, selection, clipboard
+- Parent-directory file monitoring refreshes visible explorer directories and
+  open files, including atomic replacement. Clean buffers reload without moving
+  the viewport; dirty buffers retain edits and report external changes. Git
+  metadata watches resolve linked worktrees. Events are merged for 150 ms with
+  a 1-second maximum wait. A 30-second reconciliation covers unwatched paths and
+  missed notifications; watcher creation failure retains the 3-second polling fallback.
+- UTF-8 editing, Tab insertion, grapheme-aware cursor movement/deletion, selection, clipboard
   copy/cut/paste, undo/redo, find, and save. Existing BOM, uniform CRLF/LF, final
   newline presence, and file permissions survive saves. External modifications
   are checked before replacing a file.

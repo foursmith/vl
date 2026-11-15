@@ -410,8 +410,7 @@ func (m *Model) findNext() tea.Cmd {
 		}
 		if index >= 0 {
 			prefix := []rune(string(runes[start:])[:index])
-			d.Anchor = start + len(prefix)
-			d.Cursor = d.Anchor + len([]rune(m.find))
+			d.SelectRange(start+len(prefix), start+len(prefix)+len([]rune(m.find)))
 			m.sidebar = false
 			m.ensureEditor()
 		} else {

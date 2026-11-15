@@ -100,3 +100,26 @@ go test -p 1 ./internal/app ./internal/editor ./internal/git ./internal/highligh
 go test ./internal/editor -run '^$' -bench '^BenchmarkSave$' -benchtime=3x -benchmem
 make check
 ```
+
+## File watching and grapheme editing
+
+Repository events are debounced and coalesced while a snapshot/mutation is in
+flight. Watch configuration and file reads run outside the UI loop. Existing
+watches use a 30-second reconciliation interval instead of unconditional
+three-second snapshots; only visible/open worktree directories and Git metadata
+are monitored, so unobserved paths can wait for that reconciliation. Creation
+failure retains the three-second fallback.
+
+A 200 ms benchmark smoke on the same machine measured cursor right/left at
+116 ns / zero allocation, insert+undo at 58 microseconds, the 1 MiB ASCII line
+frame at 0.26 ms, editor scrolling at 0.41 ms and sidebar scrolling at 0.36 ms.
+These are workload-specific regression checks, not terminal-paint timings.
+Grapheme boundaries use a lazy 128-line cache; extremely long Unicode lines
+still require segmentation when first visited. ASCII edits use a local boundary
+check, avoiding whole-document indexing solely to place the insertion cursor.
+
+Rex smoke checks used a temporary repository: a family ZWJ emoji was removed as
+one editing unit and restored by undo; atomic external replacement refreshed the
+clean editor and newly created files appeared in the explorer. A second external
+write left locally edited buffer text intact. Model tests separately cover
+undo-to-clean reconciliation of a deferred external edit.

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -25,6 +26,7 @@ type Document struct {
 	lineOffsets         []int
 	byteOffsets         []int
 	plainASCII          []bool
+	graphemes           map[int][]int
 	runeCount           int
 	CRLF, BOM           bool
 	Cursor, Anchor      int
@@ -51,9 +53,17 @@ func Open(path string) (*Document, error) {
 	if info.Size() > MaxFileSize {
 		return nil, fmt.Errorf("basic editor limit is %d MiB", MaxFileSize>>20)
 	}
-	data, err := os.ReadFile(real)
+	f, err := os.Open(real)
 	if err != nil {
 		return nil, err
+	}
+	defer f.Close()
+	data, err := io.ReadAll(io.LimitReader(f, MaxFileSize+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(data) > MaxFileSize {
+		return nil, fmt.Errorf("basic editor limit is %d MiB", MaxFileSize>>20)
 	}
 	if !utf8.Valid(data) || bytes.IndexByte(data, 0) >= 0 {
 		return nil, errors.New("binary or non-UTF-8 file")
@@ -82,6 +92,9 @@ func (d *Document) Bytes() []byte {
 	return []byte(text)
 }
 
+// SameDisk compares the last disk snapshots without changing save conflict guards.
+func (d *Document) SameDisk(other *Document) bool { return bytes.Equal(d.saved, other.saved) }
+
 func (d *Document) Dirty() bool {
 	return d.Text != d.savedText || d.CRLF != d.savedCRLF || d.BOM != d.savedBOM
 }
@@ -90,6 +103,7 @@ func (d *Document) Dirty() bool {
 func (d *Document) Lines() []string {
 	if d.lines == nil || d.indexedText != d.Text {
 		d.indexedText = d.Text
+		d.graphemes = nil
 		d.lines = strings.Split(d.Text, "\n")
 		d.lineOffsets = make([]int, len(d.lines))
 		d.byteOffsets = make([]int, len(d.lines))
@@ -176,10 +190,11 @@ func (d *Document) Redo() {
 }
 
 func (d *Document) Selection() (int, int) {
-	if d.Anchor < 0 {
-		return d.Cursor, d.Cursor
+	if d.Anchor < 0 || d.Anchor == d.Cursor {
+		pos := d.snap(d.Cursor, false)
+		return pos, pos
 	}
-	return min(d.Cursor, d.Anchor), max(d.Cursor, d.Anchor)
+	return d.snap(min(d.Cursor, d.Anchor), false), d.snap(max(d.Cursor, d.Anchor), true)
 }
 
 // ByteOffset translates the editor's rune cursor using only its containing line.
@@ -213,6 +228,9 @@ func (d *Document) Insert(text string) {
 	text = strings.ReplaceAll(text, "\r\n", "\n")
 	d.Edit(d.Text[:start] + text + d.Text[end:])
 	d.Cursor, d.Anchor = a+utf8.RuneCountInString(text), -1
+	if !knownBoundary(d.Text, start+len(text)) {
+		d.Cursor = d.snap(d.Cursor, true)
+	}
 }
 
 func (d *Document) Delete(backward bool) {
@@ -220,9 +238,9 @@ func (d *Document) Delete(backward bool) {
 	if a == b {
 		d.Lines()
 		if backward && a > 0 {
-			a--
+			a = d.previous(a)
 		} else if !backward && b < d.runeCount {
-			b++
+			b = d.next(b)
 		} else {
 			return
 		}
@@ -230,6 +248,9 @@ func (d *Document) Delete(backward bool) {
 	start, end := d.ByteOffset(a), d.ByteOffset(b)
 	d.Edit(d.Text[:start] + d.Text[end:])
 	d.Cursor, d.Anchor = a, -1
+	if !knownBoundary(d.Text, start) {
+		d.Cursor = d.snap(d.Cursor, false)
+	}
 }
 
 func (d *Document) Position() (int, int) {
@@ -240,6 +261,16 @@ func (d *Document) Position() (int, int) {
 }
 
 func (d *Document) Move(key string, selectText bool) {
+	d.Cursor = d.snap(d.Cursor, false)
+	if !selectText && d.Anchor >= 0 && d.Anchor != d.Cursor && (key == "left" || key == "right") {
+		a, b := d.Selection()
+		d.Cursor = a
+		if key == "right" {
+			d.Cursor = b
+		}
+		d.Anchor = -1
+		return
+	}
 	if selectText {
 		if d.Anchor < 0 {
 			d.Anchor = d.Cursor
@@ -253,9 +284,9 @@ func (d *Document) Move(key string, selectText bool) {
 	end := start + d.LineRuneCount(line)
 	switch key {
 	case "left":
-		d.Cursor--
+		d.Cursor = d.previous(d.Cursor)
 	case "right":
-		d.Cursor++
+		d.Cursor = d.next(d.Cursor)
 	case "home":
 		d.Cursor = start
 	case "end":
@@ -309,13 +340,13 @@ func (d *Document) Move(key string, selectText bool) {
 			d.Cursor++
 		}
 	}
-	d.Cursor = min(max(0, d.Cursor), d.runeCount)
+	d.Cursor = d.snap(d.Cursor, key == "ctrl+right" || key == "right")
 }
 
 func (d *Document) SetPosition(row, col int) {
 	lines := d.Lines()
 	row = min(max(0, row), len(lines)-1)
-	d.Cursor = d.LineOffset(row) + min(max(0, col), d.LineRuneCount(row))
+	d.Cursor = d.snap(d.LineOffset(row)+min(max(0, col), d.LineRuneCount(row)), false)
 	d.Anchor = -1
 }
 

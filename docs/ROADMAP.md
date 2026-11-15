@@ -8,7 +8,7 @@ the acceptance scope; unchecked capabilities are not implied by the first build.
 - [x] Charm v2 runtime and ttt-style workbench structure.
 - [x] Modern Dark colors; Material-style terminal file icons.
 - [x] Repository discovery, NUL-safe status and file enumeration.
-- [x] Staged/unstaged/untracked sections and periodic refresh.
+- [x] Staged/unstaged/untracked sections, event-driven refresh and low-frequency reconciliation.
 - [x] Unified and paired side-by-side text patches.
 - [x] File stage/unstage and stage all, including unborn repositories.
 - [x] Modification-hunk stage/unstage with stale-diff rejection.
@@ -22,7 +22,8 @@ the acceptance scope; unchecked capabilities are not implied by the first build.
 - [x] Confirmed discard of tracked non-conflicted unstaged changes.
 - [x] File, folder and group hover actions, scoped batch staging/discard, and
       confirmed removal of individual untracked files.
-- [x] File tree, tabs, basic Unicode editing, selection, clipboard, undo/redo, save.
+- [x] File tree, tabs, grapheme-aware Unicode editing, selection, clipboard, undo/redo, save.
+- [x] External file monitoring, clean-buffer reload and dirty-buffer conflict protection.
 - [x] Palette, output, current-content find, responsive focus/layout.
 
 ## Diff completeness — next

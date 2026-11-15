@@ -30,6 +30,8 @@ github.com/eugenioenko/regexp2/v2 v2.8.3 h1:rOd8fihGZOOkKWOy/Sl7uCowdNELQKFcJA0d
 github.com/eugenioenko/regexp2/v2 v2.8.3/go.mod h1:59/YhHVxgrxxHgjTuG4YFRRxynIz4E0bI+rqNBzwOrs=
 github.com/eugenioenko/textmate-go v0.3.0 h1:1rIC+DVYnxeCRBQ63uRKPMHEFg/X8ckFFro4SU0SFSI=
 github.com/eugenioenko/textmate-go v0.3.0/go.mod h1:ND3yzVj2aMRvc3vlQrVkflz51fkIEenEtGzXDohCxEM=
+github.com/fsnotify/fsnotify v1.10.1 h1:b0/UzAf9yR5rhf3RPm9gf3ehBPpf0oZKIjtpKrx59Ho=
+github.com/fsnotify/fsnotify v1.10.1/go.mod h1:TLheqan6HD6GBK6PrDWyDPBaEV8LspOxvPSjC+bVfgo=
 github.com/lucasb-eyer/go-colorful v1.4.1 h1:1EO+WB73+EH8EVbzlrG3KLAfEypQWVHIBqlTf+2hNss=
 github.com/lucasb-eyer/go-colorful v1.4.1/go.mod h1:R4dSotOR9KMtayYi1e77YzuveK+i7ruzyGqttikkLy0=
 github.com/mattn/go-runewidth v0.0.30 h1:+KUuiDA4fF0R1p5FeueHefjDm+GIM+kWfFnDjybOPgk=

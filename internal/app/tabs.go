@@ -25,6 +25,7 @@ func (m *Model) openFile(path string) tea.Cmd        { return m.openDocument(pat
 func (m *Model) openPreviewFile(path string) tea.Cmd { return m.openDocument(path, true) }
 
 func (m *Model) openDocument(path string, preview bool) tea.Cmd {
+	defer m.syncWatch()
 	m.keepEditedTabs()
 	abs := path
 	if !filepath.IsAbs(abs) {
@@ -162,6 +163,7 @@ func (m *Model) chooseClose(choice string) tea.Cmd {
 }
 
 func (m *Model) removeTab(doc *editor.Document) {
+	defer m.syncWatch()
 	for i, t := range m.tabs {
 		if t.doc != doc {
 			continue

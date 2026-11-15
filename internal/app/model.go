@@ -18,6 +18,7 @@ import (
 	gitservice "github.com/ourongxing/elegit/internal/git"
 	"github.com/ourongxing/elegit/internal/highlight"
 	"github.com/ourongxing/elegit/internal/platform"
+	"github.com/ourongxing/elegit/internal/watcher"
 )
 
 type section int
@@ -44,14 +45,17 @@ type item struct {
 }
 
 type tab struct {
-	doc           *editor.Document
-	preview       bool
-	top, left     int
-	highlightText string
-	spans         [][]highlight.Span
-	highlightJob  highlightJob
-	renderKey     editorRenderKey
-	renderedRows  map[int]string
+	doc             *editor.Document
+	reloadSeq       uint64
+	diskNotice      string
+	reloadWhenClean bool
+	preview         bool
+	top, left       int
+	highlightText   string
+	spans           [][]highlight.Span
+	highlightJob    highlightJob
+	renderKey       editorRenderKey
+	renderedRows    map[int]string
 }
 type snapshotMsg struct {
 	seq      int
@@ -77,6 +81,10 @@ type clipboardMsg struct {
 
 type Model struct {
 	ctx                     context.Context
+	cancel                  context.CancelFunc
+	watcher                 *watcher.Watcher
+	watchMetadata           []string
+	watchDirty              bool
 	repo                    *gitservice.Repository
 	width, height           int
 	nerd                    bool
@@ -134,10 +142,11 @@ type Model struct {
 }
 
 func New(ctx context.Context, repo *gitservice.Repository, nerd bool) *Model {
+	ctx, cancel := context.WithCancel(ctx)
 	input := textinput.New()
 	input.Prompt = "> "
 	input.CharLimit = 2000
-	m := &Model{ctx: ctx, repo: repo, width: 120, height: 36, nerd: nerd, sidebar: true, sidebarVisible: true, split: true, viewport: viewport.New(), input: input, diffHunk: -1, activeTab: -1, notice: "Loading repository…"}
+	m := &Model{ctx: ctx, cancel: cancel, repo: repo, width: 120, height: 36, nerd: nerd, sidebar: true, sidebarVisible: true, split: true, viewport: viewport.New(), input: input, diffHunk: -1, activeTab: -1, notice: "Loading repository…"}
 	m.resize()
 	m.expanded = map[string]bool{}
 	m.changeCollapsed = map[string]bool{}
@@ -148,8 +157,14 @@ func New(ctx context.Context, repo *gitservice.Repository, nerd bool) *Model {
 	return m
 }
 
-func (m *Model) Init() tea.Cmd { return tea.Batch(m.refresh(), tick()) }
-func tick() tea.Cmd            { return tea.Tick(3*time.Second, func(t time.Time) tea.Msg { return tickMsg(t) }) }
+func (m *Model) Init() tea.Cmd { return tea.Batch(m.refresh(), m.tick(), m.startWatcher()) }
+func (m *Model) tick() tea.Cmd {
+	delay := 3 * time.Second
+	if m.watcher != nil {
+		delay = 30 * time.Second
+	}
+	return tea.Tick(delay, func(t time.Time) tea.Msg { return tickMsg(t) })
+}
 
 func (m *Model) refresh() tea.Cmd {
 	if m.refreshCancel != nil {
@@ -361,6 +376,22 @@ func (m *Model) previewAt(reset bool) tea.Cmd {
 func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 	defer func() {
 		m.keepEditedTabs()
+		if cmd := m.reloadCleanConflicts(); cmd != nil {
+			if next == nil {
+				next = cmd
+			} else {
+				next = tea.Batch(next, cmd)
+			}
+		}
+		if m.watchDirty && !m.loading && !m.busy {
+			m.watchDirty = false
+			cmd := m.refresh()
+			if next == nil {
+				next = cmd
+			} else {
+				next = tea.Batch(next, cmd)
+			}
+		}
 		if cmd := m.scheduleHighlight(); cmd != nil {
 			if next == nil {
 				next = cmd
@@ -370,6 +401,22 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}
 	}()
 	switch msg := msg.(type) {
+	case watchReadyMsg:
+		if msg.err != nil {
+			m.log("文件监视不可用: " + msg.err.Error())
+			return m, nil
+		}
+		m.watcher, m.watchMetadata = msg.watcher, msg.metadata
+		m.syncWatch()
+		return m, m.nextWatch()
+	case watchMsg:
+		if !msg.open {
+			m.watcher = nil
+			return m, nil
+		}
+		return m, tea.Batch(m.handleWatch(msg.batch), m.nextWatch())
+	case fileReloadMsg:
+		m.finishReload(msg)
 	case highlightStartMsg:
 		return m, m.startHighlight(msg.request)
 	case highlightResultMsg:
@@ -397,6 +444,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			return m, nil
 		}
 		m.treeEntries = msg.entries
+		m.syncWatch()
 		if m.section == explorer {
 			m.rebuildItems()
 		}
@@ -405,9 +453,9 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		m.resize()
 	case tickMsg:
 		if !m.loading && !m.busy {
-			return m, tea.Batch(m.refresh(), tick())
+			return m, tea.Batch(m.refresh(), m.reloadWatchedFiles(nil), m.tick())
 		}
-		return m, tick()
+		return m, m.tick()
 	case snapshotMsg:
 		if msg.seq != m.refreshSeq {
 			return m, nil
@@ -419,6 +467,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}
 		changed := !reflect.DeepEqual(m.snapshot.Changes, msg.snapshot.Changes) || !reflect.DeepEqual(m.snapshot.Commits, msg.snapshot.Commits)
 		m.snapshot = msg.snapshot
+		m.syncWatch()
 		m.rebuildItems()
 		initial := m.notice == "Loading repository…"
 		if initial {

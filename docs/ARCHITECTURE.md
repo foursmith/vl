@@ -15,6 +15,7 @@ cmd/elegit                 flags, process lifetime, concrete composition
         ├── internal/diff       patch parsing, line pairing, single-hunk extraction
         ├── internal/editor     document bytes, cursor, selection, undo and save
         ├── internal/files      lazy visible-directory reads and entry creation
+        ├── internal/watcher    bounded/coalesced directory notifications
         ├── internal/highlight  TextMate scopes → Dark Modern theme spans
         ├── internal/platform    system browser opener
         ├── internal/theme      Modern Dark workbench colors
@@ -34,7 +35,8 @@ Use Charm's compatible v2 stack: Bubble Tea for event/render lifecycle, Bubbles
 for command input and diff viewport, Lip Gloss for styling/layout, and Charm's
 ANSI utilities for cell-width-aware clipping. `textmate-go` supplies stateful
 syntax tokens, matched against the embedded VS Code Dark Modern theme inheritance
-chain; `atotto/clipboard` supplies system clipboard access.
+chain; `atotto/clipboard` supplies system clipboard access. `fsnotify` monitors
+parent directories, and `uax29/graphemes` defines Unicode editing boundaries.
 
 The Bubbles textarea is not the document engine: its input sanitizer expands
 tabs and it imposes a line-count cap. Files instead use a small explicit document
@@ -106,3 +108,32 @@ Expand modules when a subsystem has a concrete state/lifecycle boundary. Avoid
 repeating ttt's concentration of all product behavior in one application model.
 
 Measured workloads and current cost boundaries are in [PERFORMANCE.md](PERFORMANCE.md).
+
+## Filesystem reconciliation and Unicode coordinates
+
+The watcher owns its fsnotify loop, watch reconciliation, one debounce timer and
+bounded delivery channel. It watches the repository root, expanded explorer
+folders, open files' canonical parent directories and actual Git metadata/ref
+folders, including linked-worktree metadata. It avoids recursively watching the
+entire worktree. Watch configuration is installed off the UI goroutine; a newly
+installed directory emits one invalidation to cover the installation race.
+Repeated installation failures are reported once per error rather than causing
+a refresh loop. File events merge for 150 ms, capped at one second while writes
+continue. A slow reconciliation poll covers missing/unwatched notifications;
+if watcher creation fails, the original polling interval remains available.
+
+Only Update replaces documents or schedules repository refreshes. An event
+received during a snapshot or Git mutation queues a single follow-up refresh.
+File reads capture a document pointer and per-tab generation; stale results are
+ignored. Identical saved bytes preserve undo history, clean buffers reload while
+retaining the viewport, and dirty buffers keep both local text and their original
+save-conflict baseline. External deletion leaves the buffer open. Undoing back
+to a clean state retries a previously deferred external change. Close cancels
+watchers and outstanding requests.
+
+Document and syntax offsets remain rune offsets. Editing, find selections and
+mouse positions snap to UAX 29 extended grapheme boundaries. The document lazily
+caches boundaries for at most 128 Unicode lines, invalidated by text changes;
+ASCII uses a local fast path. Rendering, tab expansion and mouse hit testing
+share complete-grapheme display widths. No Unicode normalization is applied, so
+combining sequences, BOM and line-ending bytes retain their original form.

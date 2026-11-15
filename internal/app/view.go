@@ -2,8 +2,10 @@ package app
 
 import (
 	"fmt"
+	"github.com/clipperhouse/uax29/v2/graphemes"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -316,18 +318,35 @@ func (m *Model) clampEditorScroll(t *tab) {
 	t.top = min(max(0, t.top), max(0, lines-m.contentHeight()))
 }
 
+// displayCluster is shared by painting, cursor scrolling and mouse hit testing.
+func displayCluster(cluster string, visual int) string {
+	if len(cluster) == 1 && cluster[0] >= 32 && cluster[0] < 127 {
+		return cluster
+	}
+	if cluster == "\t" {
+		return strings.Repeat(" ", 4-visual%4)
+	}
+	if strings.IndexFunc(cluster, unicode.IsControl) >= 0 {
+		cluster = safe(cluster)
+	}
+	if cluster == "" {
+		return " "
+	}
+	if ansi.StringWidth(cluster) == 0 {
+		return "◌" + cluster
+	}
+	return cluster
+}
+
 func expandTabs(text string) string {
 	var b strings.Builder
 	col := 0
-	for _, r := range text {
-		if r == '\t' {
-			n := 4 - col%4
-			b.WriteString(strings.Repeat(" ", n))
-			col += n
-		} else {
-			b.WriteRune(r)
-			col += ansi.StringWidth(string(r))
-		}
+	iter := graphemes.FromString(text)
+	for iter.Next() {
+		cluster := iter.Value()
+		display := displayCluster(cluster, col)
+		b.WriteString(display)
+		col += ansi.StringWidth(display)
 	}
 	return b.String()
 }
@@ -398,20 +417,16 @@ func (m *Model) editorLines() []string {
 			input = input[start:]
 			visual, runeIndex = start, start
 		}
-		for _, r := range input {
+		iter := graphemes.FromString(input)
+		for iter.Next() {
+			cluster := iter.Value()
 			j := runeIndex
-			runeIndex++
+			runeIndex += utf8.RuneCountInString(cluster)
 			start := visual
 			if start >= t.left+max(1, m.mainWidth()-7) {
 				break
 			}
-			s := string(r)
-			if unicode.IsControl(r) {
-				s = safe(s)
-			}
-			if r == '\t' {
-				s = strings.Repeat(" ", 4-visual%4)
-			}
+			s := displayCluster(cluster, visual)
 			visual += ansi.StringWidth(s)
 			if visual <= t.left {
 				continue
@@ -548,16 +563,15 @@ func (m *Model) click(msg tea.MouseClickMsg) tea.Cmd {
 		line := min(len(lines)-1, t.top+msg.Y-editorContentRow)
 		goal := max(0, msg.X-m.mainX()-7+t.left)
 		visual, col := 0, 0
-		for _, r := range []rune(lines[line]) {
-			width := ansi.StringWidth(string(r))
-			if r == '\t' {
-				width = 4 - visual%4
-			}
+		iter := graphemes.FromString(lines[line])
+		for iter.Next() {
+			cluster := iter.Value()
+			width := ansi.StringWidth(displayCluster(cluster, visual))
 			if visual+width > goal {
 				break
 			}
 			visual += width
-			col++
+			col += utf8.RuneCountInString(cluster)
 		}
 		t.doc.SetPosition(line, col)
 		m.ensureEditor()

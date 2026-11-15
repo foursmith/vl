@@ -40,7 +40,10 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	if _, err = tea.NewProgram(app.New(ctx, repo, *icons), tea.WithContext(ctx)).Run(); err != nil {
+	m := app.New(ctx, repo, *icons)
+	_, err = tea.NewProgram(m, tea.WithContext(ctx)).Run()
+	m.Close()
+	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

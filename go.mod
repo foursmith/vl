@@ -9,7 +9,9 @@ require (
 	github.com/atotto/clipboard v0.1.4
 	github.com/charmbracelet/ultraviolet v0.0.0-20261008173134-6b8d4baf91b4
 	github.com/charmbracelet/x/ansi v0.11.9
+	github.com/clipperhouse/uax29/v2 v2.7.0
 	github.com/eugenioenko/textmate-go v0.3.0
+	github.com/fsnotify/fsnotify v1.10.1
 )
 
 require (
@@ -18,7 +20,6 @@ require (
 	github.com/charmbracelet/x/termios v0.1.1 // indirect
 	github.com/charmbracelet/x/windows v0.2.2 // indirect
 	github.com/clipperhouse/displaywidth v0.11.0 // indirect
-	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/eugenioenko/regexp2/v2 v2.8.3 // indirect
 	github.com/lucasb-eyer/go-colorful v1.4.1 // indirect
 	github.com/mattn/go-runewidth v0.0.30 // indirect
