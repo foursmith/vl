@@ -56,6 +56,10 @@ func TestWelcomeClicksUseRenderedCoordinates(t *testing.T) {
 				if m.modal != "files" {
 					t.Fatal("file search link missed")
 				}
+			case "recent":
+				if m.modal != "recent" {
+					t.Fatal("recent folders link missed")
+				}
 			case "changes":
 				if m.section != changes || !m.sidebar {
 					t.Fatal("source control link missed")

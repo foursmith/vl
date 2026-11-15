@@ -81,8 +81,6 @@ func (m *Model) statusLayout() []statusSegment {
 		}
 		language := m.language(d.Path).Name
 		candidates = []statusSegment{{id: "position", text: fmt.Sprintf("行 %d, 列 %d", line+1, col+1)}, {id: "encoding", text: "UTF-8"}, {id: "eol", text: eol}, {id: "indent", text: "Tab: 4"}, {id: "language", text: language}}
-	} else {
-		candidates = []statusSegment{{id: "theme", text: "Modern Dark"}}
 	}
 	var right []statusSegment
 	rightWidth := 0

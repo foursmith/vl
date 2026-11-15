@@ -149,6 +149,9 @@ type Model struct {
 	hoverX, hoverY          int
 	hoverOnly               bool
 	hoverRender             hoverRenderCache
+	recentSeq               int
+	openingRepository       bool
+	nextRepository          *gitservice.Repository
 }
 
 func New(ctx context.Context, repo *gitservice.Repository, nerd bool) *Model {
@@ -385,6 +388,10 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}
 	}()
 	switch msg := msg.(type) {
+	case recentFoldersMsg:
+		m.applyRecentFolders(msg)
+	case repositoryOpenedMsg:
+		return m, m.finishOpenRepository(msg)
 	case watchReadyMsg:
 		if msg.err != nil {
 			m.log("文件监视不可用: " + msg.err.Error())
@@ -630,6 +637,8 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		return m.quit()
 	case "ctrl+p":
 		return m.openQuickFiles()
+	case "ctrl+r":
+		return m.openRecentFolders()
 	case "ctrl+shift+p", "f1":
 		return m.openPalette()
 	case "ctrl+g":

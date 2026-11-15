@@ -50,8 +50,21 @@ func main() {
 	if layoutErr == nil {
 		m.SetSidebarLayout(layout.SidebarWidth, layout.SidebarRight)
 	}
-	_, err = tea.NewProgram(m, tea.WithContext(ctx)).Run()
-	m.Close()
+	for {
+		if recentErr := config.RememberFolder(repo.Root); recentErr != nil {
+			fmt.Fprintln(os.Stderr, "Save recent folders:", recentErr)
+		}
+		_, err = tea.NewProgram(m, tea.WithContext(ctx)).Run()
+		m.Close()
+		next := m.NextRepository()
+		if err != nil || next == nil {
+			break
+		}
+		width, right := m.SidebarLayout()
+		repo = next
+		m = app.New(ctx, repo, *icons)
+		m.SetSidebarLayout(width, right)
+	}
 	if layoutErr != nil {
 		fmt.Fprintln(os.Stderr, "Load layout preferences:", layoutErr)
 	} else {

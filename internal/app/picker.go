@@ -62,7 +62,15 @@ func (m *Model) pickerOverlay(base []string) []string {
 		box = append(box, row(" "+row(label, w, fg, surface)+" ", l.width, fg, surface))
 	}
 	if len(rows) == 0 {
-		box = append(box, row("  无匹配结果", l.width, theme.Muted, bg))
+		message := "无匹配结果"
+		if m.modal == "recent" {
+			if m.palette == nil {
+				message = "读取最近文件夹…"
+			} else if m.input.Value() == "" {
+				message = "没有最近打开的文件夹"
+			}
+		}
+		box = append(box, row("  "+message, l.width, theme.Muted, bg))
 	} else if reason := rows[min(m.choice, len(rows)-1)].disabled; reason != "" {
 		box = append(box, row("  "+safe(reason), l.width, theme.Muted, bg))
 	}
@@ -92,7 +100,7 @@ func (m *Model) clickPicker(msg tea.MouseClickMsg) tea.Cmd {
 }
 
 func (m *Model) isPicker() bool {
-	return m.modal == "palette" || m.modal == "files" || m.modal == "refs"
+	return m.modal == "palette" || m.modal == "files" || m.modal == "refs" || m.modal == "recent"
 }
 
 func (m *Model) selectPickerChoice() tea.Cmd {

@@ -34,6 +34,7 @@ type welcomeAction struct {
 var welcomeActions = []welcomeAction{
 	{"Show All Commands", "F1", "commands"},
 	{"Go to File", "Ctrl+P", "files"},
+	{"Open Recent Folder", "Ctrl+R", "recent"},
 	{"Source Control", "Ctrl+2", "changes"},
 }
 
@@ -48,10 +49,17 @@ func (m *Model) welcomeLayout() (x, y, width, logoRows int) {
 	if width >= welcomeLogoWidth() && m.contentHeight() >= len(welcomeLogo)+len(welcomeActions)+3 {
 		logoRows = len(welcomeLogo)
 	}
-	height := logoRows + 1 + len(welcomeActions)
+	height := logoRows + m.welcomeGap(logoRows) + len(welcomeActions)
 	x = max(0, (m.mainWidth()-width)/2)
 	y = max(0, (m.contentHeight()-height)/2)
 	return
+}
+
+func (m *Model) welcomeGap(logoRows int) int {
+	if m.contentHeight() < logoRows+1+len(welcomeActions) {
+		return 0
+	}
+	return 1
 }
 
 func (m *Model) welcomeLines() []string {
@@ -71,7 +79,7 @@ func (m *Model) welcomeLines() []string {
 	}
 	for i, a := range welcomeActions {
 		padding := max(2, width-ansi.StringWidth(a.label)-ansi.StringWidth(a.key))
-		lines[y+logoRows+1+i] = strings.Repeat(" ", x) +
+		lines[y+logoRows+m.welcomeGap(logoRows)+i] = strings.Repeat(" ", x) +
 			theme.Style(theme.Muted, theme.Background).Render(a.label) + strings.Repeat(" ", padding) +
 			theme.Style(theme.Foreground, theme.Border).Render(a.key)
 	}
@@ -81,7 +89,7 @@ func (m *Model) welcomeLines() []string {
 func (m *Model) clickWelcome(msg tea.MouseClickMsg) tea.Cmd {
 	x, y, width, logoRows := m.welcomeLayout()
 	x += m.mainX()
-	index := msg.Y - editorContentRow - y - logoRows - 1
+	index := msg.Y - editorContentRow - y - logoRows - m.welcomeGap(logoRows)
 	if msg.X < x || msg.X >= x+width || index < 0 || index >= len(welcomeActions) {
 		return nil
 	}
@@ -90,6 +98,8 @@ func (m *Model) clickWelcome(msg tea.MouseClickMsg) tea.Cmd {
 		return m.openPalette()
 	case "files":
 		return m.openQuickFiles()
+	case "recent":
+		return m.openRecentFolders()
 	case "changes":
 		return m.selectSection(changes)
 	}

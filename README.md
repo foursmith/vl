@@ -35,6 +35,12 @@ Subdirectories and file paths resolve to their enclosing repository.
 
 - Centered block-letter welcome screen with clickable command, file-search, and Source
   Control shortcuts; compact branding on small terminals.
+- Open elegit's recent repositories with `Ctrl+R`, the welcome page, or
+  **File: Open Recent Folder** in the command palette. Successful opens move to
+  the front of the searchable list, which keeps the last 20 repositories in
+  `recent.json` beside `layout.json` in the elegit configuration directory.
+  Failed opens preserve the current workspace; unsaved editor changes and
+  active Git operations block switching.
 - Staged, unstaged, untracked, and conflicted file status; automatic refresh.
 - Source Control groups use folder trees with independent folding for staged
   and worktree changes. Group headers also collapse independently and retain

@@ -35,6 +35,7 @@ func (m *Model) actions() []action {
 		githubReason = "没有找到 github.com 远程仓库"
 	}
 	return []action{
+		{"folder.openRecent", "File: Open Recent Folder", "Ctrl+R", "", m.openRecentFolders},
 		{"view.explorer", "View: Explorer", "Ctrl+1", "", func() tea.Cmd { return m.selectSection(explorer) }},
 		{"explorer.newFile", "Explorer: New File", "", "", func() tea.Cmd { return m.newEntry(false) }},
 		{"explorer.newFolder", "Explorer: New Folder", "", "", func() tea.Cmd { return m.newEntry(true) }},
