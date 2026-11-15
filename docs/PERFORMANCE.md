@@ -5,7 +5,7 @@ repositories and generated text. Setup is excluded from benchmark timing.
 Results cover the model/service stage named below; terminal transport, screen
 painting and remote-network latency require separate acceptance.
 
-## Measurements
+## Original audit measurements (commit `5d72709`)
 
 | Workload | Before | After |
 |---|---:|---:|
@@ -24,11 +24,31 @@ painting and remote-network latency require separate acceptance.
 | Git snapshot, 1,000 files / 100 changes / 5 remotes | 104 ms | 59 ms |
 
 The typing row measures foreground work after moving tokenization into a
-cancellable background command. Whole-file Chroma tokenization remains about
+cancellable background command. At that commit, whole-file Chroma tokenization took about
 68 ms / 91 MB allocated for that Go fixture; it is measured separately by
 `BenchmarkSyntaxHighlight`. Highlighting waits 30 ms after small-file edits and
 200 ms for files above 32 KiB. Clean-file opening schedules it immediately.
-Tokenization is capped at 256 KiB and observes cancellation between tokens.
+The current TextMate implementation retains the 256 KiB cap and observes cancellation
+between lines and bounded retries.
+
+## TextMate migration
+
+With `textmate-go v0.3.0` and the embedded Dark Modern theme chain,
+`BenchmarkSyntaxHighlight` on the same 5,000-line Go fixture measured
+46–53 ms and 23.0 MB allocated per complete pass (`-benchtime=500ms -count=3`,
+run separately from the race suite). This measures warmed grammar/background
+work, not a foreground frame or cold startup. The original Chroma measurement
+above was about 68 ms / 91 MB; this is a recorded baseline, not a claim of a
+speedup for every grammar or input.
+
+Theme resolution is cached by interned scope stack per pass. Multiline state
+is carried between lines, and tokens with the same color/font are merged.
+Tokenization remains in the existing debounced background task, with stale
+result rejection and cancellation between lines. Per-line soft time and size
+limits bound problematic inputs; cold compilation timeouts get at most two
+retries. The engine supports incremental documents, but this integration still
+recomputes each requested immutable text snapshot rather than retaining mutable
+TextMate document state across edits.
 
 ## Changes and checks
 
@@ -63,7 +83,8 @@ hunk while preserving the open editor tab.
 The basic editor keeps immutable text snapshots. Inserting/deleting text and
 rebuilding line indexes still scale with document size; the open-file limit is
 4 MiB. Very long Unicode/tab-heavy lines can still require visual-prefix scans.
-Chroma's background work retains the cost shown above. Diff parsing/layout keeps
+TextMate still performs whole-file work in a background command; it does not yet
+reuse incremental document state across edits. Diff parsing/layout keeps
 raw and parsed patch data proportional to patch size. Atomic saves retain fsync
 and external-change checks; a 1 MB local-save smoke benchmark took about 8 ms,
 with filesystem-dependent latency.

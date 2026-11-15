@@ -10,6 +10,7 @@ import (
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/ourongxing/elegit/internal/diff"
+	"github.com/ourongxing/elegit/internal/highlight"
 	"github.com/ourongxing/elegit/internal/theme"
 )
 
@@ -98,5 +99,18 @@ func TestDiffSyntaxResultsCannotReplaceNewPatch(t *testing.T) {
 	cancel()
 	if diffSpans(ctx, m.patch, "file.go") != nil {
 		t.Fatal("cancelled work continued")
+	}
+}
+
+func TestDiffSyntaxFontsKeepDiffBackground(t *testing.T) {
+	line := diffCode("bold", []highlight.Span{{Start: 0, End: 4, Color: "#569CD6", Font: highlight.Bold}}, 12, theme.AddedBackground, theme.AddedText, diffRange{0, 5})
+	cells := uv.NewStyledString(line).Lines(ansi.GraphemeWidth)[0]
+	for i, cell := range cells {
+		if !sameColor(cell.Style.Bg, lipgloss.Color(theme.AddedText)) {
+			t.Fatal("TextMate font reset diff background")
+		}
+		if i < 4 && cell.Style.Attrs&uv.AttrBold == 0 {
+			t.Fatal("diff lost bold syntax style")
+		}
 	}
 }

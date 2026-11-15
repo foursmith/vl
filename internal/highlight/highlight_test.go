@@ -63,3 +63,82 @@ func TestGoImportUsesVSCodeControlScope(t *testing.T) {
 		t.Fatalf("Go import lost keyword.control.import.go color: %+v", lines)
 	}
 }
+
+func styleAt(lines [][]Span, line, column int) Span {
+	for _, span := range lines[line] {
+		if column >= span.Start && column < span.End {
+			return span
+		}
+	}
+	return Span{Color: modernTheme.foreground}
+}
+
+func TestTextMateCarriesMultilineStateAndRuneOffsets(t *testing.T) {
+	text := "package main\n/* comment\n中文 */ var n = `first\n中文`\nreturn\n"
+	lines := Lines(context.Background(), "main.go", text)
+	for _, check := range []struct {
+		line, col int
+		color     string
+	}{
+		{1, 0, "#6A9955"}, {2, 0, "#6A9955"}, {2, 6, "#569CD6"}, {2, 14, "#CE9178"}, {3, 0, "#CE9178"}, {4, 0, "#C586C0"},
+	} {
+		if got := styleAt(lines, check.line, check.col).Color; got != check.color {
+			t.Errorf("%d:%d: %s, want %s", check.line, check.col, got, check.color)
+		}
+	}
+	for i, line := range strings.Split(text, "\n") {
+		length := len([]rune(line))
+		for _, span := range lines[i] {
+			if span.Start < 0 || span.End > length || span.End <= span.Start {
+				t.Fatalf("invalid span on %q: %+v", line, span)
+			}
+		}
+	}
+}
+
+func TestTextMateInheritedThemeAndFonts(t *testing.T) {
+	if modernTheme.foreground != "#CCCCCC" {
+		t.Fatal("Dark Modern did not override Dark VS foreground")
+	}
+	for _, check := range []struct {
+		scopes []string
+		color  string
+		font   FontStyle
+	}{
+		{[]string{"source.go", "keyword.function.go"}, "#569CD6", 0},
+		{[]string{"source.go", "keyword.control.go"}, "#C586C0", 0},
+		{[]string{"source.go", "entity.name.function.go"}, "#DCDCAA", 0},
+		{[]string{"source.go", "storage.type.numeric.go"}, "#4EC9B0", 0},
+		{[]string{"text.html.markdown", "markup.bold.markdown"}, "#569CD6", Bold},
+		{[]string{"text.html.markdown", "markup.italic.markdown"}, "#C586C0", Italic},
+		{[]string{"source.powershell", "variable.other.member"}, "#DCDCAA", 0},
+		{[]string{"source.go", "variable.other.member"}, "#9CDCFE", 0},
+		{[]string{"source.css", "entity.other.attribute-name.class"}, "#D7BA7D", 0},
+		{[]string{"text.html.markdown", "string", "meta.image.inline.markdown"}, "#D4D4D4", 0},
+	} {
+		got := modernTheme.resolve(check.scopes)
+		if got.color != check.color || got.font != check.font {
+			t.Errorf("%v: %+v, want %s font %v", check.scopes, got, check.color, check.font)
+		}
+	}
+	lines := Lines(context.Background(), "README.md", "**bold** and *italic*\n")
+	if styleAt(lines, 0, 2).Font&Bold == 0 || styleAt(lines, 0, 14).Font&Italic == 0 {
+		t.Fatalf("font styles missing from spans: %+v", lines)
+	}
+}
+
+func TestTextMateLimitsAndCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if Lines(ctx, "main.go", "package main") != nil {
+		t.Fatal("cancelled work ran")
+	}
+	if Lines(context.Background(), "main.go", strings.Repeat("x", MaxBytes+1)) != nil {
+		t.Fatal("oversized document tokenized")
+	}
+	text := "package main\n" + strings.Repeat("x", 20_001) + "\nvar n int\n"
+	lines := Lines(context.Background(), "main.go", text)
+	if len(lines) != 4 || len(lines[0]) == 0 || len(lines[1]) != 0 || len(lines[2]) != 0 {
+		t.Fatal("line limit lost prefix or propagated incomplete state")
+	}
+}

@@ -82,7 +82,7 @@ Subdirectories and file paths resolve to their enclosing repository.
   copy/cut/paste, undo/redo, find, and save. Existing BOM, uniform CRLF/LF, final
   newline presence, and file permissions survive saves. External modifications
   are checked before replacing a file.
-- Syntax colors through Chroma for recognized languages up to 256 KiB.
+- TextMate syntax highlighting with VS Code Dark Modern token rules, including font styles, for recognized languages up to 256 KiB.
 - Searchable commands, disabled-command explanations, and Git output panel.
 
 Commands are available from **Ctrl+P**, **F1**, or the sidebar's **···** menu. Clean tabs close

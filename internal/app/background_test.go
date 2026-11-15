@@ -95,7 +95,7 @@ func TestEditorRunsKeepSyntaxSelectionCursorAndFocus(t *testing.T) {
 	m.sidebar = false
 	m.ensureEditor()
 	m.tabs[0].highlightText = d.Text
-	m.tabs[0].spans = [][]highlight.Span{{{Start: 0, End: 2, Color: theme.GitAdded}}}
+	m.tabs[0].spans = [][]highlight.Span{{{Start: 0, End: 2, Color: theme.GitAdded, Font: highlight.Italic}}}
 	first := uv.NewStyledString(m.editorLines()[0]).Lines(ansi.GraphemeWidth)[0]
 	selected, cursor := false, false
 	for _, cell := range first {
@@ -103,6 +103,9 @@ func TestEditorRunsKeepSyntaxSelectionCursorAndFocus(t *testing.T) {
 			selected = true
 			if !sameColor(cell.Style.Fg, lipgloss.Color(theme.GitAdded)) || !sameColor(cell.Style.Bg, lipgloss.Color(theme.Selection)) {
 				t.Fatal("run rendering lost syntax or selection color")
+			}
+			if cell.Style.Attrs&uv.AttrItalic == 0 {
+				t.Fatal("selected syntax lost its TextMate font style")
 			}
 		}
 		cursor = cursor || cell.Style.Attrs&uv.AttrReverse != 0

@@ -3,84 +3,82 @@ package highlight
 import (
 	"context"
 	"strings"
+	"time"
 	"unicode/utf8"
 
-	"github.com/alecthomas/chroma/v2"
-	"github.com/alecthomas/chroma/v2/lexers"
+	textmate "github.com/eugenioenko/textmate-go"
+	"github.com/eugenioenko/textmate-go/grammars"
 )
 
 type Span struct {
 	Start, End int
 	Color      string
+	Font       FontStyle
 }
 
 // Highlighting is optional presentation data; it never rewrites source text.
 const MaxBytes = 256 << 10
 
+var registry = textmate.NewRegistry(textmate.RegistryOptions{LoadGrammar: grammars.Load})
+var tokenizeOptions = textmate.TokenizeOptions{TimeLimit: 100 * time.Millisecond, MaxLineRunes: 20_000, MaxLineBytes: 80_000}
+
 func Lines(ctx context.Context, path, text string) [][]Span {
 	if len(text) > MaxBytes || ctx.Err() != nil {
 		return nil
 	}
-	lexer := lexers.Match(path)
-	if lexer == nil {
+	scope := grammars.ScopeForFilename(path)
+	if scope == "" {
 		return nil
 	}
-	iterator, err := chroma.Coalesce(lexer).Tokenise(&chroma.TokeniseOptions{State: "root", EnsureLF: false}, text)
-	if err != nil {
+	grammar, err := registry.LoadGrammar(scope)
+	if err != nil || grammar == nil || ctx.Err() != nil {
 		return nil
 	}
-	lines := [][]Span{{}}
-	col := 0
-	for token := iterator(); token != chroma.EOF; token = iterator() {
+	source := strings.Split(text, "\n")
+	lines := make([][]Span, len(source))
+	var state *textmate.StateStack
+	styles := make(map[*textmate.ScopeStack]tokenStyle)
+	for i, line := range source {
 		if ctx.Err() != nil {
 			return nil
 		}
-		color := color(token.Type)
-		// VS Code's Go grammar scopes import as keyword.control.import.go;
-		// Chroma groups it with the blue package/namespace declarations.
-		if lexer.Config().Name == "Go" && token.Type == chroma.KeywordNamespace && token.Value == "import" {
-			color = "#C586C0"
+		result := grammar.TokenizeLineWithOptions(line, state, tokenizeOptions)
+		// Cold lazy compilation can consume a line's soft budget. Retry from
+		// the same immutable start state, as Document does for transient stops.
+		for retry := 0; result.StoppedReason == textmate.StopReasonTimeLimit && retry < 2 && ctx.Err() == nil; retry++ {
+			result = grammar.TokenizeLineWithOptions(line, state, tokenizeOptions)
 		}
-		for i, part := range strings.Split(token.Value, "\n") {
-			if i > 0 {
-				lines = append(lines, nil)
-				col = 0
-			}
-			length := utf8.RuneCountInString(part)
-			if length > 0 && color != "" {
-				n := len(lines) - 1
-				lines[n] = append(lines[n], Span{col, col + length, color})
-			}
-			col += length
+		if ctx.Err() != nil {
+			return nil
 		}
+		// An incomplete line cannot supply trustworthy lexical state to later lines.
+		// Retain the completed prefix and leave the remainder plain.
+		if result.Stopped {
+			return lines
+		}
+		state = result.RuleStack
+		length := utf8.RuneCountInString(line)
+		for _, token := range result.Tokens {
+			style, ok := styles[token.ScopeStack]
+			if !ok {
+				style = modernTheme.resolve(token.Scopes)
+				styles[token.ScopeStack] = style
+			}
+			start, end := min(token.Start, length), min(token.End, length)
+			if start >= end || style.color == modernTheme.foreground && style.font == 0 {
+				continue
+			}
+			spans := lines[i]
+			if n := len(spans); n > 0 && spans[n-1].End == start && spans[n-1].Color == style.color && spans[n-1].Font == style.font {
+				spans[n-1].End = end
+			} else {
+				spans = append(spans, Span{Start: start, End: end, Color: style.color, Font: style.font})
+			}
+			lines[i] = spans
+		}
+	}
+	if ctx.Err() != nil {
+		return nil
 	}
 	return lines
-}
-
-func color(t chroma.TokenType) string {
-	switch {
-	case t.InCategory(chroma.Comment):
-		return "#6A9955"
-	case t == chroma.LiteralStringEscape:
-		return "#D7BA7D"
-	case t.InSubCategory(chroma.LiteralString):
-		return "#CE9178"
-	case t.InSubCategory(chroma.LiteralNumber):
-		return "#B5CEA8"
-	case t == chroma.KeywordType || t == chroma.NameClass:
-		return "#4EC9B0"
-	case t == chroma.KeywordNamespace || t == chroma.KeywordDeclaration || t == chroma.KeywordConstant || t == chroma.KeywordPseudo:
-		return "#569CD6"
-	case t.InCategory(chroma.Keyword):
-		return "#C586C0"
-	case t.InSubCategory(chroma.NameFunction) || t == chroma.NameBuiltin:
-		return "#DCDCAA"
-	case t == chroma.NameConstant:
-		return "#4FC1FF"
-	case t.InCategory(chroma.Operator):
-		return "#D4D4D4"
-	case t.InCategory(chroma.Name):
-		return "#9CDCFE"
-	}
-	return ""
 }

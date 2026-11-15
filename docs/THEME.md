@@ -28,16 +28,25 @@ emphasis is composited over the corresponding line background.
 Gutters retain the editor background. Whole inserted/deleted lines emphasize
 their text and line ending; paired replacements emphasize the changed range.
 
-## Syntax mapping
+## TextMate syntax
 
-The editor and diff share `internal/highlight`. Chroma token categories map to
-Dark Modern's inherited token palette. Declarations are blue `#569CD6`, control
-flow purple `#C586C0`, functions yellow `#DCDCAA`, types teal `#4EC9B0`, variables
-light blue `#9CDCFE`, strings `#CE9178`, comments `#6A9955`, numbers `#B5CEA8`,
-operators `#D4D4D4`, constants `#4FC1FF` and escapes `#D7BA7D`.
+The editor and diff share `internal/highlight`, backed by `textmate-go v0.3.0`.
+The three unmodified theme JSON files above are embedded under
+`internal/highlight/themes`; their `include` chain is resolved in order.
+TextMate scope stacks match the inherited `tokenColors` rules, including
+ancestor selectors, specificity, foreground inheritance and font-style resets.
+Colors and bold, italic, underline and strikethrough styles reach both renderers.
+There is no Chroma token-category mapping or Go keyword color special case.
 
-Go import needs an explicit scope correction because Chroma groups it with
-package declarations. Chroma is a lexical tokenizer, not VS Code's TextMate
-and language-server semantic token pipeline: sharing a palette does not imply
-identical classification of every identifier. Diff hunks also omit surrounding
-source, so lexical state is reset between hunks.
+The bundled grammar catalog supplies language detection and lazy grammar loading.
+Line tokenization carries grammar state through comments, strings and embedded
+languages. Work stays in cancellable background commands; each line has a soft
+100 ms budget and a 20,000-rune / 80,000-byte cap. Transient time-limit
+stops are retried at most twice from the same immutable start state, allowing
+cold lazy compilation to finish without discarding multiline context. Files above
+256 KiB remain plain. If a line cannot complete within its limits, subsequent lines stay plain
+rather than using incomplete state. Diff sides tokenize separately and reset
+state between hunks because the patch omits the intervening source.
+
+This implements TextMate syntax highlighting, not language-server semantic
+highlighting or bracket-pair colorization.

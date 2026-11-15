@@ -58,8 +58,7 @@ func (m *Model) breadcrumb(path string, width int) string {
 	return row(" "+content, width, theme.Muted, theme.Background)
 }
 
-// Breadcrumb and footer share the current file's language lookup, including
-// unknown extensions whose Chroma filename matching is comparatively expensive.
+// Breadcrumb and footer share the current file's cached language lookup.
 func (m *Model) language(path string) highlight.LanguageInfo {
 	if m.languagePath != path || m.languageInfo.ID == "" {
 		m.languagePath = path

@@ -15,7 +15,7 @@ cmd/elegit                 flags, process lifetime, concrete composition
         ├── internal/diff       patch parsing, line pairing, single-hunk extraction
         ├── internal/editor     document bytes, cursor, selection, undo and save
         ├── internal/files      lazy visible-directory reads and entry creation
-        ├── internal/highlight  optional Chroma tokens → Modern Dark syntax spans
+        ├── internal/highlight  TextMate scopes → Dark Modern theme spans
         ├── internal/platform    system browser opener
         ├── internal/theme      Modern Dark workbench colors
         └── internal/fileicon   Material-style terminal icon associations
@@ -32,8 +32,9 @@ Source Control file, folder and group buttons share action availability rules.
 
 Use Charm's compatible v2 stack: Bubble Tea for event/render lifecycle, Bubbles
 for command input and diff viewport, Lip Gloss for styling/layout, and Charm's
-ANSI utilities for cell-width-aware clipping. Chroma supplies syntax tokens;
-`atotto/clipboard` supplies system clipboard access.
+ANSI utilities for cell-width-aware clipping. `textmate-go` supplies stateful
+syntax tokens, matched against the embedded VS Code Dark Modern theme inheritance
+chain; `atotto/clipboard` supplies system clipboard access.
 
 The Bubbles textarea is not the document engine: its input sanitizer expands
 tabs and it imposes a line-count cap. Files instead use a small explicit document

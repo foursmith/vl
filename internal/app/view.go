@@ -10,6 +10,7 @@ import (
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/ourongxing/elegit/internal/diff"
+	"github.com/ourongxing/elegit/internal/highlight"
 	"github.com/ourongxing/elegit/internal/theme"
 )
 
@@ -373,18 +374,19 @@ func (m *Model) editorLines() []string {
 		}
 		var text, run strings.Builder
 		runFG, runBG, runReverse := "", "", false
+		var runFont highlight.FontStyle
 		flush := func() {
 			if run.Len() == 0 {
 				return
 			}
-			style := theme.Style(runFG, runBG).Reverse(runReverse)
+			style := syntaxStyle(runFG, runBG, runFont).Reverse(runReverse)
 			text.WriteString(style.Render(run.String()))
 			run.Reset()
 		}
-		appendRun := func(s, fg, bg string, reverse bool) {
-			if fg != runFG || bg != runBG || reverse != runReverse {
+		appendRun := func(s, fg, bg string, reverse bool, font highlight.FontStyle) {
+			if fg != runFG || bg != runBG || reverse != runReverse || font != runFont {
 				flush()
-				runFG, runBG, runReverse = fg, bg, reverse
+				runFG, runBG, runReverse, runFont = fg, bg, reverse, font
 			}
 			run.WriteString(s)
 		}
@@ -418,6 +420,7 @@ func (m *Model) editorLines() []string {
 				s = strings.Repeat(" ", visual-t.left)
 			}
 			fg := theme.Foreground
+			var font highlight.FontStyle
 			if t.highlightText == d.Text && i < len(t.spans) {
 				spans := t.spans[i]
 				for spanIndex < len(spans) && j >= spans[spanIndex].End {
@@ -425,16 +428,17 @@ func (m *Model) editorLines() []string {
 				}
 				if spanIndex < len(spans) && j >= spans[spanIndex].Start {
 					fg = spans[spanIndex].Color
+					font = spans[spanIndex].Font
 				}
 			}
 			cellBG := bg
 			if offset+j >= a && offset+j < b {
 				cellBG = theme.Selection
 			}
-			appendRun(s, fg, cellBG, !m.sidebar && i == line && j == col)
+			appendRun(s, fg, cellBG, !m.sidebar && i == line && j == col, font)
 		}
 		if !m.sidebar && i == line && col == d.LineRuneCount(i) {
-			appendRun(" ", theme.Foreground, bg, true)
+			appendRun(" ", theme.Foreground, bg, true, 0)
 		}
 		flush()
 		numberColor := theme.LineNumber
@@ -569,4 +573,8 @@ func (m *Model) click(msg tea.MouseClickMsg) tea.Cmd {
 		}
 	}
 	return nil
+}
+
+func syntaxStyle(fg, bg string, font highlight.FontStyle) lipgloss.Style {
+	return theme.Style(fg, bg).Bold(font&highlight.Bold != 0).Italic(font&highlight.Italic != 0).Underline(font&highlight.Underline != 0).Strikethrough(font&highlight.Strikethrough != 0)
 }

@@ -1,4 +1,4 @@
-# Third-party design references
+# Third-party notices
 
 The workbench colors are adapted from VS Code Dark Modern. The terminal icon catalog adapts common file associations and colors from Material Icon Theme, using Nerd Font glyph equivalents rather than distributing its SVG artwork.
 
@@ -46,3 +46,15 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 ```
 
 Runtime dependency licenses remain with their respective Go modules. Nerd Font glyphs require a locally installed font; no font files are bundled.
+
+## textmate-go and bundled TextMate grammars
+
+Syntax highlighting uses `github.com/eugenioenko/textmate-go v0.3.0`, a pure-Go
+port of vscode-textmate, with its compressed grammar catalog. The engine's MIT
+license and the catalog license and per-grammar notices are preserved under
+[third_party/textmate-go](third_party/textmate-go/). Grammar source revisions and
+license metadata are recorded in the dependency's `grammars/MANIFEST.md`.
+
+The VS Code theme JSON files embedded under `internal/highlight/themes` are
+covered by the Microsoft MIT notice above; their pinned source is in
+[docs/THEME.md](docs/THEME.md).

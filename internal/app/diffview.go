@@ -73,6 +73,9 @@ func diffSpans(ctx context.Context, patch diff.Patch, path string) map[*diff.Lin
 	var old, added []*diff.Line
 	flush := func() {
 		for _, side := range [][]*diff.Line{old, added} {
+			if len(side) == 0 {
+				continue
+			}
 			var source strings.Builder
 			for _, line := range side {
 				source.WriteString(line.Text[1:])
@@ -197,11 +200,12 @@ func diffCode(code string, spans []highlight.Span, width int, bg, emphasis strin
 	}
 	var out, run strings.Builder
 	color := theme.Foreground
+	var font highlight.FontStyle
 	runBG := bg
 	spanIndex, column := 0, 0
 	flush := func() {
 		if run.Len() > 0 {
-			out.WriteString(theme.Style(color, runBG).Render(run.String()))
+			out.WriteString(syntaxStyle(color, runBG, font).Render(run.String()))
 			run.Reset()
 		}
 	}
@@ -210,16 +214,18 @@ func diffCode(code string, spans []highlight.Span, width int, bg, emphasis strin
 			spanIndex++
 		}
 		next := theme.Foreground
+		var nextFont highlight.FontStyle
 		if spanIndex < len(spans) && column >= spans[spanIndex].Start {
 			next = spans[spanIndex].Color
+			nextFont = spans[spanIndex].Font
 		}
 		nextBG := bg
 		if emphasis != "" && column >= changed.start && column < changed.end {
 			nextBG = emphasis
 		}
-		if next != color || nextBG != runBG {
+		if next != color || nextBG != runBG || nextFont != font {
 			flush()
-			color = next
+			color, font = next, nextFont
 			runBG = nextBG
 		}
 		run.WriteString(safe(string(r)))
