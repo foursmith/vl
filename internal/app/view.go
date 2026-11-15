@@ -102,7 +102,7 @@ func (m *Model) View() tea.View {
 	if m.width < 30 || m.height < 8 {
 		v := tea.NewView(row("Resize terminal to at least 30 × 8", m.width, theme.Foreground, theme.Background))
 		v.AltScreen = true
-		v.BackgroundColor = lipgloss.Color(theme.Background)
+		v.BackgroundColor = lipgloss.Color(theme.Panel)
 		return v
 	}
 	var lines []string
@@ -142,7 +142,9 @@ func (m *Model) View() tea.View {
 	}
 	v := tea.NewView(strings.Join(lines, "\n"))
 	v.AltScreen = true
-	v.BackgroundColor = lipgloss.Color(theme.Background)
+	// Uncovered terminal padding should blend with the surrounding chrome.
+	// Editor and diff cells paint their own backgrounds.
+	v.BackgroundColor = lipgloss.Color(theme.Panel)
 	v.MouseMode = tea.MouseModeAllMotion
 	v.ReportFocus = true
 	return v

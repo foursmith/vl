@@ -25,6 +25,22 @@ func sameColor(a, b color.Color) bool {
 	return ar == br && ag == bg && ab == bb && aa == ba
 }
 
+func TestTerminalBackgroundMatchesChromeWithAndWithoutFile(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	for _, open := range []bool{false, true} {
+		if open {
+			m.openFile("file0.go")
+		}
+		if !sameColor(m.View().BackgroundColor, lipgloss.Color(theme.Panel)) {
+			t.Fatalf("open file %v: uncovered terminal background differs from chrome", open)
+		}
+	}
+	m.width, m.height = 20, 5
+	if !sameColor(m.View().BackgroundColor, lipgloss.Color(theme.Panel)) {
+		t.Fatal("small terminal background differs from chrome")
+	}
+}
+
 func TestRowPaintsBackgroundAfterNestedStyleResets(t *testing.T) {
 	text := theme.Style("#CE9178", theme.Background).Render("word") + " gap " + theme.Style(theme.Muted, theme.Background).Render("end")
 	line := uv.NewStyledString(row(text, 30, theme.Foreground, theme.Background)).Lines(ansi.GraphemeWidth)[0]
