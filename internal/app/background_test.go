@@ -1,0 +1,84 @@
+package app
+
+import (
+	"context"
+	"image/color"
+	"testing"
+
+	"charm.land/lipgloss/v2"
+	uv "github.com/charmbracelet/ultraviolet"
+	"github.com/charmbracelet/x/ansi"
+	"github.com/ourongxing/elegit/internal/editor"
+	gitservice "github.com/ourongxing/elegit/internal/git"
+	"github.com/ourongxing/elegit/internal/theme"
+)
+
+func sameColor(a, b color.Color) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	ar, ag, ab, aa := a.RGBA()
+	br, bg, bb, ba := b.RGBA()
+	return ar == br && ag == bg && ab == bb && aa == ba
+}
+
+func TestRowPaintsBackgroundAfterNestedStyleResets(t *testing.T) {
+	text := theme.Style("#CE9178", theme.Background).Render("word") + " gap " + theme.Style(theme.Muted, theme.Background).Render("end")
+	line := uv.NewStyledString(row(text, 30, theme.Foreground, theme.Background)).Lines(ansi.GraphemeWidth)[0]
+	for i, cell := range line {
+		if !sameColor(cell.Style.Bg, lipgloss.Color(theme.Background)) {
+			t.Fatalf("cell %d (%q) has background %v, want %s", i, cell.Content, cell.Style.Bg, theme.Background)
+		}
+	}
+}
+
+func TestEditorCanvasAndCurrentLineBackgrounds(t *testing.T) {
+	m := New(context.Background(), &gitservice.Repository{Root: "/tmp/repo"}, false)
+	m.tabs = []tab{{doc: &editor.Document{Path: "/tmp/repo/test.go", Text: "package main\n\n// comment\n", Anchor: -1}}}
+	m.activeTab = 0
+	m.showEditor = true
+	m.sidebar = true
+	m.ensureEditor()
+	for y, rendered := range m.mainLines()[editorContentRow:] {
+		line := uv.NewStyledString(rendered).Lines(ansi.GraphemeWidth)[0]
+		for x, cell := range line {
+			want := theme.Background
+			if y == 0 && x >= 7 {
+				want = "#252526"
+			}
+			if !sameColor(cell.Style.Bg, lipgloss.Color(want)) {
+				t.Fatalf("row %d cell %d (%q) has background %v, want %s", y, x, cell.Content, cell.Style.Bg, want)
+			}
+		}
+	}
+}
+
+func TestSelectedFilePaintsIconTextAndPadding(t *testing.T) {
+	m := New(context.Background(), &gitservice.Repository{Root: "/tmp/repo"}, true)
+	m.items = []item{{file: "test.go", label: "test.go"}}
+	m.selected = 0
+	m.sidebar = true
+	line := uv.NewStyledString(m.sidebarLines()[sidebarHeaderRows]).Lines(ansi.GraphemeWidth)[0]
+	for i, cell := range line {
+		if !sameColor(cell.Style.Bg, lipgloss.Color(theme.Selection)) {
+			t.Fatalf("selected cell %d (%q) has background %v", i, cell.Content, cell.Style.Bg)
+		}
+	}
+}
+
+func TestRowPreservesExplicitHighlightBackgrounds(t *testing.T) {
+	text := theme.Style(theme.Foreground, theme.AddedBackground).Render("+added") + " normal " + theme.Style(theme.Foreground, theme.Selection).Render("selected")
+	line := uv.NewStyledString(row(text, 30, theme.Foreground, theme.Background)).Lines(ansi.GraphemeWidth)[0]
+	for i, cell := range line {
+		want := theme.Background
+		if i < 6 {
+			want = theme.AddedBackground
+		}
+		if i >= 14 && i < 22 {
+			want = theme.Selection
+		}
+		if !sameColor(cell.Style.Bg, lipgloss.Color(want)) {
+			t.Fatalf("cell %d (%q) background %v, want %s", i, cell.Content, cell.Style.Bg, want)
+		}
+	}
+}

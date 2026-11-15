@@ -1,0 +1,140 @@
+package app
+
+import (
+	"fmt"
+	"strconv"
+	"strings"
+
+	"github.com/charmbracelet/x/ansi"
+	"github.com/ourongxing/elegit/internal/theme"
+)
+
+type toolbarButton struct {
+	x, width int
+	label    string
+}
+
+func (m *Model) diffModeButton() toolbarButton {
+	label := "统一"
+	if m.split && m.mainWidth() >= 68 {
+		label = "并排"
+	}
+	w := min(8, m.mainWidth())
+	return toolbarButton{x: m.mainWidth() - w, width: w, label: label}
+}
+
+func (m *Model) diffContext() string {
+	context := "工作区"
+	if m.diffStaged {
+		context = "暂存区"
+	}
+	if m.diffPath == "" {
+		context = "提交"
+	}
+	for _, line := range strings.Split(m.patch.Raw, "\n") {
+		if strings.HasPrefix(line, "new file mode ") {
+			context += " · 新文件"
+			if strings.HasSuffix(line, "755") {
+				context += " · 可执行"
+			}
+			break
+		}
+		if strings.HasPrefix(line, "deleted file mode ") {
+			context += " · 已删除"
+			break
+		}
+	}
+	if c := m.diffChange; c != nil && c.Original != "" {
+		context += " · 重命名自 " + safe(c.Original)
+	}
+	oldMode, newMode := "", ""
+	for _, line := range strings.Split(m.patch.Raw, "\n") {
+		if strings.HasPrefix(line, "old mode ") {
+			oldMode = strings.TrimPrefix(line, "old mode ")
+		}
+		if strings.HasPrefix(line, "new mode ") {
+			newMode = strings.TrimPrefix(line, "new mode ")
+		}
+	}
+	if oldMode != "" && newMode != "" {
+		context += " · 权限 " + oldMode + " → " + newMode
+	}
+	return context
+}
+
+func (m *Model) contentToolbar() string {
+	w := m.mainWidth()
+	if m.showEditor && m.document() != nil {
+		return m.breadcrumb(m.document().Path, w)
+	}
+	if !m.diffOpen {
+		return row("", w, theme.Foreground, theme.Background)
+	}
+	button := m.diffModeButton()
+	stats := ""
+	if m.patch.Added > 0 {
+		stats += theme.Style(theme.GitAdded, theme.Background).Render(fmt.Sprintf("+%d", m.patch.Added))
+	}
+	if m.patch.Deleted > 0 {
+		if stats != "" {
+			stats += " "
+		}
+		stats += theme.Style(theme.Deleted, theme.Background).Render(fmt.Sprintf("−%d", m.patch.Deleted))
+	}
+	if stats != "" {
+		stats += "  "
+	}
+	context := m.diffContext()
+	context = ansi.Truncate(safe(context), max(0, button.x-12), "…")
+	if context != "" {
+		stats = theme.Style(theme.Muted, theme.Background).Render(context+"  ") + stats
+	}
+	statsWidth := ansi.StringWidth(stats)
+	leftWidth := max(0, button.x-statsWidth)
+	left := row("", leftWidth, theme.Muted, theme.Background)
+	if m.diffPath != "" {
+		left = m.breadcrumb(m.diffPath, leftWidth)
+	} else {
+		left = row(" "+safe(m.diffTitle), leftWidth, theme.Muted, theme.Background)
+	}
+	if m.diffLoading {
+		left = row(" 载入中…", leftWidth, theme.Muted, theme.Background)
+	}
+	text := left + row(stats, min(statsWidth, button.x), theme.Muted, theme.Background)
+	buttonColor := theme.Foreground
+	if w < 68 {
+		buttonColor = theme.Muted
+	}
+	text += row(" "+button.label+" ", button.width, buttonColor, theme.Panel)
+	return row(text, w, theme.Foreground, theme.Background)
+}
+
+func hunkLabel(header string) string {
+	fields := strings.Fields(header)
+	if len(fields) < 4 {
+		return safe(header)
+	}
+	rangeText := func(value string) string {
+		parts := strings.Split(strings.TrimLeft(value, "+-"), ",")
+		start, err := strconv.Atoi(parts[0])
+		if err != nil {
+			return value
+		}
+		count := 1
+		if len(parts) > 1 {
+			count, _ = strconv.Atoi(parts[1])
+		}
+		if count == 0 {
+			return "∅"
+		}
+		if count == 1 {
+			return strconv.Itoa(start)
+		}
+		return fmt.Sprintf("%d–%d", start, start+count-1)
+	}
+	label := rangeText(fields[1]) + " → " + rangeText(fields[2])
+	if len(fields) > 4 {
+		label += "  " + safe(strings.Join(fields[4:], " "))
+	}
+	return label
+}

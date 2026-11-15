@@ -1,0 +1,85 @@
+package app
+
+// UI controls use Codicons from Nerd Fonts. Material file associations live in
+// fileicon; punctuation, borders and diff signs are text rather than controls.
+type uiSymbol int
+
+const (
+	symbolExplorer uiSymbol = iota
+	symbolSearch
+	symbolBranch
+	symbolHistory
+	symbolCompare
+	symbolNewFile
+	symbolNewFolder
+	symbolRefresh
+	symbolCollapse
+	symbolMore
+	symbolOpen
+	symbolDiscard
+	symbolAdd
+	symbolRemove
+	symbolClose
+	symbolLeft
+	symbolRight
+	symbolDown
+	symbolWrench
+	symbolSync
+	symbolGitHub
+	symbolCloud
+	symbolTag
+	symbolCheck
+	symbolUp
+	symbolArrowDown
+	symbolDiff
+	symbolPublish
+	symbolWarning
+	symbolDot
+)
+
+var uiSymbols = [...]struct{ plain, nerd string }{
+	symbolExplorer:  {"E", "\ueaf0"},
+	symbolSearch:    {"/", "\uea6d"},
+	symbolBranch:    {"G", "\uea68"},
+	symbolHistory:   {"H", "\uea82"},
+	symbolCompare:   {"B", "\ueafd"},
+	symbolNewFile:   {"f+", "\uea7f"},
+	symbolNewFolder: {"d+", "\uea80"},
+	symbolRefresh:   {"R", "\ueb37"},
+	symbolCollapse:  {"-", "\ueac5"},
+	symbolMore:      {"...", "\uea7c"},
+	symbolOpen:      {">", "\uea94"},
+	symbolDiscard:   {"~", "\ueae2"},
+	symbolAdd:       {"+", "\uea60"},
+	symbolRemove:    {"-", "\ueb3b"},
+	symbolClose:     {"x", "\uea76"},
+	symbolLeft:      {"<", "\ueab5"},
+	symbolRight:     {">", "\ueab6"},
+	symbolDown:      {"v", "\ueab4"},
+	symbolWrench:    {"#", "\ueb65"},
+	symbolSync:      {"R", "\uea77"},
+	symbolGitHub:    {"GitHub", "\uea84"},
+	symbolCloud:     {"@", "\uebaa"},
+	symbolTag:       {"#", "\uea66"},
+	symbolCheck:     {"*", "\ueab2"},
+	symbolUp:        {"^", "\ueaa1"},
+	symbolArrowDown: {"v", "\uea9a"},
+	symbolDiff:      {"D", "\ueae1"},
+	symbolPublish:   {"^", "\ueac3"},
+	symbolWarning:   {"!", "\uea6c"},
+	symbolDot:       {"*", "\uea71"},
+}
+
+func (m *Model) symbol(name uiSymbol) string {
+	if m.nerd {
+		return uiSymbols[name].nerd
+	}
+	return uiSymbols[name].plain
+}
+
+func (m *Model) treeChevron(expanded bool) string {
+	if expanded {
+		return m.symbol(symbolDown)
+	}
+	return m.symbol(symbolRight)
+}
