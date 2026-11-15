@@ -47,6 +47,8 @@ func (m *Model) actions() []action {
 		{"explorer.newFolder", "Explorer: New Folder", "", "", func() tea.Cmd { return m.newEntry(true) }},
 		{"explorer.collapseAll", "Explorer: Collapse Folders", "", "", m.collapseFolders},
 		{"view.changes", "View: Source Control", "Ctrl+2", "", func() tea.Cmd { return m.selectSection(changes) }},
+		{"view.search", "Search: Find in Files", "Ctrl+Shift+F", "", func() tea.Cmd { return m.openSearch(false) }},
+		{"search.replace", "Search: Replace in Files", "Ctrl+Shift+H", "", func() tea.Cmd { return m.openSearch(true) }},
 		{"view.history", "View: Commit History", "Ctrl+3", "", func() tea.Cmd { return m.selectSection(history) }},
 		{"view.diff", "Diff: Toggle Side by Side", "Ctrl+D", "", func() tea.Cmd { m.split = !m.split; m.renderDiff(); return nil }},
 		{"view.sidebarLeft", "View: Move Side Bar Left", "", "", func() tea.Cmd { m.SetSidebarLayout(m.sidebarWidth, false); return nil }},

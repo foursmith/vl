@@ -29,6 +29,7 @@ const (
 	changes section = iota
 	explorer
 	history
+	search
 )
 
 type item struct {
@@ -59,6 +60,7 @@ type tab struct {
 	highlightText   string
 	spans           [][]highlight.Span
 	highlightJob    highlightJob
+	searchHighlight editorSearchCache
 	renderKey       editorRenderKey
 	renderedRows    map[int]string
 }
@@ -146,6 +148,7 @@ type Model struct {
 	palette                 []action
 	confirm                 func() tea.Cmd
 	confirmationDetail      string
+	search                  searchState
 	find                    string
 	expanded                map[string]bool
 	treeEntries             []files.Entry
@@ -176,6 +179,7 @@ func New(ctx context.Context, repo *gitservice.Repository, nerd bool) *Model {
 	input.Prompt = "> "
 	input.CharLimit = 2000
 	m := &Model{colors: theme.Dark(), ctx: ctx, cancel: cancel, repo: repo, width: 120, height: 36, nerd: nerd, sidebar: true, sidebarVisible: true, split: true, viewport: viewport.New(), input: input, diffHunk: -1, activeTab: -1, notice: "Loading repository…"}
+	m.search = newSearch()
 	m.styleInput()
 	m.resize()
 	m.expanded = map[string]bool{}
@@ -405,6 +409,16 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}
 	}()
 	switch msg := msg.(type) {
+	case searchMsg:
+		if msg.seq == m.search.seq {
+			m.search.loading = false
+			m.search.result = msg.result
+			m.sortSearchFiles()
+			if msg.err != nil {
+				m.search.err = msg.err.Error()
+			}
+			m.clampSearch()
+		}
 	case tea.ModeReportMsg:
 		return m, m.themeNotificationMode(msg)
 	case uv.DarkColorSchemeEvent:
@@ -619,6 +633,11 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			if msg.Button == tea.MouseWheelUp {
 				delta = -3
 			}
+			if m.section == search {
+				m.search.top += delta
+				m.clampSearch()
+				return m, nil
+			}
 			m.sideTop += delta
 			m.clampSidebarScroll()
 		} else if m.showEditor && m.activeTab >= 0 {
@@ -640,6 +659,9 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}
 		return m, m.key(msg)
 	case tea.PasteMsg:
+		if m.modal == "" && m.sidebar && m.section == search {
+			return m, m.searchInput(msg)
+		}
 		if m.modal != "" {
 			var cmd tea.Cmd
 			m.input, cmd = m.input.Update(msg)
@@ -656,6 +678,13 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 
 func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	k := msg.String()
+	if m.sidebar && m.section == search {
+		switch k {
+		case "ctrl+q", "ctrl+c", "ctrl+p", "ctrl+r", "ctrl+shift+p", "f1", "ctrl+1", "ctrl+2", "ctrl+3", "ctrl+4", "ctrl+shift+f", "ctrl+shift+h", "ctrl+b", "f6", "ctrl+s", "ctrl+w", "alt+left", "alt+right":
+		default:
+			return m.searchKey(msg)
+		}
+	}
 	switch k {
 	case "ctrl+q", "ctrl+c":
 		if k == "ctrl+c" && !m.sidebar && m.showEditor {
@@ -670,6 +699,10 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		return m.openPalette()
 	case "ctrl+g":
 		return m.prompt("position", "转到行 · 行:列", "")
+	case "ctrl+shift+f", "ctrl+4":
+		return m.openSearch(false)
+	case "ctrl+shift+h":
+		return m.openSearch(true)
 	case "ctrl+1":
 		return m.selectSection(explorer)
 	case "ctrl+2":

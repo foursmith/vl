@@ -33,6 +33,7 @@ const (
 	symbolWarning
 	symbolDot
 	symbolRepository
+	symbolSearch
 )
 
 var uiSymbols = [...]struct{ plain, nerd string }{
@@ -64,6 +65,7 @@ var uiSymbols = [...]struct{ plain, nerd string }{
 	symbolWarning:   {"!", "\uea6c"},
 	symbolDot:       {"*", "\uea71"},
 
+	symbolSearch:     {"S", "\uea6d"},
 	symbolRepository: {"R", "\uea62"},
 }
 

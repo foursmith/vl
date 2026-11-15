@@ -15,6 +15,7 @@ cmd/elegit                 flags, process lifetime, concrete composition
         ├── internal/diff       patch parsing, line pairing, single-hunk extraction
         ├── internal/editor     document bytes, cursor, selection, undo and save
         ├── internal/files      lazy visible-directory reads and entry creation
+        ├── internal/search     workspace discovery and compiled text matchers
         ├── internal/watcher    bounded/coalesced directory notifications
         ├── internal/highlight  TextMate scopes → Dark Modern theme spans
         ├── internal/platform    system browser opener
@@ -62,6 +63,10 @@ does not install hooks or alter a repository's configuration.
 - Snapshot and diff generations reject obsolete results and cancel replaced
   requests. Snapshot reads are bounded parallel tasks. Working-tree, index and
   commit file diffs share one request lifecycle and renderer.
+- Workspace search captures open-buffer snapshots and cancels obsolete requests.
+  Each scan reuses one compiled matcher across files; editor highlights cache the
+  matcher independently of document text. Replacement validates all target buffers
+  before editing, uses one undo step per file, and leaves saving to the editor.
 - Each expanded commit owns its file cache, directory folds and file-list request
   identity. Late lists can populate their own tree but cannot replace another
   commit's active diff. Commit rows never carry mutable Source Control targets.
@@ -80,7 +85,7 @@ does not install hooks or alter a repository's configuration.
 - Diff layout holds plain search rows; only viewport rows receive ANSI painting.
   Hunk navigation reuses the layout, and unchanged Git output reuses parsed data.
 - Editor rendering groups equal styles into runs and caches only visible rows.
-  Text, cursor, selection, focus and horizontal layout changes invalidate rows;
+  Text, cursor, selection, focus, search options and horizontal layout changes invalidate rows;
   scrolling evicts rows outside the viewport.
 - Sidebar wheel events scroll the viewport without selection or diff requests.
   Git decorations use one path index instead of a nested file/change scan.

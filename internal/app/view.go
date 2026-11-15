@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"github.com/ourongxing/elegit/internal/diff"
 	"github.com/ourongxing/elegit/internal/highlight"
+	searchservice "github.com/ourongxing/elegit/internal/search"
 	"github.com/ourongxing/elegit/internal/theme"
 )
 
@@ -123,8 +124,12 @@ func (m *Model) View() tea.View {
 		}
 		return v
 	}
+	hoveredRow := m.hoveredSidebarRow()
+	if m.section == search {
+		hoveredRow = m.searchHoveredRow()
+	}
 	key := hoverRenderKey{
-		row: m.hoveredSidebarRow(), hint: m.hoverHint(),
+		row: hoveredRow, hint: m.hoverHint(),
 		divider: m.sidebarDividerAt(m.hoverX, m.hoverY),
 	}
 	if m.hoverOnly && m.hoverRender.main != nil && m.hoverRender.key == key {
@@ -389,6 +394,7 @@ type editorRenderKey struct {
 	text                        string
 	cursor, anchor, width, left int
 	focused                     bool
+	search                      searchservice.Options
 }
 
 func (m *Model) editorLines() []string {
@@ -397,7 +403,9 @@ func (m *Model) editorLines() []string {
 	source := d.Lines()
 	line, col := d.Position()
 	a, b := d.Selection()
-	key := editorRenderKey{d.Text, d.Cursor, d.Anchor, m.mainWidth(), t.left, !m.sidebar}
+	options := m.editorSearchOptions()
+	matches := t.searchHighlight.ranges(d.Text, options)
+	key := editorRenderKey{text: d.Text, cursor: d.Cursor, anchor: d.Anchor, width: m.mainWidth(), left: t.left, focused: !m.sidebar, search: options}
 	if t.renderedRows == nil || t.renderKey != key {
 		t.renderKey = key
 		t.renderedRows = make(map[int]string, m.contentHeight())
@@ -419,6 +427,8 @@ func (m *Model) editorLines() []string {
 			continue
 		}
 		offset := d.LineOffset(i)
+		byteOffset := d.ByteOffset(offset)
+		matchIndex := editorSearchStart(matches, byteOffset)
 		bg := m.colors.Background
 		if i == line {
 			bg = m.colors.CurrentLine
@@ -442,17 +452,20 @@ func (m *Model) editorLines() []string {
 			run.WriteString(s)
 		}
 		spanIndex := 0
-		visual, runeIndex := 0, 0
+		visual, runeIndex, byteIndex := 0, 0, 0
 		input := source[i]
 		if d.PlainASCII(i) {
 			start := min(t.left, len(input))
 			input = input[start:]
-			visual, runeIndex = start, start
+			visual, runeIndex, byteIndex = start, start, start
 		}
 		iter := graphemes.FromString(input)
 		for iter.Next() {
 			cluster := iter.Value()
 			j := runeIndex
+			clusterStart := byteOffset + byteIndex
+			byteIndex += len(cluster)
+			clusterEnd := byteOffset + byteIndex
 			runeIndex += utf8.RuneCountInString(cluster)
 			start := visual
 			if start >= t.left+max(1, m.mainWidth()-7) {
@@ -479,6 +492,12 @@ func (m *Model) editorLines() []string {
 				}
 			}
 			cellBG := bg
+			for matchIndex < len(matches) && (matches[matchIndex].End <= clusterStart || matches[matchIndex].Start == matches[matchIndex].End) {
+				matchIndex++
+			}
+			if matchIndex < len(matches) && matches[matchIndex].Start < clusterEnd && matches[matchIndex].End > clusterStart {
+				cellBG = m.colors.SearchMatch
+			}
 			if offset+j >= a && offset+j < b {
 				cellBG = m.colors.Selection
 			}

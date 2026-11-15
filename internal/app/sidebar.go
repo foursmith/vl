@@ -35,6 +35,7 @@ func (m *Model) navigation() []navigationItem {
 		{1, 4, m.symbol(symbolExplorer), explorer},
 		{5, 4, m.symbol(symbolBranch), changes},
 		{9, 4, m.symbol(symbolHistory), history},
+		{13, 4, m.symbol(symbolSearch), search},
 	}
 }
 
@@ -83,6 +84,9 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 		label += strings.Repeat(" ", max(0, item.width-ansi.StringWidth(label)))
 		nav.WriteString(theme.Style(fg, m.colors.Panel).Underline(active).Render(label))
 		x = item.x + item.width
+	}
+	if m.section == search {
+		return m.searchLines(row(nav.String(), w, m.colors.Foreground, m.colors.Panel), w)
 	}
 	chevron := m.treeChevron(!m.rootCollapsed)
 	root := " " + chevron + " " + safe(strings.ToUpper(filepath.Base(m.repo.Root)))
@@ -194,10 +198,16 @@ func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 	if y >= 0 && y < headerHeight {
 		for _, item := range m.navigation() {
 			if msg.X >= item.x && msg.X < item.x+item.width {
+				if item.section == search {
+					return m.openSearch(false)
+				}
 				return m.selectSection(item.section)
 			}
 		}
 		return nil
+	}
+	if m.section == search {
+		return m.clickSearch(msg.X, y)
 	}
 	w := m.sideWidth()
 	if !m.sideShown() {

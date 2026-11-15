@@ -12,6 +12,7 @@ type Palette struct {
 	LineNumber          string
 	Border              string
 	Accent              string
+	SearchMatch         string
 	Selection           string
 	Deleted             string
 	AddedBackground     string
@@ -41,6 +42,7 @@ func Dark() Palette {
 		Border:              "#2B2B2B",
 		Accent:              "#0078D4",
 		Selection:           "#04395E",
+		SearchMatch:         "#613315",
 		Deleted:             "#F85149",
 		AddedBackground:     "#383E2A",
 		AddedText:           "#4C5A2A",
@@ -70,6 +72,7 @@ func Light() Palette {
 		Border:              "#E5E5E5",
 		Accent:              "#005FB8",
 		Selection:           "#ADD6FF",
+		SearchMatch:         "#F3C6A5",
 		Deleted:             "#AD0707",
 		AddedBackground:     "#EBF1DD",
 		AddedText:           "#D7E8B1",
