@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -32,7 +31,7 @@ func (m *Model) sidebarAt(x int) bool {
 
 func (m *Model) navigation() []navigationItem {
 	glyphs := []string{m.symbol(symbolExplorer), m.symbol(symbolSearch), m.symbol(symbolBranch), m.symbol(symbolHistory), m.symbol(symbolCompare)}
-	return []navigationItem{{1, 4, glyphs[0], explorer, false}, {5, 4, glyphs[1], explorer, true}, {9, 8, glyphs[2], changes, false}, {17, 4, glyphs[3], history, false}, {21, 4, glyphs[4], branches, false}}
+	return []navigationItem{{1, 4, glyphs[0], explorer, false}, {5, 4, glyphs[1], explorer, true}, {9, 4, glyphs[2], changes, false}, {13, 4, glyphs[3], history, false}, {17, 4, glyphs[4], branches, false}}
 }
 
 func (m *Model) rootButtons(w int) []sidebarButton {
@@ -61,14 +60,10 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 		if active {
 			fg = theme.Foreground
 		}
-		label := " " + item.glyph + " "
-		if item.section == changes && !item.search && len(m.snapshot.Changes) > 0 {
-			count := fmt.Sprintf("%d", len(m.snapshot.Changes))
-			if len(m.snapshot.Changes) > 99 {
-				count = "99+"
-			}
-			label = " " + item.glyph + " " + theme.Style("#FFFFFF", theme.Accent).Render(count) + " "
+		if item.section == changes && len(m.snapshot.Changes) > 0 {
+			fg = theme.Accent
 		}
+		label := " " + item.glyph + " "
 		label = ansi.Truncate(label, item.width, "")
 		label += strings.Repeat(" ", max(0, item.width-ansi.StringWidth(label)))
 		nav.WriteString(theme.Style(fg, theme.Panel).Underline(active).Render(label))
