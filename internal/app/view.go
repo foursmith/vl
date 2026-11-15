@@ -105,7 +105,7 @@ func (m *Model) contentHeight() int { return max(1, m.bodyHeight()-editorContent
 func (m *Model) resize() {
 	m.viewport.SetWidth(m.mainWidth())
 	m.viewport.SetHeight(m.contentHeight())
-	m.input.SetWidth(max(10, min(66, m.width-14)))
+	m.resizeInput()
 	m.renderDiff()
 	m.ensureSidebar()
 	m.ensureEditor()
@@ -469,6 +469,9 @@ func (m *Model) editorLines() []string {
 }
 
 func (m *Model) overlay(base []string) []string {
+	if m.isPicker() {
+		return m.pickerOverlay(base)
+	}
 	w := min(76, m.width-6)
 	var content []string
 	content = append(content, row(" "+safe(m.modalTitle), w-2, theme.Foreground, "#222222"))
@@ -483,34 +486,6 @@ func (m *Model) overlay(base []string) []string {
 		content = append(content, row(" Enter to confirm · Esc to cancel", w-2, theme.Muted, "#222222"))
 	} else {
 		content = append(content, row(" "+m.input.View(), w-2, theme.Foreground, "#313131"))
-	}
-	if m.isPicker() {
-		rows := m.filteredActions()
-		count := min(max(1, m.height-9), 12)
-		start := max(0, m.choice-count+1)
-		for i := start; i < min(len(rows), start+count); i++ {
-			a := rows[i]
-			bg, fg := "#222222", theme.Foreground
-			if i == m.choice {
-				bg = theme.Selection
-			}
-			if a.disabled != "" {
-				fg = theme.Muted
-			}
-			label := " " + a.label
-			if a.key != "" {
-				if m.modal == "refs" {
-					label = ansi.Truncate(label, max(1, w-ansi.StringWidth(a.key)-5), "…")
-					label += strings.Repeat(" ", max(1, w-3-ansi.StringWidth(label)-ansi.StringWidth(a.key))) + a.key
-				} else {
-					label += "  " + a.key
-				}
-			}
-			content = append(content, row(label, w-2, fg, bg))
-		}
-		if len(rows) > 0 && rows[min(m.choice, len(rows)-1)].disabled != "" {
-			content = append(content, row(" "+rows[min(m.choice, len(rows)-1)].disabled, w-2, theme.Muted, "#222222"))
-		}
 	}
 	border := theme.Style(theme.Border, "#222222")
 	box := []string{border.Render("┌" + strings.Repeat("─", w-2) + "┐")}

@@ -141,9 +141,8 @@ func TestReferencePickerMouseSelectionAndFrameWidth(t *testing.T) {
 	m := branchWorkspace(t)
 	m.openBranchPicker("")
 	m.input.SetValue("refs/heads/topic")
-	w := min(76, m.width-6)
-	x := (m.width - w) / 2
-	drain(t, m, m.clickModal(tea.MouseClickMsg{X: x + 2, Y: 6, Button: tea.MouseLeft}))
+	layout := m.pickerLayout(m.filteredActions())
+	drain(t, m, m.clickModal(tea.MouseClickMsg{X: layout.x + 2, Y: layout.y + 3, Button: tea.MouseLeft}))
 	if m.snapshot.Branch != "topic" {
 		t.Fatal("picker row click missed", m.notice)
 	}
@@ -158,37 +157,29 @@ func TestReferencePickerMouseSelectionAndFrameWidth(t *testing.T) {
 	}
 }
 
-func TestBranchSidebarUsesReferencesAndRejectsStaleCheckout(t *testing.T) {
+func TestBranchPickerRejectsStaleCheckout(t *testing.T) {
 	m := branchWorkspace(t)
 	m.openFile("README.md")
-	drain(t, m, m.selectSection(branches))
-	if len(m.items) != 2 {
-		t.Fatalf("branch sidebar included tags or omitted local branches: %d", len(m.items))
-	}
-	for i, entry := range m.items {
-		if entry.branch.Name == "topic" {
-			m.selected = i
-		}
-	}
+	m.openBranchPicker("")
+	m.input.SetValue("refs/heads/topic")
 	if _, err := m.repo.Run(m.ctx, "branch", "-f", "topic", "main"); err != nil {
 		t.Fatal(err)
 	}
-	drain(t, m, m.openSelected())
+	drain(t, m, m.selectPickerChoice())
 	if m.snapshot.Branch != "main" || !strings.Contains(m.notice, "reference changed") {
-		t.Fatal("sidebar bypassed stale reference guard", m.notice)
-	}
-	for i, entry := range m.items {
-		if entry.branch.Name == "topic" {
-			m.selected = i
-		}
+		t.Fatal("picker bypassed stale reference guard", m.notice)
 	}
 	m.document().Insert("// unsaved\n")
-	if cmd := m.openSelected(); cmd != nil || m.busy {
-		t.Fatal("sidebar checkout ignored unsaved document")
+	m.openBranchPicker("")
+	m.input.SetValue("refs/heads/topic")
+	if cmd := m.selectPickerChoice(); cmd != nil || m.busy {
+		t.Fatal("picker checkout ignored unsaved document")
 	}
 	m.document().Undo()
-	drain(t, m, m.openSelected())
+	m.openBranchPicker("")
+	m.input.SetValue("refs/heads/topic")
+	drain(t, m, m.selectPickerChoice())
 	if m.snapshot.Branch != "topic" {
-		t.Fatal("refreshed sidebar checkout failed", m.notice)
+		t.Fatal("refreshed picker checkout failed", m.notice)
 	}
 }

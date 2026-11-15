@@ -27,7 +27,6 @@ const (
 	changes section = iota
 	explorer
 	history
-	branches
 )
 
 type item struct {
@@ -36,7 +35,6 @@ type item struct {
 	change     *gitservice.Change
 	staged     bool
 	commit     *gitservice.Commit
-	branch     *gitservice.Ref
 	file       string
 	folder     string
 	depth      int
@@ -130,6 +128,7 @@ type Model struct {
 	expanded                map[string]bool
 	treeEntries             []files.Entry
 	treeSeq                 int
+	revealFile              string
 	rootCollapsed           bool
 	tabStart                int
 	closeQueue              []*editor.Document
@@ -209,18 +208,6 @@ func (m *Model) rebuildItems() {
 			c := &m.snapshot.Commits[i]
 			m.items = append(m.items, item{label: c.Short + "  " + c.Subject, key: c.ID, commit: c})
 		}
-	case branches:
-		for i := range m.snapshot.Refs {
-			b := &m.snapshot.Refs[i]
-			if b.Kind != gitservice.LocalBranch {
-				continue
-			}
-			label := "  " + b.Name
-			if b.Current {
-				label = "* " + b.Name
-			}
-			m.items = append(m.items, item{label: label, key: b.FullName, branch: b})
-		}
 	}
 	if m.selected >= 0 || m.section != explorer {
 		m.selected = min(max(0, m.selected), max(0, len(m.items)-1))
@@ -293,6 +280,7 @@ func (m *Model) clampSidebarScroll() {
 }
 
 func (m *Model) selectSection(s section) tea.Cmd {
+	m.revealFile = ""
 	m.section = s
 	m.sidebar = true
 	m.sidebarVisible = true
@@ -440,6 +428,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			return m, nil
 		}
 		if msg.err != nil {
+			m.revealFile = ""
 			m.log(msg.err.Error())
 			return m, nil
 		}
@@ -447,7 +436,17 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		m.syncWatch()
 		if m.section == explorer {
 			m.rebuildItems()
+			if m.revealFile != "" {
+				for i, entry := range m.items {
+					if entry.file == m.revealFile {
+						m.selected = i
+						m.ensureSidebar()
+						break
+					}
+				}
+			}
 		}
+		m.revealFile = ""
 	case tea.WindowSizeMsg:
 		m.width, m.height = max(1, msg.Width), max(1, msg.Height)
 		m.resize()
@@ -612,7 +611,9 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 			return m.copy(false)
 		}
 		return m.quit()
-	case "ctrl+p", "f1":
+	case "ctrl+p":
+		return m.openQuickFiles()
+	case "ctrl+shift+p", "f1":
 		return m.openPalette()
 	case "ctrl+g":
 		return m.prompt("position", "转到行 · 行:列", "")
@@ -622,8 +623,6 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		return m.selectSection(changes)
 	case "ctrl+3":
 		return m.selectSection(history)
-	case "ctrl+4":
-		return m.selectSection(branches)
 	case "ctrl+b":
 		m.sidebarVisible = !m.sidebarVisible
 		if !m.sidebarVisible {

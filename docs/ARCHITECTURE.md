@@ -25,8 +25,9 @@ cmd/elegit                 flags, process lifetime, concrete composition
 Git, diff, and editor packages do not import Bubble Tea or own widgets. The
 application owns input routing, dialogs, focus, layout, result identity, and
 operation serialization. Highlighting remains presentation data; it cannot
-change document contents. Local branch rows and the reference picker use the
-same reference records and checkout path; there is no parallel branch model.
+change document contents. The status-bar reference picker owns branch and tag
+selection through a single checkout path. File search, commands and references
+share one picker layout and click geometry.
 Source Control file, folder and group buttons share action availability rules.
 
 ## Dependencies

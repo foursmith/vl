@@ -79,10 +79,10 @@ func TestExplorerToolbarCreatesFilesAndFolders(t *testing.T) {
 	}
 }
 
-func TestHorizontalNavigationPreservesViewAndQuickOpen(t *testing.T) {
+func TestHorizontalNavigationAndFileSearch(t *testing.T) {
 	m := explorerWorkspace(t)
 	for _, nav := range m.navigation() {
-		if nav.section == changes && !nav.search {
+		if nav.section == changes {
 			drain(t, m, m.click(tea.MouseClickMsg{X: nav.x + 1, Y: tabRow, Button: tea.MouseLeft}))
 			if m.section != changes {
 				t.Fatal("source control navigation missed")

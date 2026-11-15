@@ -12,11 +12,11 @@ type rowAction struct {
 }
 
 func (m *Model) hoveredChangeRow() int {
-	if m.modal != "" || m.section != changes || m.hoverX < 0 || !m.sidebarAt(m.hoverX) || m.hoverY < sidebarHeaderRows || m.hoverY >= m.bodyHeight() {
+	if m.section != changes {
 		return -1
 	}
-	i := m.sideTop + m.hoverY - sidebarHeaderRows
-	if i < 0 || i >= len(m.items) || m.items[i].change == nil && m.items[i].folder == "" && !m.items[i].header {
+	i := m.hoveredSidebarRow()
+	if i < 0 || m.items[i].change == nil && m.items[i].folder == "" && !m.items[i].header {
 		return -1
 	}
 	return i
@@ -127,7 +127,7 @@ func (m *Model) clickChangeAction(index, x, w int) (tea.Cmd, bool) {
 		}
 		switch action.id {
 		case "open":
-			return m.editSelected(), true
+			return m.openFileInExplorer(m.items[index].change.Path), true
 		case "discard":
 			return m.discard(), true
 		case "stage":

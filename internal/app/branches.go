@@ -13,8 +13,6 @@ type browserMsg struct {
 	err    error
 }
 
-func (m *Model) isPicker() bool { return m.modal == "palette" || m.modal == "refs" }
-
 func (m *Model) openBranchPicker(mode string) tea.Cmd {
 	m.palette = nil
 	if mode == "" {
@@ -56,7 +54,7 @@ func (m *Model) openBranchPicker(mode string) tea.Cmd {
 		title = "选择以分离 HEAD 签出的引用"
 	}
 	cmd := m.prompt("refs", title, "")
-	m.input.Placeholder = "输入分支、标签名称或提交号"
+	m.input.Placeholder = title + " · 输入名称或提交号"
 	return cmd
 }
 
@@ -133,21 +131,6 @@ func (m *Model) createBranch(name string) tea.Cmd {
 	start := m.branchStart
 	m.branchStart = ""
 	return m.operation("Create branch", func() (string, error) { return m.repo.CreateBranch(m.ctx, name, start) })
-}
-
-func (m *Model) selectPickerChoice() tea.Cmd {
-	rows := m.filteredActions()
-	if len(rows) == 0 {
-		return nil
-	}
-	a := rows[min(m.choice, len(rows)-1)]
-	if a.disabled != "" {
-		m.notice = a.disabled
-		return nil
-	}
-	m.modal = ""
-	m.input.Blur()
-	return a.run()
 }
 
 func (m *Model) goToPosition(value string) tea.Cmd {

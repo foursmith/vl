@@ -21,10 +21,17 @@ func (m *Model) keepEditedTabs() {
 	}
 }
 
-func (m *Model) openFile(path string) tea.Cmd        { return m.openDocument(path, false) }
-func (m *Model) openPreviewFile(path string) tea.Cmd { return m.openDocument(path, true) }
+func (m *Model) openFile(path string) tea.Cmd {
+	m.openDocument(path, false)
+	return nil
+}
 
-func (m *Model) openDocument(path string, preview bool) tea.Cmd {
+func (m *Model) openPreviewFile(path string) tea.Cmd {
+	m.openDocument(path, true)
+	return nil
+}
+
+func (m *Model) openDocument(path string, preview bool) bool {
 	defer m.syncWatch()
 	m.keepEditedTabs()
 	abs := path
@@ -41,13 +48,13 @@ func (m *Model) openDocument(path string, preview bool) tea.Cmd {
 				m.tabs[i].preview = false
 			}
 			m.activateTab(i)
-			return nil
+			return true
 		}
 	}
 	d, err := editor.Open(abs)
 	if err != nil {
 		m.log(err.Error())
-		return nil
+		return false
 	}
 	next := tab{doc: d, preview: preview}
 	if preview {
@@ -56,13 +63,13 @@ func (m *Model) openDocument(path string, preview bool) tea.Cmd {
 				m.tabs[i].highlightJob.stop()
 				m.tabs[i] = next
 				m.activateTab(i)
-				return nil
+				return true
 			}
 		}
 	}
 	m.tabs = append(m.tabs, next)
 	m.activateTab(len(m.tabs) - 1)
-	return nil
+	return true
 }
 
 func (m *Model) activateTab(index int) {
@@ -419,25 +426,7 @@ func (m *Model) tabBar() string {
 
 func (m *Model) clickModal(msg tea.MouseClickMsg) tea.Cmd {
 	if m.isPicker() {
-		rows := m.filteredActions()
-		count := min(max(1, m.height-9), 12)
-		start := max(0, m.choice-count+1)
-		visible := min(len(rows)-start, count)
-		h := visible + 4
-		if len(rows) > 0 && rows[min(m.choice, len(rows)-1)].disabled != "" {
-			h++
-		}
-		w := min(76, m.width-6)
-		x := (m.width - w) / 2
-		y := min(3, max(0, m.height-h-1))
-		m.modal = ""
-		m.input.Blur()
-		i := start + msg.Y - y - 3
-		if msg.Button == tea.MouseLeft && msg.X > x && msg.X < x+w-1 && msg.Y >= y+3 && msg.Y < y+3+visible && i < len(rows) {
-			m.choice = i
-			return m.selectPickerChoice()
-		}
-		return nil
+		return m.clickPicker(msg)
 	}
 	if m.modal != "close" {
 		return m.updateModal(tea.KeyPressMsg{Code: tea.KeyEscape})

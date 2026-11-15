@@ -1,6 +1,7 @@
 package app
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -22,9 +23,9 @@ func TestNavigationAndTabsShareCompactHeaderWithoutTitleBar(t *testing.T) {
 	if len(lines) != m.height || m.bodyHeight() != m.height-1 {
 		t.Fatal("title bar space was not reclaimed")
 	}
-	second := ansi.Strip(lines[sidebarTitleRow])
-	if !strings.Contains(second, "资源管理器") || !strings.Contains(second, "file0.go") {
-		t.Fatalf("sidebar title and breadcrumbs are separated by a blank row: %q", second)
+	second := ansi.Strip(lines[sidebarRootRow])
+	if !strings.Contains(second, strings.ToUpper(filepath.Base(m.repo.Root))) || !strings.Contains(second, "file0.go") {
+		t.Fatalf("repository root and breadcrumbs are separated by a blank row: %q", second)
 	}
 	if !strings.Contains(ansi.Strip(lines[editorContentRow]), "package main") {
 		t.Fatal("editor content starts at the wrong row")
@@ -45,8 +46,8 @@ func TestNavigationAndTabsShareCompactHeaderWithoutTitleBar(t *testing.T) {
 	}
 }
 
-func TestPickerAnyClickDismissesWithoutClickThrough(t *testing.T) {
-	for _, point := range []struct{ x, y int }{{0, 0}, {23, 5}, {23, 3}, {119, 35}} {
+func TestPickerOutsideClickDismissesWithoutClickThrough(t *testing.T) {
+	for _, point := range []struct{ x, y int }{{0, 0}, {23, 0}, {23, 20}, {119, 35}} {
 		m := tabWorkspace(t, 0)
 		m.openPalette()
 		before := m.section
@@ -59,7 +60,8 @@ func TestPickerAnyClickDismissesWithoutClickThrough(t *testing.T) {
 	executed := false
 	m.palette = []action{{label: "Run", run: func() tea.Cmd { executed = true; return nil }}}
 	m.prompt("palette", "Commands", "")
-	m.Update(tea.MouseClickMsg{X: 24, Y: 6, Button: tea.MouseLeft})
+	l := m.pickerLayout(m.filteredActions())
+	m.Update(tea.MouseClickMsg{X: l.x + 2, Y: l.y + 3, Button: tea.MouseLeft})
 	if !executed || m.modal != "" {
 		t.Fatal("command click did not execute and dismiss")
 	}

@@ -14,6 +14,22 @@ type treeMsg struct {
 	err     error
 }
 
+func (m *Model) openFileInExplorer(path string) tea.Cmd {
+	if !m.openDocument(path, false) {
+		return nil
+	}
+	m.section = explorer
+	m.sidebarVisible = true
+	m.rootCollapsed = false
+	for parent := filepath.ToSlash(filepath.Dir(path)); parent != "." && parent != "/"; parent = filepath.ToSlash(filepath.Dir(parent)) {
+		m.expanded[parent] = true
+	}
+	m.revealFile = path
+	m.rebuildItems()
+	m.resize()
+	return m.refreshTree()
+}
+
 func (m *Model) refreshTree() tea.Cmd {
 	m.treeSeq++
 	seq := m.treeSeq

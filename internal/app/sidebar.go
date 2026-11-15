@@ -10,15 +10,13 @@ import (
 	"github.com/ourongxing/elegit/internal/theme"
 )
 
-const sidebarTitleRow = headerHeight
-const sidebarRootRow = headerHeight + 1
-const sidebarHeaderRows = headerHeight + 2
+const sidebarRootRow = headerHeight
+const sidebarHeaderRows = headerHeight + 1
 
 type navigationItem struct {
 	x, width int
 	glyph    string
 	section  section
-	search   bool
 }
 type sidebarButton struct {
 	x              int
@@ -30,8 +28,11 @@ func (m *Model) sidebarAt(x int) bool {
 }
 
 func (m *Model) navigation() []navigationItem {
-	glyphs := []string{m.symbol(symbolExplorer), m.symbol(symbolSearch), m.symbol(symbolBranch), m.symbol(symbolHistory), m.symbol(symbolCompare)}
-	return []navigationItem{{1, 4, glyphs[0], explorer, false}, {5, 4, glyphs[1], explorer, true}, {9, 4, glyphs[2], changes, false}, {13, 4, glyphs[3], history, false}, {17, 4, glyphs[4], branches, false}}
+	return []navigationItem{
+		{1, 4, m.symbol(symbolExplorer), explorer},
+		{5, 4, m.symbol(symbolBranch), changes},
+		{9, 4, m.symbol(symbolHistory), history},
+	}
 }
 
 func (m *Model) rootButtons(w int) []sidebarButton {
@@ -46,6 +47,17 @@ func (m *Model) rootButtons(w int) []sidebarButton {
 
 func (m *Model) sidebarLines() []string { return m.sidebarLinesWidth(m.sideWidth()) }
 
+func (m *Model) hoveredSidebarRow() int {
+	if m.modal != "" || m.hoverX < 0 || !m.sidebarAt(m.hoverX) || m.hoverY < sidebarHeaderRows || m.hoverY >= m.bodyHeight() {
+		return -1
+	}
+	i := m.sideTop + m.hoverY - sidebarHeaderRows
+	if i < 0 || i >= len(m.items) {
+		return -1
+	}
+	return i
+}
+
 func (m *Model) sidebarLinesWidth(w int) []string {
 	if w == 0 {
 		return nil
@@ -55,7 +67,7 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 	x := 0
 	for _, item := range m.navigation() {
 		nav.WriteString(row("", item.x-x, theme.Foreground, theme.Panel))
-		active := !item.search && item.section == m.section
+		active := item.section == m.section
 		fg := theme.Muted
 		if active {
 			fg = theme.Foreground
@@ -69,9 +81,6 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 		nav.WriteString(theme.Style(fg, theme.Panel).Underline(active).Render(label))
 		x = item.x + item.width
 	}
-	titles := map[section]string{explorer: "资源管理器", changes: "源代码管理", history: "提交历史", branches: "分支"}
-	title := "  " + titles[m.section]
-	title += strings.Repeat(" ", max(1, w-ansi.StringWidth(title)-4)) + row(m.symbol(symbolMore), 3, theme.Muted, theme.Panel) + " "
 	chevron := m.treeChevron(!m.rootCollapsed)
 	root := " " + chevron + " " + safe(strings.ToUpper(filepath.Base(m.repo.Root)))
 	if m.section == explorer {
@@ -81,8 +90,11 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 			root += row("", button.x-ansi.StringWidth(root), theme.Foreground, theme.Panel) + row(" "+button.glyph, 3, theme.Muted, theme.Panel)
 		}
 	}
-	lines := []string{row(nav.String(), w, theme.Foreground, theme.Panel), row(title, w, theme.Muted, theme.Panel), row(root, w, theme.Foreground, theme.Panel)}
+	lines := []string{row(nav.String(), w, theme.Foreground, theme.Panel), row(root, w, theme.Foreground, theme.Panel)}
 	hovered := m.hoveredChangeRow()
+	if m.section == explorer {
+		hovered = m.hoveredSidebarRow()
+	}
 	for y := sidebarHeaderRows; y < h; y++ {
 		i := m.sideTop + y - sidebarHeaderRows
 		text := ""
@@ -100,7 +112,7 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 			}
 			if m.section == explorer || m.section == changes {
 				text, fg = m.explorerRow(entry, w, bg)
-				if i == hovered {
+				if m.section == changes && i == hovered {
 					text = m.changeActionRow(entry, w, fg, bg)
 				}
 			} else {
@@ -163,9 +175,6 @@ func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 	if y >= 0 && y < headerHeight {
 		for _, item := range m.navigation() {
 			if msg.X >= item.x && msg.X < item.x+item.width {
-				if item.search {
-					return m.openQuickFiles()
-				}
 				return m.selectSection(item.section)
 			}
 		}
@@ -174,13 +183,6 @@ func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 	w := m.sideWidth()
 	if !m.sideShown() {
 		w = m.width
-	}
-	if y == sidebarTitleRow && msg.X >= w-4 {
-		cmd := m.openPalette()
-		if m.section == explorer {
-			m.input.SetValue("Explorer:")
-		}
-		return cmd
 	}
 	if y == sidebarRootRow && m.section == explorer {
 		for _, button := range m.rootButtons(w) {
@@ -227,16 +229,8 @@ func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 		return cmd
 	}
 	m.lastClickKey = ""
-	if m.section == explorer || m.section == branches || entry.folder != "" {
+	if m.section == explorer || entry.folder != "" {
 		return m.openSelected()
 	}
 	return m.preview()
-}
-
-func (m *Model) openQuickFiles() tea.Cmd {
-	m.palette = nil
-	for _, path := range m.snapshot.Files {
-		m.palette = append(m.palette, action{id: path, label: path, run: func() tea.Cmd { return m.openFile(path) }})
-	}
-	return m.prompt("palette", "打开文件", "")
 }

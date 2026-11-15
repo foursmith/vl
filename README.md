@@ -91,8 +91,8 @@ Subdirectories and file paths resolve to their enclosing repository.
 - TextMate syntax highlighting with VS Code Dark Modern token rules, including font styles, for recognized languages up to 256 KiB.
 - Searchable commands, disabled-command explanations, and Git output panel.
 
-Commands are available from **Ctrl+P**, **F1**, or the sidebar's **···** menu. Clean tabs close
-immediately; unsaved files offer **Save / Discard / Cancel**, using either the
+Search files with **Ctrl+P**. Commands are available from **Ctrl+Shift+P** or **F1**.
+Clean tabs close immediately; unsaved files offer **Save / Discard / Cancel**, using either the
 buttons or **S / D / Esc**. File mutations and Git operations run only when requested; refreshing
 the view does not stage, commit, fetch, or change branches.
 
@@ -100,8 +100,9 @@ the view does not stage, commit, fetch, or change branches.
 
 | Context | Key | Action |
 |---|---|---|
-| Global | Ctrl+1 / 2 / 3 / 4 | Explorer / Source Control / History / Branches |
-| Global | Ctrl+P or F1 | Commands |
+| Global | Ctrl+1 / 2 / 3 | Explorer / Source Control / History |
+| Global | Ctrl+P | Search files |
+| Global | Ctrl+Shift+P or F1 | Commands |
 | Global | F6 / Esc | Switch focus / focus sidebar |
 | Global | Ctrl+B / Ctrl+J | Toggle sidebar / output |
 | Global | Ctrl+D | Toggle unified / side-by-side diff |

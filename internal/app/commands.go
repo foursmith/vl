@@ -41,7 +41,6 @@ func (m *Model) actions() []action {
 		{"explorer.collapseAll", "Explorer: Collapse Folders", "", "", m.collapseFolders},
 		{"view.changes", "View: Source Control", "Ctrl+2", "", func() tea.Cmd { return m.selectSection(changes) }},
 		{"view.history", "View: Commit History", "Ctrl+3", "", func() tea.Cmd { return m.selectSection(history) }},
-		{"view.branches", "View: Branches", "Ctrl+4", "", func() tea.Cmd { return m.selectSection(branches) }},
 		{"view.diff", "Diff: Toggle Side by Side", "Ctrl+D", "", func() tea.Cmd { m.split = !m.split; m.renderDiff(); return nil }},
 		{"view.output", "View: Toggle Output", "Ctrl+J", "", func() tea.Cmd { m.outputVisible = !m.outputVisible; m.resize(); return nil }},
 		{"git.refresh", "Git: Refresh", "F5", "", m.refresh},
@@ -75,7 +74,6 @@ func (m *Model) actions() []action {
 
 func (m *Model) openPalette() tea.Cmd {
 	m.palette = m.actions()
-	m.choice = 0
 	return m.prompt("palette", "Commands", "")
 }
 
@@ -97,9 +95,28 @@ func (m *Model) prompt(kind, title, value string) tea.Cmd {
 	m.modal, m.modalTitle = kind, title
 	m.input.SetValue(value)
 	m.input.Placeholder = ""
+	m.input.Prompt = "> "
+	m.resizeInput()
+	if m.isPicker() && title != "Commands" {
+		m.input.Placeholder = title
+	}
+	if kind == "files" {
+		m.input.Prompt = ""
+		m.input.Placeholder = "按名称搜索文件"
+	} else if kind == "refs" {
+		m.input.Prompt = ""
+	}
 	m.input.CursorEnd()
 	m.choice = 0
 	return m.input.Focus()
+}
+
+func (m *Model) resizeInput() {
+	width := max(10, min(66, m.width-14))
+	if m.isPicker() {
+		width = max(1, min(96, m.width-4)-4)
+	}
+	m.input.SetWidth(width)
 }
 
 func (m *Model) ask(title string, run func() tea.Cmd) tea.Cmd {
@@ -110,6 +127,14 @@ func (m *Model) ask(title string, run func() tea.Cmd) tea.Cmd {
 
 func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 	k := msg.String()
+	if m.isPicker() {
+		switch k {
+		case "ctrl+p":
+			return m.openQuickFiles()
+		case "ctrl+shift+p", "f1":
+			return m.openPalette()
+		}
+	}
 	if m.modal == "close" {
 		switch k {
 		case "s", "enter":
@@ -313,9 +338,6 @@ func (m *Model) openSelected() tea.Cmd {
 	}
 	if entry.file != "" {
 		return m.openFile(entry.file)
-	}
-	if entry.branch != nil {
-		return m.checkout(*entry.branch, false)
 	}
 
 	m.sidebar = false

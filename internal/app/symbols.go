@@ -6,15 +6,12 @@ type uiSymbol int
 
 const (
 	symbolExplorer uiSymbol = iota
-	symbolSearch
 	symbolBranch
 	symbolHistory
-	symbolCompare
 	symbolNewFile
 	symbolNewFolder
 	symbolRefresh
 	symbolCollapse
-	symbolMore
 	symbolOpen
 	symbolDiscard
 	symbolAdd
@@ -39,15 +36,12 @@ const (
 
 var uiSymbols = [...]struct{ plain, nerd string }{
 	symbolExplorer:  {"E", "\ueaf0"},
-	symbolSearch:    {"/", "\uea6d"},
 	symbolBranch:    {"G", "\uea68"},
 	symbolHistory:   {"H", "\uea82"},
-	symbolCompare:   {"B", "\ueafd"},
 	symbolNewFile:   {"f+", "\uea7f"},
 	symbolNewFolder: {"d+", "\uea80"},
 	symbolRefresh:   {"R", "\ueb37"},
 	symbolCollapse:  {"-", "\ueac5"},
-	symbolMore:      {"...", "\uea7c"},
 	symbolOpen:      {">", "\uea94"},
 	symbolDiscard:   {"~", "\ueae2"},
 	symbolAdd:       {"+", "\uea60"},
