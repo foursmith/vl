@@ -31,7 +31,7 @@ selection through a single checkout path. Repository-header branch labels reuse
 the same picker with an explicit repository target, retained when selecting a
 create-from reference or entering a new branch name. File search, commands and references
 share one picker layout and click geometry.
-Source Control file, folder and group buttons share action availability rules.
+Changes file, folder and group buttons share action availability rules.
 Changes and History share repository headers. History state and asynchronous
 file-list results use repository plus commit ID as their identity, since the same
 commit can appear in more than one repository. Child history files retain workspace
@@ -69,7 +69,7 @@ does not install hooks or alter a repository's configuration.
   before editing, uses one undo step per file, and leaves saving to the editor.
 - Each expanded commit owns its file cache, directory folds and file-list request
   identity. Late lists can populate their own tree but cannot replace another
-  commit's active diff. Commit rows never carry mutable Source Control targets.
+  commit's active diff. Commit rows never carry mutable Changes targets.
 - Only one Git mutation runs at a time. Background polling pauses during it;
   success or failure is followed by a refresh.
 - Hunk application first checks the current diff against the displayed diff.

@@ -46,7 +46,7 @@ Subdirectories and file paths resolve to their enclosing repository.
   Failed opens preserve the current workspace; unsaved editor changes and
   active Git operations block switching.
 - Staged, unstaged, untracked, and conflicted file status; automatic refresh.
-- Source Control groups use folder trees with independent folding for staged
+- Changes groups use folder trees with independent folding for staged
   and worktree changes. Group headers also collapse independently and retain
   their file counts and batch actions while collapsed. Mouse-wheel scrolling
   moves the sidebar viewport without selecting files or requesting diffs. Click or press Enter to
@@ -147,7 +147,7 @@ Subdirectories and file paths resolve to their enclosing repository.
   to restore automatic sizing. Width and position are saved on exit in
   `elegit/layout.json` under the OS user configuration directory. Narrow terminals
   keep the single-surface sidebar/content layout.
-- Source Control uses the same collapsible repository section for ordinary
+- Changes uses the same collapsible repository section for ordinary
   repositories, parents and initialized submodules, including clean repositories. Each section shows
   its branch, its own staged/worktree file trees, and refresh,
   commit and stage buttons. Child file paths are relative to that repository.
@@ -162,7 +162,7 @@ Subdirectories and file paths resolve to their enclosing repository.
   Click the commit button or press C to edit a draft. The commit prompt names
   the repository and branch; only that repository's staged files are committed.
   A failed commit keeps its draft.
-- C and A in Source Control commit or stage all in the selected repository.
+- C and A in Changes commit or stage all in the selected repository.
   File/folder/group actions, diffs, hunk staging, unstaging and discard also stay
   within their owning repository. Parent submodule summaries remain visible with
   an S marker; internal child edits are staged and committed in the child section.
@@ -180,7 +180,7 @@ the view does not stage, commit, fetch, or change branches.
 
 | Context | Key | Action |
 |---|---|---|
-| Global | Ctrl+1 / 2 / 3 | Explorer / Source Control / History |
+| Global | Ctrl+1 / 2 / 3 | Explorer / Changes / History |
 | Global | Ctrl+P | Search files |
 | Global | Ctrl+Shift+P or F1 | Commands |
 | Global | F6 / Esc | Switch focus / focus sidebar |
@@ -199,9 +199,9 @@ the view does not stage, commit, fetch, or change branches.
 | Global | Ctrl+Q | Quit, with unsaved-changes confirmation |
 | Sidebar | Up/Down or K/J | Select entry |
 | Sidebar | Enter or Right | Open file/diff, toggle folder, or switch branch |
-| Source Control | E | Edit selected file |
-| Source Control | Space | Toggle file staging |
-| Source Control | S / U / A / C | Stage / unstage / stage all / commit |
+| Changes | E | Edit selected file |
+| Changes | Space | Toggle file staging |
+| Changes | S / U / A / C | Stage / unstage / stage all / commit |
 | Diff | [ / ] or P / N | Previous / next hunk |
 | Diff | S / U | Stage / unstage selected hunk |
 | Diff | E / Tab | Edit file / toggle diff layout |

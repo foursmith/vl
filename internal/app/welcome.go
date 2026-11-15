@@ -35,7 +35,7 @@ var welcomeActions = []welcomeAction{
 	{"Show All Commands", "F1", "commands"},
 	{"Go to File", "Ctrl+P", "files"},
 	{"Open Recent Folder", "Ctrl+R", "recent"},
-	{"Source Control", "Ctrl+2", "changes"},
+	{"Changes", "Ctrl+2", "changes"},
 }
 
 func (m *Model) welcomeVisible() bool {

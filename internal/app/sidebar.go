@@ -74,15 +74,12 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 		active := item.section == m.section
 		fg := m.colors.Muted
 		if active {
-			fg = m.colors.Foreground
-		}
-		if item.section == changes && len(m.snapshot.Changes) > 0 {
 			fg = m.colors.Accent
 		}
 		label := " " + item.glyph + " "
 		label = ansi.Truncate(label, item.width, "")
 		label += strings.Repeat(" ", max(0, item.width-ansi.StringWidth(label)))
-		nav.WriteString(theme.Style(fg, m.colors.Panel).Underline(active).Render(label))
+		nav.WriteString(theme.Style(fg, m.colors.Panel).Render(label))
 		x = item.x + item.width
 	}
 	if m.section == search {
@@ -91,7 +88,7 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 	chevron := m.treeChevron(!m.rootCollapsed)
 	root := " " + chevron + " " + safe(strings.ToUpper(filepath.Base(m.repo.Root)))
 	if m.section == changes {
-		root = " SOURCE CONTROL"
+		root = " CHANGES"
 	}
 	if m.section == history {
 		root = " COMMIT HISTORY"

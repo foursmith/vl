@@ -19,7 +19,7 @@ func (m *Model) actions() []action {
 	commitLabel, stageAllLabel := "Git: Commit Staged Changes"+suffix, "Git: Stage All Changes"+suffix
 	fileReason := ""
 	if m.current() == nil || m.current().change == nil {
-		fileReason = "Select a file in Source Control"
+		fileReason = "Select a file in Changes"
 	}
 	docReason := ""
 	tabReason := ""
@@ -28,7 +28,7 @@ func (m *Model) actions() []action {
 	}
 	openReason := ""
 	if m.current() == nil || m.current().change == nil && m.current().file == "" {
-		openReason = "Select a file in Explorer or Source Control"
+		openReason = "Select a file in Explorer or Changes"
 	}
 	if !m.showEditor || m.document() == nil {
 		docReason = "Open a text file first"
@@ -46,7 +46,7 @@ func (m *Model) actions() []action {
 		{"explorer.newFile", "Explorer: New File", "", "", func() tea.Cmd { return m.newEntry(false) }},
 		{"explorer.newFolder", "Explorer: New Folder", "", "", func() tea.Cmd { return m.newEntry(true) }},
 		{"explorer.collapseAll", "Explorer: Collapse Folders", "", "", m.collapseFolders},
-		{"view.changes", "View: Source Control", "Ctrl+2", "", func() tea.Cmd { return m.selectSection(changes) }},
+		{"view.changes", "View: Changes", "Ctrl+2", "", func() tea.Cmd { return m.selectSection(changes) }},
 		{"view.search", "Search: Find in Files", "Ctrl+Shift+F", "", func() tea.Cmd { return m.openSearch(false) }},
 		{"search.replace", "Search: Replace in Files", "Ctrl+Shift+H", "", func() tea.Cmd { return m.openSearch(true) }},
 		{"view.history", "View: Commit History", "Ctrl+3", "", func() tea.Cmd { return m.selectSection(history) }},

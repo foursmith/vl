@@ -27,7 +27,7 @@ the acceptance scope; unchecked capabilities are not implied by the first build.
 - [x] File tree, tabs, grapheme-aware Unicode editing, selection, clipboard, undo/redo, save.
 - [x] External file monitoring, clean-buffer reload and dirty-buffer conflict protection.
 - [x] Palette, output, current-content find, responsive focus/layout.
-- [x] Separate Source Control sections for submodules, with independent branches,
+- [x] Separate Changes sections for submodules, with independent branches,
       staged/worktree trees, message drafts and commits; file actions use the owning repository.
 
 ## Diff completeness — next

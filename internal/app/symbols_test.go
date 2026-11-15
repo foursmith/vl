@@ -2,13 +2,17 @@ package app
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"unicode"
 	"unicode/utf8"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
 	gitservice "github.com/ourongxing/elegit/internal/git"
+	"github.com/ourongxing/elegit/internal/theme"
 )
 
 func TestControlSymbolsHaveNarrowGlyphsAndASCIIFallbacks(t *testing.T) {
@@ -82,6 +86,47 @@ func TestSymbolModesPreserveLayoutAcrossWidthsAndHoverTargets(t *testing.T) {
 			}
 			m.modal = ""
 			m.input.Blur()
+		}
+	}
+}
+
+func TestSidebarNavigationUsesActiveColorWithoutChangeDecoration(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	for _, colors := range []theme.Palette{theme.Dark(), theme.Light()} {
+		m.colors = colors
+		for _, nerd := range []bool{false, true} {
+			m.nerd = nerd
+			for _, dirty := range []bool{false, true} {
+				m.snapshot.Changes = nil
+				if dirty {
+					m.snapshot.Changes = []gitservice.Change{{Path: "main.go", Worktree: 'M'}}
+				}
+				for _, active := range []section{explorer, changes, history, search} {
+					m.section = active
+					nav := m.sidebarLinesWidth(40)[0]
+					for _, item := range m.navigation() {
+						want := colors.Muted
+						if item.section == active {
+							want = colors.Accent
+						}
+						cells := uv.NewStyledString(ansi.Cut(nav, item.x, item.x+item.width)).Lines(ansi.GraphemeWidth)[0]
+						for _, cell := range cells {
+							if !sameColor(cell.Style.Fg, lipgloss.Color(want)) || cell.Style.Underline != 0 {
+								t.Fatalf("theme=%s icons=%v dirty=%v active=%d tab=%d: wrong navigation style", colors.Panel, nerd, dirty, active, item.section)
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	m.section = changes
+	if !strings.Contains(plain(m.sidebarLinesWidth(40)[1]), "CHANGES") {
+		t.Fatal("Changes title not renamed")
+	}
+	for _, a := range m.actions() {
+		if a.id == "view.changes" && a.label != "View: Changes" {
+			t.Fatal("Changes command not renamed")
 		}
 	}
 }
