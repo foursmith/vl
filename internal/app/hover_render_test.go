@@ -60,7 +60,7 @@ func TestAllSidebarTreesShareHoverRendering(t *testing.T) {
 				assertFreshHoverFrame(t, m)
 				cells := uv.NewStyledString(m.sidebarLines()[y]).Lines(ansi.GraphemeWidth)[0]
 				for _, cell := range cells {
-					if !sameColor(cell.Style.Bg, lipgloss.Color(theme.Hover)) {
+					if !sameColor(cell.Style.Bg, lipgloss.Color(theme.Dark().Hover)) {
 						t.Fatal("tree row did not use the shared hover background")
 					}
 				}

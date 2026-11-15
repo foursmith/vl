@@ -6,7 +6,8 @@ The editor stays deliberately smaller than a language IDE.
 
 The workbench aligns sidebar navigation and editor tabs in a compact single-row
 header, followed by content controls, an optional output panel, and a status bar.
-Colors follow **VS Code Modern Dark**. File associations and colors follow
+Colors follow **VS Code Dark Modern / Light Modern**, automatically selected
+from terminal color scheme notifications by default. File associations and colors follow
 **Material Icon Theme**, adapted to Nerd Font glyphs for terminal display.
 Interface controls use Codicons from Nerd Fonts with fixed cell widths;
 `-icons=false` uses ASCII controls and file/folder markers.
@@ -23,6 +24,9 @@ terminal password prompts are disabled.
 ```sh
 make build
 bin/elegit /path/to/repository
+
+# Override automatic theme detection (also available via F1 → Preferences: Color Theme):
+bin/elegit -theme light /path/to/repository
 
 # Plain-text icons when the terminal font lacks Nerd Font glyphs:
 bin/elegit -icons=false /path/to/repository
@@ -100,7 +104,12 @@ Subdirectories and file paths resolve to their enclosing repository.
   copy/cut/paste, undo/redo, find, and save. Existing BOM, uniform CRLF/LF, final
   newline presence, and file permissions survive saves. External modifications
   are checked before replacing a file.
-- TextMate syntax highlighting with VS Code Dark Modern token rules, including font styles, for recognized languages up to 256 KiB.
+- Automatically follow terminal color scheme notifications (DEC 2031), with immediate
+  updates while running. Terminals without this protocol keep the dark default.
+  Choose Auto, Light Modern or Dark Modern from **F1 → Preferences: Color Theme**.
+  The choice is saved on exit in `layout.json` and retained when opening another repository.
+  `-theme auto` / `-theme light` / `-theme dark` overrides the saved choice at startup.
+- TextMate syntax highlighting with VS Code Dark Modern / Light Modern token rules, including font styles, for recognized languages up to 256 KiB.
 - Drag the sidebar divider to resize it. Use **View: Move Side Bar Right/Left**
   in the command palette (**F1**) to change its position, or **View: Reset Side Bar Width**
   to restore automatic sizing. Width and position are saved on exit in

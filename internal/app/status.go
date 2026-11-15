@@ -5,7 +5,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/elegit/internal/theme"
 )
 
 type statusSegment struct {
@@ -57,14 +56,14 @@ func (m *Model) statusLayout() []statusSegment {
 	} else if m.snapshot.Upstream != "" {
 		sync += " " + m.symbol(symbolWarning)
 	}
-	githubColor := theme.Foreground
+	githubColor := m.colors.Foreground
 	if m.snapshot.GitHubURL == "" {
-		githubColor = theme.Muted
+		githubColor = m.colors.Muted
 	}
-	left := []statusSegment{{id: "branch", text: branchIcon + " " + branch, color: theme.Foreground}, {id: "sync", text: sync, color: theme.Foreground}, {id: "github", text: githubIcon, color: githubColor}, {id: "changes", text: fmt.Sprintf("%s %d", m.symbol(symbolDiff), rootChanges), color: theme.Muted}}
+	left := []statusSegment{{id: "branch", text: branchIcon + " " + branch, color: m.colors.Foreground}, {id: "sync", text: sync, color: m.colors.Foreground}, {id: "github", text: githubIcon, color: githubColor}, {id: "changes", text: fmt.Sprintf("%s %d", m.symbol(symbolDiff), rootChanges), color: m.colors.Muted}}
 	if conflicts > 0 {
 		left[3].text = fmt.Sprintf("%s %d", m.symbol(symbolWarning), conflicts)
-		left[3].color = theme.Deleted
+		left[3].color = m.colors.Deleted
 	}
 	var result []statusSegment
 	x := 0
@@ -91,7 +90,7 @@ func (m *Model) statusLayout() []statusSegment {
 	rightWidth := 0
 	for _, segment := range candidates {
 		segment.width = ansi.StringWidth(segment.text) + 2
-		segment.color = theme.Foreground
+		segment.color = m.colors.Foreground
 		if x+rightWidth+segment.width+1 <= m.width {
 			right = append(right, segment)
 			rightWidth += segment.width
@@ -104,7 +103,7 @@ func (m *Model) statusLayout() []statusSegment {
 	}
 	if gap := rightX - x; gap > 10 && notice != "" {
 		text := ansi.Truncate(safe(notice), gap-2, "…")
-		result = append(result, statusSegment{id: "notice", x: x, width: gap, text: text, color: theme.Muted})
+		result = append(result, statusSegment{id: "notice", x: x, width: gap, text: text, color: m.colors.Muted})
 	}
 	for _, segment := range right {
 		segment.x = rightX
@@ -118,10 +117,10 @@ func (m *Model) statusLine() string {
 	text := ""
 	x := 0
 	for _, segment := range m.statusLayout() {
-		text += row("", segment.x-x, theme.Foreground, theme.Panel) + row(" "+segment.text+" ", segment.width, segment.color, theme.Panel)
+		text += row("", segment.x-x, m.colors.Foreground, m.colors.Panel) + row(" "+segment.text+" ", segment.width, segment.color, m.colors.Panel)
 		x = segment.x + segment.width
 	}
-	return row(text, m.width, theme.Foreground, theme.Panel)
+	return row(text, m.width, m.colors.Foreground, m.colors.Panel)
 }
 
 func (m *Model) clickStatus(x int) tea.Cmd {

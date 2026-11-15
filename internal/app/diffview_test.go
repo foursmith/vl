@@ -21,7 +21,7 @@ func TestDiffThemeGuttersSyntaxAndMissingLines(t *testing.T) {
 	m.diffPath = "file.go"
 	m.patch = diff.Parse("--- a/file.go\n+++ b/file.go\n@@ -9999,2 +9999,3 @@\n-var old = 1\n+var value = 2\n+// added\n same\n")
 	m.renderDiff()
-	m.diffSyntax = diffSpans(m.ctx, m.patch, m.diffPath)
+	m.diffSyntax = diffSpans(m.ctx, m.patch, m.diffPath, m.light)
 	foundSyntax, foundPlaceholder := false, false
 	for _, pair := range m.diffRows {
 		if pair.Right == nil || pair.Left == nil {
@@ -39,22 +39,22 @@ func TestDiffThemeGuttersSyntaxAndMissingLines(t *testing.T) {
 				t.Fatal("diff row width changed")
 			}
 			cells := uv.NewStyledString(rendered).Lines(ansi.GraphemeWidth)[0]
-			bg := theme.AddedBackground
+			bg := theme.Dark().AddedBackground
 			if line.Kind == diff.Deleted {
-				bg = theme.DeletedBackground
+				bg = theme.Dark().DeletedBackground
 			}
 			for x, cell := range cells {
 				want := bg
 				changed := m.diffEmphasis[line]
 				col := x - m.diffGutter
 				if col >= changed.start && (col < changed.end || changed.end > utf8.RuneCountInString(line.Text[1:])) {
-					want = theme.AddedText
+					want = theme.Dark().AddedText
 					if line.Kind == diff.Deleted {
-						want = theme.DeletedText
+						want = theme.Dark().DeletedText
 					}
 				}
 				if x < m.diffGutter {
-					want = theme.Background
+					want = theme.Dark().Background
 				}
 				if !sameColor(cell.Style.Bg, lipgloss.Color(want)) {
 					t.Fatalf("background at %d: %v", x, cell.Style.Bg)
@@ -97,16 +97,16 @@ func TestDiffSyntaxResultsCannotReplaceNewPatch(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if diffSpans(ctx, m.patch, "file.go") != nil {
+	if diffSpans(ctx, m.patch, "file.go", false) != nil {
 		t.Fatal("cancelled work continued")
 	}
 }
 
 func TestDiffSyntaxFontsKeepDiffBackground(t *testing.T) {
-	line := diffCode("bold", []highlight.Span{{Start: 0, End: 4, Color: "#569CD6", Font: highlight.Bold}}, 12, theme.AddedBackground, theme.AddedText, diffRange{0, 5})
+	line := diffCode(theme.Dark(), "bold", []highlight.Span{{Start: 0, End: 4, Color: "#569CD6", Font: highlight.Bold}}, 12, theme.Dark().AddedBackground, theme.Dark().AddedText, diffRange{0, 5})
 	cells := uv.NewStyledString(line).Lines(ansi.GraphemeWidth)[0]
 	for i, cell := range cells {
-		if !sameColor(cell.Style.Bg, lipgloss.Color(theme.AddedText)) {
+		if !sameColor(cell.Style.Bg, lipgloss.Color(theme.Dark().AddedText)) {
 			t.Fatal("TextMate font reset diff background")
 		}
 		if i < 4 && cell.Style.Attrs&uv.AttrBold == 0 {

@@ -214,12 +214,12 @@ func (m *Model) historyRow(entry item, w int, bg string) (string, string) {
 		return m.explorerRow(entry, w, bg)
 	}
 	if entry.commit == nil && entry.historyChange == nil && entry.folder == "" {
-		return row("   "+safe(entry.label), w, theme.Muted, bg), theme.Muted
+		return row("   "+safe(entry.label), w, m.colors.Muted, bg), m.colors.Muted
 	}
 	if entry.commit == nil {
 		indent := "  "
 		text, fg := m.explorerRow(entry, max(0, w-2-len(indent)), bg)
-		return indent + theme.Style(theme.Accent, bg).Render("│ ") + text, fg
+		return indent + theme.Style(m.colors.Accent, bg).Render("│ ") + text, fg
 	}
 	c := entry.commit
 	marker := "●"
@@ -242,9 +242,9 @@ func (m *Model) historyRow(entry item, w int, bg string) (string, string) {
 	w = max(0, w-len(indent))
 	badgeWidth := min(ansi.StringWidth(badges), max(0, w/2))
 	label := ansi.Truncate(safe(c.Subject), max(0, w-3-badgeWidth), "…")
-	text := theme.Style(theme.Accent, bg).Render(marker+" ") + label
-	text += theme.Style(theme.Accent, bg).Render(ansi.Truncate(badges, badgeWidth, "…"))
-	return indent + text, theme.Foreground
+	text := theme.Style(m.colors.Accent, bg).Render(marker+" ") + label
+	text += theme.Style(m.colors.Accent, bg).Render(ansi.Truncate(badges, badgeWidth, "…"))
+	return indent + text, m.colors.Foreground
 }
 
 func historyKey(repo, id string) string       { return repositoryPrefix(repo) + id }

@@ -51,10 +51,10 @@ func TestHistoryGroupsSharedCommitsByRepository(t *testing.T) {
 	drain(t, m, m.selectSection(history))
 	root := selectHistoryCommit(t, m, "", shared)
 	drain(t, m, m.previewHistory(root, true))
-	rootText, _ := m.historyRow(root, 120, theme.Panel)
+	rootText, _ := m.historyRow(root, 120, theme.Dark().Panel)
 	childEntry := selectHistoryCommit(t, m, "child space", shared)
 	drain(t, m, m.previewHistory(childEntry, true))
-	childText, _ := m.historyRow(childEntry, 120, theme.Panel)
+	childText, _ := m.historyRow(childEntry, 120, theme.Dark().Panel)
 	if !strings.Contains(plain(rootText), "parent-only") || strings.Contains(plain(rootText), "child-only") {
 		t.Fatal("parent history uses child refs")
 	}

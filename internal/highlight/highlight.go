@@ -22,7 +22,11 @@ const MaxBytes = 256 << 10
 var registry = textmate.NewRegistry(textmate.RegistryOptions{LoadGrammar: grammars.Load})
 var tokenizeOptions = textmate.TokenizeOptions{TimeLimit: 100 * time.Millisecond, MaxLineRunes: 20_000, MaxLineBytes: 80_000}
 
-func Lines(ctx context.Context, path, text string) [][]Span {
+func Lines(ctx context.Context, path, text string, light bool) [][]Span {
+	colors := darkModernTheme
+	if light {
+		colors = lightModernTheme
+	}
 	if len(text) > MaxBytes || ctx.Err() != nil {
 		return nil
 	}
@@ -61,11 +65,11 @@ func Lines(ctx context.Context, path, text string) [][]Span {
 		for _, token := range result.Tokens {
 			style, ok := styles[token.ScopeStack]
 			if !ok {
-				style = modernTheme.resolve(token.Scopes)
+				style = colors.resolve(token.Scopes)
 				styles[token.ScopeStack] = style
 			}
 			start, end := min(token.Start, length), min(token.End, length)
-			if start >= end || style.color == modernTheme.foreground && style.font == 0 {
+			if start >= end || style.color == colors.foreground && style.font == 0 {
 				continue
 			}
 			spans := lines[i]

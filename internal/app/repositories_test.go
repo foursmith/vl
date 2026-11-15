@@ -110,7 +110,7 @@ func TestChangesGroupRepositoriesWithLocalPathsAndParentSummaries(t *testing.T) 
 			if e.repository != "" || e.change.Path != "child space" {
 				t.Fatal("parent summary moved into child group")
 			}
-			text, _ := m.explorerRow(e, 50, theme.Panel)
+			text, _ := m.explorerRow(e, 50, theme.Dark().Panel)
 			if !strings.HasSuffix(plain(text), "S") {
 				t.Fatal("submodule summary lacks S marker")
 			}

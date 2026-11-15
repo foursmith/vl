@@ -22,10 +22,10 @@ func (m *Model) breadcrumb(path string, width int) string {
 	}
 	path = filepath.ToSlash(path)
 	icon := fileicon.For(path, m.nerd)
-	separator := theme.Style(theme.Muted, theme.Background).Render(" " + m.symbol(symbolRight) + " ")
-	iconText := row(icon.Glyph, 2, icon.Color, theme.Background)
+	separator := theme.Style(m.colors.Muted, m.colors.Background).Render(" " + m.symbol(symbolRight) + " ")
+	iconText := row(icon.Glyph, 2, icon.Color, m.colors.Background)
 	name := safe(filepath.Base(path))
-	languageText := theme.Style(theme.Muted, theme.Background).Render(m.symbol(symbolWrench) + " " + language.ID)
+	languageText := theme.Style(m.colors.Muted, m.colors.Background).Render(m.symbol(symbolWrench) + " " + language.ID)
 	file := iconText + name
 	tail := file + separator + languageText
 	dir := filepath.ToSlash(filepath.Dir(path))
@@ -55,7 +55,7 @@ func (m *Model) breadcrumb(path string, width int) string {
 			}
 		}
 	}
-	return row(" "+content, width, theme.Muted, theme.Background)
+	return row(" "+content, width, m.colors.Muted, m.colors.Background)
 }
 
 // Breadcrumb and footer share the current file's cached language lookup.

@@ -11,12 +11,15 @@ import (
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"github.com/atotto/clipboard"
+	uv "github.com/charmbracelet/ultraviolet"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/ourongxing/elegit/internal/diff"
 	"github.com/ourongxing/elegit/internal/editor"
 	"github.com/ourongxing/elegit/internal/files"
 	gitservice "github.com/ourongxing/elegit/internal/git"
 	"github.com/ourongxing/elegit/internal/highlight"
 	"github.com/ourongxing/elegit/internal/platform"
+	"github.com/ourongxing/elegit/internal/theme"
 	"github.com/ourongxing/elegit/internal/watcher"
 )
 
@@ -82,6 +85,12 @@ type clipboardMsg struct {
 }
 
 type Model struct {
+	colors                  theme.Palette
+	light                   bool
+	themeMode               string
+	terminalLight           bool
+	themeNotifications      bool
+	themeNotificationsOwned bool
 	ctx                     context.Context
 	cancel                  context.CancelFunc
 	watcher                 *watcher.Watcher
@@ -164,7 +173,8 @@ func New(ctx context.Context, repo *gitservice.Repository, nerd bool) *Model {
 	input := textinput.New()
 	input.Prompt = "> "
 	input.CharLimit = 2000
-	m := &Model{ctx: ctx, cancel: cancel, repo: repo, width: 120, height: 36, nerd: nerd, sidebar: true, sidebarVisible: true, split: true, viewport: viewport.New(), input: input, diffHunk: -1, activeTab: -1, notice: "Loading repository…"}
+	m := &Model{colors: theme.Dark(), ctx: ctx, cancel: cancel, repo: repo, width: 120, height: 36, nerd: nerd, sidebar: true, sidebarVisible: true, split: true, viewport: viewport.New(), input: input, diffHunk: -1, activeTab: -1, notice: "Loading repository…"}
+	m.styleInput()
 	m.resize()
 	m.expanded = map[string]bool{}
 	m.changeCollapsed = map[string]bool{}
@@ -177,7 +187,9 @@ func New(ctx context.Context, repo *gitservice.Repository, nerd bool) *Model {
 	return m
 }
 
-func (m *Model) Init() tea.Cmd { return tea.Batch(m.refresh(), m.tick(), m.startWatcher()) }
+func (m *Model) Init() tea.Cmd {
+	return tea.Batch(m.refresh(), m.tick(), m.startWatcher(), tea.Raw(ansi.RequestModeLightDark))
+}
 func (m *Model) tick() tea.Cmd {
 	delay := 3 * time.Second
 	if m.watcher != nil {
@@ -377,6 +389,12 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}
 	}()
 	switch msg := msg.(type) {
+	case tea.ModeReportMsg:
+		return m, m.themeNotificationMode(msg)
+	case uv.DarkColorSchemeEvent:
+		return m, m.terminalColorScheme(false)
+	case uv.LightColorSchemeEvent:
+		return m, m.terminalColorScheme(true)
 	case recentFoldersMsg:
 		m.applyRecentFolders(msg)
 	case repositoryOpenedMsg:

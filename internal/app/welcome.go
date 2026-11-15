@@ -75,13 +75,13 @@ func (m *Model) welcomeLines() []string {
 	}
 	padding := max(0, (width-logoWidth)/2)
 	for i, text := range logo {
-		lines[y+i] = strings.Repeat(" ", x+padding) + theme.Style("#50565E", theme.Background).Render(text)
+		lines[y+i] = strings.Repeat(" ", x+padding) + theme.Style(m.colors.Brand, m.colors.Background).Render(text)
 	}
 	for i, a := range welcomeActions {
 		padding := max(2, width-ansi.StringWidth(a.label)-ansi.StringWidth(a.key))
 		lines[y+logoRows+m.welcomeGap(logoRows)+i] = strings.Repeat(" ", x) +
-			theme.Style(theme.Muted, theme.Background).Render(a.label) + strings.Repeat(" ", padding) +
-			theme.Style(theme.Foreground, theme.Border).Render(a.key)
+			theme.Style(m.colors.Muted, m.colors.Background).Render(a.label) + strings.Repeat(" ", padding) +
+			theme.Style(m.colors.Foreground, m.colors.Border).Render(a.key)
 	}
 	return lines
 }

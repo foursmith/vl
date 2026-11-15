@@ -116,9 +116,11 @@ type hoverRenderKey struct {
 
 func (m *Model) View() tea.View {
 	if m.width < 30 || m.height < 8 {
-		v := tea.NewView(row("Resize terminal to at least 30 × 8", m.width, theme.Foreground, theme.Background))
+		v := tea.NewView(row("Resize terminal to at least 30 × 8", m.width, m.colors.Foreground, m.colors.Background))
 		v.AltScreen = true
-		v.BackgroundColor = lipgloss.Color(theme.Panel)
+		if m.ThemeMode() != "auto" {
+			v.BackgroundColor = lipgloss.Color(m.colors.Panel)
+		}
 		return v
 	}
 	key := hoverRenderKey{
@@ -138,11 +140,11 @@ func (m *Model) View() tea.View {
 	for y := 0; y < m.bodyHeight(); y++ {
 		line := main[y]
 		if m.sideShown() {
-			color := theme.Border
+			color := m.colors.Border
 			if m.resizingSidebar || m.sidebarDividerAt(m.hoverX, m.hoverY) {
-				color = theme.Accent
+				color = m.colors.Accent
 			}
-			divider := row("│", 1, color, theme.Panel)
+			divider := row("│", 1, color, m.colors.Panel)
 			if m.sidebarRight {
 				line += divider + side[y]
 			} else {
@@ -152,7 +154,7 @@ func (m *Model) View() tea.View {
 		lines = append(lines, line)
 	}
 	if h := m.outputHeight(); h > 0 {
-		lines = append(lines, row("  OUTPUT   ·   Git", m.width, theme.Foreground, theme.Panel))
+		lines = append(lines, row("  OUTPUT   ·   Git", m.width, m.colors.Foreground, m.colors.Panel))
 		output := m.output
 		start := max(0, len(output)-(h-1))
 		for i := 0; i < h-1; i++ {
@@ -160,7 +162,7 @@ func (m *Model) View() tea.View {
 			if start+i < len(output) {
 				text = "  " + safe(output[start+i])
 			}
-			lines = append(lines, row(text, m.width, theme.Muted, theme.Panel))
+			lines = append(lines, row(text, m.width, m.colors.Muted, m.colors.Panel))
 		}
 	}
 	lines = append(lines, m.statusLine())
@@ -171,7 +173,9 @@ func (m *Model) View() tea.View {
 	v.AltScreen = true
 	// Uncovered terminal padding should blend with the surrounding chrome.
 	// Editor and diff cells paint their own backgrounds.
-	v.BackgroundColor = lipgloss.Color(theme.Panel)
+	if m.ThemeMode() != "auto" {
+		v.BackgroundColor = lipgloss.Color(m.colors.Panel)
+	}
 	v.MouseMode = tea.MouseModeAllMotion
 	v.ReportFocus = true
 	m.hoverRender = hoverRenderCache{main: main, view: v, key: key}
@@ -204,7 +208,7 @@ func (m *Model) mainLines() []string {
 		content = make([]string, m.contentHeight())
 		middle := max(0, m.contentHeight()/2-2)
 		if message != "" {
-			content[middle] = theme.Style(theme.Foreground, theme.Background).Render("  " + message)
+			content[middle] = theme.Style(m.colors.Foreground, m.colors.Background).Render("  " + message)
 		}
 	}
 	for i := 0; i < h-editorContentRow; i++ {
@@ -215,7 +219,7 @@ func (m *Model) mainLines() []string {
 		if editing {
 			lines = append(lines, text)
 		} else {
-			lines = append(lines, row(text, w, theme.Foreground, theme.Background))
+			lines = append(lines, row(text, w, m.colors.Foreground, m.colors.Background))
 		}
 	}
 	return lines[:h]
@@ -407,7 +411,7 @@ func (m *Model) editorLines() []string {
 	for y := 0; y < m.contentHeight(); y++ {
 		i := t.top + y
 		if i >= len(source) {
-			lines = append(lines, row("", m.mainWidth(), theme.Foreground, theme.Background))
+			lines = append(lines, row("", m.mainWidth(), m.colors.Foreground, m.colors.Background))
 			continue
 		}
 		if rendered, ok := t.renderedRows[i]; ok {
@@ -415,9 +419,9 @@ func (m *Model) editorLines() []string {
 			continue
 		}
 		offset := d.LineOffset(i)
-		bg := theme.Background
+		bg := m.colors.Background
 		if i == line {
-			bg = "#252526"
+			bg = m.colors.CurrentLine
 		}
 		var text, run strings.Builder
 		runFG, runBG, runReverse := "", "", false
@@ -462,7 +466,7 @@ func (m *Model) editorLines() []string {
 			if start < t.left {
 				s = strings.Repeat(" ", visual-t.left)
 			}
-			fg := theme.Foreground
+			fg := m.colors.Foreground
 			var font highlight.FontStyle
 			if t.highlightText == d.Text && i < len(t.spans) {
 				spans := t.spans[i]
@@ -476,20 +480,20 @@ func (m *Model) editorLines() []string {
 			}
 			cellBG := bg
 			if offset+j >= a && offset+j < b {
-				cellBG = theme.Selection
+				cellBG = m.colors.Selection
 			}
 			appendRun(s, fg, cellBG, !m.sidebar && i == line && j == col, font)
 		}
 		if !m.sidebar && i == line && col == d.LineRuneCount(i) {
-			appendRun(" ", theme.Foreground, bg, true, 0)
+			appendRun(" ", m.colors.Foreground, bg, true, 0)
 		}
 		flush()
-		numberColor := theme.LineNumber
+		numberColor := m.colors.LineNumber
 		if i == line {
-			numberColor = theme.Foreground
+			numberColor = m.colors.Foreground
 		}
-		gutter := theme.Style(numberColor, theme.Background).Render(fmt.Sprintf("%5d  ", i+1))
-		rendered := row(gutter+row(text.String(), max(1, m.mainWidth()-7), theme.Foreground, bg), m.mainWidth(), theme.Foreground, theme.Background)
+		gutter := theme.Style(numberColor, m.colors.Background).Render(fmt.Sprintf("%5d  ", i+1))
+		rendered := row(gutter+row(text.String(), max(1, m.mainWidth()-7), m.colors.Foreground, bg), m.mainWidth(), m.colors.Foreground, m.colors.Background)
 		t.renderedRows[i] = rendered
 		lines = append(lines, rendered)
 	}
@@ -502,20 +506,20 @@ func (m *Model) overlay(base []string) []string {
 	}
 	w := min(76, m.width-6)
 	var content []string
-	content = append(content, row(" "+safe(m.modalTitle), w-2, theme.Foreground, "#222222"))
+	content = append(content, row(" "+safe(m.modalTitle), w-2, m.colors.Foreground, m.colors.Popup))
 	if m.modal == "close" {
-		content = append(content, row(" Unsaved changes will be lost.", w-2, theme.Muted, "#222222"))
-		buttons := theme.Style("#FFFFFF", theme.Accent).Render(" Save ") + theme.Style(theme.Foreground, theme.Border).Render(" Discard ") + theme.Style(theme.Foreground, "#222222").Render(" Cancel ")
-		content = append(content, row(buttons, w-2, theme.Foreground, "#222222"))
+		content = append(content, row(" Unsaved changes will be lost.", w-2, m.colors.Muted, m.colors.Popup))
+		buttons := theme.Style("#FFFFFF", m.colors.Accent).Render(" Save ") + theme.Style(m.colors.Foreground, m.colors.Border).Render(" Discard ") + theme.Style(m.colors.Foreground, m.colors.Popup).Render(" Cancel ")
+		content = append(content, row(buttons, w-2, m.colors.Foreground, m.colors.Popup))
 	} else if m.modal == "confirm" {
 		if m.confirmationDetail != "" {
-			content = append(content, row(" "+m.confirmationDetail, w-2, theme.Muted, "#222222"))
+			content = append(content, row(" "+m.confirmationDetail, w-2, m.colors.Muted, m.colors.Popup))
 		}
-		content = append(content, row(" Enter to confirm · Esc to cancel", w-2, theme.Muted, "#222222"))
+		content = append(content, row(" Enter to confirm · Esc to cancel", w-2, m.colors.Muted, m.colors.Popup))
 	} else {
-		content = append(content, row(" "+m.input.View(), w-2, theme.Foreground, "#313131"))
+		content = append(content, row(" "+m.input.View(), w-2, m.colors.Foreground, m.colors.Input))
 	}
-	border := theme.Style(theme.Border, "#222222")
+	border := theme.Style(m.colors.Border, m.colors.Popup)
 	box := []string{border.Render("┌" + strings.Repeat("─", w-2) + "┐")}
 	for _, s := range content {
 		box = append(box, border.Render("│")+s+border.Render("│"))
@@ -526,8 +530,8 @@ func (m *Model) overlay(base []string) []string {
 		if y+i >= len(base) {
 			break
 		}
-		left := row(ansi.Cut(base[y+i], 0, x), x, theme.Foreground, theme.Panel)
-		right := row(ansi.Cut(base[y+i], x+w, m.width), m.width-x-w, theme.Foreground, theme.Background)
+		left := row(ansi.Cut(base[y+i], 0, x), x, m.colors.Foreground, m.colors.Panel)
+		right := row(ansi.Cut(base[y+i], x+w, m.width), m.width-x-w, m.colors.Foreground, m.colors.Background)
 		base[y+i] = left + s + right
 	}
 	return base

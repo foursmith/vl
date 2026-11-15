@@ -2,8 +2,9 @@ package config
 
 // Layout stores user preferences independently of the current terminal size.
 type Layout struct {
-	SidebarWidth int  `json:"sidebarWidth"`
-	SidebarRight bool `json:"sidebarRight"`
+	Theme        string `json:"theme,omitempty"`
+	SidebarWidth int    `json:"sidebarWidth"`
+	SidebarRight bool   `json:"sidebarRight"`
 }
 
 func LayoutPath() (string, error) { return configPath("layout.json") }

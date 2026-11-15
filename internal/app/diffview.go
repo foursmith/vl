@@ -85,14 +85,15 @@ func (m *Model) highlightDiff() tea.Cmd {
 	ctx, cancel := context.WithCancel(m.ctx)
 	m.diffSyntaxCancel = cancel
 	patch, path, seq := m.patch, m.diffPath, m.diffSeq
+	light := m.light
 	return func() tea.Msg {
-		return diffSyntaxMsg{seq, patch.Raw, ctx, diffSpans(ctx, patch, path)}
+		return diffSyntaxMsg{seq, patch.Raw, ctx, diffSpans(ctx, patch, path, light)}
 	}
 }
 
 // Tokenize each side separately so removed code cannot change the new side's
 // string/comment state. Bound all syntax work by the editor's byte budget.
-func diffSpans(ctx context.Context, patch diff.Patch, path string) map[*diff.Line][]highlight.Span {
+func diffSpans(ctx context.Context, patch diff.Patch, path string, light bool) map[*diff.Line][]highlight.Span {
 	if len(patch.Raw) > highlight.MaxBytes || ctx.Err() != nil {
 		return nil
 	}
@@ -108,7 +109,7 @@ func diffSpans(ctx context.Context, patch diff.Patch, path string) map[*diff.Lin
 				source.WriteString(line.Text[1:])
 				source.WriteByte('\n')
 			}
-			spans := highlight.Lines(ctx, path, source.String())
+			spans := highlight.Lines(ctx, path, source.String(), light)
 			for i, line := range side {
 				if i < len(spans) {
 					result[line] = spans[i]
@@ -158,7 +159,7 @@ func (m *Model) diffView() []string {
 			lines = append(lines, m.diffRow(pair.Left, w, false))
 		} else {
 			left := (w - 1) / 2
-			lines = append(lines, m.diffRow(pair.Left, left, false)+row("│", 1, theme.Border, theme.Background)+m.diffRow(pair.Right, w-left-1, true))
+			lines = append(lines, m.diffRow(pair.Left, left, false)+row("│", 1, m.colors.Border, m.colors.Background)+m.diffRow(pair.Right, w-left-1, true))
 		}
 	}
 	return lines
@@ -167,29 +168,29 @@ func (m *Model) diffView() []string {
 func (m *Model) diffRow(line *diff.Line, width int, right bool) string {
 	gutter := min(width, max(6, m.diffGutter))
 	if line == nil {
-		return row("", gutter, theme.LineNumber, theme.Background) + row(strings.Repeat("╱", max(0, width-gutter)), width-gutter, theme.DiffPlaceholder, theme.Background)
+		return row("", gutter, m.colors.LineNumber, m.colors.Background) + row(strings.Repeat("╱", max(0, width-gutter)), width-gutter, m.colors.DiffPlaceholder, m.colors.Background)
 	}
-	fg, bg := theme.Foreground, theme.Background
+	fg, bg := m.colors.Foreground, m.colors.Background
 	text := ""
 	switch line.Kind {
 	case diff.Header:
 		text = safe(line.Text)
-		fg = theme.Muted
+		fg = m.colors.Muted
 		if m.diffPath != "" && strings.HasPrefix(line.Text, "Binary files ") {
 			text = "  二进制文件已更改"
 		}
 	case diff.HunkHeader:
-		fg, bg = theme.Muted, theme.Panel
+		fg, bg = m.colors.Muted, m.colors.Panel
 		marker := " "
 		if line.Hunk == m.diffHunk {
 			marker = m.symbol(symbolRight)
-			fg = theme.Foreground
+			fg = m.colors.Foreground
 		}
 		text = " " + marker + " " + hunkLabel(line.Text)
 	case diff.Added:
-		bg = theme.AddedBackground
+		bg = m.colors.AddedBackground
 	case diff.Deleted:
-		bg = theme.DeletedBackground
+		bg = m.colors.DeletedBackground
 	}
 	if line.Kind != diff.Added && line.Kind != diff.Deleted && line.Kind != diff.Context {
 		return row(text, width, fg, bg)
@@ -208,25 +209,25 @@ func (m *Model) diffRow(line *diff.Line, width int, right bool) string {
 	code := line.Text[1:]
 	emphasis := ""
 	if line.Kind == diff.Added {
-		emphasis = theme.AddedText
+		emphasis = m.colors.AddedText
 	} else if line.Kind == diff.Deleted {
-		emphasis = theme.DeletedText
+		emphasis = m.colors.DeletedText
 	}
-	return row(label, gutter, theme.LineNumber, theme.Background) + diffCode(code, m.diffSyntax[line], width-gutter, bg, emphasis, m.diffEmphasis[line])
+	return row(label, gutter, m.colors.LineNumber, m.colors.Background) + diffCode(m.colors, code, m.diffSyntax[line], width-gutter, bg, emphasis, m.diffEmphasis[line])
 }
 
 // Clip before painting and render token runs, keeping work proportional to the
 // visible columns rather than the length of a source line.
-func diffCode(code string, spans []highlight.Span, width int, bg, emphasis string, changed diffRange) string {
+func diffCode(colors theme.Palette, code string, spans []highlight.Span, width int, bg, emphasis string, changed diffRange) string {
 	if width <= 0 {
 		return ""
 	}
 	code = ansi.Truncate(code, width, "")
 	if len(spans) == 0 && changed.start == changed.end {
-		return row(safe(code), width, theme.Foreground, bg)
+		return row(safe(code), width, colors.Foreground, bg)
 	}
 	var out, run strings.Builder
-	color := theme.Foreground
+	color := colors.Foreground
 	var font highlight.FontStyle
 	runBG := bg
 	spanIndex, column := 0, 0
@@ -240,7 +241,7 @@ func diffCode(code string, spans []highlight.Span, width int, bg, emphasis strin
 		for spanIndex < len(spans) && column >= spans[spanIndex].End {
 			spanIndex++
 		}
-		next := theme.Foreground
+		next := colors.Foreground
 		var nextFont highlight.FontStyle
 		if spanIndex < len(spans) && column >= spans[spanIndex].Start {
 			next = spans[spanIndex].Color
@@ -262,5 +263,5 @@ func diffCode(code string, spans []highlight.Span, width int, bg, emphasis strin
 	if emphasis != "" && changed.end > column {
 		bg = emphasis
 	}
-	return row(out.String(), width, theme.Foreground, bg)
+	return row(out.String(), width, colors.Foreground, bg)
 }

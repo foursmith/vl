@@ -50,9 +50,12 @@ type themeJSON struct {
 	} `json:"tokenColors"`
 }
 
-var modernTheme = loadModernTheme()
+var (
+	darkModernTheme  = loadTokenTheme("dark_modern")
+	lightModernTheme = loadTokenTheme("light_modern")
+)
 
-func loadModernTheme() tokenTheme {
+func loadTokenTheme(name string) tokenTheme {
 	var theme tokenTheme
 	var load func(string) error
 	load = func(name string) error {
@@ -114,8 +117,8 @@ func loadModernTheme() tokenTheme {
 		}
 		return nil
 	}
-	if err := load("themes/dark_modern.json"); err != nil {
-		panic(fmt.Sprintf("embedded Dark Modern theme: %v", err))
+	if err := load("themes/" + name + ".json"); err != nil {
+		panic(fmt.Sprintf("embedded %s theme: %v", name, err))
 	}
 	// Less specific rules apply first; stable order lets later inherited-theme
 	// entries win ties. Font-only rules preserve the resolved foreground.

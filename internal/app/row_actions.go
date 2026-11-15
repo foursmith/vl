@@ -95,17 +95,17 @@ func (m *Model) changeActionRow(entry item, w int, fg, bg string) string {
 	text := row(ansi.Cut(label, 0, start), start, fg, bg)
 	hoverX := m.hoverX - m.sideX()
 	for _, action := range actions {
-		color := theme.Foreground
+		color := m.colors.Foreground
 		if action.disabled != "" {
-			color = theme.LineNumber
+			color = m.colors.LineNumber
 		} else if hoverX >= action.x && hoverX < action.x+action.width {
-			color = "#FFFFFF"
+			color = m.colors.Strong
 		}
 		text += row(" "+action.glyph+" ", action.width, color, bg)
 	}
 	if entry.repoHeader {
 		branch := m.repositoryBranchText(entry, w, len(actions)*3)
-		return text + theme.Style(theme.Foreground, bg).Bold(true).Render(branch)
+		return text + theme.Style(m.colors.Foreground, bg).Bold(true).Render(branch)
 	}
 	full := row("", w, fg, bg)
 	if !entry.header {

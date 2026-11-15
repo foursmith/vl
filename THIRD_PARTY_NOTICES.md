@@ -1,8 +1,8 @@
 # Third-party notices
 
-The workbench colors are adapted from VS Code Dark Modern. The terminal icon catalog adapts common file associations and colors from Material Icon Theme, using Nerd Font glyph equivalents rather than distributing its SVG artwork.
+The workbench colors are adapted from VS Code Dark Modern and Light Modern. The terminal icon catalog adapts common file associations and colors from Material Icon Theme, using Nerd Font glyph equivalents rather than distributing its SVG artwork.
 
-## VS Code Dark Modern
+## VS Code Dark Modern and Light Modern
 
 Source: https://github.com/microsoft/vscode/blob/main/extensions/theme-defaults/themes/dark_modern.json
 

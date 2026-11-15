@@ -25,6 +25,7 @@ func (j *highlightJob) stop() {
 }
 
 type highlightRequest struct {
+	light      bool
 	doc        *editor.Document
 	text, path string
 	seq        uint64
@@ -58,7 +59,7 @@ func (m *Model) scheduleHighlight() tea.Cmd {
 	ctx, cancel := context.WithCancel(m.ctx)
 	t.highlightJob.seq++
 	t.highlightJob.text, t.highlightJob.pending, t.highlightJob.cancel = text, true, cancel
-	request := highlightRequest{t.doc, text, t.doc.Path, t.highlightJob.seq, ctx}
+	request := highlightRequest{m.light, t.doc, text, t.doc.Path, t.highlightJob.seq, ctx}
 	// Quiet typing bursts before spending CPU on a whole-file tokenizer.
 	delay := 30 * time.Millisecond
 	if len(text) > 32<<10 {
@@ -85,7 +86,7 @@ func (m *Model) startHighlight(request highlightRequest) tea.Cmd {
 		return nil
 	}
 	return func() tea.Msg {
-		return highlightResultMsg{request, highlight.Lines(request.ctx, request.path, request.text)}
+		return highlightResultMsg{request, highlight.Lines(request.ctx, request.path, request.text, request.light)}
 	}
 }
 

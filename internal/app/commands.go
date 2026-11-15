@@ -39,6 +39,9 @@ func (m *Model) actions() []action {
 	}
 	return []action{
 		{"folder.openRecent", "File: Open Recent Folder", "Ctrl+R", "", m.openRecentFolders},
+		{"theme.auto", "Preferences: Color Theme — Auto (Follow Terminal)", "", "", func() tea.Cmd { return m.SetThemeMode("auto") }},
+		{"theme.light", "Preferences: Color Theme — Light Modern", "", "", func() tea.Cmd { return m.SetThemeMode("light") }},
+		{"theme.dark", "Preferences: Color Theme — Dark Modern", "", "", func() tea.Cmd { return m.SetThemeMode("dark") }},
 		{"view.explorer", "View: Explorer", "Ctrl+1", "", func() tea.Cmd { return m.selectSection(explorer) }},
 		{"explorer.newFile", "Explorer: New File", "", "", func() tea.Cmd { return m.newEntry(false) }},
 		{"explorer.newFolder", "Explorer: New Folder", "", "", func() tea.Cmd { return m.newEntry(true) }},

@@ -24,23 +24,23 @@ func (m *Model) pickerLayout(rows []action) pickerLayout {
 func (m *Model) pickerOverlay(base []string) []string {
 	rows := m.filteredActions()
 	l := m.pickerLayout(rows)
-	const bg = "#222222"
-	const inputBG = "#313131"
+	bg := m.colors.Popup
+	inputBG := m.colors.Input
 	w := l.width - 2
-	border := theme.Style(theme.Accent, bg)
+	border := theme.Style(m.colors.Accent, bg)
 	box := []string{
 		border.Render("╭" + strings.Repeat("─", w) + "╮"),
-		border.Render("│") + row(" "+m.input.View(), w, theme.Foreground, inputBG) + border.Render("│"),
+		border.Render("│") + row(" "+m.input.View(), w, m.colors.Foreground, inputBG) + border.Render("│"),
 		border.Render("╰" + strings.Repeat("─", w) + "╯"),
 	}
 	for i := l.start; i < l.start+l.count; i++ {
 		a := rows[i]
-		fg, surface := theme.Foreground, bg
+		fg, surface := m.colors.Foreground, bg
 		if i == m.choice {
-			fg, surface = "#FFFFFF", theme.Selection
+			fg, surface = m.colors.SelectionForeground, m.colors.Selection
 		}
 		if a.disabled != "" {
-			fg = theme.Muted
+			fg = m.colors.Muted
 		}
 		label := " " + safe(a.label)
 		if m.modal == "files" {
@@ -50,14 +50,14 @@ func (m *Model) pickerOverlay(base []string) []string {
 			if dir := filepath.Dir(a.id); dir != "." {
 				remaining := w - 2 - ansi.StringWidth(label)
 				if remaining > 1 {
-					label += theme.Style("#737373", surface).Render(ansi.Truncate(" "+safe(dir), remaining, "…"))
+					label += theme.Style(m.colors.Muted, surface).Render(ansi.Truncate(" "+safe(dir), remaining, "…"))
 				}
 			}
 		} else if a.key != "" {
 			key := " " + a.key + " "
 			label = ansi.Truncate(label, max(1, w-ansi.StringWidth(key)-2), "…")
 			label += strings.Repeat(" ", max(1, w-ansi.StringWidth(label)-ansi.StringWidth(key)-1))
-			label += theme.Style(theme.Muted, surface).Render(key)
+			label += theme.Style(m.colors.Muted, surface).Render(key)
 		}
 		box = append(box, row(" "+row(label, w, fg, surface)+" ", l.width, fg, surface))
 	}
@@ -70,9 +70,9 @@ func (m *Model) pickerOverlay(base []string) []string {
 				message = "没有最近打开的文件夹"
 			}
 		}
-		box = append(box, row("  "+message, l.width, theme.Muted, bg))
+		box = append(box, row("  "+message, l.width, m.colors.Muted, bg))
 	} else if reason := rows[min(m.choice, len(rows)-1)].disabled; reason != "" {
-		box = append(box, row("  "+safe(reason), l.width, theme.Muted, bg))
+		box = append(box, row("  "+safe(reason), l.width, m.colors.Muted, bg))
 	}
 	for i, line := range box {
 		if l.y+i >= len(base) {

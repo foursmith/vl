@@ -386,20 +386,20 @@ func (m *Model) tabBar() string {
 	text := ""
 	x := 0
 	for _, slot := range m.tabLayout() {
-		text += row("", slot.x-x, theme.Foreground, theme.Panel)
+		text += row("", slot.x-x, m.colors.Foreground, m.colors.Panel)
 		if slot.control != 0 {
 			glyph := " " + m.symbol(symbolLeft) + " "
 			if slot.control > 0 {
 				glyph = " " + m.symbol(symbolRight) + " "
 			}
-			text += row(glyph, slot.width, theme.Muted, theme.Panel)
+			text += row(glyph, slot.width, m.colors.Muted, m.colors.Panel)
 		} else {
 			active := !m.showEditor && slot.index < 0 || m.showEditor && slot.index == m.activeTab
-			fg, bg := theme.Muted, theme.Panel
+			fg, bg := m.colors.Muted, m.colors.Panel
 			if active {
-				fg, bg = "#FFFFFF", theme.Background
+				fg, bg = m.colors.Strong, m.colors.Background
 			}
-			glyph, color, preview := m.symbol(symbolDiff), theme.Muted, false
+			glyph, color, preview := m.symbol(symbolDiff), m.colors.Muted, false
 			if slot.index < 0 && m.diffPath != "" {
 				icon := fileicon.For(m.diffPath, m.nerd)
 				glyph, color = icon.Glyph, icon.Color
@@ -416,16 +416,16 @@ func (m *Model) tabBar() string {
 			}
 			label = ansi.Truncate(label, max(0, slot.width-7-ansi.StringWidth(suffix)), "…") + suffix
 			label += strings.Repeat(" ", max(0, slot.width-7-ansi.StringWidth(label)))
-			closeColor := theme.Muted
+			closeColor := m.colors.Muted
 			if active {
 				closeColor = fg
 			}
-			content := " " + row(glyph, 2, color, bg) + theme.Style(fg, bg).Italic(preview).Render(label) + theme.Style(closeColor, bg).Render(" "+m.symbol(symbolClose)+" ") + theme.Style(theme.Border, bg).Render("│")
+			content := " " + row(glyph, 2, color, bg) + theme.Style(fg, bg).Italic(preview).Render(label) + theme.Style(closeColor, bg).Render(" "+m.symbol(symbolClose)+" ") + theme.Style(m.colors.Border, bg).Render("│")
 			text += row(content, slot.width, fg, bg)
 		}
 		x = slot.x + slot.width
 	}
-	return row(text, w, theme.Foreground, theme.Panel)
+	return row(text, w, m.colors.Foreground, m.colors.Panel)
 }
 
 func (m *Model) clickModal(msg tea.MouseClickMsg) tea.Cmd {

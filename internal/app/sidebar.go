@@ -69,19 +69,19 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 	var nav strings.Builder
 	x := 0
 	for _, item := range m.navigation() {
-		nav.WriteString(row("", item.x-x, theme.Foreground, theme.Panel))
+		nav.WriteString(row("", item.x-x, m.colors.Foreground, m.colors.Panel))
 		active := item.section == m.section
-		fg := theme.Muted
+		fg := m.colors.Muted
 		if active {
-			fg = theme.Foreground
+			fg = m.colors.Foreground
 		}
 		if item.section == changes && len(m.snapshot.Changes) > 0 {
-			fg = theme.Accent
+			fg = m.colors.Accent
 		}
 		label := " " + item.glyph + " "
 		label = ansi.Truncate(label, item.width, "")
 		label += strings.Repeat(" ", max(0, item.width-ansi.StringWidth(label)))
-		nav.WriteString(theme.Style(fg, theme.Panel).Underline(active).Render(label))
+		nav.WriteString(theme.Style(fg, m.colors.Panel).Underline(active).Render(label))
 		x = item.x + item.width
 	}
 	chevron := m.treeChevron(!m.rootCollapsed)
@@ -94,26 +94,26 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 	}
 	if m.section == explorer {
 		root = ansi.Truncate(root, max(1, w-13), "…")
-		root = theme.Style(theme.Foreground, theme.Panel).Bold(true).Render(root)
+		root = theme.Style(m.colors.Foreground, m.colors.Panel).Bold(true).Render(root)
 		for _, button := range m.rootButtons(w) {
-			root += row("", button.x-ansi.StringWidth(root), theme.Foreground, theme.Panel) + row(" "+button.glyph, 3, theme.Muted, theme.Panel)
+			root += row("", button.x-ansi.StringWidth(root), m.colors.Foreground, m.colors.Panel) + row(" "+button.glyph, 3, m.colors.Muted, m.colors.Panel)
 		}
 	}
-	lines := []string{row(nav.String(), w, theme.Foreground, theme.Panel), row(root, w, theme.Foreground, theme.Panel)}
+	lines := []string{row(nav.String(), w, m.colors.Foreground, m.colors.Panel), row(root, w, m.colors.Foreground, m.colors.Panel)}
 	hovered := m.hoveredSidebarRow()
 	for y := sidebarHeaderRows; y < h; y++ {
 		i := m.sideTop + y - sidebarHeaderRows
 		text := ""
-		fg, bg := theme.Foreground, theme.Panel
+		fg, bg := m.colors.Foreground, m.colors.Panel
 		if i < len(m.items) {
 			entry := m.items[i]
 			if i == hovered {
-				bg = theme.Hover
+				bg = m.colors.Hover
 			}
 			if i == m.selected {
-				bg = theme.Selection
+				bg = m.colors.Selection
 				if !m.sidebar {
-					bg = theme.Border
+					bg = m.colors.Border
 				}
 			}
 			if m.section == explorer || m.section == changes {
@@ -135,23 +135,23 @@ func (m *Model) explorerRow(entry item, w int, bg string) (string, string) {
 		prefix := m.repositoryHeaderPrefix(entry)
 		branch := m.repositoryBranchText(entry, w, 0)
 		nameWidth := max(0, w-ansi.StringWidth(prefix)-ansi.StringWidth(branch))
-		text := prefix + row(safe(entry.label), nameWidth, theme.Foreground, bg) + branch
-		return row(theme.Style(theme.Foreground, bg).Bold(true).Render(text), w, theme.Foreground, bg), theme.Foreground
+		text := prefix + row(safe(entry.label), nameWidth, m.colors.Foreground, bg) + branch
+		return row(theme.Style(m.colors.Foreground, bg).Bold(true).Render(text), w, m.colors.Foreground, bg), m.colors.Foreground
 	}
 	if entry.header {
-		return row(" "+strings.Repeat("  ", entry.depth)+m.treeChevron(m.folderExpanded(entry))+" "+entry.label, w, theme.Muted, bg), theme.Muted
+		return row(" "+strings.Repeat("  ", entry.depth)+m.treeChevron(m.folderExpanded(entry))+" "+entry.label, w, m.colors.Muted, bg), m.colors.Muted
 	}
-	fg := theme.Foreground
+	fg := m.colors.Foreground
 	switch entry.status {
 	case 'U', 'A':
-		fg = theme.GitAdded
+		fg = m.colors.GitAdded
 	case 'M', 'R', 'C', 'T':
-		fg = theme.GitModified
+		fg = m.colors.GitModified
 	case 'D', '!':
-		fg = theme.Deleted
+		fg = m.colors.Deleted
 	}
 	if entry.ignored {
-		fg = theme.Ignored
+		fg = m.colors.Ignored
 	}
 	indent := "  " + strings.Repeat("  ", min(entry.depth, 10))
 	path := entry.file
@@ -168,7 +168,7 @@ func (m *Model) explorerRow(entry item, w int, bg string) (string, string) {
 	}
 	iconColor := icon.Color
 	if entry.ignored {
-		iconColor = theme.Ignored
+		iconColor = m.colors.Ignored
 	}
 	text := indent + chevron + row(icon.Glyph, 2, iconColor, bg) + safe(entry.label)
 	marker := ""

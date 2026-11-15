@@ -68,18 +68,18 @@ func (m *Model) contentToolbar() string {
 		return m.breadcrumb(m.document().Path, w)
 	}
 	if !m.diffOpen {
-		return row("", w, theme.Foreground, theme.Background)
+		return row("", w, m.colors.Foreground, m.colors.Background)
 	}
 	button := m.diffModeButton()
 	stats := ""
 	if m.patch.Added > 0 {
-		stats += theme.Style(theme.GitAdded, theme.Background).Render(fmt.Sprintf("+%d", m.patch.Added))
+		stats += theme.Style(m.colors.GitAdded, m.colors.Background).Render(fmt.Sprintf("+%d", m.patch.Added))
 	}
 	if m.patch.Deleted > 0 {
 		if stats != "" {
 			stats += " "
 		}
-		stats += theme.Style(theme.Deleted, theme.Background).Render(fmt.Sprintf("−%d", m.patch.Deleted))
+		stats += theme.Style(m.colors.Deleted, m.colors.Background).Render(fmt.Sprintf("−%d", m.patch.Deleted))
 	}
 	if stats != "" {
 		stats += "  "
@@ -87,21 +87,21 @@ func (m *Model) contentToolbar() string {
 	context := m.diffContext()
 	context = ansi.Truncate(safe(context), max(0, button.x-12), "…")
 	if context != "" {
-		stats = theme.Style(theme.Muted, theme.Background).Render(context+"  ") + stats
+		stats = theme.Style(m.colors.Muted, m.colors.Background).Render(context+"  ") + stats
 	}
 	statsWidth := ansi.StringWidth(stats)
 	leftWidth := max(0, button.x-statsWidth)
-	left := row("", leftWidth, theme.Muted, theme.Background)
+	left := row("", leftWidth, m.colors.Muted, m.colors.Background)
 	if m.diffPath != "" {
 		left = m.breadcrumb(m.diffPath, leftWidth)
 	}
-	text := left + row(stats, min(statsWidth, button.x), theme.Muted, theme.Background)
-	buttonColor := theme.Foreground
+	text := left + row(stats, min(statsWidth, button.x), m.colors.Muted, m.colors.Background)
+	buttonColor := m.colors.Foreground
 	if w < 68 {
-		buttonColor = theme.Muted
+		buttonColor = m.colors.Muted
 	}
-	text += row(" "+button.label+" ", button.width, buttonColor, theme.Panel)
-	return row(text, w, theme.Foreground, theme.Background)
+	text += row(" "+button.label+" ", button.width, buttonColor, m.colors.Panel)
+	return row(text, w, m.colors.Foreground, m.colors.Background)
 }
 
 func hunkLabel(header string) string {
