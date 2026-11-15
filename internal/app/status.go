@@ -95,6 +95,11 @@ func (m *Model) statusLayout() []statusSegment {
 		language := m.language(d.Path).Name
 		candidates = []statusSegment{{id: "position", text: fmt.Sprintf("行 %d, 列 %d", line+1, col+1)}, {id: "encoding", text: "UTF-8"}, {id: "eol", text: eol}, {id: "indent", text: "Tab: 4"}, {id: "language", text: language}}
 	}
+	if im := m.currentImage(); im != nil {
+		b := im.Bounds()
+		zoom := m.imageRegion().Scale
+		candidates = []statusSegment{{id: "image", text: fmt.Sprintf("%s · %d × %d · %.0f%% · 只读", im.Format, b.Dx(), b.Dy(), zoom*100)}}
+	}
 	var right []statusSegment
 	rightWidth := 0
 	for _, segment := range candidates {

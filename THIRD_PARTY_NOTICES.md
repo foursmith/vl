@@ -58,3 +58,10 @@ license metadata are recorded in the dependency's `grammars/MANIFEST.md`.
 The VS Code theme JSON files embedded under `internal/highlight/themes` are
 covered by the Microsoft MIT notice above; their pinned source is in
 [docs/THEME.md](docs/THEME.md).
+
+## okage SVG renderer
+
+SVG preview uses [github.com/xo/okage v0.9.0](https://github.com/xo/okage),
+a pure-Go port of tiny-skia and resvg. The root BSD-3-Clause license and the SVG
+renderer MIT license are preserved under [third_party/okage](third_party/okage/).
+Upstream component notices remain in the pinned Go module.

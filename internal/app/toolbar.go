@@ -64,6 +64,11 @@ func (m *Model) diffContext() string {
 
 func (m *Model) contentToolbar() string {
 	w := m.mainWidth()
+	if im := m.currentImage(); im != nil {
+		label := fmt.Sprintf(" %.0f%% · 0 适配 ", m.imageRegion().Scale*100)
+		width := min(w, ansi.StringWidth(label))
+		return m.breadcrumb(im.Path, w-width) + row(label, width, m.colors.Muted, m.colors.Background)
+	}
 	if m.editing() {
 		return m.breadcrumb(m.document().Path, w)
 	}

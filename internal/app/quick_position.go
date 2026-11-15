@@ -84,7 +84,11 @@ func (m *Model) quickPositionActions(value string) ([]action, bool) {
 				if !m.openDocument(path, false) {
 					return nil
 				}
-				m.document().SetPosition(line-1, column-1)
+				if d := m.document(); d != nil {
+					d.SetPosition(line-1, column-1)
+				} else {
+					m.notice = "图片预览不支持跳转行号"
+				}
 				cmd := m.revealDocument(path)
 				m.ensureEditor()
 				return cmd

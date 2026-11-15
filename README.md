@@ -17,7 +17,7 @@ in [docs/ROADMAP.md](docs/ROADMAP.md); it is not yet a complete Git client.
 
 ## Run
 
-Requires Go **1.26.7+**, Git on `PATH`, and an interactive terminal. A Nerd Font
+Requires Go **1.27.3+**, Git on `PATH`, and an interactive terminal. A Nerd Font
 is recommended. Git authentication uses your existing credentials/SSH agent;
 terminal password prompts are disabled.
 
@@ -91,6 +91,22 @@ Subdirectories and file paths resolve to their enclosing repository.
 - Expandable repository file tree and text-file tabs with VS Code-style preview
   behavior: a single click reuses one clean preview, double-click/Enter keeps a
   file open, and editing permanently keeps its tab even after undo.
+- Read-only PNG, JPEG, GIF (first frame), and SVG previews in file tabs.
+  Previews use the [Kitty graphics protocol](https://sw.kovidgoyal.net/kitty/graphics-protocol/)
+  with Unicode placeholders, requiring a compatible terminal with 256-color support.
+  The terminal is probed on startup; unsupported terminals show an explanation.
+  Images fit the available space, retain transparency, follow the same
+  preview/keep/close controls, and reload on external changes. Closing a preview
+  or exiting releases its terminal image resources.
+  Scroll over an image to zoom around the pointer; drag with the left mouse
+  button to pan, and press **0** to restore fit. Each tab retains its zoom and
+  position. The toolbar/status bar show the actual pixel scale. Zoom ranges
+  from 0.1× to 32× the initial fit; only the visible region is rasterized.
+  SVG renders in pure Go, including text, gradients, clipping, masks and filters,
+  and rasterizes again at the display resolution when resized. External image
+  references are skipped; embedded images and installed system fonts are supported.
+  Files are limited to 32 MiB and 16 megapixels, with transfers bounded to a
+  4096-pixel edge.
 - Single-child folder chains display as one compact path in Explorer, Source
   Control, and commit history; branching folders and folders containing files
   retain their own rows.
@@ -213,6 +229,8 @@ the view does not stage, commit, fetch, or change branches.
 | Diff | [ / ] or P / N | Previous / next hunk |
 | Diff | S / U | Stage / unstage selected hunk |
 | Diff | E / Tab | Edit file / toggle diff layout |
+| Image | Wheel up / down | Zoom in / out around the pointer |
+| Image | Left drag / 0 | Pan / restore fit |
 | Editor | Ctrl+Z / Ctrl+Y | Undo / redo |
 | Editor | Shift+arrows | Select text |
 | Editor | Ctrl+A / C / X / V | Select all / copy / cut / paste |
@@ -225,7 +243,8 @@ Side-by-side diffs fall back to unified when the content is too narrow.
 
 ## Current limits
 
-The editor opens regular UTF-8 text files up to 4 MiB. Binary, mixed LF/CRLF,
+The editor opens regular UTF-8 text files up to 4 MiB; supported raster images and
+SVGs open in a read-only image tab. Other binary, mixed LF/CRLF,
 and legacy CR-only files are rejected rather than silently converted. It does
 not currently offer Save As, LSP, multi-cursor, or session restoration.
 File and diff tabs share one opening order and the same switch/close controls.
@@ -238,7 +257,8 @@ File tabs open live worktree files; commit diffs are read-only patches.
 Material Icon Theme uses SVG artwork. This terminal version uses a curated set
 of its associations/colors with Nerd Font equivalents, not the original SVG
 shapes or its entire association catalog. `-icons=false` keeps the colors and
-uses plain text markers. No GUI/WebView or terminal image protocol is required.
+uses plain text markers. No GUI/WebView is required. Raster and SVG file previews
+require the Kitty graphics protocol with Unicode placeholder support.
 
 All file diffs share the same unified/side-by-side renderer and Git's default
 three lines of context. File previews and diffs support horizontal scrolling

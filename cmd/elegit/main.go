@@ -96,6 +96,6 @@ func main() {
 }
 
 func runWorkbench(ctx context.Context, m *app.Model) (tea.Model, error) {
-	defer func() { fmt.Fprint(os.Stdout, m.ThemeNotificationRestoreSequence()) }()
+	defer func() { fmt.Fprint(os.Stdout, m.ImageCleanupSequence()+m.ThemeNotificationRestoreSequence()) }()
 	return tea.NewProgram(m, tea.WithContext(ctx)).Run()
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/ourongxing/elegit/internal/files"
 	gitservice "github.com/ourongxing/elegit/internal/git"
 	"github.com/ourongxing/elegit/internal/highlight"
+	"github.com/ourongxing/elegit/internal/imagepreview"
 	"github.com/ourongxing/elegit/internal/platform"
 	"github.com/ourongxing/elegit/internal/theme"
 	"github.com/ourongxing/elegit/internal/watcher"
@@ -48,6 +49,8 @@ type item struct {
 }
 
 type tab struct {
+	image *imageState
+
 	doc             *editor.Document
 	diff            *diffState
 	reloadSeq       uint64
@@ -88,6 +91,12 @@ type clipboardMsg struct {
 }
 
 type Model struct {
+	kittySupported, kittyProbeDone bool
+	cellWidth, cellHeight          int
+	imageIDs                       map[int]bool
+	imageRetired                   []int
+	imagePan                       *imagePan
+
 	colors                  theme.Palette
 	light                   bool
 	themeMode               string
@@ -166,11 +175,12 @@ func New(ctx context.Context, repo *gitservice.Repository, nerd bool) *Model {
 	ctx, cancel := context.WithCancel(ctx)
 	input := textinput.New()
 	input.CharLimit = 2000
-	m := &Model{colors: theme.Dark(), ctx: ctx, cancel: cancel, repo: repo, width: 120, height: 36, nerd: nerd, sidebar: true, sidebarVisible: true, split: true, diffState: newDiffState(), input: input, activeTab: -1, notice: "Loading repository…"}
+	m := &Model{cellWidth: 8, cellHeight: 16, colors: theme.Dark(), ctx: ctx, cancel: cancel, repo: repo, width: 120, height: 36, nerd: nerd, sidebar: true, sidebarVisible: true, split: true, diffState: newDiffState(), input: input, activeTab: -1, notice: "Loading repository…"}
 	m.emptyDiff = m.diffState
 	m.search = newSearch()
 	m.styleInput()
 	m.resize()
+	m.imageIDs = map[int]bool{}
 	m.expanded = map[string]bool{}
 	m.changeCollapsed = map[string]bool{}
 	m.commitDrafts = map[string]string{}
@@ -183,7 +193,7 @@ func New(ctx context.Context, repo *gitservice.Repository, nerd bool) *Model {
 }
 
 func (m *Model) Init() tea.Cmd {
-	return tea.Batch(m.refresh(), m.tick(), m.startWatcher(), tea.Raw(ansi.RequestModeLightDark))
+	return tea.Batch(m.refresh(), m.tick(), m.startWatcher(), m.probeImages(), tea.Raw(ansi.RequestModeLightDark))
 }
 func (m *Model) tick() tea.Cmd {
 	delay := 3 * time.Second
@@ -351,11 +361,14 @@ func (m *Model) preview() tea.Cmd {
 
 func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 	_, motion := msg.(tea.MouseMotionMsg)
-	m.hoverOnly = motion && !m.resizingSidebar && m.textDrag == nil && m.diffDrag == nil
+	m.hoverOnly = motion && !m.resizingSidebar && m.textDrag == nil && m.diffDrag == nil && m.imagePan == nil
 	if !m.hoverOnly {
 		m.hoverRender = hoverRenderCache{}
 	}
 	defer func() {
+		if cmd := m.flushRetiredImages(); cmd != nil {
+			next = tea.Batch(next, cmd)
+		}
 		m.keepEditedTabs()
 		if cmd := m.reloadCleanConflicts(); cmd != nil {
 			if next == nil {
@@ -395,6 +408,20 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}
 	}()
 	switch msg := msg.(type) {
+	case uv.KittyGraphicsEvent:
+		m.imageCapability(msg)
+	case imageProbeTimeoutMsg:
+		m.kittyProbeDone = true
+	case uv.CellSizeEvent:
+		m.imagePan = nil
+		if msg.Width > 0 && msg.Height > 0 && msg.Width <= 256 && msg.Height <= 256 {
+			m.cellWidth, m.cellHeight = msg.Width, msg.Height
+			for i := range m.tabs {
+				if im := m.tabs[i].image; im != nil {
+					im.rows = nil
+				}
+			}
+		}
 	case searchMsg:
 		if msg.seq == m.search.seq {
 			m.search.loading = false
@@ -429,6 +456,8 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			return m, nil
 		}
 		return m, tea.Batch(m.handleWatch(msg.batch), m.nextWatch())
+	case imageReloadMsg:
+		m.finishImageReload(msg)
 	case fileReloadMsg:
 		m.finishReload(msg)
 	case highlightStartMsg:
@@ -440,6 +469,14 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			d.diffSyntax = msg.spans
 		}
 	case tea.MouseMotionMsg:
+		if m.imagePan != nil {
+			if msg.Button == tea.MouseLeft && m.modal == "" {
+				m.dragImage(msg.X, msg.Y)
+			} else {
+				m.imagePan = nil
+			}
+			return m, nil
+		}
 		m.hoverX, m.hoverY = msg.X, msg.Y
 		if msg.Button == tea.MouseLeft {
 			m.dragText(msg.X, msg.Y)
@@ -454,6 +491,13 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			}
 		}
 	case tea.MouseReleaseMsg:
+		if m.imagePan != nil {
+			if msg.Button == tea.MouseLeft || msg.Button == tea.MouseNone {
+				m.dragImage(msg.X, msg.Y)
+			}
+			m.imagePan = nil
+			return m, nil
+		}
 		if msg.Button == tea.MouseLeft || msg.Button == tea.MouseNone {
 			m.dragText(msg.X, msg.Y)
 		}
@@ -465,6 +509,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			m.resizingSidebar = false
 		}
 	case tea.BlurMsg:
+		m.imagePan = nil
 		m.stopTextDrag()
 		m.resizingSidebar = false
 		m.hoverX, m.hoverY = -1, -1
@@ -499,9 +544,11 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}
 		m.revealFile = ""
 	case tea.WindowSizeMsg:
+		m.imagePan = nil
 		m.resizingSidebar = false
 		m.width, m.height = max(1, msg.Width), max(1, msg.Height)
 		m.resize()
+		return m, tea.Raw(ansi.WindowOp(16))
 	case tickMsg:
 		if !m.loading && !m.busy {
 			return m, tea.Batch(m.refresh(), m.reloadWatchedFiles(nil), m.tick())
@@ -570,6 +617,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			m.ensureEditor()
 		}
 	case tea.MouseClickMsg:
+		m.imagePan = nil
 		m.stopTextDrag()
 		if m.modal != "" {
 			return m, m.clickModal(msg)
@@ -577,6 +625,10 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		m.resizingSidebar = false
 		if m.sidebarDividerAt(msg.X, msg.Y) {
 			m.resizingSidebar = msg.Button == tea.MouseLeft
+			return m, nil
+		}
+		if m.currentImage() != nil && msg.Button == tea.MouseLeft && m.imageContentAt(msg.X, msg.Y) {
+			m.beginImagePan(msg.X, msg.Y)
 			return m, nil
 		}
 		return m, m.click(msg)
@@ -588,6 +640,14 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 					delta = -1
 				}
 				m.choice = min(max(0, len(m.filteredActions())-1), max(0, m.choice+delta))
+			}
+			return m, nil
+		}
+		if m.currentImage() != nil && m.imageContentAt(msg.X, msg.Y) {
+			if msg.Button == tea.MouseWheelUp {
+				m.zoomImage(1.2, msg.X, msg.Y)
+			} else if msg.Button == tea.MouseWheelDown {
+				m.zoomImage(1/1.2, msg.X, msg.Y)
 			}
 			return m, nil
 		}
@@ -775,6 +835,16 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		}
 		return nil
 	}
+	if m.currentImage() != nil {
+		if k == "0" {
+			m.resetImageZoom()
+			return nil
+		}
+		if k == "enter" {
+			return m.keepTab()
+		}
+		return nil
+	}
 	if m.editing() {
 		d := m.document()
 		switch k {
@@ -880,6 +950,14 @@ func (m *Model) reloadCleanTabs() {
 	newActive := -1
 	for i, t := range m.tabs {
 		wasActive := i == m.activeTab
+		if t.image != nil {
+			fresh, err := imagepreview.Open(t.image.Path)
+			if err != nil {
+				m.log(err.Error())
+			} else {
+				t.image.Image, t.image.rows = fresh, nil
+			}
+		}
 		if t.doc != nil && !t.doc.Dirty() {
 			t.highlightJob.stop()
 			d, err := editor.Open(t.doc.Path)

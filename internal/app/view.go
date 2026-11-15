@@ -196,7 +196,9 @@ func (m *Model) mainLines() []string {
 	lines = append(lines, m.contentToolbar())
 	var content []string
 	editing := m.editing()
-	if editing {
+	if m.currentImage() != nil {
+		content = m.imageLines()
+	} else if editing {
 		content = m.editorLines()
 	} else if m.patch.Raw != "" {
 		content = m.diffView()

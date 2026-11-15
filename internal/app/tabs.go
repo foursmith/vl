@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"github.com/ourongxing/elegit/internal/editor"
 	"github.com/ourongxing/elegit/internal/fileicon"
+	"github.com/ourongxing/elegit/internal/imagepreview"
 	"github.com/ourongxing/elegit/internal/theme"
 )
 
@@ -41,13 +42,22 @@ func (m *Model) openDocument(path string, preview bool) bool {
 		abs = real
 	}
 	for i := range m.tabs {
-		if m.tabs[i].doc != nil && m.tabs[i].doc.Path == abs {
+		if m.tabs[i].diff == nil && m.tabs[i].path() == abs {
 			if !preview {
 				m.tabs[i].preview = false
 			}
 			m.activateTab(i)
 			return true
 		}
+	}
+	if imagepreview.Supported(abs) {
+		im, err := imagepreview.Open(abs)
+		if err != nil {
+			m.log(err.Error())
+			return false
+		}
+		m.activateTab(m.insertTab(tab{image: newImageState(im, m.allocateImageID()), preview: preview}))
+		return true
 	}
 	d, err := editor.Open(abs)
 	if err != nil {
@@ -64,6 +74,7 @@ func (m *Model) insertTab(next tab) int {
 	if next.preview {
 		for i := range m.tabs {
 			if m.tabs[i].preview && !m.tabs[i].dirty() {
+				m.retireImage(&m.tabs[i])
 				m.tabs[i].close()
 				m.tabs[i] = next
 				return i
@@ -80,12 +91,18 @@ func (t tab) clickKey() string {
 	if t.diff != nil {
 		return fmt.Sprintf("tab:diff:%p", t.diff)
 	}
+	if t.image != nil {
+		return fmt.Sprintf("tab:image:%p", t.image)
+	}
 	return fmt.Sprintf("tab:file:%p", t.doc)
 }
 
 func (t tab) path() string {
 	if t.diff != nil {
 		return t.diff.diffPath
+	}
+	if t.image != nil {
+		return t.image.Path
 	}
 	return t.doc.Path
 }
@@ -94,6 +111,7 @@ func (m *Model) editing() bool { return m.document() != nil }
 
 func (m *Model) activateTab(index int) {
 	m.stopTextDrag()
+	m.imagePan = nil
 	m.activeTab = index
 	m.pendingHistory = ""
 	m.diffState = m.emptyDiff
@@ -104,7 +122,7 @@ func (m *Model) activateTab(index int) {
 		m.viewport.SetHeight(m.contentHeight())
 		m.renderDiff()
 	} else {
-		m.lastFileRepository = m.fileRepository(t.doc.Path)
+		m.lastFileRepository = m.fileRepository(t.path())
 	}
 	m.sidebar = false
 	m.ensureEditor()
@@ -141,11 +159,16 @@ func (m *Model) closeOtherTabs() tea.Cmd {
 
 func (m *Model) requestCloseTabs(tabs []tab) tea.Cmd {
 	var docs []*editor.Document
-	for _, t := range tabs {
-		if t.diff != nil {
-			m.removeDiff(t.diff)
-		} else {
-			docs = append(docs, t.doc)
+	for _, target := range tabs {
+		if target.doc != nil {
+			docs = append(docs, target.doc)
+			continue
+		}
+		for i, t := range m.tabs {
+			if t.diff == target.diff && t.image == target.image {
+				m.removeTabAt(i)
+				break
+			}
 		}
 	}
 	return m.requestClose(docs)
@@ -208,17 +231,9 @@ func (m *Model) removeTab(doc *editor.Document) {
 	}
 }
 
-func (m *Model) removeDiff(state *diffState) {
-	for i, t := range m.tabs {
-		if t.diff == state && state != nil {
-			m.removeTabAt(i)
-			return
-		}
-	}
-}
-
 func (m *Model) removeTabAt(index int) {
 	t := &m.tabs[index]
+	m.retireImage(t)
 	t.close()
 	wasActive := index == m.activeTab
 	copy(m.tabs[index:], m.tabs[index+1:])
@@ -267,8 +282,8 @@ func (m *Model) tabLabel(index int) string {
 		return safe(label) + " · Diff"
 	}
 	for i, other := range m.tabs {
-		if i != index && other.doc != nil && filepath.Base(other.doc.Path) == label {
-			label += " · " + filepath.Base(filepath.Dir(t.doc.Path))
+		if i != index && other.diff == nil && filepath.Base(other.path()) == label {
+			label += " · " + filepath.Base(filepath.Dir(t.path()))
 			break
 		}
 	}

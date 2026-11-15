@@ -13,6 +13,7 @@ cmd/elegit                 flags, process lifetime, concrete composition
   └── internal/app         Bubble Tea model/update/view, commands, task delivery
         ├── internal/git        system Git adapter, status and repository results
         ├── internal/diff       patch parsing, line pairing, single-hunk extraction
+        ├── internal/imagepreview bounded raster/SVG decoding and Kitty image encoding
         ├── internal/editor     document bytes, cursor, selection, undo and save
         ├── internal/files      lazy visible-directory reads and entry creation
         ├── internal/search     workspace discovery and compiled text matchers
@@ -108,16 +109,33 @@ Commands must remain discoverable in the palette. Preserve text-editing keys
 while an editor owns focus. Disabled commands should explain the missing target.
 
 The editor group uses one ordered `[]tab` and one active index, following ttt's
-document/content-tab ownership. A tab holds either a document or a diff state.
-Both kinds append in opening order and share selection, keyboard cycling,
+document/content-tab ownership. A tab holds a document, an image preview, or a
+diff state. Each image tab has an image state owning its decoded source,
+viewport and cached Kitty Unicode placeholder cells, separate from editable
+documents. Image reload replies carry image identity and generation, so closing or
+replacing a preview invalidates late results. Chunked PNG uploads ride on the
+first placeholder cell through Ultraviolet's APC pass-through. Unchanged cells
+do not retransmit. The placeholder grid follows normal clipping and modal overlays;
+only owned image IDs are deleted on close or exit. Reported terminal cell dimensions
+drive the fit calculation, with an 8×16 pixel fallback. SVG uses okage's pure-Go
+resvg port. Opening an SVG stores its parsed tree and source bounds; rendering
+rasterizes that tree directly at the target pixel resolution.
+Each image tab owns its fit-relative zoom and normalized center. Wheel zoom
+preserves the source point beneath the pointer; dragging pans within source
+bounds. Raster/SVG transforms render only the visible source rectangle into a
+viewport-sized PNG, keeping high zoom independent of full-image allocation.
+Blur, tab switches and geometry changes cancel an active image drag.
+Startup probes the Kitty protocol; a terminal must also support Unicode placements
+and 256 colors. Unsupported terminals show a message instead of placeholder glyphs.
+All kinds append in opening order and share selection, keyboard cycling,
 overflow, hit testing and close behavior. Diff identity includes repository,
 path, staged versus working-tree source, and commit ID; reopening the same
 source selects its existing tab. Different sources can remain open together.
 The model's diff-state binding points at the selected tab for rendering, or an
-empty surface while a document is selected; it is not a shared diff buffer.
+empty surface while a file or image is selected; it is not a shared diff buffer.
 
-File and diff tabs share one preview slot and explicit preview versus kept state.
-Single-click exploration replaces only a clean preview of either kind;
+Text, image and diff tabs share one preview slot and explicit preview versus kept state.
+Single-click exploration replaces only a clean preview;
 double-click/Enter keeps it. Editing a document also keeps its tab. Dirty
 tabs can never be replaced by another preview. Resolve file identity before
 deduplication, including symlinks. Tab rendering and mouse hit testing share one

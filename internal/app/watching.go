@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/ourongxing/elegit/internal/editor"
+	"github.com/ourongxing/elegit/internal/imagepreview"
 	"github.com/ourongxing/elegit/internal/watcher"
 )
 
@@ -59,8 +60,8 @@ func (m *Model) syncWatch() {
 		}
 	}
 	for _, t := range m.tabs {
-		if t.doc != nil {
-			config.Directories = append(config.Directories, filepath.Dir(t.doc.Path))
+		if t.diff == nil {
+			config.Directories = append(config.Directories, filepath.Dir(t.path()))
 		}
 	}
 	for _, path := range m.snapshot.Repositories {
@@ -104,12 +105,12 @@ func (m *Model) reloadWatchedFiles(paths []string) tea.Cmd {
 	var commands []tea.Cmd
 	for i := range m.tabs {
 		t := &m.tabs[i]
-		if t.doc == nil {
+		if t.diff != nil {
 			continue
 		}
 		changed := paths == nil
 		for _, path := range paths {
-			if path == t.doc.Path || strings.HasPrefix(t.doc.Path, path+string(filepath.Separator)) {
+			if path == t.path() || strings.HasPrefix(t.path(), path+string(filepath.Separator)) {
 				changed = true
 				break
 			}
@@ -118,6 +119,14 @@ func (m *Model) reloadWatchedFiles(paths []string) tea.Cmd {
 			continue
 		}
 		t.reloadSeq++
+		if t.image != nil {
+			original, path, seq := t.image.Image, t.path(), t.reloadSeq
+			commands = append(commands, func() tea.Msg {
+				fresh, err := imagepreview.Open(path)
+				return imageReloadMsg{original, fresh, seq, err}
+			})
+			continue
+		}
 		original, path, seq := t.doc, t.doc.Path, t.reloadSeq
 		commands = append(commands, func() tea.Msg { fresh, err := editor.Open(path); return fileReloadMsg{original, fresh, seq, err} })
 	}
