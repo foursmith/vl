@@ -43,7 +43,7 @@ func TestFileHorizontalWheelPreservesCursorAndVerticalScroll(t *testing.T) {
 func TestDiffHorizontalScrollKeepsGuttersAndSplitBoundary(t *testing.T) {
 	m := tabWorkspace(t, 0)
 	m.sidebar = false
-	m.diffOpen = true
+	showDiffFixture(m)
 	m.diffPath = "long.go"
 	m.patch = diff.Parse("@@ -1 +1 @@\n-" + strings.Repeat("a", 200) + "OLD\n+" + strings.Repeat("b", 200) + "NEW\n")
 	for _, split := range []bool{false, true} {
@@ -86,7 +86,7 @@ func TestDiffHorizontalClipUsesDisplayColumns(t *testing.T) {
 	code := "\t你e\u0301TAIL"
 	spans := []highlight.Span{{Start: 1, End: 8, Color: "#569CD6", Font: highlight.Bold}}
 	for _, left := range []int{0, 1, 4, 5, 6, 7, 8} {
-		got := diffCodeOffset(colors, code, spans, 6, left, colors.AddedBackground, colors.AddedText, diffRange{2, 8})
+		got := diffCode(colors, code, spans, 6, left, colors.AddedBackground, colors.AddedText, diffRange{2, 8})
 		want := plain(row(ansi.Cut(expandTabs(code), left, left+6), 6, colors.Foreground, colors.AddedBackground))
 		if plain(got) != want || ansi.StringWidth(got) != 6 {
 			t.Fatalf("column %d: got %q, want %q", left, plain(got), want)

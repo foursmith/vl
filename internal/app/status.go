@@ -86,7 +86,7 @@ func (m *Model) statusLayout() []statusSegment {
 		x += segment.width
 	}
 	var candidates []statusSegment
-	if d := m.document(); m.editing() && d != nil {
+	if d := m.document(); d != nil {
 		line, col := d.Position()
 		eol := "LF"
 		if d.CRLF {

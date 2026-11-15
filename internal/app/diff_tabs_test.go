@@ -28,7 +28,7 @@ func TestDiffTabsOwnIdentityContentAndViewport(t *testing.T) {
 	var states []*diffState
 	for i, target := range targets {
 		raw := diffTabText(fmt.Sprintf("source %d", i))
-		drain(t, m, m.requestDiff(target, true, func(context.Context) (string, error) { return raw, nil }))
+		drain(t, m, m.requestDiff(target, func(context.Context) (string, error) { return raw, nil }))
 		m.viewport.SetYOffset(i + 1)
 		states = append(states, m.diffState)
 	}
@@ -52,7 +52,7 @@ func TestDiffTabsOwnIdentityContentAndViewport(t *testing.T) {
 		t.Fatal("document inherited a diff surface")
 	}
 	raw := diffTabText("updated index")
-	drain(t, m, m.requestDiff(targets[1], true, func(context.Context) (string, error) { return raw, nil }))
+	drain(t, m, m.requestDiff(targets[1], func(context.Context) (string, error) { return raw, nil }))
 	if len(m.tabs) != 6 || m.activeTab != 2 || m.diffState != states[1] || !strings.Contains(m.patch.Raw, "updated index") {
 		t.Fatal("reopening the same review did not reuse its tab")
 	}
@@ -60,9 +60,9 @@ func TestDiffTabsOwnIdentityContentAndViewport(t *testing.T) {
 
 func TestDiffRepliesStayWithTheirTabAcrossSwitchAndClose(t *testing.T) {
 	m := tabWorkspace(t, 1)
-	first := m.requestDiff(diffTarget{path: "file0.go"}, true, func(context.Context) (string, error) { return diffTabText("first"), nil })
+	first := m.requestDiff(diffTarget{path: "file0.go"}, func(context.Context) (string, error) { return diffTabText("first"), nil })
 	d1 := m.diffState
-	second := m.requestDiff(diffTarget{path: "file0.go", staged: true}, true, func(context.Context) (string, error) { return diffTabText("second"), nil })
+	second := m.requestDiff(diffTarget{path: "file0.go", staged: true}, func(context.Context) (string, error) { return diffTabText("second"), nil })
 	d2 := m.diffState
 	m.openFile("file0.go")
 	doc := m.document()
@@ -78,7 +78,7 @@ func TestDiffRepliesStayWithTheirTabAcrossSwitchAndClose(t *testing.T) {
 	if m.diffState != d2 || d1.diffOpen || syntax.ctx.Err() == nil {
 		t.Fatal("closing active diff did not cancel its work and select its neighbor")
 	}
-	drain(t, m, m.requestDiff(diffTarget{path: "file0.go"}, true, func(context.Context) (string, error) { return diffTabText("reopened"), nil }))
+	drain(t, m, m.requestDiff(diffTarget{path: "file0.go"}, func(context.Context) (string, error) { return diffTabText("reopened"), nil }))
 	d3 := m.diffState
 	m.Update(stale)
 	m.Update(syntax)
@@ -102,7 +102,7 @@ func TestDiffRefreshUsesTabSourceAndPreservesActiveDocument(t *testing.T) {
 	m := tabWorkspace(t, 2)
 	for i := 0; i < 2; i++ {
 		raw := diffTabText(fmt.Sprintf("review %d", i))
-		drain(t, m, m.requestDiff(diffTarget{path: fmt.Sprintf("file%d.go", i)}, true, func(context.Context) (string, error) { return raw, nil }))
+		drain(t, m, m.requestDiff(diffTarget{path: fmt.Sprintf("file%d.go", i)}, func(context.Context) (string, error) { return raw, nil }))
 		m.viewport.SetYOffset(5 + i)
 	}
 	m.openFile("file0.go")
@@ -131,7 +131,7 @@ func TestMixedTabsRetainDirtyCloseGuard(t *testing.T) {
 	m.openFile("file0.go")
 	press(m, "x")
 	doc := m.document()
-	drain(t, m, m.requestDiff(diffTarget{path: "file0.go"}, true, func(context.Context) (string, error) { return diffTabText("review"), nil }))
+	drain(t, m, m.requestDiff(diffTarget{path: "file0.go"}, func(context.Context) (string, error) { return diffTabText("review"), nil }))
 	m.closeOtherTabs()
 	if m.modal != "close" || len(m.tabs) != 2 {
 		t.Fatal("close others bypassed a dirty document")
@@ -154,7 +154,7 @@ func TestFilesAndDiffsSharePreviewAndKeepMechanism(t *testing.T) {
 	m := tabWorkspace(t, 3)
 	openPreview := func(path string, staged bool) {
 		t.Helper()
-		drain(t, m, m.requestDiff(diffTarget{path: path, staged: staged, preview: true}, true, func(context.Context) (string, error) { return diffTabText(path), nil }))
+		drain(t, m, m.requestDiff(diffTarget{path: path, staged: staged, preview: true}, func(context.Context) (string, error) { return diffTabText(path), nil }))
 	}
 	m.openPreviewFile("file0.go")
 	openPreview("file1.go", false)
@@ -240,5 +240,31 @@ func TestDiffSidebarSingleDoubleClickAndEnter(t *testing.T) {
 				t.Fatal("single click downgraded a kept diff")
 			}
 		})
+	}
+}
+
+func TestRemovedHistoryRepositoryClosesItsTabsAndKeepsOtherReview(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	m.snapshot.Repositories = []string{"child"}
+	id := "111111111111"
+	childKey := historyKey("child", id)
+	m.historyStates[childKey] = &historyState{repository: "child"}
+	m.historyCommit, m.pendingHistory = childKey, childKey
+	var removed []*diffState
+	for _, path := range []string{"child/a.go", "child/b.go"} {
+		drain(t, m, m.requestDiff(diffTarget{path: path, repository: "child", commit: id}, func(context.Context) (string, error) { return diffTabText("child"), nil }))
+		removed = append(removed, m.diffState)
+	}
+	drain(t, m, m.requestDiff(diffTarget{path: "root.go", commit: id}, func(context.Context) (string, error) { return diffTabText("root"), nil }))
+	root := m.diffState
+	m.snapshot.Repositories = nil
+	m.reconcileHistoryRepositories()
+	if len(m.tabs) != 1 || m.diffState != root || !strings.Contains(m.patch.Raw, "root") || m.historyStates[childKey] != nil || m.historyCommit != "" || m.pendingHistory != "" {
+		t.Fatal("repository cleanup affected another review or left orphaned history")
+	}
+	for _, d := range removed {
+		if d.diffOpen {
+			t.Fatal("orphaned history tab stayed open")
+		}
 	}
 }

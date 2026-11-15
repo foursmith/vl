@@ -8,7 +8,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/elegit/internal/diff"
 	"github.com/ourongxing/elegit/internal/editor"
 	"github.com/ourongxing/elegit/internal/fileicon"
 	"github.com/ourongxing/elegit/internal/theme"
@@ -33,8 +32,6 @@ func (m *Model) openPreviewFile(path string) tea.Cmd {
 }
 
 func (m *Model) openDocument(path string, preview bool) bool {
-	defer m.syncWatch()
-	m.keepEditedTabs()
 	abs := path
 	if !filepath.IsAbs(abs) {
 		abs = filepath.Join(m.repo.Root, path)
@@ -67,10 +64,7 @@ func (m *Model) insertTab(next tab) int {
 	if next.preview {
 		for i := range m.tabs {
 			if m.tabs[i].preview && !m.tabs[i].dirty() {
-				m.tabs[i].highlightJob.stop()
-				if d := m.tabs[i].diff; d != nil {
-					d.close()
-				}
+				m.tabs[i].close()
 				m.tabs[i] = next
 				return i
 			}
@@ -224,10 +218,7 @@ func (m *Model) removeDiff(state *diffState) {
 
 func (m *Model) removeTabAt(index int) {
 	t := &m.tabs[index]
-	t.highlightJob.stop()
-	if t.diff != nil {
-		t.diff.close()
-	}
+	t.close()
 	wasActive := index == m.activeTab
 	copy(m.tabs[index:], m.tabs[index+1:])
 	m.tabs[len(m.tabs)-1] = tab{}
@@ -249,28 +240,11 @@ func (m *Model) removeTabAt(index int) {
 	m.ensureTabVisible()
 }
 
-func (d *diffState) close() {
-	d.diffOpen = false
-	d.diffSeq++
-	if d.diffCancel != nil {
-		d.diffCancel()
-		d.diffCancel = nil
+func (t *tab) close() {
+	t.highlightJob.stop()
+	if t.diff != nil {
+		t.diff.close()
 	}
-	if d.diffSyntaxCancel != nil {
-		d.diffSyntaxCancel()
-		d.diffSyntaxCancel = nil
-	}
-	d.diffLoading = false
-	d.patch = diff.Patch{}
-	d.diffRows, d.diffRowHunks = nil, nil
-	d.diffSyntax, d.diffEmphasis = nil, nil
-	d.diffLayout = diffLayoutKey{}
-	d.viewport.SetContent("")
-	d.read = nil
-}
-
-func (m *Model) closeDiff() {
-	m.removeDiff(m.diffState)
 }
 
 type tabSlot struct {
@@ -489,18 +463,4 @@ func (m *Model) hasDirtyTabs() bool {
 		}
 	}
 	return false
-}
-
-func (m *Model) clearDiffContent() {
-	if m.diffSyntaxCancel != nil {
-		m.diffSyntaxCancel()
-		m.diffSyntaxCancel = nil
-	}
-	m.diffSyntax = nil
-	m.diffEmphasis = nil
-	m.patch = diff.Patch{}
-	m.diffRows = nil
-	m.diffLayout = diffLayoutKey{}
-	m.diffRowHunks = nil
-	m.viewport.SetContent("")
 }

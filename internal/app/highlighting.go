@@ -38,7 +38,7 @@ type highlightResultMsg struct {
 }
 
 func (m *Model) scheduleHighlight() tea.Cmd {
-	if !m.editing() || m.document() == nil {
+	if !m.editing() {
 		return nil
 	}
 	t := &m.tabs[m.activeTab]

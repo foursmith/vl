@@ -47,7 +47,7 @@ func (m *Model) historyTree(id string) []item {
 	return rows
 }
 
-func (m *Model) previewHistory(entry item, reset bool) tea.Cmd {
+func (m *Model) previewHistory(entry item) tea.Cmd {
 	if entry.commit != nil {
 		objectID := entry.commit.ID
 		id := historyKey(entry.repository, objectID)
@@ -94,13 +94,10 @@ func (m *Model) previewHistory(entry item, reset bool) tea.Cmd {
 	if entry.historyChange == nil {
 		return nil
 	}
-	if !reset && !m.diffOpen {
-		return nil
-	}
 	c := *entry.historyChange
 	id := strings.TrimPrefix(entry.historyID, repositoryPrefix(entry.repository))
 	m.historyCommit = entry.historyID
-	return m.requestDiff(diffTarget{path: c.Path, repository: c.Repository, commit: id, preview: true}, reset, func(ctx context.Context) (string, error) {
+	return m.requestDiff(diffTarget{path: c.Path, repository: c.Repository, commit: id, preview: true}, func(ctx context.Context) (string, error) {
 		return m.repo.CommitFileDiff(ctx, id, c)
 	})
 }
@@ -132,7 +129,7 @@ func (m *Model) applyHistoryFiles(msg historyFilesMsg) tea.Cmd {
 func (m *Model) previewHistoryFirst(id string) tea.Cmd {
 	for _, entry := range m.historyTree(id) {
 		if entry.historyChange != nil {
-			return m.previewHistory(entry, true)
+			return m.previewHistory(entry)
 		}
 	}
 	m.notice = "This commit has no visible file changes"
@@ -155,7 +152,7 @@ func (m *Model) openHistory(entry item) tea.Cmd {
 		if state := m.historyStates[key]; state != nil {
 			state.expanded = true
 		}
-		return m.previewHistory(entry, true)
+		return m.previewHistory(entry)
 	}
 	if entry.folder != "" {
 		state := m.historyStates[entry.historyID]
@@ -170,7 +167,7 @@ func (m *Model) openHistory(entry item) tea.Cmd {
 		return nil
 	}
 	m.sidebar = false
-	cmd := m.previewHistory(entry, true)
+	cmd := m.previewHistory(entry)
 	m.keepTab()
 	return cmd
 }
@@ -293,9 +290,14 @@ func (m *Model) reconcileHistoryRepositories() {
 		delete(m.historyStates, key)
 		if m.historyCommit == key {
 			m.historyCommit = ""
-			if m.diffCommit != "" {
-				m.closeDiff()
-			}
+		}
+		if m.pendingHistory == key {
+			m.pendingHistory = ""
+		}
+	}
+	for i := len(m.tabs) - 1; i >= 0; i-- {
+		if d := m.tabs[i].diff; d != nil && d.diffCommit != "" && !present[d.diffRepository] {
+			m.removeTabAt(i)
 		}
 	}
 }

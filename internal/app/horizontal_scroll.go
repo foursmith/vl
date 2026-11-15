@@ -4,7 +4,7 @@ import "github.com/charmbracelet/x/ansi"
 
 // Horizontal wheel scrolling leaves the cursor and vertical position untouched.
 func (m *Model) scrollHorizontal(delta int) {
-	if m.editing() && m.document() != nil {
+	if m.editing() {
 		t := &m.tabs[m.activeTab]
 		if t.scrollText != t.doc.Text {
 			t.scrollText, t.scrollWidth = t.doc.Text, 0

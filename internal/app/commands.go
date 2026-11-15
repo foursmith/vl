@@ -23,14 +23,14 @@ func (m *Model) actions() []action {
 	}
 	docReason := ""
 	tabReason := ""
-	if !m.diffOpen && (!m.editing() || m.document() == nil) {
+	if m.activeTab < 0 {
 		tabReason = "No active tab"
 	}
 	openReason := ""
 	if m.current() == nil || m.current().change == nil && m.current().file == "" {
 		openReason = "Select a file in Explorer or Changes"
 	}
-	if !m.editing() || m.document() == nil {
+	if !m.editing() {
 		docReason = "Open a text file first"
 	}
 	githubReason := ""
@@ -487,7 +487,7 @@ func (m *Model) findNext() tea.Cmd {
 	if m.find == "" {
 		return nil
 	}
-	if m.editing() && m.document() != nil {
+	if m.editing() {
 		d := m.document()
 		runes := []rune(d.Text)
 		start := min(d.Cursor+1, len(runes))

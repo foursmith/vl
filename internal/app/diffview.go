@@ -45,6 +45,33 @@ func newDiffState() *diffState {
 	return &diffState{viewport: viewport.New(), diffHunk: -1}
 }
 
+func (d *diffState) clearContent() {
+	if d.diffSyntaxCancel != nil {
+		d.diffSyntaxCancel()
+		d.diffSyntaxCancel = nil
+	}
+	d.diffSyntax, d.diffEmphasis = nil, nil
+	d.patch = diff.Patch{}
+	d.diffRows, d.diffRowHunks = nil, nil
+	d.diffLayout = diffLayoutKey{}
+	d.diffLeft, d.diffWidth = 0, 0
+	d.diffHunk = -1
+	d.viewport.SetContent("")
+	d.viewport.GotoTop()
+}
+
+func (d *diffState) close() {
+	d.diffOpen = false
+	d.diffSeq++
+	if d.diffCancel != nil {
+		d.diffCancel()
+		d.diffCancel = nil
+	}
+	d.diffLoading = false
+	d.read = nil
+	d.clearContent()
+}
+
 // A tab identity includes the review source: a document, worktree diff,
 // index diff and commit diff of the same path are distinct tabs.
 type diffTarget struct {
@@ -58,7 +85,7 @@ func (d *diffState) matches(target diffTarget) bool {
 	return d.diffPath == target.path && d.diffRepository == target.repository && d.diffCommit == target.commit && d.diffStaged == target.staged
 }
 
-func (m *Model) requestDiff(target diffTarget, reset bool, read func(context.Context) (string, error)) tea.Cmd {
+func (m *Model) requestDiff(target diffTarget, read func(context.Context) (string, error)) tea.Cmd {
 	index := -1
 	for i, t := range m.tabs {
 		if t.diff != nil && t.diff.matches(target) {
@@ -81,7 +108,7 @@ func (m *Model) requestDiff(target diffTarget, reset bool, read func(context.Con
 	sidebar := m.sidebar
 	m.activateTab(index)
 	m.sidebar = sidebar
-	return m.loadDiff(d, reset)
+	return m.loadDiff(d, true)
 }
 
 func (m *Model) loadDiff(d *diffState, reset bool) tea.Cmd {
@@ -93,19 +120,13 @@ func (m *Model) loadDiff(d *diffState, reset bool) tea.Cmd {
 	d.diffSeq++
 	d.diffLoading = true
 	if reset {
-		bound := m.diffState
-		m.diffState = d
-		m.clearDiffContent()
-		m.diffState = bound
-		d.diffHunk = -1
-		d.viewport.GotoTop()
-		d.diffLeft = 0
+		d.clearContent()
 	}
-	seq, path, read := d.diffSeq, d.diffPath, d.read
+	seq, read := d.diffSeq, d.read
 	return func() tea.Msg {
 		defer cancel()
 		raw, err := read(ctx)
-		return diffMsg{target: d, seq: seq, path: path, raw: raw, err: err}
+		return diffMsg{target: d, seq: seq, raw: raw, err: err}
 	}
 }
 
@@ -347,16 +368,12 @@ func (m *Model) diffRow(line *diff.Line, width int, right bool) string {
 	} else if line.Kind == diff.Deleted {
 		emphasis = m.colors.DeletedText
 	}
-	return row(label, gutter, m.colors.LineNumber, m.colors.Background) + diffCodeOffset(m.colors, code, m.diffSyntax[line], width-gutter, m.diffLeft, bg, emphasis, m.diffEmphasis[line])
+	return row(label, gutter, m.colors.LineNumber, m.colors.Background) + diffCode(m.colors, code, m.diffSyntax[line], width-gutter, m.diffLeft, bg, emphasis, m.diffEmphasis[line])
 }
 
 // Paint token runs only up to the visible right edge, preserving source rune
 // offsets for syntax and emphasis while clipping by terminal display columns.
-func diffCode(colors theme.Palette, code string, spans []highlight.Span, width int, bg, emphasis string, changed diffRange) string {
-	return diffCodeOffset(colors, code, spans, width, 0, bg, emphasis, changed)
-}
-
-func diffCodeOffset(colors theme.Palette, code string, spans []highlight.Span, width, left int, bg, emphasis string, changed diffRange) string {
+func diffCode(colors theme.Palette, code string, spans []highlight.Span, width, left int, bg, emphasis string, changed diffRange) string {
 	if width <= 0 {
 		return ""
 	}

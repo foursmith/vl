@@ -195,7 +195,7 @@ func (m *Model) mainLines() []string {
 	lines := []string{m.tabBar()}
 	lines = append(lines, m.contentToolbar())
 	var content []string
-	editing := m.editing() && m.document() != nil
+	editing := m.editing()
 	if editing {
 		content = m.editorLines()
 	} else if m.patch.Raw != "" {
@@ -593,7 +593,7 @@ func (m *Model) click(msg tea.MouseClickMsg) tea.Cmd {
 	if m.welcomeVisible() {
 		return m.clickWelcome(msg)
 	}
-	if m.editing() && m.document() != nil && msg.Y >= editorContentRow && msg.Y < m.bodyHeight() {
+	if m.editing() && msg.Y >= editorContentRow && msg.Y < m.bodyHeight() {
 		t := &m.tabs[m.activeTab]
 		lines := t.doc.Lines()
 		line := min(len(lines)-1, t.top+msg.Y-editorContentRow)

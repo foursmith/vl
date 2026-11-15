@@ -70,10 +70,10 @@ type snapshotMsg struct {
 	err      error
 }
 type diffMsg struct {
-	target    *diffState
-	seq       int
-	path, raw string
-	err       error
+	target *diffState
+	seq    int
+	raw    string
+	err    error
 }
 type operationMsg struct {
 	title, output string
@@ -334,22 +334,18 @@ func (m *Model) selectSectionInRepository(s section, repository string) tea.Cmd 
 }
 
 func (m *Model) preview() tea.Cmd {
-	return m.previewAt(true)
-}
-
-func (m *Model) previewAt(reset bool) tea.Cmd {
 	entry := m.current()
 	if entry == nil {
 		return nil
 	}
 	if m.section == history {
-		return m.previewHistory(*entry, reset)
+		return m.previewHistory(*entry)
 	}
-	if entry.change == nil || !reset && !m.diffOpen {
+	if entry.change == nil {
 		return nil
 	}
 	c, staged := *entry.change, entry.staged
-	return m.requestDiff(diffTarget{path: c.Path, repository: c.Repository, staged: staged, change: &c, preview: true}, reset, func(ctx context.Context) (string, error) {
+	return m.requestDiff(diffTarget{path: c.Path, repository: c.Repository, staged: staged, change: &c, preview: true}, func(ctx context.Context) (string, error) {
 		return m.repo.Diff(ctx, c, staged)
 	})
 }
@@ -639,7 +635,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			m.choice = 0
 			return m, cmd
 		}
-		if !m.sidebar && m.editing() && m.document() != nil {
+		if !m.sidebar && m.editing() {
 			m.document().Insert(msg.Content)
 			m.ensureEditor()
 		}
@@ -772,7 +768,7 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		}
 		return nil
 	}
-	if m.editing() && m.document() != nil {
+	if m.editing() {
 		d := m.document()
 		switch k {
 		case "ctrl+z":
@@ -860,7 +856,7 @@ func (m *Model) save() tea.Cmd {
 		return nil
 	}
 	d := m.document()
-	if !m.editing() || d == nil {
+	if d == nil {
 		m.notice = "Open a file to edit first"
 		return nil
 	}
@@ -906,9 +902,6 @@ func (m *Model) reloadCleanTabs() {
 		sidebar := m.sidebar
 		m.activateTab(m.activeTab)
 		m.sidebar = sidebar
-	}
-	if m.editing() && m.document() != nil {
-		m.lastFileRepository = m.fileRepository(m.document().Path)
 	}
 	m.ensureEditor()
 }

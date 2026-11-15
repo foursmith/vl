@@ -104,9 +104,9 @@ func TestHistoryKeepsMultipleCommitsExpandedWithIndependentLoads(t *testing.T) {
 		return item{}
 	}
 	m.rebuildItems()
-	m.previewHistory(selectCommit(a.ID), true)
+	m.previewHistory(selectCommit(a.ID))
 	seqA := m.historyStates[historyKey("", a.ID)].seq
-	m.previewHistory(selectCommit(b.ID), true)
+	m.previewHistory(selectCommit(b.ID))
 	seqB := m.historyStates[historyKey("", b.ID)].seq
 	// The earlier request may finish last; both results belong to their own trees.
 	m.applyHistoryFiles(historyFilesMsg{seq: seqB, id: b.ID, files: []gitservice.Change{{Path: "src/b.go", Index: 'M', Worktree: ' '}}})

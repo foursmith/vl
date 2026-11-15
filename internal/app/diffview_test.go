@@ -92,7 +92,7 @@ func TestDiffSyntaxResultsCannotReplaceNewPatch(t *testing.T) {
 	if len(m.diffSyntax) == 0 {
 		t.Fatal("current syntax missing")
 	}
-	m.clearDiffContent()
+	m.diffState.clearContent()
 	if result.ctx.Err() == nil || m.diffSyntax != nil {
 		t.Fatal("closed diff kept syntax work")
 	}
@@ -104,7 +104,7 @@ func TestDiffSyntaxResultsCannotReplaceNewPatch(t *testing.T) {
 }
 
 func TestDiffSyntaxFontsKeepDiffBackground(t *testing.T) {
-	line := diffCode(theme.Dark(), "bold", []highlight.Span{{Start: 0, End: 4, Color: "#569CD6", Font: highlight.Bold}}, 12, theme.Dark().AddedBackground, theme.Dark().AddedText, diffRange{0, 5})
+	line := diffCode(theme.Dark(), "bold", []highlight.Span{{Start: 0, End: 4, Color: "#569CD6", Font: highlight.Bold}}, 12, 0, theme.Dark().AddedBackground, theme.Dark().AddedText, diffRange{0, 5})
 	cells := uv.NewStyledString(line).Lines(ansi.GraphemeWidth)[0]
 	for i, cell := range cells {
 		if !sameColor(cell.Style.Bg, lipgloss.Color(theme.Dark().AddedText)) {

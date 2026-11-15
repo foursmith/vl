@@ -72,7 +72,7 @@ func showDiffFixture(m *Model) {
 func TestDiffSharesFileTabOrder(t *testing.T) {
 	m := tabWorkspace(t, 4)
 	openDiff := func() {
-		m.requestDiff(diffTarget{path: "file0.go"}, true, func(context.Context) (string, error) { return "", nil })
+		m.requestDiff(diffTarget{path: "file0.go"}, func(context.Context) (string, error) { return "", nil })
 	}
 	m.openFile("file0.go")
 	openDiff()
@@ -128,7 +128,7 @@ func TestReloadKeepsDiffPositionWhenEarlierFilesDisappear(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		m.openFile(fmt.Sprintf("file%d.go", i))
 	}
-	m.requestDiff(diffTarget{path: "file2.go"}, true, func(context.Context) (string, error) { return "", nil })
+	m.requestDiff(diffTarget{path: "file2.go"}, func(context.Context) (string, error) { return "", nil })
 	d := m.diffState
 	m.openFile("file3.go")
 	for i := 0; i < 3; i++ {

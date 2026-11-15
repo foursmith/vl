@@ -170,11 +170,8 @@ func (m *Model) finishReload(msg fileReloadMsg) {
 
 // Close releases watcher and background requests when the program exits.
 func (m *Model) Close() {
-	for _, t := range m.tabs {
-		if t.diff != nil {
-			t.diff.close()
-		}
-		t.highlightJob.stop()
+	for i := range m.tabs {
+		m.tabs[i].close()
 	}
 	m.cancel()
 	if m.watcher != nil {

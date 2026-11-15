@@ -64,7 +64,7 @@ func (m *Model) diffContext() string {
 
 func (m *Model) contentToolbar() string {
 	w := m.mainWidth()
-	if m.editing() && m.document() != nil {
+	if m.editing() {
 		return m.breadcrumb(m.document().Path, w)
 	}
 	if !m.diffOpen {

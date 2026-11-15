@@ -50,10 +50,10 @@ func TestHistoryGroupsSharedCommitsByRepository(t *testing.T) {
 	drain(t, m, m.refresh())
 	drain(t, m, m.selectSection(history))
 	root := selectHistoryCommit(t, m, "", shared)
-	drain(t, m, m.previewHistory(root, true))
+	drain(t, m, m.previewHistory(root))
 	rootText, _ := m.historyRow(root, 120, theme.Dark().Panel)
 	childEntry := selectHistoryCommit(t, m, "child space", shared)
-	drain(t, m, m.previewHistory(childEntry, true))
+	drain(t, m, m.previewHistory(childEntry))
 	childText, _ := m.historyRow(childEntry, 120, theme.Dark().Panel)
 	if !strings.Contains(plain(rootText), "parent-only") || strings.Contains(plain(rootText), "child-only") {
 		t.Fatal("parent history uses child refs")
@@ -160,11 +160,11 @@ func TestHistoryRepliesWithSameIDStayInTheirRepository(t *testing.T) {
 	m.section = history
 	m.rebuildItems()
 	root := selectHistoryCommit(t, m, "", id)
-	m.previewHistory(root, true)
+	m.previewHistory(root)
 	rootKey := historyKey("", id)
 	rootSeq := m.historyStates[rootKey].seq
 	child := selectHistoryCommit(t, m, "child", id)
-	m.previewHistory(child, true)
+	m.previewHistory(child)
 	key := historyKey("child", id)
 	childSeq := m.historyStates[key].seq
 	m.applyHistoryFiles(historyFilesMsg{repository: "child", seq: childSeq, id: id, files: []gitservice.Change{{Repository: "child", Path: "child/src/child.go", Index: 'M', Worktree: ' '}}})
@@ -240,7 +240,7 @@ func TestHistoryCollapsedRepositoryDoesNotOpenLatePreview(t *testing.T) {
 	}
 	m.section = history
 	m.rebuildItems()
-	m.previewHistory(selectHistoryCommit(t, m, "child", id), true)
+	m.previewHistory(selectHistoryCommit(t, m, "child", id))
 	key := historyKey("child", id)
 	seq := m.historyStates[key].seq
 	for i, e := range m.items {

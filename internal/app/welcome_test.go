@@ -86,7 +86,7 @@ func TestWelcomeDoesNotReplaceOpenOrLoadingContent(t *testing.T) {
 	if m.welcomeVisible() {
 		t.Fatal("welcome replaced empty diff")
 	}
-	m.closeDiff()
+	m.closeTab()
 	if err := os.WriteFile(filepath.Join(m.repo.Root, "empty.txt"), nil, 0644); err != nil {
 		t.Fatal(err)
 	}

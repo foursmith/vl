@@ -197,14 +197,11 @@ func (m *Model) fileRepository(path string) string {
 }
 
 func (m *Model) statusRepository() string {
-	if m.editing() && m.document() != nil {
+	if m.editing() {
 		return m.fileRepository(m.document().Path)
 	}
 	if m.diffOpen {
 		return m.diffRepository
-	}
-	if m.document() != nil {
-		return m.fileRepository(m.document().Path)
 	}
 	for _, repo := range m.snapshot.Repositories {
 		if repo == m.lastFileRepository {

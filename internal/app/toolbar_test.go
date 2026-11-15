@@ -90,7 +90,7 @@ func TestLargeDiffPaintsOnlyViewportAndKeepsHunkSelection(t *testing.T) {
 	if !strings.Contains(plain(strings.Join(m.diffView(), "\n")), "new value 19") {
 		t.Fatal("search no longer maps plain content to rendered diff rows")
 	}
-	m.closeDiff()
+	m.closeTab()
 	if len(m.diffRows) != 0 || m.diffLayout.raw != "" {
 		t.Fatal("closed diff retained a large layout")
 	}

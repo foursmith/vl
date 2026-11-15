@@ -179,7 +179,7 @@ func (m *Model) createBranch(name string) tea.Cmd {
 
 func (m *Model) goToPosition(value string) tea.Cmd {
 	d := m.document()
-	if !m.editing() || d == nil {
+	if d == nil {
 		return nil
 	}
 	parts := strings.Split(strings.TrimSpace(value), ":")

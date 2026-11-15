@@ -95,7 +95,7 @@ func TestHoverStageUnstageAndOpenUseClickedFile(t *testing.T) {
 	a, y = hoverAction(t, m, "cmd/main.go", "open")
 	_, cmd = m.Update(tea.MouseClickMsg{X: a.x + 1, Y: y, Button: tea.MouseLeft})
 	drain(t, m, cmd)
-	if !m.editing() || m.document() == nil || filepath.Base(m.document().Path) != "main.go" {
+	if !m.editing() || filepath.Base(m.document().Path) != "main.go" {
 		t.Fatal("open action did not open file")
 	}
 	if m.section != explorer || m.sidebar || !m.expanded["cmd"] || m.current() == nil || m.current().file != "cmd/main.go" {
