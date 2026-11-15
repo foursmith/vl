@@ -17,7 +17,8 @@ import (
 func TestDiffThemeGuttersSyntaxAndMissingLines(t *testing.T) {
 	m := tabWorkspace(t, 0)
 	m.width, m.height = 180, 30
-	m.diffOpen, m.split = true, true
+	showDiffFixture(m)
+	m.split = true
 	m.diffPath = "file.go"
 	m.patch = diff.Parse("--- a/file.go\n+++ b/file.go\n@@ -9999,2 +9999,3 @@\n-var old = 1\n+var value = 2\n+// added\n same\n")
 	m.renderDiff()
@@ -117,7 +118,7 @@ func TestDiffSyntaxFontsKeepDiffBackground(t *testing.T) {
 
 func TestCommitAndChangesShareDiffRenderingAndHunkNavigation(t *testing.T) {
 	m := tabWorkspace(t, 0)
-	m.diffOpen = true
+	showDiffFixture(m)
 	m.diffPath = "file.go"
 	m.patch = diff.Parse("diff --git a/file.go b/file.go\n--- a/file.go\n+++ b/file.go\n@@ -1,2 +1,2 @@\n-old\n+new\n same\n@@ -20,2 +20,3 @@\n before\n-old again\n+new again\n+extra\n")
 	for _, split := range []bool{false, true} {

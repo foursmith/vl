@@ -6,46 +6,178 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/clipperhouse/uax29/v2/graphemes"
 	"github.com/ourongxing/elegit/internal/diff"
+	gitservice "github.com/ourongxing/elegit/internal/git"
 	"github.com/ourongxing/elegit/internal/highlight"
 	"github.com/ourongxing/elegit/internal/theme"
 )
 
-// Both review sources share request cancellation, result identity and viewport state.
-func (m *Model) requestDiff(path string, reset bool, read func(context.Context) (string, error)) tea.Cmd {
-	if m.diffCancel != nil {
-		m.diffCancel()
+type diffState struct {
+	patch            diff.Patch
+	diffPath         string
+	diffRepository   string
+	diffChange       *gitservice.Change
+	diffStaged       bool
+	diffHunk         int
+	diffRowHunks     []int
+	diffRows         []diff.Pair
+	diffGutter       int
+	diffLeft         int
+	diffWidth        int
+	diffLayout       diffLayoutKey
+	diffLoading      bool
+	diffCancel       context.CancelFunc
+	diffSyntaxCancel context.CancelFunc
+	diffSyntax       map[*diff.Line][]highlight.Span
+	diffEmphasis     map[*diff.Line]diffRange
+	diffOpen         bool
+	diffCommit       string
+	diffSeq          int
+	viewport         viewport.Model
+	read             func(context.Context) (string, error)
+}
+
+func newDiffState() *diffState {
+	return &diffState{viewport: viewport.New(), diffHunk: -1}
+}
+
+// A tab identity includes the review source: a document, worktree diff,
+// index diff and commit diff of the same path are distinct tabs.
+type diffTarget struct {
+	path, repository, commit string
+	staged                   bool
+	preview                  bool
+	change                   *gitservice.Change
+}
+
+func (d *diffState) matches(target diffTarget) bool {
+	return d.diffPath == target.path && d.diffRepository == target.repository && d.diffCommit == target.commit && d.diffStaged == target.staged
+}
+
+func (m *Model) requestDiff(target diffTarget, reset bool, read func(context.Context) (string, error)) tea.Cmd {
+	index := -1
+	for i, t := range m.tabs {
+		if t.diff != nil && t.diff.matches(target) {
+			index = i
+			break
+		}
+	}
+	if index < 0 {
+		d := newDiffState()
+		d.diffOpen = true
+		d.diffPath, d.diffRepository, d.diffCommit = target.path, target.repository, target.commit
+		d.diffStaged = target.staged
+		index = m.insertTab(tab{diff: d, preview: target.preview})
+	} else if !target.preview {
+		m.tabs[index].preview = false
+	}
+	d := m.tabs[index].diff
+	d.diffChange, d.read = target.change, read
+	// Opening selects a tab; refreshing an existing tab is handled separately.
+	sidebar := m.sidebar
+	m.activateTab(index)
+	m.sidebar = sidebar
+	return m.loadDiff(d, reset)
+}
+
+func (m *Model) loadDiff(d *diffState, reset bool) tea.Cmd {
+	if d.diffCancel != nil {
+		d.diffCancel()
 	}
 	ctx, cancel := context.WithCancel(m.ctx)
-	m.diffCancel = cancel
-	m.diffSeq++
-	seq := m.diffSeq
-	m.diffOpen, m.diffLoading, m.showEditor = true, true, false
-	m.diffPath = path
-	m.lastFileRepository = m.diffRepository
+	d.diffCancel = cancel
+	d.diffSeq++
+	d.diffLoading = true
 	if reset {
+		bound := m.diffState
+		m.diffState = d
 		m.clearDiffContent()
-		m.diffHunk = -1
-		m.viewport.GotoTop()
-	} else if m.diffSyntaxCancel != nil {
-		m.diffSyntaxCancel()
-		m.diffSyntaxCancel = nil
+		m.diffState = bound
+		d.diffHunk = -1
+		d.viewport.GotoTop()
+		d.diffLeft = 0
 	}
-	m.ensureTabVisible()
+	seq, path, read := d.diffSeq, d.diffPath, d.read
 	return func() tea.Msg {
 		defer cancel()
 		raw, err := read(ctx)
-		return diffMsg{seq: seq, path: path, raw: raw, err: err}
+		return diffMsg{target: d, seq: seq, path: path, raw: raw, err: err}
 	}
 }
 
+// Refresh tab-owned sources, never the sidebar selection. Keep focus, tab
+// order, scroll and hunk position while new Git output is being fetched.
+func (m *Model) refreshDiffs() tea.Cmd {
+	var commands []tea.Cmd
+	for _, t := range m.tabs {
+		d := t.diff
+		if d == nil || d.diffCommit != "" || d.read == nil {
+			continue
+		}
+		if d.diffChange != nil {
+			change := *d.diffChange
+			found := false
+			for _, c := range m.snapshot.Changes {
+				if c.Path == d.diffPath && c.Repository == d.diffRepository {
+					change, found = c, true
+					break
+				}
+			}
+			if !found {
+				change.Index, change.Worktree = ' ', ' '
+			}
+			staged := d.diffStaged
+			d.diffChange = &change
+			workspace := m.repo
+			d.read = func(ctx context.Context) (string, error) { return workspace.Diff(ctx, change, staged) }
+		}
+		commands = append(commands, m.loadDiff(d, false))
+	}
+	return tea.Batch(commands...)
+}
+
+func (m *Model) finishDiff(msg diffMsg) tea.Cmd {
+	d := msg.target
+	if d == nil || !d.diffOpen || msg.seq != d.diffSeq {
+		return nil
+	}
+	bound := m.diffState
+	m.diffState = d
+	defer func() { m.diffState = bound }()
+	d.diffLoading = false
+	if msg.err != nil {
+		m.log(msg.err.Error())
+		return nil
+	}
+	if msg.raw != d.patch.Raw {
+		d.patch = diff.Parse(msg.raw)
+		d.diffLayout = diffLayoutKey{}
+		if len(d.patch.Hunks) > 0 {
+			d.diffHunk = min(max(0, d.diffHunk), len(d.patch.Hunks)-1)
+		} else {
+			d.diffHunk = -1
+		}
+		d.diffSyntax = nil
+	}
+	d.viewport.SetWidth(m.mainWidth())
+	d.viewport.SetHeight(m.contentHeight())
+	m.renderDiff()
+	if d.diffSyntax == nil {
+		return m.highlightDiff()
+	}
+	return nil
+}
+
 type diffSyntaxMsg struct {
-	seq   int
-	raw   string
-	ctx   context.Context
-	spans map[*diff.Line][]highlight.Span
+	target *diffState
+	seq    int
+	raw    string
+	ctx    context.Context
+	spans  map[*diff.Line][]highlight.Span
 }
 
 type diffRange struct{ start, end int }
@@ -85,10 +217,11 @@ func (m *Model) highlightDiff() tea.Cmd {
 	}
 	ctx, cancel := context.WithCancel(m.ctx)
 	m.diffSyntaxCancel = cancel
+	target := m.diffState
 	patch, path, seq := m.patch, m.diffPath, m.diffSeq
 	light := m.light
 	return func() tea.Msg {
-		return diffSyntaxMsg{seq, patch.Raw, ctx, diffSpans(ctx, patch, path, light)}
+		return diffSyntaxMsg{target: target, seq: seq, raw: patch.Raw, ctx: ctx, spans: diffSpans(ctx, patch, path, light)}
 	}
 }
 
@@ -214,42 +347,55 @@ func (m *Model) diffRow(line *diff.Line, width int, right bool) string {
 	} else if line.Kind == diff.Deleted {
 		emphasis = m.colors.DeletedText
 	}
-	return row(label, gutter, m.colors.LineNumber, m.colors.Background) + diffCode(m.colors, code, m.diffSyntax[line], width-gutter, bg, emphasis, m.diffEmphasis[line])
+	return row(label, gutter, m.colors.LineNumber, m.colors.Background) + diffCodeOffset(m.colors, code, m.diffSyntax[line], width-gutter, m.diffLeft, bg, emphasis, m.diffEmphasis[line])
 }
 
-// Clip before painting and render token runs, keeping work proportional to the
-// visible columns rather than the length of a source line.
+// Paint token runs only up to the visible right edge, preserving source rune
+// offsets for syntax and emphasis while clipping by terminal display columns.
 func diffCode(colors theme.Palette, code string, spans []highlight.Span, width int, bg, emphasis string, changed diffRange) string {
+	return diffCodeOffset(colors, code, spans, width, 0, bg, emphasis, changed)
+}
+
+func diffCodeOffset(colors theme.Palette, code string, spans []highlight.Span, width, left int, bg, emphasis string, changed diffRange) string {
 	if width <= 0 {
 		return ""
-	}
-	code = ansi.Truncate(code, width, "")
-	if len(spans) == 0 && changed.start == changed.end {
-		return row(safe(code), width, colors.Foreground, bg)
 	}
 	var out, run strings.Builder
 	color := colors.Foreground
 	var font highlight.FontStyle
 	runBG := bg
-	spanIndex, column := 0, 0
+	spanIndex, column, visual := 0, 0, 0
 	flush := func() {
 		if run.Len() > 0 {
 			out.WriteString(syntaxStyle(color, runBG, font).Render(run.String()))
 			run.Reset()
 		}
 	}
-	for _, r := range code {
-		for spanIndex < len(spans) && column >= spans[spanIndex].End {
+	iter := graphemes.FromString(code)
+	for iter.Next() {
+		if visual >= left+width {
+			break
+		}
+		cluster := iter.Value()
+		display := displayCluster(cluster, visual)
+		start := visual
+		visual += ansi.StringWidth(display)
+		runeColumn := column
+		column += utf8.RuneCountInString(cluster)
+		if visual <= left {
+			continue
+		}
+		for spanIndex < len(spans) && runeColumn >= spans[spanIndex].End {
 			spanIndex++
 		}
 		next := colors.Foreground
 		var nextFont highlight.FontStyle
-		if spanIndex < len(spans) && column >= spans[spanIndex].Start {
+		if spanIndex < len(spans) && runeColumn >= spans[spanIndex].Start {
 			next = spans[spanIndex].Color
 			nextFont = spans[spanIndex].Font
 		}
 		nextBG := bg
-		if emphasis != "" && column >= changed.start && column < changed.end {
+		if emphasis != "" && runeColumn >= changed.start && runeColumn < changed.end {
 			nextBG = emphasis
 		}
 		if next != color || nextBG != runBG || nextFont != font {
@@ -257,8 +403,7 @@ func diffCode(colors theme.Palette, code string, spans []highlight.Span, width i
 			color, font = next, nextFont
 			runBG = nextBG
 		}
-		run.WriteString(safe(string(r)))
-		column++
+		run.WriteString(ansi.Cut(display, max(0, left-start), min(visual-start, left+width-start)))
 	}
 	flush()
 	if emphasis != "" && changed.end > column {

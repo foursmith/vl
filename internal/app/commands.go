@@ -23,14 +23,14 @@ func (m *Model) actions() []action {
 	}
 	docReason := ""
 	tabReason := ""
-	if !m.diffOpen && (!m.showEditor || m.document() == nil) {
+	if !m.diffOpen && (!m.editing() || m.document() == nil) {
 		tabReason = "No active tab"
 	}
 	openReason := ""
 	if m.current() == nil || m.current().change == nil && m.current().file == "" {
 		openReason = "Select a file in Explorer or Changes"
 	}
-	if !m.showEditor || m.document() == nil {
+	if !m.editing() || m.document() == nil {
 		docReason = "Open a text file first"
 	}
 	githubReason := ""
@@ -80,7 +80,7 @@ func (m *Model) actions() []action {
 		{"file.open", "File: Open Selected File", "E", openReason, m.editSelected},
 		{"file.save", "File: Save", "Ctrl+S", docReason, m.save},
 		{"file.close", "File: Close Active Tab", "Ctrl+W", tabReason, m.closeTab},
-		{"file.keepOpen", "File: Keep Preview Open", "", docReason, m.keepTab},
+		{"file.keepOpen", "File: Keep Preview Open", "", tabReason, m.keepTab},
 		{"file.closeOthers", "File: Close Other Tabs", "", "", m.closeOtherTabs},
 		{"file.closeAll", "File: Close All Tabs", "", "", m.closeAllTabs},
 		{"edit.find", "Find: Search Current View", "Ctrl+F", "", func() tea.Cmd { return m.prompt("find", "Find in current view", m.find) }},
@@ -250,12 +250,16 @@ func (m *Model) operation(title string, run func() (string, error)) tea.Cmd {
 		m.refreshCancel = nil
 	}
 	m.loading = false
-	m.diffSeq++
-	if m.diffCancel != nil {
-		m.diffCancel()
-		m.diffCancel = nil
+	for _, t := range m.tabs {
+		if d := t.diff; d != nil {
+			d.diffSeq++
+			if d.diffCancel != nil {
+				d.diffCancel()
+				d.diffCancel = nil
+			}
+			d.diffLoading = false
+		}
 	}
-	m.diffLoading = false
 	return func() tea.Msg { output, err := run(); return operationMsg{title, output, err} }
 }
 
@@ -324,7 +328,7 @@ func (m *Model) stageAllInRepository(target string) tea.Cmd {
 }
 
 func (m *Model) stageHunk(reverse bool) tea.Cmd {
-	if m.diffLoading || m.diffChange == nil || m.showEditor {
+	if m.diffLoading || m.diffChange == nil || m.editing() {
 		m.notice = "Open a working-tree or index diff first"
 		return nil
 	}
@@ -387,7 +391,9 @@ func (m *Model) openSelected() tea.Cmd {
 	}
 
 	m.sidebar = false
-	return m.preview()
+	cmd := m.preview()
+	m.keepTab()
+	return cmd
 }
 
 func (m *Model) editSelected() tea.Cmd {
@@ -472,8 +478,8 @@ func (m *Model) switchTab(delta int) tea.Cmd {
 	if len(m.tabs) == 0 {
 		return nil
 	}
-	m.activateTab((m.activeTab + delta + len(m.tabs)) % len(m.tabs))
-	m.ensureTabVisible()
+	index := ((m.activeTab+delta)%len(m.tabs) + len(m.tabs)) % len(m.tabs)
+	m.activateTab(index)
 	return nil
 }
 
@@ -481,7 +487,7 @@ func (m *Model) findNext() tea.Cmd {
 	if m.find == "" {
 		return nil
 	}
-	if m.showEditor && m.document() != nil {
+	if m.editing() && m.document() != nil {
 		d := m.document()
 		runes := []rune(d.Text)
 		start := min(d.Cursor+1, len(runes))

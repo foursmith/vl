@@ -195,7 +195,7 @@ func (m *Model) mainLines() []string {
 	lines := []string{m.tabBar()}
 	lines = append(lines, m.contentToolbar())
 	var content []string
-	editing := m.showEditor && m.document() != nil
+	editing := m.editing() && m.document() != nil
 	if editing {
 		content = m.editorLines()
 	} else if m.patch.Raw != "" {
@@ -248,6 +248,13 @@ func (m *Model) renderDiff() {
 		largest = max(largest, line.Old, line.New)
 	}
 	m.diffGutter = max(4, len(fmt.Sprint(largest))) + 2
+	m.diffWidth = 0
+	for _, line := range m.patch.Lines {
+		if line.Kind == diff.Added || line.Kind == diff.Deleted || line.Kind == diff.Context {
+			m.diffWidth = max(m.diffWidth, ansi.StringWidth(expandTabs(line.Text[1:])))
+		}
+	}
+	m.clampDiffHorizontal()
 	pairs := m.patch.Pairs()
 	m.diffEmphasis = diffEmphasis(pairs)
 	m.diffRows = make([]diff.Pair, 0, len(m.patch.Lines))
@@ -321,7 +328,7 @@ func (m *Model) nextHunk(delta int) {
 }
 
 func (m *Model) ensureEditor() {
-	if m.activeTab < 0 || m.activeTab >= len(m.tabs) {
+	if m.document() == nil {
 		return
 	}
 	t := &m.tabs[m.activeTab]
@@ -503,7 +510,7 @@ func (m *Model) editorLines() []string {
 			}
 			appendRun(s, fg, cellBG, !m.sidebar && i == line && j == col, font)
 		}
-		if !m.sidebar && i == line && col == d.LineRuneCount(i) {
+		if !m.sidebar && i == line && col == d.LineRuneCount(i) && visual >= t.left && visual < t.left+max(1, m.mainWidth()-7) {
 			appendRun(" ", m.colors.Foreground, bg, true, 0)
 		}
 		flush()
@@ -569,7 +576,7 @@ func (m *Model) click(msg tea.MouseClickMsg) tea.Cmd {
 	if m.sidebarAt(msg.X) {
 		return m.clickSidebar(msg)
 	}
-	if msg.Y == editorContentRow-1 && !m.showEditor && m.diffOpen {
+	if msg.Y == editorContentRow-1 && !m.editing() && m.diffOpen {
 		button := m.diffModeButton()
 		if msg.X >= m.mainX()+button.x && msg.X < m.mainX()+button.x+button.width {
 			if m.mainWidth() < 68 {
@@ -586,7 +593,7 @@ func (m *Model) click(msg tea.MouseClickMsg) tea.Cmd {
 	if m.welcomeVisible() {
 		return m.clickWelcome(msg)
 	}
-	if m.showEditor && m.document() != nil && msg.Y >= editorContentRow && msg.Y < m.bodyHeight() {
+	if m.editing() && m.document() != nil && msg.Y >= editorContentRow && msg.Y < m.bodyHeight() {
 		t := &m.tabs[m.activeTab]
 		lines := t.doc.Lines()
 		line := min(len(lines)-1, t.top+msg.Y-editorContentRow)
@@ -604,7 +611,7 @@ func (m *Model) click(msg tea.MouseClickMsg) tea.Cmd {
 		}
 		t.doc.SetPosition(line, col)
 		m.ensureEditor()
-	} else if !m.showEditor && msg.Y >= editorContentRow && msg.Y < m.bodyHeight() {
+	} else if !m.editing() && msg.Y >= editorContentRow && msg.Y < m.bodyHeight() {
 		i := m.viewport.YOffset() + msg.Y - editorContentRow
 		hunk := -1
 		if i < len(m.diffRowHunks) {

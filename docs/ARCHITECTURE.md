@@ -60,9 +60,13 @@ does not install hooks or alter a repository's configuration.
 
 - Only `Update` changes product state. Commands capture immutable request data
   and return typed messages.
-- Snapshot and diff generations reject obsolete results and cancel replaced
-  requests. Snapshot reads are bounded parallel tasks. Working-tree, index and
-  commit file diffs share one request lifecycle and renderer.
+- Snapshot generations and each diff tab's own generation reject obsolete
+  results and cancel replaced requests. Snapshot reads are bounded parallel
+  tasks. Working-tree, index and commit diffs share rendering and request code;
+  each tab owns its patch, viewport, hunk selection, syntax and cancellation.
+  Async replies carry their owning diff state, so switching or closing a tab
+  cannot redirect its results into another tab. Background refresh reads each
+  open working-tree/index tab's source and preserves the selected tab.
 - Workspace search captures open-buffer snapshots and cancels obsolete requests.
   Each scan reuses one compiled matcher across files; editor highlights cache the
   matcher independently of document text. Replacement validates all target buffers
@@ -103,8 +107,18 @@ part of the initial terminal backend.
 Commands must remain discoverable in the palette. Preserve text-editing keys
 while an editor owns focus. Disabled commands should explain the missing target.
 
-File tabs have explicit preview versus kept state. Single-click exploration
-replaces only a clean preview; double-click/Enter or any edit keeps it. Dirty
+The editor group uses one ordered `[]tab` and one active index, following ttt's
+document/content-tab ownership. A tab holds either a document or a diff state.
+Both kinds append in opening order and share selection, keyboard cycling,
+overflow, hit testing and close behavior. Diff identity includes repository,
+path, staged versus working-tree source, and commit ID; reopening the same
+source selects its existing tab. Different sources can remain open together.
+The model's diff-state binding points at the selected tab for rendering, or an
+empty surface while a document is selected; it is not a shared diff buffer.
+
+File and diff tabs share one preview slot and explicit preview versus kept state.
+Single-click exploration replaces only a clean preview of either kind;
+double-click/Enter keeps it. Editing a document also keeps its tab. Dirty
 tabs can never be replaced by another preview. Resolve file identity before
 deduplication, including symlinks. Tab rendering and mouse hit testing share one
 layout calculation, including close buttons and overflow controls. Dirty close

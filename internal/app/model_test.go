@@ -74,7 +74,7 @@ func TestAppEditStageCommitWorkflow(t *testing.T) {
 		t.Fatal("initial changed file not selected")
 	}
 	drain(t, m, m.editSelected())
-	if !m.showEditor || m.sidebar {
+	if !m.editing() || m.sidebar {
 		t.Fatal("editor did not take focus")
 	}
 	press(m, "s")
@@ -112,7 +112,6 @@ func TestFrameGeometryAndControlCharacters(t *testing.T) {
 	m.selected = 1
 	m.tabs = []tab{{doc: &editor.Document{Path: "/tmp/file.go", Text: "package main\n\t// 中文🙂\n", Anchor: -1}}}
 	m.activeTab = 0
-	m.showEditor = true
 	for _, width := range []int{30, 48, 70, 80, 120} {
 		for _, height := range []int{8, 14, 36} {
 			for _, modal := range []bool{false, true} {
@@ -141,7 +140,7 @@ func TestFrameGeometryAndControlCharacters(t *testing.T) {
 func TestStaleResultsAndDirtyQuit(t *testing.T) {
 	m := New(context.Background(), &gitservice.Repository{Root: "/tmp/repo"}, false)
 	m.diffSeq = 2
-	m.Update(diffMsg{seq: 1, raw: "stale"})
+	m.Update(diffMsg{target: m.diffState, seq: 1, raw: "stale"})
 	if m.patch.Raw != "" {
 		t.Fatal("stale diff applied")
 	}
@@ -152,7 +151,6 @@ func TestStaleResultsAndDirtyQuit(t *testing.T) {
 	}
 	m.tabs = []tab{{doc: &editor.Document{Path: "/tmp/a", Text: "unsaved", Anchor: -1}}}
 	m.activeTab = 0
-	m.showEditor = true
 	if cmd := m.quit(); cmd == nil || m.modal != "confirm" {
 		t.Fatal("unsaved changes were not guarded")
 	}
@@ -168,6 +166,7 @@ func TestStaleResultsAndDirtyQuit(t *testing.T) {
 
 func TestDiffRefreshPreservesScrollAndTypedKeys(t *testing.T) {
 	m := New(context.Background(), &gitservice.Repository{Root: "/tmp/repo"}, false)
+	showDiffFixture(m)
 	m.sidebar = false
 	m.split = false
 	raw := "diff --git a/a b/a\n--- a/a\n+++ b/a\n@@ -1,50 +1,50 @@\n" + strings.Repeat(" same\n", 50)
@@ -175,13 +174,12 @@ func TestDiffRefreshPreservesScrollAndTypedKeys(t *testing.T) {
 	m.renderDiff()
 	m.viewport.SetYOffset(12)
 	m.diffSeq = 2
-	m.Update(diffMsg{seq: 2, raw: raw})
+	m.Update(diffMsg{target: m.diffState, seq: 2, raw: raw})
 	if m.viewport.YOffset() != 12 {
 		t.Fatal("refresh reset scroll")
 	}
 	m.tabs = []tab{{doc: &editor.Document{Path: "/tmp/a.go", Text: "\t中文\n", Anchor: -1}}}
 	m.activeTab = 0
-	m.showEditor = true
 	press(m, "s")
 	if m.document().Text != "s\t中文\n" || m.busy {
 		t.Fatal("editor key was routed to Git")
@@ -199,7 +197,6 @@ func TestReloadCleanTabsAndPreserveUnsavedEdits(t *testing.T) {
 	m := New(context.Background(), &gitservice.Repository{Root: dir}, false)
 	m.tabs = []tab{{doc: first}, {doc: second}}
 	m.activeTab = 0
-	m.showEditor = true
 	os.WriteFile(a, []byte("new branch\n"), 0644)
 	os.WriteFile(b, []byte("external\n"), 0644)
 	m.reloadCleanTabs()

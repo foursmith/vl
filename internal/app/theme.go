@@ -46,6 +46,13 @@ func (m *Model) applyLightMode(light bool) tea.Cmd {
 	m.hoverRender = hoverRenderCache{}
 	for i := range m.tabs {
 		t := &m.tabs[i]
+		if d := t.diff; d != nil {
+			if d.diffSyntaxCancel != nil {
+				d.diffSyntaxCancel()
+				d.diffSyntaxCancel = nil
+			}
+			d.diffSyntax = nil
+		}
 		t.highlightJob.stop()
 		t.highlightText, t.spans, t.renderedRows = "", nil, nil
 	}

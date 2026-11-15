@@ -38,7 +38,7 @@ type highlightResultMsg struct {
 }
 
 func (m *Model) scheduleHighlight() tea.Cmd {
-	if !m.showEditor || m.document() == nil {
+	if !m.editing() || m.document() == nil {
 		return nil
 	}
 	t := &m.tabs[m.activeTab]
@@ -74,7 +74,7 @@ func (m *Model) scheduleHighlight() tea.Cmd {
 func (m *Model) highlightTarget(request highlightRequest) *tab {
 	for i := range m.tabs {
 		t := &m.tabs[i]
-		if t.doc == request.doc && t.doc.Text == request.text && t.highlightJob.seq == request.seq && t.highlightJob.pending && request.ctx.Err() == nil {
+		if t.doc != nil && t.doc == request.doc && t.doc.Text == request.text && t.highlightJob.seq == request.seq && t.highlightJob.pending && request.ctx.Err() == nil {
 			return t
 		}
 	}

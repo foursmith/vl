@@ -39,7 +39,7 @@ var welcomeActions = []welcomeAction{
 }
 
 func (m *Model) welcomeVisible() bool {
-	return !m.showEditor && !m.diffOpen && !m.diffLoading && m.patch.Raw == ""
+	return !m.editing() && !m.diffOpen && !m.diffLoading && m.patch.Raw == ""
 }
 
 // Rendering and clicks share the same centered block, including compact mode.

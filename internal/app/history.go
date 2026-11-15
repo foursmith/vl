@@ -58,13 +58,10 @@ func (m *Model) previewHistory(entry item, reset bool) tea.Cmd {
 			state = &historyState{repository: entry.repository, expanded: true, collapsed: map[string]bool{}}
 			m.historyStates[id] = state
 		}
-		if changed {
-			m.closeDiff()
-			m.showEditor = false
-		}
+		m.pendingHistory = id
 		m.rebuildItems()
 		if state.loaded {
-			if (changed || !m.diffOpen) && m.historyExpanded(id) {
+			if (changed || !m.diffOpen || m.diffCommit != objectID || m.diffRepository != entry.repository) && m.historyExpanded(id) {
 				return m.previewHistoryFirst(id)
 			}
 			return nil
@@ -102,11 +99,8 @@ func (m *Model) previewHistory(entry item, reset bool) tea.Cmd {
 	}
 	c := *entry.historyChange
 	id := strings.TrimPrefix(entry.historyID, repositoryPrefix(entry.repository))
-	m.historyCommit, m.diffCommit = entry.historyID, id
-	m.diffChange = nil
-	m.diffRepository = c.Repository
-	m.diffStaged = false
-	return m.requestDiff(c.Path, reset, func(ctx context.Context) (string, error) {
+	m.historyCommit = entry.historyID
+	return m.requestDiff(diffTarget{path: c.Path, repository: c.Repository, commit: id, preview: true}, reset, func(ctx context.Context) (string, error) {
 		return m.repo.CommitFileDiff(ctx, id, c)
 	})
 }
@@ -129,7 +123,7 @@ func (m *Model) applyHistoryFiles(msg historyFilesMsg) tea.Cmd {
 	}
 	m.rebuildItems()
 	entry := m.current()
-	if m.showEditor || !m.historyExpanded(key) || key != m.historyCommit || entry == nil || entry.commit == nil || historyKey(entry.repository, entry.commit.ID) != key {
+	if m.pendingHistory != key || !m.historyExpanded(key) || key != m.historyCommit || entry == nil || entry.commit == nil || historyKey(entry.repository, entry.commit.ID) != key {
 		return nil
 	}
 	return m.previewHistoryFirst(key)
@@ -176,7 +170,9 @@ func (m *Model) openHistory(entry item) tea.Cmd {
 		return nil
 	}
 	m.sidebar = false
-	return m.previewHistory(entry, true)
+	cmd := m.previewHistory(entry, true)
+	m.keepTab()
+	return cmd
 }
 
 func (m *Model) selectHistoryParent(entry item) {

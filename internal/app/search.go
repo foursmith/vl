@@ -92,7 +92,9 @@ func (m *Model) runSearch() tea.Cmd {
 	seq, root, options := s.seq, m.repo.Root, s.options
 	buffers := map[string]string{}
 	for _, t := range m.tabs {
-		buffers[t.doc.Path] = t.doc.Text
+		if t.doc != nil {
+			buffers[t.doc.Path] = t.doc.Text
+		}
 	}
 	return func() tea.Msg {
 		defer cancel()
@@ -401,7 +403,7 @@ func (m *Model) replaceSearch(all bool) tea.Cmd {
 		}
 		var d *editor.Document
 		for _, t := range m.tabs {
-			if t.doc.Path == f.Path {
+			if t.doc != nil && t.doc.Path == f.Path {
 				d = t.doc
 				break
 			}

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
@@ -15,7 +16,7 @@ import (
 
 func (m *Model) keepEditedTabs() {
 	for i := range m.tabs {
-		if m.tabs[i].doc.Dirty() {
+		if m.tabs[i].dirty() {
 			m.tabs[i].preview = false
 		}
 	}
@@ -43,7 +44,7 @@ func (m *Model) openDocument(path string, preview bool) bool {
 		abs = real
 	}
 	for i := range m.tabs {
-		if m.tabs[i].doc.Path == abs {
+		if m.tabs[i].doc != nil && m.tabs[i].doc.Path == abs {
 			if !preview {
 				m.tabs[i].preview = false
 			}
@@ -56,66 +57,99 @@ func (m *Model) openDocument(path string, preview bool) bool {
 		m.log(err.Error())
 		return false
 	}
-	next := tab{doc: d, preview: preview}
-	if preview {
+	m.activateTab(m.insertTab(tab{doc: d, preview: preview}))
+	return true
+}
+
+func (m *Model) insertTab(next tab) int {
+	defer m.syncWatch()
+	m.keepEditedTabs()
+	if next.preview {
 		for i := range m.tabs {
-			if m.tabs[i].preview && !m.tabs[i].doc.Dirty() {
+			if m.tabs[i].preview && !m.tabs[i].dirty() {
 				m.tabs[i].highlightJob.stop()
+				if d := m.tabs[i].diff; d != nil {
+					d.close()
+				}
 				m.tabs[i] = next
-				m.activateTab(i)
-				return true
+				return i
 			}
 		}
 	}
 	m.tabs = append(m.tabs, next)
-	m.activateTab(len(m.tabs) - 1)
-	return true
+	return len(m.tabs) - 1
 }
+
+func (t tab) dirty() bool { return t.doc != nil && t.doc.Dirty() }
+
+func (t tab) clickKey() string {
+	if t.diff != nil {
+		return fmt.Sprintf("tab:diff:%p", t.diff)
+	}
+	return fmt.Sprintf("tab:file:%p", t.doc)
+}
+
+func (t tab) path() string {
+	if t.diff != nil {
+		return t.diff.diffPath
+	}
+	return t.doc.Path
+}
+
+func (m *Model) editing() bool { return m.document() != nil }
 
 func (m *Model) activateTab(index int) {
 	m.activeTab = index
-	m.lastFileRepository = m.fileRepository(m.tabs[index].doc.Path)
-	m.showEditor = true
+	m.pendingHistory = ""
+	m.diffState = m.emptyDiff
+	if t := &m.tabs[index]; t.diff != nil {
+		m.diffState = t.diff
+		m.lastFileRepository = t.diff.diffRepository
+		m.viewport.SetWidth(m.mainWidth())
+		m.viewport.SetHeight(m.contentHeight())
+		m.renderDiff()
+	} else {
+		m.lastFileRepository = m.fileRepository(t.doc.Path)
+	}
 	m.sidebar = false
 	m.ensureEditor()
+	m.ensureTabVisible()
 }
 
 func (m *Model) keepTab() tea.Cmd {
-	if m.showEditor && m.document() != nil {
+	if m.activeTab >= 0 && m.activeTab < len(m.tabs) {
 		m.tabs[m.activeTab].preview = false
 	}
 	return nil
 }
 
 func (m *Model) closeTab() tea.Cmd {
-	if !m.showEditor {
-		m.closeDiff()
+	if m.activeTab < 0 || m.activeTab >= len(m.tabs) {
 		return nil
 	}
-	if d := m.document(); d != nil {
-		return m.requestClose([]*editor.Document{d})
-	}
-	return nil
+	return m.requestCloseTabs([]tab{m.tabs[m.activeTab]})
 }
 
 func (m *Model) closeAllTabs() tea.Cmd {
-	m.closeDiff()
-	var docs []*editor.Document
-	for _, t := range m.tabs {
-		docs = append(docs, t.doc)
-	}
-	return m.requestClose(docs)
+	return m.requestCloseTabs(append([]tab(nil), m.tabs...))
 }
 
 func (m *Model) closeOtherTabs() tea.Cmd {
-	var keep *editor.Document
-	if m.showEditor {
-		keep = m.document()
-		m.closeDiff()
+	var close []tab
+	for i, t := range m.tabs {
+		if i != m.activeTab {
+			close = append(close, t)
+		}
 	}
+	return m.requestCloseTabs(close)
+}
+
+func (m *Model) requestCloseTabs(tabs []tab) tea.Cmd {
 	var docs []*editor.Document
-	for _, t := range m.tabs {
-		if t.doc != keep {
+	for _, t := range tabs {
+		if t.diff != nil {
+			m.removeDiff(t.diff)
+		} else {
 			docs = append(docs, t.doc)
 		}
 	}
@@ -171,55 +205,72 @@ func (m *Model) chooseClose(choice string) tea.Cmd {
 }
 
 func (m *Model) removeTab(doc *editor.Document) {
-	defer m.syncWatch()
 	for i, t := range m.tabs {
-		if t.doc != doc {
-			continue
+		if t.doc == doc && doc != nil {
+			m.removeTabAt(i)
+			return
 		}
-		m.tabs[i].highlightJob.stop()
-		m.tabs = append(m.tabs[:i], m.tabs[i+1:]...)
-		if i < m.activeTab {
-			m.activeTab--
-		} else if i == m.activeTab {
-			m.activeTab = min(i, len(m.tabs)-1)
-		}
-		if len(m.tabs) == 0 {
-			m.activeTab = -1
-			m.showEditor = false
-			if !m.diffOpen {
-				m.sidebar = true
-			}
-		}
-		if m.showEditor && m.document() != nil {
-			m.lastFileRepository = m.fileRepository(m.document().Path)
-		}
-		m.ensureEditor()
-		m.ensureTabVisible()
-		return
 	}
 }
 
-func (m *Model) closeDiff() {
-	m.diffOpen = false
-	if m.diffCancel != nil {
-		m.diffCancel()
-		m.diffCancel = nil
-	}
-	m.diffSeq++
-	m.diffLoading = false
-	m.diffCommit = ""
-	m.diffPath = ""
-	m.diffChange = nil
-	m.clearDiffContent()
-	m.diffHunk = -1
-	if !m.showEditor {
-		if m.document() != nil {
-			m.showEditor = true
-		} else {
-			m.sidebar = true
+func (m *Model) removeDiff(state *diffState) {
+	for i, t := range m.tabs {
+		if t.diff == state && state != nil {
+			m.removeTabAt(i)
+			return
 		}
 	}
+}
+
+func (m *Model) removeTabAt(index int) {
+	t := &m.tabs[index]
+	t.highlightJob.stop()
+	if t.diff != nil {
+		t.diff.close()
+	}
+	wasActive := index == m.activeTab
+	copy(m.tabs[index:], m.tabs[index+1:])
+	m.tabs[len(m.tabs)-1] = tab{}
+	m.tabs = m.tabs[:len(m.tabs)-1]
+	if index < m.activeTab {
+		m.activeTab--
+	}
+	if len(m.tabs) == 0 {
+		m.activeTab = -1
+		m.diffState = m.emptyDiff
+		m.sidebar = true
+	} else if wasActive {
+		sidebar := m.sidebar
+		m.activateTab(min(index, len(m.tabs)-1))
+		m.sidebar = sidebar
+	}
+	m.syncWatch()
+	m.ensureEditor()
 	m.ensureTabVisible()
+}
+
+func (d *diffState) close() {
+	d.diffOpen = false
+	d.diffSeq++
+	if d.diffCancel != nil {
+		d.diffCancel()
+		d.diffCancel = nil
+	}
+	if d.diffSyntaxCancel != nil {
+		d.diffSyntaxCancel()
+		d.diffSyntaxCancel = nil
+	}
+	d.diffLoading = false
+	d.patch = diff.Patch{}
+	d.diffRows, d.diffRowHunks = nil, nil
+	d.diffSyntax, d.diffEmphasis = nil, nil
+	d.diffLayout = diffLayoutKey{}
+	d.viewport.SetContent("")
+	d.read = nil
+}
+
+func (m *Model) closeDiff() {
+	m.removeDiff(m.diffState)
 }
 
 type tabSlot struct {
@@ -229,23 +280,19 @@ type tabSlot struct {
 }
 
 func (m *Model) tabLabel(index int) string {
-	if index < 0 {
-		if m.diffPath != "" {
-			suffix := ""
-			if m.diffStaged {
-				suffix = " · 暂存"
-			}
-			if m.diffCommit != "" {
-				return safe(filepath.Base(m.diffPath)) + " (parent) ↔ " + m.diffCommit[:min(7, len(m.diffCommit))]
-			}
-			return safe(filepath.Base(m.diffPath)) + suffix
-		}
-		return "Changes"
-	}
 	t := m.tabs[index]
-	label := filepath.Base(t.doc.Path)
+	label := filepath.Base(t.path())
+	if d := t.diff; d != nil {
+		if d.diffCommit != "" {
+			return safe(label) + " · " + d.diffCommit[:min(7, len(d.diffCommit))]
+		}
+		if d.diffStaged {
+			return safe(label) + " · 暂存"
+		}
+		return safe(label) + " · Diff"
+	}
 	for i, other := range m.tabs {
-		if i != index && filepath.Base(other.doc.Path) == label {
+		if i != index && other.doc != nil && filepath.Base(other.doc.Path) == label {
 			label += " · " + filepath.Base(filepath.Dir(t.doc.Path))
 			break
 		}
@@ -255,11 +302,8 @@ func (m *Model) tabLabel(index int) string {
 
 func (m *Model) tabLayout() []tabSlot {
 	var all []tabSlot
-	if m.diffOpen {
-		all = append(all, tabSlot{index: -1, label: m.tabLabel(-1)})
-	}
-	for i := range m.tabs {
-		all = append(all, tabSlot{index: i, label: m.tabLabel(i)})
+	for index := range m.tabs {
+		all = append(all, tabSlot{index: index, label: m.tabLabel(index)})
 	}
 	if len(all) == 0 {
 		return nil
@@ -268,11 +312,11 @@ func (m *Model) tabLayout() []tabSlot {
 	total := 0
 	for i := range all {
 		extra := 0
-		if all[i].index >= 0 && m.tabs[all[i].index].doc.Dirty() {
+		if m.tabs[all[i].index].dirty() {
 			extra = 2
 		}
 		maxWidth := 28
-		if all[i].index < 0 && m.diffCommit != "" {
+		if m.tabs[all[i].index].diff != nil && m.tabs[all[i].index].diff.diffCommit != "" {
 			maxWidth = 60
 		}
 		all[i].width = min(maxWidth, max(12, ansi.StringWidth(all[i].label)+extra+7))
@@ -305,30 +349,16 @@ func (m *Model) tabLayout() []tabSlot {
 }
 
 func (m *Model) ensureTabVisible() {
-	active := -1
-	if m.showEditor {
-		active = m.activeTab
-	}
 	count := len(m.tabs)
-	if m.diffOpen {
-		count++
-	}
 	m.tabStart = min(max(0, m.tabStart), max(0, count-1))
 	for tries := 0; tries < count; tries++ {
 		for _, slot := range m.tabLayout() {
-			if slot.control == 0 && slot.index == active {
+			if slot.control == 0 && slot.index == m.activeTab {
 				return
 			}
 		}
-		ordinal := active
-		if m.diffOpen {
-			ordinal++
-		}
-		if active < 0 {
-			ordinal = 0
-		}
-		if ordinal < m.tabStart {
-			m.tabStart = ordinal
+		if m.activeTab < m.tabStart {
+			m.tabStart = max(0, m.activeTab)
 		} else {
 			m.tabStart++
 		}
@@ -355,9 +385,6 @@ func (m *Model) clickTab(msg tea.MouseClickMsg) tea.Cmd {
 		if slot.control != 0 {
 			if msg.Button == tea.MouseLeft {
 				count := len(m.tabs)
-				if m.diffOpen {
-					count++
-				}
 				m.tabStart = min(max(0, count-1), max(0, m.tabStart+slot.control))
 			}
 			return nil
@@ -365,19 +392,10 @@ func (m *Model) clickTab(msg tea.MouseClickMsg) tea.Cmd {
 		close := msg.Button == tea.MouseMiddle || msg.Y == tabRow && x >= slot.x+slot.width-3
 		if close {
 			m.lastClickKey = ""
-			if slot.index < 0 {
-				m.closeDiff()
-				return nil
-			}
-			return m.requestClose([]*editor.Document{m.tabs[slot.index].doc})
-		}
-		if slot.index < 0 {
-			m.showEditor = false
-			m.sidebar = false
-			return nil
+			return m.requestCloseTabs([]tab{m.tabs[slot.index]})
 		}
 		m.activateTab(slot.index)
-		if m.doubleClick("tab:" + m.tabs[slot.index].doc.Path) {
+		if m.doubleClick(m.tabs[slot.index].clickKey()) {
 			m.keepTab()
 		}
 		return nil
@@ -398,25 +416,18 @@ func (m *Model) tabBar() string {
 			}
 			text += row(glyph, slot.width, m.colors.Muted, m.colors.Panel)
 		} else {
-			active := !m.showEditor && slot.index < 0 || m.showEditor && slot.index == m.activeTab
+			active := slot.index == m.activeTab
 			fg, bg := m.colors.Muted, m.colors.Panel
 			if active {
 				fg, bg = m.colors.Strong, m.colors.Background
 			}
-			glyph, color, preview := m.symbol(symbolDiff), m.colors.Muted, false
-			if slot.index < 0 && m.diffPath != "" {
-				icon := fileicon.For(m.diffPath, m.nerd)
-				glyph, color = icon.Glyph, icon.Color
-			}
+			t := m.tabs[slot.index]
+			icon := fileicon.For(t.path(), m.nerd)
+			glyph, color, preview := icon.Glyph, icon.Color, t.preview
 			label := slot.label
 			suffix := ""
-			if slot.index >= 0 {
-				t := m.tabs[slot.index]
-				icon := fileicon.For(t.doc.Path, m.nerd)
-				glyph, color, preview = icon.Glyph, icon.Color, t.preview
-				if t.doc.Dirty() {
-					suffix = " " + m.symbol(symbolDot)
-				}
+			if t.dirty() {
+				suffix = " " + m.symbol(symbolDot)
 			}
 			label = ansi.Truncate(label, max(0, slot.width-7-ansi.StringWidth(suffix)), "…") + suffix
 			label += strings.Repeat(" ", max(0, slot.width-7-ansi.StringWidth(label)))
@@ -464,7 +475,7 @@ func (m *Model) clickModal(msg tea.MouseClickMsg) tea.Cmd {
 func (m *Model) fileDirty(path string) bool {
 	path = filepath.Join(m.repo.Root, path)
 	for _, tab := range m.tabs {
-		if tab.doc.Path == path && tab.doc.Dirty() {
+		if tab.doc != nil && tab.doc.Path == path && tab.doc.Dirty() {
 			return true
 		}
 	}
@@ -473,7 +484,7 @@ func (m *Model) fileDirty(path string) bool {
 
 func (m *Model) hasDirtyTabs() bool {
 	for _, t := range m.tabs {
-		if t.doc.Dirty() {
+		if t.dirty() {
 			return true
 		}
 	}

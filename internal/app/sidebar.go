@@ -259,6 +259,15 @@ func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 		m.sidebar = m.sideShown()
 		return cmd
 	}
+	if entry.change != nil || entry.historyChange != nil {
+		double := m.doubleClick("diff:" + entry.key)
+		cmd := m.preview()
+		if double {
+			m.keepTab()
+			m.sidebar = false
+		}
+		return cmd
+	}
 	m.lastClickKey = ""
 	if m.section == history && entry.commit != nil {
 		return m.openHistory(*entry)

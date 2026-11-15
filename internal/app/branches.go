@@ -179,7 +179,7 @@ func (m *Model) createBranch(name string) tea.Cmd {
 
 func (m *Model) goToPosition(value string) tea.Cmd {
 	d := m.document()
-	if !m.showEditor || d == nil {
+	if !m.editing() || d == nil {
 		return nil
 	}
 	parts := strings.Split(strings.TrimSpace(value), ":")
@@ -214,7 +214,7 @@ func (m *Model) hasDirtyTabsForCheckout(repoPath string) bool {
 	}
 	root := filepath.Join(m.repo.Root, repoPath)
 	for _, t := range m.tabs {
-		if !t.doc.Dirty() {
+		if t.doc == nil || !t.doc.Dirty() {
 			continue
 		}
 		relative, err := filepath.Rel(root, t.doc.Path)

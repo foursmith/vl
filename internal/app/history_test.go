@@ -37,7 +37,7 @@ func TestHistoryFileReviewAndReadOnlyActions(t *testing.T) {
 	if cmd := m.stageHunk(false); cmd != nil {
 		t.Fatal("history permitted staging")
 	}
-	if cmd := m.editDiff(); cmd != nil || m.showEditor {
+	if cmd := m.editDiff(); cmd != nil || m.editing() {
 		t.Fatal("history opened worktree for editing")
 	}
 	m.selectParentFolder()

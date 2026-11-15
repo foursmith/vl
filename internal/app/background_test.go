@@ -56,7 +56,6 @@ func TestEditorCanvasAndCurrentLineBackgrounds(t *testing.T) {
 	m := New(context.Background(), &gitservice.Repository{Root: "/tmp/repo"}, false)
 	m.tabs = []tab{{doc: &editor.Document{Path: "/tmp/repo/test.go", Text: "package main\n\n// comment\n", Anchor: -1}}}
 	m.activeTab = 0
-	m.showEditor = true
 	m.sidebar = true
 	m.ensureEditor()
 	for y, rendered := range m.mainLines()[editorContentRow:] {
@@ -108,7 +107,6 @@ func TestEditorRunsKeepSyntaxSelectionCursorAndFocus(t *testing.T) {
 	d := &editor.Document{Path: "/tmp/repo/test.go", Text: "ab\t中\nsecond", Cursor: 2, Anchor: 0}
 	m.tabs = []tab{{doc: d}}
 	m.activeTab = 0
-	m.showEditor = true
 	m.sidebar = false
 	m.ensureEditor()
 	m.tabs[0].highlightText = d.Text

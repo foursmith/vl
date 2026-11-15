@@ -3,17 +3,14 @@ package app
 import (
 	"context"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"time"
 
 	"charm.land/bubbles/v2/textinput"
-	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"github.com/atotto/clipboard"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/elegit/internal/diff"
 	"github.com/ourongxing/elegit/internal/editor"
 	"github.com/ourongxing/elegit/internal/files"
 	gitservice "github.com/ourongxing/elegit/internal/git"
@@ -52,11 +49,14 @@ type item struct {
 
 type tab struct {
 	doc             *editor.Document
+	diff            *diffState
 	reloadSeq       uint64
 	diskNotice      string
 	reloadWhenClean bool
 	preview         bool
 	top, left       int
+	scrollText      string
+	scrollWidth     int
 	highlightText   string
 	spans           [][]highlight.Span
 	highlightJob    highlightJob
@@ -70,6 +70,7 @@ type snapshotMsg struct {
 	err      error
 }
 type diffMsg struct {
+	target    *diffState
 	seq       int
 	path, raw string
 	err       error
@@ -109,34 +110,19 @@ type Model struct {
 	snapshot                gitservice.Snapshot
 	items                   []item
 	selected, sideTop       int
-	refreshSeq, diffSeq     int
+	refreshSeq              int
 	refreshCancel           context.CancelFunc
 	loading, busy           bool
-	patch                   diff.Patch
-	diffPath                string
-	diffRepository          string
+	*diffState              // Bound to the active diff tab; documents use emptyDiff.
+	emptyDiff               *diffState
+	split                   bool
 	lastFileRepository      string
-	diffChange              *gitservice.Change
-	diffStaged              bool
-	diffHunk                int
-	diffRowHunks            []int
-	diffRows                []diff.Pair
-	diffGutter              int
-	diffLayout              diffLayoutKey
-	diffLoading, split      bool
-	diffCancel              context.CancelFunc
-	diffSyntaxCancel        context.CancelFunc
-	diffSyntax              map[*diff.Line][]highlight.Span
-	diffEmphasis            map[*diff.Line]diffRange
-	diffOpen                bool
-	diffCommit              string
+	pendingHistory          string
 	historyCommit           string
 	historyStates           map[string]*historyState
 	historySeq              int
-	viewport                viewport.Model
 	tabs                    []tab
 	activeTab               int
-	showEditor              bool
 	languagePath            string
 	languageInfo            highlight.LanguageInfo
 	notice                  string
@@ -178,7 +164,8 @@ func New(ctx context.Context, repo *gitservice.Repository, nerd bool) *Model {
 	input := textinput.New()
 	input.Prompt = "> "
 	input.CharLimit = 2000
-	m := &Model{colors: theme.Dark(), ctx: ctx, cancel: cancel, repo: repo, width: 120, height: 36, nerd: nerd, sidebar: true, sidebarVisible: true, split: true, viewport: viewport.New(), input: input, diffHunk: -1, activeTab: -1, notice: "Loading repository…"}
+	m := &Model{colors: theme.Dark(), ctx: ctx, cancel: cancel, repo: repo, width: 120, height: 36, nerd: nerd, sidebar: true, sidebarVisible: true, split: true, diffState: newDiffState(), input: input, activeTab: -1, notice: "Loading repository…"}
+	m.emptyDiff = m.diffState
 	m.search = newSearch()
 	m.styleInput()
 	m.resize()
@@ -362,11 +349,7 @@ func (m *Model) previewAt(reset bool) tea.Cmd {
 		return nil
 	}
 	c, staged := *entry.change, entry.staged
-	m.diffCommit = ""
-	m.diffChange = &c
-	m.diffRepository = c.Repository
-	m.diffStaged = staged
-	return m.requestDiff(c.Path, reset, func(ctx context.Context) (string, error) {
+	return m.requestDiff(diffTarget{path: c.Path, repository: c.Repository, staged: staged, change: &c, preview: true}, reset, func(ctx context.Context) (string, error) {
 		return m.repo.Diff(ctx, c, staged)
 	})
 }
@@ -389,6 +372,14 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		if m.watchDirty && !m.loading && !m.busy {
 			m.watchDirty = false
 			cmd := m.refresh()
+			if next == nil {
+				next = cmd
+			} else {
+				next = tea.Batch(next, cmd)
+			}
+		}
+		if m.diffOpen && !m.diffLoading && m.patch.Raw != "" && m.diffSyntax == nil && m.diffSyntaxCancel == nil {
+			cmd := m.highlightDiff()
 			if next == nil {
 				next = cmd
 			} else {
@@ -450,8 +441,8 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 	case highlightResultMsg:
 		m.finishHighlight(msg)
 	case diffSyntaxMsg:
-		if msg.seq == m.diffSeq && msg.raw == m.patch.Raw && msg.ctx.Err() == nil {
-			m.diffSyntax = msg.spans
+		if d := msg.target; d != nil && msg.seq == d.diffSeq && msg.raw == d.patch.Raw && msg.ctx.Err() == nil {
+			d.diffSyntax = msg.spans
 		}
 	case tea.MouseMotionMsg:
 		m.hoverX, m.hoverY = msg.X, msg.Y
@@ -520,7 +511,6 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			m.log(msg.err.Error())
 			return m, nil
 		}
-		changed := !reflect.DeepEqual(m.snapshot.Changes, msg.snapshot.Changes) || !reflect.DeepEqual(m.snapshot.Commits, msg.snapshot.Commits) || !reflect.DeepEqual(m.snapshot.RepositoryHistory, msg.snapshot.RepositoryHistory)
 		m.snapshot = msg.snapshot
 		m.reconcileHistoryRepositories()
 		m.syncWatch()
@@ -529,51 +519,21 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		if initial {
 			m.notice = ""
 		}
+		var commands []tea.Cmd
 		if m.section == explorer {
-			return m, m.refreshTree()
+			commands = append(commands, m.refreshTree())
 		}
-		if (m.diffOpen || initial) && (m.section == changes || m.section == history) {
-			if m.current() == nil {
-				m.diffSeq++
-				m.diffLoading = false
-				m.diffChange = nil
-				m.clearDiffContent()
-			} else if changed || m.section == changes {
-				wasEditor := m.showEditor
-				cmd := m.previewAt(changed || initial)
-				m.showEditor = wasEditor
-				m.ensureTabVisible()
-				return m, cmd
-			}
+		commands = append(commands, m.refreshDiffs())
+		if initial && len(m.tabs) == 0 && (m.section == changes || m.section == history) {
+			commands = append(commands, m.preview())
 		}
+		return m, tea.Batch(commands...)
+
 	case historyFilesMsg:
 		return m, m.applyHistoryFiles(msg)
 	case diffMsg:
-		if msg.seq != m.diffSeq {
-			return m, nil
-		}
-		m.diffLoading = false
-		if msg.err != nil {
-			m.log(msg.err.Error())
-			return m, nil
-		}
-		if msg.raw == m.patch.Raw {
-			m.diffPath = msg.path
-			m.renderDiff()
-			if m.diffSyntax == nil {
-				return m, m.highlightDiff()
-			}
-			return m, nil
-		}
-		m.patch = diff.Parse(msg.raw)
-		m.diffPath = msg.path
-		if len(m.patch.Hunks) > 0 {
-			m.diffHunk = min(max(0, m.diffHunk), len(m.patch.Hunks)-1)
-		} else {
-			m.diffHunk = -1
-		}
-		m.renderDiff()
-		return m, m.highlightDiff()
+		return m, m.finishDiff(msg)
+
 	case operationMsg:
 		m.busy = false
 		if msg.err != nil {
@@ -625,6 +585,17 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			}
 			return m, nil
 		}
+		if msg.Button == tea.MouseWheelLeft || msg.Button == tea.MouseWheelRight ||
+			msg.Mod.Contains(tea.ModShift) && (msg.Button == tea.MouseWheelUp || msg.Button == tea.MouseWheelDown) {
+			if !m.sidebarAt(msg.X) {
+				delta := 3
+				if msg.Button == tea.MouseWheelLeft || msg.Button == tea.MouseWheelUp {
+					delta = -delta
+				}
+				m.scrollHorizontal(delta)
+			}
+			return m, nil
+		}
 		if msg.Button != tea.MouseWheelUp && msg.Button != tea.MouseWheelDown {
 			return m, nil
 		}
@@ -640,7 +611,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			}
 			m.sideTop += delta
 			m.clampSidebarScroll()
-		} else if m.showEditor && m.activeTab >= 0 {
+		} else if m.editing() && m.activeTab >= 0 {
 			delta := 3
 			if msg.Button == tea.MouseWheelUp {
 				delta = -3
@@ -668,7 +639,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			m.choice = 0
 			return m, cmd
 		}
-		if !m.sidebar && m.showEditor && m.document() != nil {
+		if !m.sidebar && m.editing() && m.document() != nil {
 			m.document().Insert(msg.Content)
 			m.ensureEditor()
 		}
@@ -687,7 +658,7 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	}
 	switch k {
 	case "ctrl+q", "ctrl+c":
-		if k == "ctrl+c" && !m.sidebar && m.showEditor {
+		if k == "ctrl+c" && !m.sidebar && m.editing() {
 			return m.copy(false)
 		}
 		return m.quit()
@@ -801,7 +772,7 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		}
 		return nil
 	}
-	if m.showEditor && m.document() != nil {
+	if m.editing() && m.document() != nil {
 		d := m.document()
 		switch k {
 		case "ctrl+z":
@@ -845,6 +816,15 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		return nil
 	}
 	switch k {
+	case "left", "right":
+		delta := 3
+		if k == "left" {
+			delta = -delta
+		}
+		m.scrollHorizontal(delta)
+		return nil
+	case "enter":
+		return m.keepTab()
 	case "]", "n":
 		m.nextHunk(1)
 		return nil
@@ -880,7 +860,7 @@ func (m *Model) save() tea.Cmd {
 		return nil
 	}
 	d := m.document()
-	if !m.showEditor || d == nil {
+	if !m.editing() || d == nil {
 		m.notice = "Open a file to edit first"
 		return nil
 	}
@@ -893,12 +873,11 @@ func (m *Model) save() tea.Cmd {
 }
 
 func (m *Model) reloadCleanTabs() {
-	active := m.document()
 	var kept []tab
 	newActive := -1
-	for _, t := range m.tabs {
-		wasActive := t.doc == active
-		if !t.doc.Dirty() {
+	for i, t := range m.tabs {
+		wasActive := i == m.activeTab
+		if t.doc != nil && !t.doc.Dirty() {
 			t.highlightJob.stop()
 			d, err := editor.Open(t.doc.Path)
 			if err != nil {
@@ -922,9 +901,13 @@ func (m *Model) reloadCleanTabs() {
 		m.activeTab = 0
 	}
 	if len(kept) == 0 {
-		m.showEditor = false
+		m.diffState = m.emptyDiff
+	} else {
+		sidebar := m.sidebar
+		m.activateTab(m.activeTab)
+		m.sidebar = sidebar
 	}
-	if m.showEditor && m.document() != nil {
+	if m.editing() && m.document() != nil {
 		m.lastFileRepository = m.fileRepository(m.document().Path)
 	}
 	m.ensureEditor()

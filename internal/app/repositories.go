@@ -116,7 +116,7 @@ func repositoryFile(path, repo string) string {
 
 func (m *Model) hasDirtyTabsInRepository(repo string) bool {
 	for _, t := range m.tabs {
-		if !t.doc.Dirty() {
+		if t.doc == nil || !t.doc.Dirty() {
 			continue
 		}
 		path, err := filepath.Rel(m.repo.Root, t.doc.Path)
@@ -197,7 +197,7 @@ func (m *Model) fileRepository(path string) string {
 }
 
 func (m *Model) statusRepository() string {
-	if m.showEditor && m.document() != nil {
+	if m.editing() && m.document() != nil {
 		return m.fileRepository(m.document().Path)
 	}
 	if m.diffOpen {

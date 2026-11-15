@@ -47,8 +47,7 @@ func TestEditorAndDiffShareFileIconAndBreadcrumbs(t *testing.T) {
 			t.Fatal("file icon missing")
 		}
 	}
-	m.diffOpen = true
-	m.showEditor = false
+	showDiffFixture(m)
 	m.diffPath = path
 	if !strings.Contains(m.tabBar(), icon.Glyph) || strings.Contains(m.tabBar(), "⇄") {
 		t.Fatal("diff tab does not use the file's icon")

@@ -237,6 +237,7 @@ func TestStatusFollowsActiveFileDiffAndLastClosedFile(t *testing.T) {
 	// A parent gitlink diff belongs to its parent even though its path names a child.
 	selectChanged(t, m, "child space", false)
 	drain(t, m, m.preview())
+	m.keepTab()
 	if m.statusRepository() != "" {
 		t.Fatal("gitlink diff targets child instead of parent")
 	}
@@ -245,11 +246,12 @@ func TestStatusFollowsActiveFileDiffAndLastClosedFile(t *testing.T) {
 	if m.statusRepository() != "child space" {
 		t.Fatal("child diff targets parent")
 	}
-	m.closeDiff()
+	m.closeTab() // Child diff.
+	m.closeTab() // Parent gitlink diff, now the adjacent tab.
 	m.activateTab(1)
-	m.closeTab()
-	m.closeTab()
-	if m.document() != nil || m.statusRepository() != "child space" {
+	m.closeTab() // Parent document.
+	m.closeTab() // Child document.
+	if len(m.tabs) != 0 || m.statusRepository() != "child space" {
 		t.Fatal("closing last file lost most recent repository")
 	}
 	m.snapshot.Repositories = nil

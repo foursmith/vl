@@ -72,7 +72,7 @@ func TestWelcomeClicksUseRenderedCoordinates(t *testing.T) {
 func TestWelcomeDoesNotReplaceOpenOrLoadingContent(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	m.diffLoading = true
-	m.diffOpen = true
+	showDiffFixture(m)
 	m.diffPath = "file0.go"
 	if m.welcomeVisible() || strings.Contains(plain(strings.Join(m.mainLines(), "\n")), "Loading diff") {
 		t.Fatal("pending diff shows welcome or a loading placeholder")
@@ -82,7 +82,7 @@ func TestWelcomeDoesNotReplaceOpenOrLoadingContent(t *testing.T) {
 		t.Fatal("pending diff hides its path behind a loading placeholder")
 	}
 	m.diffLoading = false
-	m.diffOpen = true
+	showDiffFixture(m)
 	if m.welcomeVisible() {
 		t.Fatal("welcome replaced empty diff")
 	}

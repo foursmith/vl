@@ -202,6 +202,8 @@ the view does not stage, commit, fetch, or change branches.
 | Changes | E | Edit selected file |
 | Changes | Space | Toggle file staging |
 | Changes | S / U / A / C | Stage / unstage / stage all / commit |
+| File / Diff | Horizontal wheel or Shift+wheel | Scroll horizontally |
+| Diff | Left / Right | Scroll horizontally |
 | Diff | [ / ] or P / N | Previous / next hunk |
 | Diff | S / U | Stage / unstage selected hunk |
 | Diff | E / Tab | Edit file / toggle diff layout |
@@ -219,6 +221,11 @@ Side-by-side diffs fall back to unified when the content is too narrow.
 The editor opens regular UTF-8 text files up to 4 MiB. Binary, mixed LF/CRLF,
 and legacy CR-only files are rejected rather than silently converted. It does
 not currently offer Save As, LSP, multi-cursor, or session restoration.
+File and diff tabs share one opening order and the same switch/close controls.
+Single-clicking files or diffs reuses one preview tab; double-clicking the row or
+tab, pressing Enter, or running Keep Preview Open keeps it open. Kept working-tree,
+staged and commit diffs retain independent tabs, including for the same file.
+Reopening the same source selects its existing tab.
 File tabs open live worktree files; commit diffs are read-only patches.
 
 Material Icon Theme uses SVG artwork. This terminal version uses a curated set
@@ -227,9 +234,11 @@ shapes or its entire association catalog. `-icons=false` keeps the colors and
 uses plain text markers. No GUI/WebView or terminal image protocol is required.
 
 All file diffs share the same unified/side-by-side renderer and Git's default
-three lines of context. The diff surface clips long lines to pane width.
-Horizontal scrolling, full-file diff context, conflict resolution, line staging,
-and the other remaining capabilities are in the roadmap.
+three lines of context. File previews and diffs support horizontal scrolling
+with a trackpad/horizontal wheel or Shift+mouse wheel. Focused diffs also support
+Left/Right arrows; side-by-side panes scroll together with fixed line numbers.
+Full-file diff context, conflict resolution, line staging, and the other
+remaining capabilities are in the roadmap.
 
 ## Development
 

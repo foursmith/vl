@@ -59,7 +59,9 @@ func (m *Model) syncWatch() {
 		}
 	}
 	for _, t := range m.tabs {
-		config.Directories = append(config.Directories, filepath.Dir(t.doc.Path))
+		if t.doc != nil {
+			config.Directories = append(config.Directories, filepath.Dir(t.doc.Path))
+		}
 	}
 	for _, path := range m.snapshot.Repositories {
 		config.Directories = append(config.Directories, filepath.Join(m.repo.Root, path))
@@ -102,6 +104,9 @@ func (m *Model) reloadWatchedFiles(paths []string) tea.Cmd {
 	var commands []tea.Cmd
 	for i := range m.tabs {
 		t := &m.tabs[i]
+		if t.doc == nil {
+			continue
+		}
 		changed := paths == nil
 		for _, path := range paths {
 			if path == t.doc.Path || strings.HasPrefix(t.doc.Path, path+string(filepath.Separator)) {
@@ -121,6 +126,9 @@ func (m *Model) reloadWatchedFiles(paths []string) tea.Cmd {
 func (m *Model) finishReload(msg fileReloadMsg) {
 	for i := range m.tabs {
 		t := &m.tabs[i]
+		if t.doc == nil {
+			continue
+		}
 		if t.doc != msg.original || t.reloadSeq != msg.seq {
 			continue
 		}
@@ -162,6 +170,12 @@ func (m *Model) finishReload(msg fileReloadMsg) {
 
 // Close releases watcher and background requests when the program exits.
 func (m *Model) Close() {
+	for _, t := range m.tabs {
+		if t.diff != nil {
+			t.diff.close()
+		}
+		t.highlightJob.stop()
+	}
 	m.cancel()
 	if m.watcher != nil {
 		m.watcher.Close()
@@ -174,6 +188,9 @@ func (m *Model) reloadCleanConflicts() tea.Cmd {
 	var commands []tea.Cmd
 	for i := range m.tabs {
 		t := &m.tabs[i]
+		if t.doc == nil {
+			continue
+		}
 		if t.reloadWhenClean && !t.doc.Dirty() {
 			t.reloadWhenClean = false
 			commands = append(commands, m.reloadWatchedFiles([]string{t.doc.Path}))

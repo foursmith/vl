@@ -58,6 +58,90 @@ func TestPreviewReplacesOnlyCleanPreviewAndPromotesOnEdit(t *testing.T) {
 	}
 }
 
+// Renderer-only fixtures still use the same tab ownership as real opens.
+func showDiffFixture(m *Model) {
+	d := m.diffState
+	if d == m.emptyDiff {
+		m.emptyDiff = newDiffState()
+	}
+	d.diffOpen = true
+	m.tabs = append(m.tabs, tab{diff: d})
+	m.activateTab(len(m.tabs) - 1)
+}
+
+func TestDiffSharesFileTabOrder(t *testing.T) {
+	m := tabWorkspace(t, 4)
+	openDiff := func() {
+		m.requestDiff(diffTarget{path: "file0.go"}, true, func(context.Context) (string, error) { return "", nil })
+	}
+	m.openFile("file0.go")
+	openDiff()
+	d := m.diffState
+	m.openFile("file1.go")
+	openDiff()
+	if len(m.tabs) != 3 || m.tabs[1].diff != d || m.activeTab != 1 {
+		t.Fatal("diff was moved or duplicated")
+	}
+	for _, index := range []int{2, 0, 1} {
+		m.switchTab(1)
+		if m.activeTab != index {
+			t.Fatalf("next tab = %d, want %d", m.activeTab, index)
+		}
+	}
+	for _, index := range []int{0, 2, 1} {
+		m.switchTab(-1)
+		if m.activeTab != index {
+			t.Fatalf("previous tab = %d, want %d", m.activeTab, index)
+		}
+	}
+	m.removeTab(m.tabs[0].doc)
+	if m.tabs[0].diff != d || m.activeTab != 0 {
+		t.Fatal("file close moved diff")
+	}
+	m.closeTab()
+	openDiff()
+	if len(m.tabs) != 2 || m.tabs[1].diff == nil || m.tabs[1].diff == d {
+		t.Fatal("reopened diff did not append with a fresh lifecycle")
+	}
+	m.openPreviewFile("file2.go")
+	m.openPreviewFile("file3.go")
+	if len(m.tabs) != 3 || m.tabs[1].diff == nil {
+		t.Fatal("file preview replaced diff")
+	}
+	for _, width := range []int{30, 48, 80} {
+		m.Update(tea.WindowSizeMsg{Width: width, Height: 24})
+		openDiff()
+		visible := false
+		for _, slot := range m.tabLayout() {
+			if slot.control == 0 && slot.index == m.activeTab {
+				visible = true
+			}
+		}
+		if !visible {
+			t.Fatalf("diff tab invisible at width %d", width)
+		}
+	}
+}
+
+func TestReloadKeepsDiffPositionWhenEarlierFilesDisappear(t *testing.T) {
+	m := tabWorkspace(t, 4)
+	for i := 0; i < 3; i++ {
+		m.openFile(fmt.Sprintf("file%d.go", i))
+	}
+	m.requestDiff(diffTarget{path: "file2.go"}, true, func(context.Context) (string, error) { return "", nil })
+	d := m.diffState
+	m.openFile("file3.go")
+	for i := 0; i < 3; i++ {
+		if err := os.Remove(m.tabs[i].doc.Path); err != nil {
+			t.Fatal(err)
+		}
+	}
+	m.reloadCleanTabs()
+	if len(m.tabs) != 2 || m.tabs[0].diff != d || m.document() == nil || filepath.Base(m.document().Path) != "file3.go" {
+		t.Fatal("reload changed tab order or active file")
+	}
+}
+
 func TestFileIdentityAndFailurePreservePreview(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	m.openPreviewFile("file0.go")
@@ -209,14 +293,13 @@ func TestClosedDiffStaysClosedAndClickPinsPreview(t *testing.T) {
 		t.Fatal("double-clicking tab did not keep preview")
 	}
 	m.section = changes
-	m.diffOpen = true
-	m.showEditor = false
+	showDiffFixture(m)
 	m.diffSeq = 1
+	stale := diffMsg{target: m.diffState, seq: m.diffSeq, raw: "stale"}
 	m.closeTab()
-	seq := m.diffSeq
-	m.Update(diffMsg{seq: seq - 1, raw: "stale"})
+	m.Update(stale)
 	m.Update(snapshotMsg{seq: m.refreshSeq, snapshot: gitservice.Snapshot{Changes: []gitservice.Change{{Path: "file0.go", Index: ' ', Worktree: 'M'}}}})
-	if m.diffOpen || m.patch.Raw != "" || !m.showEditor {
+	if m.diffOpen || m.patch.Raw != "" || !m.editing() {
 		t.Fatal("background refresh reopened closed diff")
 	}
 	m.lastClickTime = time.Now().Add(-time.Second)
