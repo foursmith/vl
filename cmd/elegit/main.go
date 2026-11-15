@@ -10,6 +10,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/ourongxing/elegit/internal/app"
+	"github.com/ourongxing/elegit/internal/config"
 	"github.com/ourongxing/elegit/internal/git"
 )
 
@@ -41,8 +42,27 @@ func main() {
 		os.Exit(1)
 	}
 	m := app.New(ctx, repo, *icons)
+	layoutPath, layoutErr := config.LayoutPath()
+	var layout config.Layout
+	if layoutErr == nil {
+		layout, layoutErr = config.LoadLayout(layoutPath)
+	}
+	if layoutErr == nil {
+		m.SetSidebarLayout(layout.SidebarWidth, layout.SidebarRight)
+	}
 	_, err = tea.NewProgram(m, tea.WithContext(ctx)).Run()
 	m.Close()
+	if layoutErr != nil {
+		fmt.Fprintln(os.Stderr, "Load layout preferences:", layoutErr)
+	} else {
+		width, right := m.SidebarLayout()
+		updated := config.Layout{SidebarWidth: width, SidebarRight: right}
+		if updated != layout {
+			if saveErr := config.SaveLayout(layoutPath, updated); saveErr != nil {
+				fmt.Fprintln(os.Stderr, "Save layout preferences:", saveErr)
+			}
+		}
+	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

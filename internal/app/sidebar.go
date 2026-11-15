@@ -24,7 +24,10 @@ type sidebarButton struct {
 }
 
 func (m *Model) sidebarAt(x int) bool {
-	return m.sideShown() && x < m.mainX() || !m.sideShown() && m.sidebar && m.sidebarVisible
+	if m.sideShown() {
+		return x >= m.sideX() && x < m.sideX()+m.sideWidth()
+	}
+	return x >= 0 && x < m.width && m.sidebar && m.sidebarVisible
 }
 
 func (m *Model) navigation() []navigationItem {
@@ -48,7 +51,7 @@ func (m *Model) rootButtons(w int) []sidebarButton {
 func (m *Model) sidebarLines() []string { return m.sidebarLinesWidth(m.sideWidth()) }
 
 func (m *Model) hoveredSidebarRow() int {
-	if m.modal != "" || m.hoverX < 0 || !m.sidebarAt(m.hoverX) || m.hoverY < sidebarHeaderRows || m.hoverY >= m.bodyHeight() {
+	if m.resizingSidebar || m.modal != "" || m.hoverX < 0 || !m.sidebarAt(m.hoverX) || m.hoverY < sidebarHeaderRows || m.hoverY >= m.bodyHeight() {
 		return -1
 	}
 	i := m.sideTop + m.hoverY - sidebarHeaderRows
@@ -171,6 +174,7 @@ func (m *Model) explorerRow(entry item, w int, bg string) (string, string) {
 }
 
 func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
+	msg.X -= m.sideX()
 	y := msg.Y
 	if y >= 0 && y < headerHeight {
 		for _, item := range m.navigation() {

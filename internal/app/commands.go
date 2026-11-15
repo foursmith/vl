@@ -42,6 +42,9 @@ func (m *Model) actions() []action {
 		{"view.changes", "View: Source Control", "Ctrl+2", "", func() tea.Cmd { return m.selectSection(changes) }},
 		{"view.history", "View: Commit History", "Ctrl+3", "", func() tea.Cmd { return m.selectSection(history) }},
 		{"view.diff", "Diff: Toggle Side by Side", "Ctrl+D", "", func() tea.Cmd { m.split = !m.split; m.renderDiff(); return nil }},
+		{"view.sidebarLeft", "View: Move Side Bar Left", "", "", func() tea.Cmd { m.SetSidebarLayout(m.sidebarWidth, false); return nil }},
+		{"view.sidebarRight", "View: Move Side Bar Right", "", "", func() tea.Cmd { m.SetSidebarLayout(m.sidebarWidth, true); return nil }},
+		{"view.sidebarResetWidth", "View: Reset Side Bar Width", "", "", func() tea.Cmd { m.SetSidebarLayout(0, m.sidebarRight); return nil }},
 		{"view.output", "View: Toggle Output", "Ctrl+J", "", func() tea.Cmd { m.outputVisible = !m.outputVisible; m.resize(); return nil }},
 		{"git.refresh", "Git: Refresh", "F5", "", m.refresh},
 		{"git.stage", "Git: Stage Selected File", "S", fileReason, func() tea.Cmd { return m.stageSelected(false) }},
@@ -92,6 +95,7 @@ func (m *Model) filteredActions() []action {
 }
 
 func (m *Model) prompt(kind, title, value string) tea.Cmd {
+	m.resizingSidebar = false
 	m.modal, m.modalTitle = kind, title
 	m.input.SetValue(value)
 	m.input.Placeholder = ""

@@ -74,20 +74,6 @@ func row(text string, width int, fg, bg string) string {
 	return out.String()
 }
 
-func (m *Model) sideShown() bool { return m.sidebarVisible && m.width >= 70 }
-func (m *Model) sideWidth() int {
-	if !m.sideShown() {
-		return 0
-	}
-	return min(44, max(28, m.width/4))
-}
-func (m *Model) mainX() int {
-	if m.sideShown() {
-		return 1 + m.sideWidth()
-	}
-	return 0
-}
-func (m *Model) mainWidth() int { return max(1, m.width-m.mainX()) }
 func (m *Model) outputHeight() int {
 	if m.outputVisible && m.height >= 18 {
 		return 7
@@ -123,11 +109,19 @@ func (m *Model) View() tea.View {
 	side := m.sidebarLines()
 	main := m.mainLines()
 	for y := 0; y < m.bodyHeight(); y++ {
-		line := ""
+		line := main[y]
 		if m.sideShown() {
-			line = side[y] + row("│", 1, theme.Border, theme.Panel)
+			color := theme.Border
+			if m.resizingSidebar || m.sidebarDividerAt(m.hoverX, m.hoverY) {
+				color = theme.Accent
+			}
+			divider := row("│", 1, color, theme.Panel)
+			if m.sidebarRight {
+				line += divider + side[y]
+			} else {
+				line = side[y] + divider + line
+			}
 		}
-		line += main[y]
 		lines = append(lines, line)
 	}
 	if h := m.outputHeight(); h > 0 {
@@ -506,7 +500,7 @@ func (m *Model) overlay(base []string) []string {
 }
 
 func (m *Model) click(msg tea.MouseClickMsg) tea.Cmd {
-	if msg.Y >= 0 && msg.Y < headerHeight && msg.X >= m.mainX() && !(m.width < 70 && m.sidebar && m.sidebarVisible) && (msg.Button == tea.MouseLeft || msg.Button == tea.MouseMiddle) {
+	if msg.Y >= 0 && msg.Y < headerHeight && msg.X >= m.mainX() && msg.X < m.mainX()+m.mainWidth() && !(m.width < 70 && m.sidebar && m.sidebarVisible) && (msg.Button == tea.MouseLeft || msg.Button == tea.MouseMiddle) {
 		return m.clickTab(msg)
 	}
 	if msg.Button != tea.MouseLeft {

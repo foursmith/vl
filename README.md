@@ -89,6 +89,11 @@ Subdirectories and file paths resolve to their enclosing repository.
   newline presence, and file permissions survive saves. External modifications
   are checked before replacing a file.
 - TextMate syntax highlighting with VS Code Dark Modern token rules, including font styles, for recognized languages up to 256 KiB.
+- Drag the sidebar divider to resize it. Use **View: Move Side Bar Right/Left**
+  in the command palette (**F1**) to change its position, or **View: Reset Side Bar Width**
+  to restore automatic sizing. Width and position are saved on exit in
+  `elegit/layout.json` under the OS user configuration directory. Narrow terminals
+  keep the single-surface sidebar/content layout.
 - Searchable commands, disabled-command explanations, and Git output panel.
 
 Search files with **Ctrl+P**. Commands are available from **Ctrl+Shift+P** or **F1**.

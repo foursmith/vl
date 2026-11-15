@@ -27,7 +27,7 @@ func hoverAction(t *testing.T, m *Model, path, id string) (rowAction, int) {
 	y := sidebarHeaderRows + index - m.sideTop
 	for _, action := range m.changeRowActions(m.items[index], m.sideWidth()) {
 		if action.id == id {
-			m.Update(tea.MouseMotionMsg{X: action.x + 1, Y: y})
+			m.Update(tea.MouseMotionMsg{X: m.sideX() + action.x + 1, Y: y})
 			return action, y
 		}
 	}

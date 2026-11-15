@@ -88,6 +88,9 @@ type Model struct {
 	nerd                    bool
 	section                 section
 	sidebar, sidebarVisible bool
+	sidebarWidth            int
+	sidebarRight            bool
+	resizingSidebar         bool
 	snapshot                gitservice.Snapshot
 	items                   []item
 	selected, sideTop       int
@@ -415,7 +418,22 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}
 	case tea.MouseMotionMsg:
 		m.hoverX, m.hoverY = msg.X, msg.Y
+		if m.resizingSidebar {
+			if msg.Button == tea.MouseLeft && m.modal == "" && m.sideShown() {
+				m.dragSidebar(msg.X)
+			} else {
+				m.resizingSidebar = false
+			}
+		}
+	case tea.MouseReleaseMsg:
+		if m.resizingSidebar {
+			if msg.Button == tea.MouseLeft || msg.Button == tea.MouseNone {
+				m.dragSidebar(msg.X)
+			}
+			m.resizingSidebar = false
+		}
 	case tea.BlurMsg:
+		m.resizingSidebar = false
 		m.hoverX, m.hoverY = -1, -1
 	case browserMsg:
 		if msg.err != nil {
@@ -448,6 +466,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}
 		m.revealFile = ""
 	case tea.WindowSizeMsg:
+		m.resizingSidebar = false
 		m.width, m.height = max(1, msg.Width), max(1, msg.Height)
 		m.resize()
 	case tickMsg:
@@ -547,6 +566,11 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 	case tea.MouseClickMsg:
 		if m.modal != "" {
 			return m, m.clickModal(msg)
+		}
+		m.resizingSidebar = false
+		if m.sidebarDividerAt(msg.X, msg.Y) {
+			m.resizingSidebar = msg.Button == tea.MouseLeft
+			return m, nil
 		}
 		return m, m.click(msg)
 	case tea.MouseWheelMsg:

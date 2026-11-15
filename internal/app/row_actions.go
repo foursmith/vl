@@ -71,11 +71,12 @@ func (m *Model) changeActionRow(entry item, w int, fg, bg string) string {
 	start := actions[0].x
 	label, _ := m.explorerRow(entry, start+3, bg)
 	text := row(ansi.Cut(label, 0, start), start, fg, bg)
+	hoverX := m.hoverX - m.sideX()
 	for _, action := range actions {
 		color := theme.Foreground
 		if action.disabled != "" {
 			color = theme.LineNumber
-		} else if m.hoverX >= action.x && m.hoverX < action.x+action.width {
+		} else if hoverX >= action.x && hoverX < action.x+action.width {
 			color = "#FFFFFF"
 		}
 		text += row(" "+action.glyph+" ", action.width, color, bg)
@@ -89,6 +90,9 @@ func (m *Model) changeActionRow(entry item, w int, fg, bg string) string {
 }
 
 func (m *Model) hoverHint() string {
+	if m.resizingSidebar || m.sidebarDividerAt(m.hoverX, m.hoverY) {
+		return "拖动调整侧边栏宽度"
+	}
 	i := m.hoveredChangeRow()
 	if i < 0 {
 		return ""
@@ -97,8 +101,9 @@ func (m *Model) hoverHint() string {
 	if !m.sideShown() {
 		w = m.width
 	}
+	hoverX := m.hoverX - m.sideX()
 	for _, action := range m.changeRowActions(m.items[i], w) {
-		if m.hoverX >= action.x && m.hoverX < action.x+action.width {
+		if hoverX >= action.x && hoverX < action.x+action.width {
 			if action.disabled != "" {
 				return action.disabled
 			}
