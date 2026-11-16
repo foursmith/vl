@@ -85,6 +85,9 @@ func (m *Model) searchResultRow(index, w int, r searchRow) string {
 		button = m.symbol(symbolClose)
 	}
 	text += row("", 1, m.colors.Foreground, bg) + row(button, 1, m.colors.Foreground, bg)
+	if m.monochrome && m.sidebar && index == s.selected && s.focus == 2 {
+		text = ">" + ansi.Cut(text, 1, w)
+	}
 	return row(text, w, m.colors.Foreground, bg)
 }
 

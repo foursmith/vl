@@ -110,7 +110,8 @@ initialization keeps open editor tabs and unsaved edits.
   preview/keep/close controls, and reload on external changes. Closing a preview
   or exiting releases its terminal image resources.
   Scroll over an image to zoom around the pointer; drag with the left mouse
-  button to pan, and press **0** to restore fit. Each tab retains its zoom and
+  button to pan. With the image focused, **+ / = / -** zoom around the viewport
+  center, **arrow keys** pan, and **0** restores fit. Each tab retains its zoom and
   position. The toolbar/status bar show the actual pixel scale. Zoom ranges
   from 0.1× to 32× the initial fit; only the visible region is rasterized.
   SVG renders in pure Go, including text, gradients, clipping, masks and filters,
@@ -208,6 +209,10 @@ is remembered across restarts and repository switches.
 Clean tabs close immediately; unsaved files offer **Save / Discard / Cancel**, using either the
 buttons or **S / D / Esc**. File mutations and Git operations run only when requested; refreshing
 the view does not stage, commit, fetch, or change branches.
+Confirmation dialogs wrap long paths; when the message exceeds the screen, use
+**Up/Down**, **Page Up/Down**, or **Home/End** to read it. The actions stay visible.
+With `NO_COLOR` set to a nonempty value, lists mark the focused row with `>`;
+the active navigation section and editor tab use underlining.
 
 ## Keys
 
@@ -241,6 +246,8 @@ the view does not stage, commit, fetch, or change branches.
 | Diff | S / U | Stage / unstage selected hunk |
 | Diff | E / Tab | Edit file / toggle diff layout |
 | Image | Wheel up / down | Zoom in / out around the pointer |
+| Image | + / = / - | Zoom in / out around the viewport center |
+| Image | Arrow keys | Pan the image |
 | Image | Left drag / 0 | Pan / restore fit |
 | Editor | Ctrl+Z / Ctrl+Y | Undo / redo |
 | Editor | Shift+arrows | Select text |
@@ -257,7 +264,7 @@ Side-by-side diffs fall back to unified when the content is too narrow.
 The editor opens regular UTF-8 text files up to 4 MiB; supported raster images and
 SVGs open in a read-only image tab. Other binary, mixed LF/CRLF,
 and legacy CR-only files are rejected rather than silently converted. It does
-not currently offer Save As, LSP, multi-cursor, or session restoration.
+not currently offer Save As, LSP, or multi-cursor.
 File and diff tabs share one opening order and the same switch/close controls.
 Single-clicking files or diffs reuses one preview tab; double-clicking the row or
 tab, pressing Enter, or running Keep Preview Open keeps it open. Kept working-tree,

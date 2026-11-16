@@ -113,3 +113,57 @@ func TestImageZoomFrameBounds(t *testing.T) {
 		}
 	}
 }
+
+func TestImageKeyboardZoomPanFocusAndBounds(t *testing.T) {
+	m := zoomWorkspace(t)
+	defer m.Close()
+	m.sidebar = false
+	press(m, "+")
+	if m.tabs[0].image.zoom <= 1 {
+		t.Fatal("+ did not zoom the focused image")
+	}
+	press(m, "-")
+	if math.Abs(m.tabs[0].image.zoom-1) > .0001 {
+		t.Fatal("- did not reverse keyboard zoom")
+	}
+	for i := 0; i < 40; i++ {
+		press(m, "=")
+	}
+	if m.tabs[0].image.zoom != 32 {
+		t.Fatal("keyboard zoom escaped its upper limit")
+	}
+	before := m.imageRegion()
+	m.Update(tea.KeyPressMsg{Code: tea.KeyRight})
+	m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	after := m.imageRegion()
+	if after.X <= before.X || after.Y <= before.Y {
+		t.Fatal("arrow keys did not move the viewport")
+	}
+	for i := 0; i < 100; i++ {
+		m.Update(tea.KeyPressMsg{Code: tea.KeyRight})
+		m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	}
+	region := m.imageRegion()
+	if region.X+region.Width > 1200.0001 || region.Y+region.Height > 800.0001 {
+		t.Fatal("keyboard pan escaped image bounds")
+	}
+	press(m, "0")
+	m.sidebar = true
+	press(m, "+")
+	if m.tabs[0].image.zoom != 1 {
+		t.Fatal("sidebar key changed image zoom")
+	}
+	m.sidebar = false
+	m.prompt("find", "Find", "")
+	press(m, "+")
+	if m.tabs[0].image.zoom != 1 {
+		t.Fatal("modal input changed image zoom")
+	}
+	press(m, "esc")
+	m.kittySupported = false
+	press(m, "+")
+	m.Update(tea.KeyPressMsg{Code: tea.KeyRight})
+	if m.tabs[0].image.zoom != 1 || m.tabs[0].image.centerX != .5 {
+		t.Fatal("unsupported terminal changed the image viewport")
+	}
+}

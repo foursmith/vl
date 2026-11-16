@@ -9,6 +9,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"github.com/atotto/clipboard"
+	"github.com/charmbracelet/colorprofile"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/ourongxing/elegit/internal/config"
@@ -100,6 +101,7 @@ type Model struct {
 
 	colors                  theme.Palette
 	light                   bool
+	monochrome              bool
 	themeMode               string
 	terminalLight           bool
 	themeNotifications      bool
@@ -147,6 +149,7 @@ type Model struct {
 	lastCommand             string
 	confirm                 func() tea.Cmd
 	confirmationDetail      string
+	dialogTop               int
 	search                  searchState
 	find                    string
 	expanded                map[string]bool
@@ -178,7 +181,7 @@ func New(ctx context.Context, repo *gitservice.Repository, nerd bool) *Model {
 	ctx, cancel := context.WithCancel(ctx)
 	input := textinput.New()
 	input.CharLimit = 2000
-	m := &Model{cellWidth: 8, cellHeight: 16, colors: theme.Dark(), ctx: ctx, cancel: cancel, repo: repo, width: 120, height: 36, nerd: nerd, sidebar: true, sidebarVisible: true, split: true, diffState: newDiffState(), input: input, activeTab: -1, notice: "Loading repository…"}
+	m := &Model{cellWidth: 8, cellHeight: 16, colors: theme.Dark(), themeMode: "auto", ctx: ctx, cancel: cancel, repo: repo, width: 120, height: 36, nerd: nerd, sidebar: true, sidebarVisible: true, split: true, diffState: newDiffState(), input: input, activeTab: -1, notice: "Loading repository…"}
 	m.snapshot.NoRepository = !repo.HasRepository()
 	m.emptyDiff = m.diffState
 	m.search = newSearch()
@@ -417,6 +420,8 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}
 	}()
 	switch msg := msg.(type) {
+	case tea.ColorProfileMsg:
+		m.monochrome = msg.Profile <= colorprofile.ASCII
 	case uv.KittyGraphicsEvent:
 		m.imageCapability(msg)
 	case imageProbeTimeoutMsg:
@@ -872,11 +877,24 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		return nil
 	}
 	if m.currentImage() != nil {
-		if k == "0" {
+		switch k {
+		case "+", "=", "-":
+			factor := 1.25
+			if k == "-" {
+				factor = 1 / factor
+			}
+			m.zoomImage(factor, m.mainX()+m.mainWidth()/2, editorContentRow+m.contentHeight()/2)
+		case "left":
+			m.panImage(-3, 0)
+		case "right":
+			m.panImage(3, 0)
+		case "up":
+			m.panImage(0, -3)
+		case "down":
+			m.panImage(0, 3)
+		case "0":
 			m.resetImageZoom()
-			return nil
-		}
-		if k == "enter" {
+		case "enter":
 			return m.keepTab()
 		}
 		return nil

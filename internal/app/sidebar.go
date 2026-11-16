@@ -79,7 +79,7 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 		label := item.glyph + " "
 		label = ansi.Truncate(label, item.width, "")
 		label += strings.Repeat(" ", max(0, item.width-ansi.StringWidth(label)))
-		nav.WriteString(theme.Style(fg, m.colors.Panel).Render(label))
+		nav.WriteString(theme.Style(fg, m.colors.Panel).Underline(m.monochrome && active).Render(label))
 		x = item.x + item.width
 	}
 	if m.section == search {
@@ -135,6 +135,9 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 				}
 			} else {
 				text, fg = m.historyRow(entry, w, bg)
+			}
+			if m.monochrome && i == m.selected && m.sidebar {
+				text = ">" + ansi.Cut(text, 1, w)
 			}
 		}
 		lines = append(lines, row(text, w, fg, bg))

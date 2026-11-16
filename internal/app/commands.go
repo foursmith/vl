@@ -153,6 +153,7 @@ func (m *Model) filteredActions() []action {
 func (m *Model) prompt(kind, title, value string) tea.Cmd {
 	m.resizingSidebar = false
 	m.modal, m.modalTitle = kind, title
+	m.dialogTop = 0
 	m.input.SetValue(value)
 	m.input.Placeholder = ""
 	m.input.Prompt = "> "
@@ -182,6 +183,28 @@ func (m *Model) ask(title string, run func() tea.Cmd) tea.Cmd {
 
 func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 	k := msg.String()
+	if m.modal == "confirm" || m.modal == "close" {
+		l := m.dialogLayout()
+		top := l.top
+		switch k {
+		case "up":
+			top--
+		case "down":
+			top++
+		case "pgup":
+			top -= l.page
+		case "pgdown":
+			top += l.page
+		case "home":
+			top = 0
+		case "end":
+			top = l.maxTop
+		}
+		if top != l.top {
+			m.dialogTop = min(max(0, top), l.maxTop)
+			return nil
+		}
+	}
 	if m.isPicker() {
 		switch k {
 		case "ctrl+p":

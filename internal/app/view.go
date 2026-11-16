@@ -535,28 +535,14 @@ func (m *Model) overlay(base []string) []string {
 	if m.isPicker() {
 		return m.pickerOverlay(base)
 	}
-	w := min(76, m.width-6)
-	var content []string
-	content = append(content, row(" "+safe(m.modalTitle), w-2, m.colors.Foreground, m.colors.Popup))
-	if m.modal == "close" {
-		content = append(content, row(" Unsaved changes will be lost.", w-2, m.colors.Muted, m.colors.Popup))
-		buttons := theme.Style("#FFFFFF", m.colors.Accent).Render(" Save ") + theme.Style(m.colors.Foreground, m.colors.Border).Render(" Discard ") + theme.Style(m.colors.Foreground, m.colors.Popup).Render(" Cancel ")
-		content = append(content, row(buttons, w-2, m.colors.Foreground, m.colors.Popup))
-	} else if m.modal == "confirm" {
-		if m.confirmationDetail != "" {
-			content = append(content, row(" "+m.confirmationDetail, w-2, m.colors.Muted, m.colors.Popup))
-		}
-		content = append(content, row(" Enter to confirm · Esc to cancel", w-2, m.colors.Muted, m.colors.Popup))
-	} else {
-		content = append(content, row(" "+m.input.View(), w-2, m.colors.Foreground, m.colors.Input))
-	}
+	l := m.dialogLayout()
+	w, x, y := l.width, l.x, l.y
 	border := theme.Style(m.colors.Border, m.colors.Popup)
 	box := []string{border.Render("┌" + strings.Repeat("─", w-2) + "┐")}
-	for _, s := range content {
+	for _, s := range l.content {
 		box = append(box, border.Render("│")+s+border.Render("│"))
 	}
 	box = append(box, border.Render("└"+strings.Repeat("─", w-2)+"┘"))
-	x, y := (m.width-w)/2, min(3, max(0, m.height-len(box)-1))
 	for i, s := range box {
 		if y+i >= len(base) {
 			break

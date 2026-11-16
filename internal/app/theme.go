@@ -9,12 +9,7 @@ import (
 )
 
 // ThemeMode returns the preference, independently of the currently resolved palette.
-func (m *Model) ThemeMode() string {
-	if m.themeMode == "" {
-		return "auto"
-	}
-	return m.themeMode
-}
+func (m *Model) ThemeMode() string { return m.themeMode }
 
 // SetThemeMode selects an explicit palette or follows terminal color scheme notifications.
 func (m *Model) SetThemeMode(mode string) tea.Cmd {

@@ -201,6 +201,22 @@ func (m *Model) resetImageZoom() {
 	m.imagePan = nil
 }
 
+// Move the viewport by terminal cells, independent of image scale and size.
+func (m *Model) panImage(dx, dy int) {
+	m.imagePan = nil
+	if !m.kittySupported {
+		return
+	}
+	t := &m.tabs[m.activeTab]
+	m.clampImageCenter()
+	region := m.imageRegion()
+	bounds := t.image.Bounds()
+	t.image.centerX += float64(dx*m.cellWidth) / region.Scale / float64(bounds.Dx())
+	t.image.centerY += float64(dy*m.cellHeight) / region.Scale / float64(bounds.Dy())
+	m.clampImageCenter()
+	t.image.rows = nil
+}
+
 func (m *Model) clampImageCenter() {
 	t := &m.tabs[m.activeTab]
 	region := m.imageRegion()

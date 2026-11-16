@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/colorprofile"
 	"github.com/ourongxing/elegit/internal/app"
 	"github.com/ourongxing/elegit/internal/config"
 	"github.com/ourongxing/elegit/internal/git"
@@ -113,5 +114,9 @@ func main() {
 
 func runWorkbench(ctx context.Context, m *app.Model) (tea.Model, error) {
 	defer func() { fmt.Fprint(os.Stdout, m.ImageCleanupSequence()+m.ThemeNotificationRestoreSequence()) }()
-	return tea.NewProgram(m, tea.WithContext(ctx)).Run()
+	options := []tea.ProgramOption{tea.WithContext(ctx)}
+	if os.Getenv("NO_COLOR") != "" {
+		options = append(options, tea.WithColorProfile(colorprofile.ASCII))
+	}
+	return tea.NewProgram(m, options...).Run()
 }

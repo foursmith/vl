@@ -184,7 +184,12 @@ func (m *Model) advanceClose() tea.Cmd {
 		d := m.closeQueue[0]
 		if d.Dirty() {
 			m.modal = "close"
-			m.modalTitle = "Save changes to " + filepath.Base(d.Path) + "?"
+			m.dialogTop = 0
+			path, err := filepath.Rel(m.repo.Root, d.Path)
+			if err != nil {
+				path = d.Path
+			}
+			m.modalTitle = "Save changes to " + path + "?"
 			m.input.Blur()
 			return nil
 		}
@@ -425,7 +430,7 @@ func (m *Model) tabBar() string {
 			if active {
 				closeColor = fg
 			}
-			content := " " + row(glyph, 2, color, bg) + theme.Style(fg, bg).Italic(preview).Render(label) + theme.Style(closeColor, bg).Render(" "+m.symbol(symbolClose)+" ") + theme.Style(m.colors.Border, bg).Render("│")
+			content := " " + row(glyph, 2, color, bg) + theme.Style(fg, bg).Italic(preview).Underline(m.monochrome && active).Render(label) + theme.Style(closeColor, bg).Render(" "+m.symbol(symbolClose)+" ") + theme.Style(m.colors.Border, bg).Render("│")
 			text += row(content, slot.width, fg, bg)
 		}
 		x = slot.x + slot.width
@@ -443,21 +448,17 @@ func (m *Model) clickModal(msg tea.MouseClickMsg) tea.Cmd {
 	if msg.Button != tea.MouseLeft {
 		return m.chooseClose("cancel")
 	}
-	w := min(76, m.width-6)
-	x := (m.width - w) / 2
-	y := min(3, max(0, m.height-6))
-	if msg.Y != y+3 || msg.X <= x || msg.X >= x+w-1 {
+	l := m.dialogLayout()
+	if msg.Y != l.y+len(l.content) || msg.X <= l.x || msg.X >= l.x+l.width-1 {
 		return m.chooseClose("cancel")
 	}
-	column := msg.X - x - 1
-	if column < 6 {
-		return m.chooseClose("save")
-	}
-	if column < 15 {
-		return m.chooseClose("discard")
-	}
-	if column < 23 {
-		return m.chooseClose("cancel")
+	column := msg.X - l.x - 1
+	for _, action := range closeActions {
+		width := ansi.StringWidth(action.label)
+		if column < width {
+			return m.chooseClose(action.choice)
+		}
+		column -= width
 	}
 	return m.chooseClose("cancel")
 }

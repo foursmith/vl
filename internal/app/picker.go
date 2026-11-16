@@ -60,7 +60,11 @@ func (m *Model) pickerOverlay(base []string) []string {
 			label += strings.Repeat(" ", max(1, w-ansi.StringWidth(label)-ansi.StringWidth(key)-1))
 			label += theme.Style(m.colors.Muted, surface).Render(key)
 		}
-		box = append(box, row(" "+row(label, w, fg, surface)+" ", l.width, fg, surface))
+		marker := " "
+		if m.monochrome && i == m.choice {
+			marker = ">"
+		}
+		box = append(box, row(marker+row(label, w, fg, surface)+" ", l.width, fg, surface))
 	}
 	if len(rows) == 0 {
 		message := "无匹配结果"
