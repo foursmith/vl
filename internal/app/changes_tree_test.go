@@ -105,7 +105,7 @@ func TestTreeStageUnstageAndParentNavigation(t *testing.T) {
 		t.Fatal("right did not expand selected directory")
 	}
 	index := m.selected
-	m.click(tea.MouseClickMsg{X: 5, Y: sidebarHeaderRows + index - m.sideTop, Button: tea.MouseLeft})
+	m.click(tea.MouseClickMsg{X: 5, Y: m.sidebarHeaderRows() + index - m.sideTop, Button: tea.MouseLeft})
 	if !m.changeCollapsed[parentKey] {
 		t.Fatal("folder click did not collapse tree")
 	}
@@ -126,7 +126,7 @@ func TestChangeGroupsCollapseIndependentlyAndKeepFolderState(t *testing.T) {
 		t.Helper()
 		for i, entry := range m.items {
 			if entry.header && !entry.repoHeader && entry.staged == staged {
-				m.clickSidebar(tea.MouseClickMsg{X: 2, Y: sidebarHeaderRows + i - m.sideTop, Button: tea.MouseLeft})
+				m.clickSidebar(tea.MouseClickMsg{X: 2, Y: m.sidebarHeaderRows() + i - m.sideTop, Button: tea.MouseLeft})
 				if m.current() == nil || !m.current().header || m.current().staged != staged {
 					t.Fatal("group focus was lost")
 				}

@@ -39,7 +39,7 @@ func TestQuickPositionCurrentAndOtherFile(t *testing.T) {
 	_, cmd := m.Update(tea.MouseClickMsg{X: l.x + 2, Y: l.y + 3, Button: tea.MouseLeft})
 	drain(t, m, cmd)
 	line, col = m.document().Position()
-	if line != 2 || col != 1 || !strings.HasSuffix(m.document().Path, "file1.go") || !original.Dirty() || m.LastCommand() != "" {
+	if line != 2 || col != 1 || !strings.HasSuffix(m.document().Path, "file1.go") || !original.Dirty() || m.lastCommand != "" {
 		t.Fatal("file jump lost position, unsaved document, or command history")
 	}
 }

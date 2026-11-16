@@ -49,8 +49,6 @@ func (m *Model) actions() []action {
 		{"explorer.newFolder", "Explorer: New Folder", "", "", func() tea.Cmd { return m.newEntry(true) }},
 		{"explorer.collapseAll", "Explorer: Collapse Folders", "", "", m.collapseFolders},
 		{"view.changes", "View: Changes", workbenchKeys.Changes.Help().Key, "", func() tea.Cmd { return m.selectSection(changes) }},
-		{"view.search", "Search: Find in Files", workbenchKeys.Search.Help().Key, "", func() tea.Cmd { return m.openSearch(false) }},
-		{"search.replace", "Search: Replace in Files", workbenchKeys.Replace.Help().Key, "", func() tea.Cmd { return m.openSearch(true) }},
 		{"view.history", "View: Commit History", workbenchKeys.History.Help().Key, "", func() tea.Cmd { return m.selectSection(history) }},
 		{"view.diff", "Diff: Toggle Side by Side", workbenchKeys.DiffLayout.Help().Key, "", func() tea.Cmd { m.split = !m.split; m.renderDiff(); return nil }},
 		{"view.sidebar", "View: Toggle Sidebar", workbenchKeys.Sidebar.Help().Key, "", m.toggleSidebar},
@@ -109,9 +107,6 @@ func (m *Model) initializeRepository() tea.Cmd {
 	}
 	return m.startOperation("Initialize repository", func() (string, error) { return m.repo.Run(m.ctx, "init") })
 }
-
-func (m *Model) LastCommand() string      { return m.lastCommand }
-func (m *Model) SetLastCommand(id string) { m.lastCommand = id }
 
 func (m *Model) commandActions() []action {
 	actions := m.actions()

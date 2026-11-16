@@ -122,19 +122,6 @@ func (m *Model) hoverHint() string {
 	if m.resizingSidebar || m.sidebarDividerAt(m.hoverX, m.hoverY) {
 		return "拖动调整侧边栏宽度"
 	}
-	if m.modal == "" && m.section == search && m.sidebarAt(m.hoverX) && m.hoverY == 3+m.workspaceRows() {
-		controls := m.search.controls()
-		i := (m.hoverX - m.sideX()) / searchOptionWidth
-		if i >= 0 && i < len(controls) {
-			return controls[i].hint
-		}
-	}
-	if m.section == search && m.searchHoveredRow() >= 0 {
-		x := m.hoverX - m.sideX()
-		if x == m.searchControlWidth()-1 {
-			return "Remove from Search Results (Delete)"
-		}
-	}
 	if index := m.hoveredSidebarRow(); index >= 0 {
 		width := m.sideWidth()
 		if !m.sideShown() {

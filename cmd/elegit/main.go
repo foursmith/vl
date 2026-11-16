@@ -56,9 +56,7 @@ func main() {
 		layout, layoutErr = config.LoadLayout(layoutPath)
 	}
 	if layoutErr == nil {
-		m.SetSidebarLayout(layout.SidebarWidth, layout.SidebarRight)
-		m.SetThemeMode(layout.Theme)
-		m.SetLastCommand(layout.LastCommand)
+		m.SetLayout(layout)
 	}
 	if *colorTheme != "" {
 		m.SetThemeMode(*colorTheme)
@@ -89,19 +87,15 @@ func main() {
 		if err != nil || next == nil {
 			break
 		}
-		width, right := m.SidebarLayout()
-		mode, lastCommand := m.ThemeMode(), m.LastCommand()
+		preferences := m.Layout()
 		repo = next
 		m = app.New(ctx, repo, *icons)
-		m.SetSidebarLayout(width, right)
-		m.SetThemeMode(mode)
-		m.SetLastCommand(lastCommand)
+		m.SetLayout(preferences)
 	}
 	if layoutErr != nil {
 		fmt.Fprintln(os.Stderr, "Load layout preferences:", layoutErr)
 	} else {
-		width, right := m.SidebarLayout()
-		updated := config.Layout{SidebarWidth: width, SidebarRight: right, Theme: m.ThemeMode(), LastCommand: m.LastCommand()}
+		updated := m.Layout()
 		if updated != layout {
 			if saveErr := config.SaveLayout(layoutPath, updated); saveErr != nil {
 				fmt.Fprintln(os.Stderr, "Save layout preferences:", saveErr)

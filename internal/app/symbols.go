@@ -8,10 +8,7 @@ const (
 	symbolExplorer uiSymbol = iota
 	symbolBranch
 	symbolHistory
-	symbolNewFile
-	symbolNewFolder
 	symbolRefresh
-	symbolCollapse
 	symbolOpen
 	symbolDiscard
 	symbolAdd
@@ -33,17 +30,13 @@ const (
 	symbolWarning
 	symbolDot
 	symbolRepository
-	symbolSearch
 )
 
 var uiSymbols = [...]struct{ plain, nerd string }{
 	symbolExplorer:  {"E", "\ueaf0"},
 	symbolBranch:    {"G", "\uea68"},
 	symbolHistory:   {"H", "\uea82"},
-	symbolNewFile:   {"f+", "\uea7f"},
-	symbolNewFolder: {"d+", "\uea80"},
 	symbolRefresh:   {"R", "\ueb37"},
-	symbolCollapse:  {"-", "\ueac5"},
 	symbolOpen:      {">", "\uea94"},
 	symbolDiscard:   {"~", "\ueae2"},
 	symbolAdd:       {"+", "\uea60"},
@@ -65,7 +58,6 @@ var uiSymbols = [...]struct{ plain, nerd string }{
 	symbolWarning:   {"!", "\uea6c"},
 	symbolDot:       {"*", "\uea71"},
 
-	symbolSearch:     {"S", "\uea6d"},
 	symbolRepository: {"R", "\uea62"},
 }
 

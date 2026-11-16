@@ -42,12 +42,6 @@ func TestFolderBrowseSearchEditAndInitialize(t *testing.T) {
 	}
 	m.document().Insert("edited ")
 	doc := m.document()
-	drain(t, m, m.openSearch(false))
-	m.search.query.SetValue("edited")
-	drain(t, m, m.runSearch())
-	if m.search.err != "" || m.search.result.Count != 1 {
-		t.Fatalf("buffer search: %+v", m.search)
-	}
 	drain(t, m, m.selectSection(changes))
 	if len(m.items) != 0 || !strings.Contains(strings.Join(m.sidebarLines(), "\n"), "初始化 Git 仓库") {
 		t.Fatal("missing folder empty state")
@@ -91,7 +85,7 @@ func TestFolderWatcherAndRecentOpen(t *testing.T) {
 func TestFolderExternalInitializationAndMouseEntry(t *testing.T) {
 	m := folderWorkspace(t)
 	drain(t, m, m.selectSection(history))
-	drain(t, m, m.clickSidebar(tea.MouseClickMsg{X: m.sideX() + 3, Y: sidebarHeaderRows + 3, Button: tea.MouseLeft}))
+	drain(t, m, m.clickSidebar(tea.MouseClickMsg{X: m.sideX() + 3, Y: m.sidebarHeaderRows() + 3, Button: tea.MouseLeft}))
 	if m.snapshot.NoRepository {
 		t.Fatal("mouse initialization failed")
 	}

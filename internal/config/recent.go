@@ -1,5 +1,7 @@
 package config
 
+import "slices"
+
 const maxRecentFolders = 20
 
 func RecentFolders() ([]string, error) {
@@ -42,4 +44,25 @@ func rememberFolder(path, folder string) error {
 		}
 	}
 	return saveJSON(path, recent)
+}
+
+// ForgetFolder removes a recent entry without changing its directory or session.
+func ForgetFolder(folder string) ([]string, error) {
+	path, err := configPath("recent.json")
+	if err != nil {
+		return nil, err
+	}
+	return forgetFolder(path, folder)
+}
+
+func forgetFolder(path, folder string) ([]string, error) {
+	folders, err := loadRecentFolders(path)
+	if err != nil {
+		return nil, err
+	}
+	folders = slices.DeleteFunc(folders, func(previous string) bool { return previous == folder })
+	if folders == nil {
+		folders = []string{}
+	}
+	return folders, saveJSON(path, folders)
 }

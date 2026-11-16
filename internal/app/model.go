@@ -31,7 +31,6 @@ const (
 	changes section = iota
 	explorer
 	history
-	search
 )
 
 type item struct {
@@ -67,7 +66,6 @@ type tab struct {
 	highlightText   string
 	spans           [][]highlight.Span
 	highlightJob    highlightJob
-	searchHighlight editorSearchCache
 	renderKey       editorRenderKey
 	renderedRows    map[int]string
 }
@@ -153,13 +151,11 @@ type Model struct {
 	confirm                 func() tea.Cmd
 	confirmationDetail      string
 	dialogTop               int
-	search                  searchState
 	find                    string
 	expanded                map[string]bool
 	treeEntries             []files.Entry
 	treeSeq                 int
 	revealFile              string
-	rootCollapsed           bool
 	tabStart                int
 	closeQueue              []*editor.Document
 	lastClickKey            string
@@ -175,6 +171,7 @@ type Model struct {
 	hoverRender             hoverRenderCache
 	workspaceSeq            int
 	workspaces              []string
+	workspaceCollapsed      bool
 	workspaceTop            int
 	openingRepository       bool
 	nextRepository          *gitservice.Repository
@@ -187,7 +184,6 @@ func New(ctx context.Context, repo *gitservice.Repository, nerd bool) *Model {
 	m := &Model{cellWidth: 8, cellHeight: 16, colors: theme.Dark(), themeMode: "auto", ctx: ctx, cancel: cancel, repo: repo, width: 120, height: 36, nerd: nerd, sidebar: true, sidebarVisible: true, split: true, diffState: newDiffState(), input: input, activeTab: -1, notice: "Loading repository…"}
 	m.snapshot.NoRepository = !repo.HasRepository()
 	m.emptyDiff = m.diffState
-	m.search = newSearch()
 	m.styleInput()
 	m.pickerList = newPickerList(m)
 	m.resize()
@@ -443,16 +439,6 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 				}
 			}
 		}
-	case searchMsg:
-		if msg.seq == m.search.seq {
-			m.search.loading = false
-			m.search.result = msg.result
-			m.sortSearchFiles()
-			if msg.err != nil {
-				m.search.err = msg.err.Error()
-			}
-			m.clampSearch()
-		}
 	case tea.ModeReportMsg:
 		return m, m.themeNotificationMode(msg)
 	case uv.DarkColorSchemeEvent:
@@ -468,7 +454,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 				m.modal = ""
 				m.input.Blur()
 			}
-			m.log("读取最近文件夹失败: " + msg.err.Error())
+			m.log("更新工作区列表失败: " + msg.err.Error())
 		} else {
 			m.workspaces = msg.folders
 			m.resize()
@@ -684,6 +670,9 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			return m, nil
 		}
 		if m.sidebarAt(msg.X) && msg.Y >= 0 && msg.Y < m.workspaceRows() {
+			if m.workspaceCollapsed {
+				return m, nil
+			}
 			if msg.Button == tea.MouseWheelUp {
 				m.workspaceTop--
 			} else if msg.Button == tea.MouseWheelDown {
@@ -719,11 +708,6 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			if msg.Button == tea.MouseWheelUp {
 				delta = -3
 			}
-			if m.section == search {
-				m.search.top += delta
-				m.clampSearch()
-				return m, nil
-			}
 			m.sideTop += delta
 			m.clampSidebarScroll()
 		} else if m.editing() && m.activeTab >= 0 {
@@ -745,9 +729,6 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}
 		return m, m.key(msg)
 	case tea.PasteMsg:
-		if m.modal == "" && m.sidebar && m.section == search {
-			return m, m.searchInput(msg)
-		}
 		if m.modal != "" {
 			var cmd tea.Cmd
 			m.input, cmd = m.input.Update(msg)
@@ -773,17 +754,6 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		}
 		return m.openContextMenu(m.mainX()+2, editorContentRow)
 	}
-	if m.sidebar && m.section == search {
-		switch {
-		case key.Matches(msg,
-			workbenchKeys.Quit, workbenchKeys.Copy, workbenchKeys.Files, workbenchKeys.Recent,
-			workbenchKeys.Commands, workbenchKeys.Explorer, workbenchKeys.Changes, workbenchKeys.History,
-			workbenchKeys.Search, workbenchKeys.Replace, workbenchKeys.Sidebar, workbenchKeys.Focus,
-			workbenchKeys.Save, workbenchKeys.Close, workbenchKeys.NextTab, workbenchKeys.PreviousTab):
-		default:
-			return m.searchKey(msg)
-		}
-	}
 	switch {
 	case key.Matches(msg, workbenchKeys.Quit, workbenchKeys.Copy):
 		if key.Matches(msg, workbenchKeys.Copy) && !m.sidebar && (m.editing() || m.diffOpen) {
@@ -798,10 +768,6 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		return m.openPalette()
 	case key.Matches(msg, workbenchKeys.Position):
 		return m.prompt("position", "转到行 · 行:列", "")
-	case key.Matches(msg, workbenchKeys.Search):
-		return m.openSearch(false)
-	case key.Matches(msg, workbenchKeys.Replace):
-		return m.openSearch(true)
 	case key.Matches(msg, workbenchKeys.Explorer):
 		return m.selectSection(explorer)
 	case key.Matches(msg, workbenchKeys.Changes):

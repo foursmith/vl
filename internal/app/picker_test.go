@@ -22,17 +22,16 @@ func TestQuickFileRevealsTreeAndKeepsEditorFocus(t *testing.T) {
 	}
 	m.section = changes
 	m.sidebarVisible = false
-	m.rootCollapsed = true
 	m.snapshot.Files = []string{path}
 	m.openQuickFiles()
 	drain(t, m, press(m, "enter"))
-	if m.section != explorer || !m.sidebarVisible || m.sidebar || m.rootCollapsed || !m.expanded["cmd"] || !m.expanded["cmd/nested"] {
+	if m.section != explorer || !m.sidebarVisible || m.sidebar || !m.expanded["cmd"] || !m.expanded["cmd/nested"] {
 		t.Fatal("file search did not reveal ancestors while preserving editor focus")
 	}
 	if entry := m.current(); entry == nil || entry.file != path {
 		t.Fatalf("tree selection: %+v", entry)
 	}
-	if m.selected < m.sideTop || m.selected >= m.sideTop+m.bodyHeight()-sidebarHeaderRows {
+	if m.selected < m.sideTop || m.selected >= m.sideTop+m.bodyHeight()-m.sidebarHeaderRows() {
 		t.Fatal("revealed file is outside the sidebar viewport")
 	}
 	// A later navigation must win over an in-flight reveal.
@@ -120,13 +119,13 @@ func TestCommandPaletteAlphabeticalOrderAndLastUsed(t *testing.T) {
 			}
 		}
 	}
-	m.SetLastCommand("removed.command")
+	m.lastCommand = "removed.command"
 	m.openPalette()
 	checkSorted(m.filteredActions())
 	m.input.SetValue(">View: Toggle Sidebar")
 	m.selectPickerChoice()
-	if m.LastCommand() != "view.sidebar" {
-		t.Fatalf("executed command was not remembered: %q", m.LastCommand())
+	if m.lastCommand != "view.sidebar" {
+		t.Fatalf("executed command was not remembered: %q", m.lastCommand)
 	}
 	m.openPalette()
 	rows := m.filteredActions()
@@ -136,14 +135,14 @@ func TestCommandPaletteAlphabeticalOrderAndLastUsed(t *testing.T) {
 	checkSorted(rows[1:])
 	m.input.SetValue(">file.save")
 	m.selectPickerChoice()
-	if m.LastCommand() != "view.sidebar" {
+	if m.lastCommand != "view.sidebar" {
 		t.Fatal("disabled command replaced last used command")
 	}
 	m.snapshot.Files = []string{"file0.go"}
 	m.openQuickFiles()
 	m.input.SetValue("file0.go")
 	m.selectPickerChoice()
-	if m.LastCommand() != "view.sidebar" {
+	if m.lastCommand != "view.sidebar" {
 		t.Fatal("file picker selection replaced last used command")
 	}
 }
@@ -164,7 +163,7 @@ func TestQuickPickerSwitchesWithEditableCommandPrefix(t *testing.T) {
 		t.Fatal("typing did not filter file results")
 	}
 	drain(t, m, press(m, "enter"))
-	if m.document() == nil || m.LastCommand() != "" {
+	if m.document() == nil || m.lastCommand != "" {
 		t.Fatal("file selection did not open the file or changed command history")
 	}
 	m.openQuickFiles()
@@ -177,7 +176,7 @@ func TestQuickPickerSwitchesWithEditableCommandPrefix(t *testing.T) {
 		t.Fatal("command prefix was included in the search query")
 	}
 	drain(t, m, press(m, "enter"))
-	if m.LastCommand() != "view.sidebar" {
+	if m.lastCommand != "view.sidebar" {
 		t.Fatal("command selection did not update history")
 	}
 	m.openQuickFiles()

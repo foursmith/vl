@@ -26,18 +26,33 @@ func (m *Model) loadWorkspaces() tea.Cmd {
 	}
 }
 
+func (m *Model) removeWorkspace(folder string) tea.Cmd {
+	m.workspaceSeq++
+	seq, ctx := m.workspaceSeq, m.ctx
+	return func() tea.Msg {
+		folders, err := config.ForgetFolder(folder)
+		if ctx.Err() != nil {
+			return nil
+		}
+		return workspacesMsg{seq: seq, folders: folders, err: err}
+	}
+}
+
 func (m *Model) workspaceRows() int {
 	if len(m.workspaces) == 0 {
 		return 0
+	}
+	if m.workspaceCollapsed {
+		return 1
 	}
 	// Leave room for the current section; longer histories scroll independently.
 	return 1 + min(len(m.workspaces), max(1, m.bodyHeight()-9))
 }
 
-func (m *Model) sidebarHeaderRows() int { return sidebarHeaderRows + m.workspaceRows() }
+func (m *Model) sidebarHeaderRows() int { return headerHeight + m.workspaceRows() }
 
 func (m *Model) clampWorkspaces() {
-	m.workspaceTop = min(max(0, m.workspaceTop), max(0, len(m.workspaces)-(m.workspaceRows()-1)))
+	m.workspaceTop = min(max(0, m.workspaceTop), max(0, len(m.workspaces)-max(1, m.bodyHeight()-9)))
 }
 
 func (m *Model) hoveredWorkspace() int {
@@ -71,8 +86,8 @@ func (m *Model) workspaceLines(w int) []string {
 	if n == 0 {
 		return nil
 	}
-	header := " WORKSPACES"
-	if n-1 < len(m.workspaces) {
+	header := " " + m.treeChevron(!m.workspaceCollapsed) + " WORKSPACES"
+	if !m.workspaceCollapsed && n-1 < len(m.workspaces) {
 		header += " ↕"
 	}
 	lines := []string{row(header, w, m.colors.Muted, m.colors.Panel)}

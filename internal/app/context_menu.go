@@ -159,7 +159,14 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 	add := func(label, key string, run func() tea.Cmd) {
 		actions = append(actions, action{label: label, key: key, run: run})
 	}
-	if m.sidebarAt(x) && y >= m.workspaceRows()+headerHeight && y < m.bodyHeight() && m.section != search {
+	if m.sidebarAt(x) && y > 0 && y < m.workspaceRows() {
+		index := m.workspaceTop + y - 1
+		if index >= 0 && index < len(m.workspaces) {
+			folder := m.workspaces[index]
+			add("打开", "", func() tea.Cmd { return m.openRepository(folder) })
+			add("从工作区列表移除", "", func() tea.Cmd { return m.removeWorkspace(folder) })
+		}
+	} else if m.sidebarAt(x) && y >= m.workspaceRows()+headerHeight && y < m.bodyHeight() {
 		m.sidebar = true
 		index := m.sideTop + y - m.sidebarHeaderRows()
 		var entry *item

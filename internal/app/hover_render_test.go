@@ -55,7 +55,7 @@ func TestAllSidebarTreesShareHoverRendering(t *testing.T) {
 			}
 			m.View()
 			for i := range m.items {
-				y := sidebarHeaderRows + i
+				y := m.sidebarHeaderRows() + i
 				m.Update(tea.MouseMotionMsg{X: 8, Y: y})
 				assertFreshHoverFrame(t, m)
 				cells := uv.NewStyledString(m.sidebarLines()[y]).Lines(ansi.GraphemeWidth)[0]
@@ -68,7 +68,7 @@ func TestAllSidebarTreesShareHoverRendering(t *testing.T) {
 					t.Fatal("hover changed the selected row")
 				}
 			}
-			m.Update(tea.MouseMotionMsg{X: m.mainX() + 8, Y: sidebarHeaderRows})
+			m.Update(tea.MouseMotionMsg{X: m.mainX() + 8, Y: m.sidebarHeaderRows()})
 			assertFreshHoverFrame(t, m)
 			if m.hoveredSidebarRow() != -1 {
 				t.Fatal("tree retained hover after leaving sidebar")
@@ -114,7 +114,7 @@ func TestHoverActionFramesMatchFullRender(t *testing.T) {
 	drain(t, m, m.selectSection(changes))
 	m.View()
 	for i, entry := range m.items {
-		y := sidebarHeaderRows + i - m.sideTop
+		y := m.sidebarHeaderRows() + i - m.sideTop
 		for _, action := range m.changeRowActions(entry, m.sideWidth()) {
 			m.Update(tea.MouseMotionMsg{X: m.sideX() + action.x + 1, Y: y})
 			assertFreshHoverFrame(t, m)

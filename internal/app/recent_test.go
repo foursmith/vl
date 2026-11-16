@@ -9,12 +9,13 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/ourongxing/elegit/internal/config"
 )
 
 func TestSidebarWorkspaceSwitch(t *testing.T) {
 	for _, width := range []int{30, 60, 120} {
 		for _, right := range []bool{false, true} {
-			for _, section := range []section{explorer, changes, history, search} {
+			for _, section := range []section{explorer, changes, history} {
 				t.Run(fmt.Sprintf("width%d/right%v/section%d", width, right, section), func(t *testing.T) {
 					m := newHoverRenderModel(t)
 					m.section, m.sidebar = section, true
@@ -69,18 +70,9 @@ func TestWorkspaceListScrollAndSectionCoordinates(t *testing.T) {
 	if lines := m.sidebarLines(); !strings.Contains(ansi.Strip(lines[m.workspaceRows()-1]), "workspace19") {
 		t.Fatal("last workspace not rendered after scrolling")
 	}
-	rootY := sidebarRootRow + m.workspaceRows()
-	m.click(tea.MouseClickMsg{X: m.sideX() + 3, Y: rootY, Button: tea.MouseLeft})
-	if !m.rootCollapsed {
-		t.Fatal("workspace list displaced the root click target")
-	}
-	m.click(tea.MouseClickMsg{X: m.sideX() + 14, Y: m.workspaceRows(), Button: tea.MouseLeft})
-	if m.section != search {
+	m.click(tea.MouseClickMsg{X: m.sideX() + 10, Y: m.workspaceRows(), Button: tea.MouseLeft})
+	if m.section != history {
 		t.Fatal("navigation tabs are not clickable below workspaces")
-	}
-	m.click(tea.MouseClickMsg{X: m.sideX() + 3, Y: 1 + m.workspaceRows(), Button: tea.MouseLeft})
-	if !m.search.replace {
-		t.Fatal("workspace list displaced search controls")
 	}
 	m.Update(tea.WindowSizeMsg{Width: 120, Height: 50})
 	if m.workspaceTop != 0 {
@@ -184,5 +176,77 @@ func TestFailedAndCurrentFolderKeepRepository(t *testing.T) {
 	drain(t, m, m.openRepository(old.Root))
 	if m.NextRepository() != nil || !strings.Contains(m.notice, "已在此仓库") {
 		t.Fatal("current repository restarted")
+	}
+}
+
+func TestWorkspaceContextMenuRemovesCapturedFolder(t *testing.T) {
+	for _, right := range []bool{false, true} {
+		t.Run(fmt.Sprintf("right%v", right), func(t *testing.T) {
+			t.Setenv("HOME", t.TempDir())
+			t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+			m := explorerWorkspace(t)
+			m.SetSidebarLayout(38, right)
+			m.Update(tea.WindowSizeMsg{Width: 120, Height: 15})
+			folder := m.repo.Root
+			other := t.TempDir()
+			for _, path := range []string{other, folder} {
+				if err := config.RememberFolder(path); err != nil {
+					t.Fatal(err)
+				}
+			}
+			drain(t, m, m.loadWorkspaces())
+			m.section = history
+			m.Update(tea.MouseClickMsg{X: m.sideX() + 3, Y: 1, Button: tea.MouseRight})
+			if m.contextMenu == nil {
+				t.Fatal("workspace menu missing in history section")
+			}
+			// The action must remain bound to the clicked folder if the list changes.
+			m.workspaces[0], m.workspaces[1] = m.workspaces[1], m.workspaces[0]
+			drain(t, m, chooseContextAction(t, m, "从工作区列表移除"))
+			if len(m.workspaces) != 1 || m.workspaces[0] != other {
+				t.Fatalf("remaining: %v", m.workspaces)
+			}
+			if m.repo.Root != folder || m.NextRepository() != nil {
+				t.Fatal("removal closed the active workspace")
+			}
+			folders, err := config.RecentFolders()
+			if err != nil || len(folders) != 1 || folders[0] != other {
+				t.Fatalf("persisted: %v %v", folders, err)
+			}
+		})
+	}
+}
+
+func TestWorkspaceCollapseKeepsScrollAndNavigation(t *testing.T) {
+	for _, right := range []bool{false, true} {
+		t.Run(fmt.Sprintf("right%v", right), func(t *testing.T) {
+			m := newHoverRenderModel(t)
+			m.SetSidebarLayout(38, right)
+			m.Update(tea.WindowSizeMsg{Width: 120, Height: 15})
+			for i := 0; i < 20; i++ {
+				m.workspaces = append(m.workspaces, fmt.Sprintf("/workspace/project%d", i))
+			}
+			m.workspaceTop = 4
+			m.Update(tea.MouseClickMsg{X: m.sideX() + 3, Y: 0, Button: tea.MouseLeft})
+			if !m.workspaceCollapsed || m.workspaceRows() != 1 || len(m.workspaceLines(38)) != 1 {
+				t.Fatal("workspace header did not collapse its list")
+			}
+			m.Update(tea.MouseWheelMsg{X: m.sideX() + 3, Y: 0, Button: tea.MouseWheelDown})
+			if m.workspaceTop != 4 {
+				t.Fatal("collapsed header changed list scroll")
+			}
+			m.Update(tea.MouseMotionMsg{X: m.sideX() + 3, Y: 1})
+			if m.hoveredWorkspace() != -1 {
+				t.Fatal("hidden workspace retained a hover target")
+			}
+			m.click(tea.MouseClickMsg{X: m.sideX() + 10, Y: 1, Button: tea.MouseLeft})
+			if m.section != history {
+				t.Fatal("collapsed workspace displaced navigation")
+			}
+			m.Update(tea.MouseClickMsg{X: m.sideX() + 3, Y: 0, Button: tea.MouseLeft})
+			if m.workspaceCollapsed || m.workspaceRows() != 6 || m.workspaceTop != 4 {
+				t.Fatal("expansion did not restore list height and scroll")
+			}
+		})
 	}
 }

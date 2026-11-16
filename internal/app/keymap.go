@@ -8,7 +8,7 @@ func binding(display, description string, keys ...string) key.Binding {
 
 // Bindings also supply the shortcut labels shown in commands and menus.
 var workbenchKeys = struct {
-	Quit, Copy, Files, Recent, Commands, Position, Search, Replace                     key.Binding
+	Quit, Copy, Files, Recent, Commands, Position                                      key.Binding
 	Explorer, Changes, History, Sidebar, Focus, Output, Refresh                        key.Binding
 	DiffLayout, Save, Close, NextTab, PreviousTab, Find, FindNext, Escape, ContextMenu key.Binding
 }{
@@ -18,8 +18,6 @@ var workbenchKeys = struct {
 	Recent:      binding("Ctrl+R", "Recent folders", "ctrl+r"),
 	Commands:    binding("F1", "Commands", "ctrl+shift+p", "f1"),
 	Position:    binding("Ctrl+G", "Go to line", "ctrl+g"),
-	Search:      binding("Ctrl+Shift+F", "Search workspace", "ctrl+shift+f", "ctrl+4"),
-	Replace:     binding("Ctrl+Shift+H", "Replace in workspace", "ctrl+shift+h"),
 	Explorer:    binding("Ctrl+1", "Explorer", "ctrl+1"),
 	Changes:     binding("Ctrl+2", "Changes", "ctrl+2"),
 	History:     binding("Ctrl+3", "History", "ctrl+3"),

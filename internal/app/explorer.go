@@ -24,7 +24,6 @@ func (m *Model) openFileInExplorer(path string) tea.Cmd {
 func (m *Model) revealDocument(path string) tea.Cmd {
 	m.section = explorer
 	m.sidebarVisible = true
-	m.rootCollapsed = false
 	for parent := filepath.ToSlash(filepath.Dir(path)); parent != "." && parent != "/"; parent = filepath.ToSlash(filepath.Dir(parent)) {
 		m.expanded[parent] = true
 	}
@@ -56,9 +55,6 @@ func (m *Model) refreshTree() tea.Cmd {
 }
 
 func (m *Model) explorerItems() []item {
-	if m.rootCollapsed {
-		return nil
-	}
 	// Index statuses once instead of scanning every change for every visible entry.
 	statuses := make(map[string]byte, len(m.snapshot.Changes))
 	directories := make(map[string]byte)
@@ -115,7 +111,6 @@ func (m *Model) createEntry(path string, directory bool) tea.Cmd {
 		m.log(err.Error())
 		return nil
 	}
-	m.rootCollapsed = false
 	for parent := filepath.ToSlash(filepath.Dir(path)); parent != "." && parent != "/"; parent = filepath.ToSlash(filepath.Dir(parent)) {
 		m.expanded[parent] = true
 	}

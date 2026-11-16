@@ -51,7 +51,7 @@ func clickRepositoryBranch(t *testing.T, m *Model, part section, path string) {
 		if !m.repositoryBranchAt(entry, x, w) {
 			t.Fatal("visible branch label has no click target")
 		}
-		drain(t, m, m.click(tea.MouseClickMsg{X: m.sideX() + x, Y: sidebarHeaderRows + i - m.sideTop, Button: tea.MouseLeft}))
+		drain(t, m, m.click(tea.MouseClickMsg{X: m.sideX() + x, Y: m.sidebarHeaderRows() + i - m.sideTop, Button: tea.MouseLeft}))
 		if m.modal != "refs" || m.branchRepository != path || m.changeCollapsed[entry.key] != folded {
 			t.Fatal("branch click folded the repository or opened the wrong picker")
 		}

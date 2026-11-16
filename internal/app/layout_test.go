@@ -1,7 +1,6 @@
 package app
 
 import (
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -12,6 +11,7 @@ import (
 func TestNavigationAndTabsShareCompactHeaderWithoutTitleBar(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	m.openFile("file0.go")
+	drain(t, m, m.refreshTree())
 	lines := strings.Split(m.View().Content, "\n")
 	first := ansi.Strip(lines[tabRow])
 	if !strings.Contains(first, "E") || !strings.Contains(first, "file0.go") || strings.Contains(first, "Commands") {
@@ -23,9 +23,9 @@ func TestNavigationAndTabsShareCompactHeaderWithoutTitleBar(t *testing.T) {
 	if len(lines) != m.height || m.bodyHeight() != m.height-1 {
 		t.Fatal("title bar space was not reclaimed")
 	}
-	second := ansi.Strip(lines[sidebarRootRow])
-	if !strings.Contains(second, strings.ToUpper(filepath.Base(m.repo.Root))) || !strings.Contains(second, "file0.go") {
-		t.Fatalf("repository root and breadcrumbs are separated by a blank row: %q", second)
+	second := ansi.Strip(lines[headerHeight])
+	if !strings.Contains(second, "file0.go") || !strings.Contains(plain(m.sidebarLines()[headerHeight]), m.items[0].label) {
+		t.Fatalf("file tree and breadcrumbs start at the wrong row: %q", second)
 	}
 	if !strings.Contains(ansi.Strip(lines[editorContentRow]), "package main") {
 		t.Fatal("editor content starts at the wrong row")

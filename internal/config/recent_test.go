@@ -62,3 +62,32 @@ func TestMalformedRecentFoldersAreNotOverwritten(t *testing.T) {
 		t.Fatal("malformed history was overwritten")
 	}
 }
+
+func TestForgetFolderPreservesDirectoriesAndOtherEntries(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "recent.json")
+	folder, other := t.TempDir(), t.TempDir()
+	if err := saveJSON(path, []string{folder, other, folder}); err != nil {
+		t.Fatal(err)
+	}
+	folders, err := forgetFolder(path, folder)
+	if err != nil || !reflect.DeepEqual(folders, []string{other}) {
+		t.Fatalf("remove: %v %v", folders, err)
+	}
+	persisted, err := loadRecentFolders(path)
+	if err != nil || !reflect.DeepEqual(persisted, folders) {
+		t.Fatalf("persisted: %v %v", persisted, err)
+	}
+	if _, err := os.Stat(folder); err != nil {
+		t.Fatal("workspace directory was removed")
+	}
+	if err := os.WriteFile(path, []byte("invalid history"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := forgetFolder(path, other); err == nil {
+		t.Fatal("malformed history was accepted")
+	}
+	data, _ := os.ReadFile(path)
+	if string(data) != "invalid history" {
+		t.Fatal("malformed history was overwritten")
+	}
+}

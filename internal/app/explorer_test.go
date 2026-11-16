@@ -58,13 +58,9 @@ func TestExplorerShowsDiskFoldersGitDecorationsAndLazyExpansion(t *testing.T) {
 	}
 }
 
-func TestExplorerToolbarCreatesFilesAndFolders(t *testing.T) {
+func TestExplorerCreatesFilesAndFolders(t *testing.T) {
 	m := explorerWorkspace(t)
-	button := m.rootButtons(m.sideWidth())[0]
-	drain(t, m, m.click(tea.MouseClickMsg{X: button.x + 1, Y: sidebarRootRow, Button: tea.MouseLeft}))
-	if m.modal != "newFile" {
-		t.Fatal("new file button missed its target")
-	}
+	m.newEntry(false)
 	m.input.SetValue("created.go")
 	drain(t, m, press(m, "enter"))
 	if m.document() == nil || filepath.Base(m.document().Path) != "created.go" {

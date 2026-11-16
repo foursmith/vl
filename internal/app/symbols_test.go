@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 	"unicode"
 	"unicode/utf8"
@@ -68,7 +67,7 @@ func TestSymbolModesPreserveLayoutAcrossWidthsAndHoverTargets(t *testing.T) {
 			}
 			for i := range m.items {
 				m.hoverX = 7
-				m.hoverY = sidebarHeaderRows + i - m.sideTop
+				m.hoverY = m.sidebarHeaderRows() + i - m.sideTop
 				for _, line := range m.sidebarLinesWidth(w) {
 					check(line, w)
 				}
@@ -101,7 +100,7 @@ func TestSidebarNavigationUsesActiveColorWithoutChangeDecoration(t *testing.T) {
 				if dirty {
 					m.snapshot.Changes = []gitservice.Change{{Path: "main.go", Worktree: 'M'}}
 				}
-				for _, active := range []section{explorer, changes, history, search} {
+				for _, active := range []section{explorer, changes, history} {
 					m.section = active
 					nav := m.sidebarLinesWidth(40)[0]
 					for _, item := range m.navigation() {
@@ -121,9 +120,6 @@ func TestSidebarNavigationUsesActiveColorWithoutChangeDecoration(t *testing.T) {
 		}
 	}
 	m.section = changes
-	if !strings.Contains(plain(m.sidebarLinesWidth(40)[1]), "CHANGES") {
-		t.Fatal("Changes title not renamed")
-	}
 	for _, a := range m.actions() {
 		if a.id == "view.changes" && a.label != "View: Changes" {
 			t.Fatal("Changes command not renamed")

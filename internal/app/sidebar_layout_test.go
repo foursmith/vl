@@ -1,11 +1,13 @@
 package app
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/ourongxing/elegit/internal/config"
 )
 
 func TestSidebarDragBothSidesAndBounds(t *testing.T) {
@@ -75,12 +77,6 @@ func TestSidebarRightGeometryAndMouseTargets(t *testing.T) {
 	if m.sidebar || line != 0 || col != 0 {
 		t.Fatal("right sidebar broke editor click coordinates")
 	}
-	button := m.rootButtons(m.sideWidth())[0]
-	m.Update(tea.MouseClickMsg{X: m.sideX() + button.x + 1, Y: sidebarRootRow, Button: tea.MouseLeft})
-	if m.modal != "newFile" {
-		t.Fatal("right sidebar toolbar click missed")
-	}
-	press(m, "esc")
 	for _, nav := range m.navigation() {
 		if nav.section == changes {
 			_, cmd := m.Update(tea.MouseClickMsg{X: m.sideX() + nav.x + 1, Y: 0, Button: tea.MouseLeft})
@@ -165,5 +161,26 @@ func TestSidebarLayoutPaletteAndDragCancellation(t *testing.T) {
 	m.Update(tea.WindowSizeMsg{Width: 60, Height: 24})
 	if m.resizingSidebar {
 		t.Fatal("terminal resize did not cancel drag")
+	}
+}
+
+func TestLayoutRestoresPreferencesAcrossWorkspaces(t *testing.T) {
+	m := newHoverRenderModel(t)
+	want := config.Layout{SidebarWidth: 45, SidebarRight: true, WorkspaceCollapsed: true, Theme: "light", LastCommand: "view.sidebar"}
+	m.SetLayout(want)
+	m.Update(tea.WindowSizeMsg{Width: 30, Height: 12})
+	path := filepath.Join(t.TempDir(), "layout.json")
+	if err := config.SaveLayout(path, m.Layout()); err != nil {
+		t.Fatal(err)
+	}
+	saved, err := config.LoadLayout(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	next := newHoverRenderModel(t)
+	next.workspaces = []string{next.repo.Root}
+	next.SetLayout(saved)
+	if got := next.Layout(); got != want || next.workspaceRows() != 1 || !next.light {
+		t.Fatalf("restored layout: %+v", got)
 	}
 }

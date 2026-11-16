@@ -1,6 +1,9 @@
 package app
 
-import tea "charm.land/bubbletea/v2"
+import (
+	tea "charm.land/bubbletea/v2"
+	"github.com/ourongxing/elegit/internal/config"
+)
 
 const (
 	minSidebarWidth = 28
@@ -64,8 +67,21 @@ func (m *Model) SetSidebarLayout(width int, right bool) {
 	m.resize()
 }
 
-func (m *Model) SidebarLayout() (width int, right bool) {
-	return m.sidebarWidth, m.sidebarRight
+// Layout captures user preferences independently of the current terminal size.
+func (m *Model) Layout() config.Layout {
+	return config.Layout{
+		SidebarWidth:       m.sidebarWidth,
+		SidebarRight:       m.sidebarRight,
+		WorkspaceCollapsed: m.workspaceCollapsed,
+		Theme:              m.themeMode,
+		LastCommand:        m.lastCommand,
+	}
+}
+
+func (m *Model) SetLayout(layout config.Layout) {
+	m.workspaceCollapsed, m.lastCommand = layout.WorkspaceCollapsed, layout.LastCommand
+	m.SetSidebarLayout(layout.SidebarWidth, layout.SidebarRight)
+	m.SetThemeMode(layout.Theme)
 }
 
 func (m *Model) dragSidebar(x int) {

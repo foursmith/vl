@@ -90,24 +90,6 @@ func TestConfirmationLongUnicodeTargetCanBeReadBeforeConfirming(t *testing.T) {
 	}
 }
 
-func TestMonochromeSearchSelectionKeepsItsResultAction(t *testing.T) {
-	m := searchWorkspace(t)
-	defer m.Close()
-	m.Update(tea.ColorProfileMsg{Profile: colorprofile.ASCII})
-	m.search.query.SetValue("old")
-	drain(t, m, m.openSearch(false))
-	m.search.focus, m.search.selected = 2, 0
-	before := plain(m.View().Content)
-	m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
-	if m.search.selected != 1 || plain(m.View().Content) == before {
-		t.Fatal("search result selection is invisible without colors")
-	}
-	drain(t, m, press(m, "enter"))
-	if m.document() == nil || m.document().SelectedText() != "old" {
-		t.Fatal("selection marker changed the selected search result")
-	}
-}
-
 func TestWrappedUnsavedDialogButtonsMatchTheirVisiblePosition(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	defer m.Close()

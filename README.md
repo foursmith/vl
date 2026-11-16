@@ -35,7 +35,7 @@ bin/elegit -icons=false /path/to/repository
 With no path, elegit opens the most recently used workspace. If there is no
 recent workspace, it asks you to provide a path. Use `elegit .` to explicitly open
 the current directory. Subdirectories and file paths inside a repository resolve
-to its root. Ordinary folders support file browsing, quick open, text search, and
+to its root. Ordinary folders support file browsing, quick open, and
 editing. Changes and History offer **Initialize Repository** when the folder has
 no Git repository; initialization keeps open editor tabs and unsaved edits.
 
@@ -48,6 +48,8 @@ no Git repository; initialization keeps open editor tabs and unsaved edits.
   the front of the searchable list, which keeps the last 20 folders in
   `recent.json` beside `layout.json` in the elegit configuration directory.
   The same folders appear above the sidebar navigation tabs for direct switching.
+  Click the WORKSPACES header to collapse or expand the list; the state is saved
+  in `layout.json` and restored on restart.
   Names stay compact, duplicate names include a parent directory, and hovering
   shows the full path. Longer lists scroll independently of the file tree.
   Failed opens preserve the current workspace; unsaved editor changes and
@@ -125,34 +127,8 @@ no Git repository; initialization keeps open editor tabs and unsaved edits.
   retain their own rows.
 - Explorer folders start collapsed. Ignored paths remain visible in gray; files
   show Git status letters and folders show aggregate change dots. New file,
-  new folder, refresh, and collapse-all buttons work from the repository header.
+  new folder, refresh, and collapse-all actions are available in the context menu.
   `Ctrl+P` opens the searchable file picker.
-- Search sidebar tab (`Ctrl+Shift+F` / `Ctrl+4`) with live workspace text search,
-  collapsible file groups, highlighted matches, and click/Enter to reveal a match.
-  File rows show a Material icon, filename, muted parent path, and a count badge.
-  Matches on the same source line share a compact snippet with every visible
-  match highlighted. The active editor also highlights all matches in the file,
-  preserving the current selection. Row actions keep a fixed slot so hover and
-  selection never reflow snippets or count badges. Hover or select a row to
-  remove it from the current results with the close button or `Delete`; removal
-  leaves file contents unchanged and
-  excludes those results from replacement until the next search.
-  Search includes tracked and untracked files across initialized submodules and
-  nested repositories, respects each repository's Git ignore rules, skips symlinks
-  and binary files, and uses open editor buffers including unsaved changes.
-  Toggle **Include Ignored Files** (`[ig]` / `Alt+I`) to also search ignored files;
-  Git metadata is always excluded.
-- Expand Replace with `Ctrl+Shift+H` or the chevron. Match Case (`Alt+C`),
-  Whole Word (`Alt+W`), and Regular Expression (`Alt+R`) work for search and
-  replacement. Regex uses Go syntax (RE2); replacements support `$1` and `${name}`.
-  Replace a selected match or file with `Ctrl+Enter`; replace all results with
-  `Ctrl+Alt+Enter`, or use the corresponding buttons. Changes open as unsaved
-  editor tabs with one undo step per file; save each edited file with `Ctrl+S`.
-  Search scans the full workspace without a cumulative byte or match-count cutoff,
-  including text files larger than the editor's 4 MiB editing limit. Such files
-  appear in results but retain that limit when opened or replaced. Unreadable files
-  are reported and block bulk replacement. Changed targets trigger a new search
-  before replacement so an outdated result cannot overwrite edits.
 - Visible tab close buttons, middle-click close, close others/all, and overflow
   arrows that keep the active tab and its close button accessible.
 - Parent-directory file monitoring refreshes visible explorer directories and
@@ -233,11 +209,6 @@ the active navigation section and editor tab use underlining.
 | Global | Ctrl+D | Toggle unified / side-by-side diff |
 | Global | F5 | Refresh repository |
 | Sidebar / Content | Right-click / Shift+F10 | Open context menu |
-| Global | Ctrl+Shift+F / Ctrl+4 | Search workspace sidebar |
-| Global | Ctrl+Shift+H | Expand workspace replacement |
-| Search | Tab / Shift+Tab | Move between search, replace, and results |
-| Search | Alt+C / Alt+W / Alt+R / Alt+I | Toggle case / whole word / regex / ignored files |
-| Search | Ctrl+Enter / Ctrl+Alt+Enter | Replace selected match or file / all results |
 | Global | Ctrl+F / F3 | Find / next match in current content |
 | Global | Ctrl+G | Go to line or line:column |
 | Global | Ctrl+S / Ctrl+W | Save / close editor tab |
