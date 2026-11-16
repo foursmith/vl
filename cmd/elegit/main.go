@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -20,7 +21,7 @@ func main() {
 	colorTheme := flag.String("theme", "", "color theme: auto, light or dark (default: follow terminal, or saved preference)")
 	version := flag.Bool("version", false, "print version")
 	flag.Usage = func() {
-		fmt.Fprintln(flag.CommandLine.Output(), "Usage: elegit [options] [folder]\n\nA Git workbench with diff review and basic text editing.")
+		fmt.Fprintln(flag.CommandLine.Output(), "Usage: elegit [options] [folder]\n\nA Git workbench with diff review and basic text editing.\nWithout a folder, opens the most recent workspace.")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -32,13 +33,14 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Invalid -theme: use auto, light or dark")
 		os.Exit(2)
 	}
-	path := "."
 	if flag.NArg() > 1 {
 		flag.Usage()
 		os.Exit(2)
 	}
-	if flag.NArg() == 1 {
-		path = flag.Arg(0)
+	path, err := startupPath(flag.Args())
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 	defer cancel()
@@ -110,6 +112,27 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+}
+
+// The caller validates that there is at most one positional argument.
+func startupPath(args []string) (string, error) {
+	var path string
+	if len(args) == 1 {
+		path = args[0]
+	} else {
+		folders, err := config.RecentFolders()
+		if err != nil {
+			return "", fmt.Errorf("read recent workspaces: %w", err)
+		}
+		if len(folders) == 0 {
+			return "", errors.New("no recent workspace; open a folder with: elegit /path/to/folder")
+		}
+		path = folders[0]
+	}
+	if path == "" {
+		return "", errors.New("workspace path must not be empty")
+	}
+	return path, nil
 }
 
 func runWorkbench(ctx context.Context, m *app.Model) (tea.Model, error) {

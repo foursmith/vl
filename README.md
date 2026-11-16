@@ -32,11 +32,12 @@ bin/elegit -theme light /path/to/repository
 bin/elegit -icons=false /path/to/repository
 ```
 
-With no path, elegit opens the current directory or its enclosing repository.
-Subdirectories and file paths inside a repository resolve to its root. Ordinary
-folders support file browsing, quick open, text search, and editing. Changes and
-History offer **Initialize Repository** when the folder has no Git repository;
-initialization keeps open editor tabs and unsaved edits.
+With no path, elegit opens the most recently used workspace. If there is no
+recent workspace, it asks you to provide a path. Use `elegit .` to explicitly open
+the current directory. Subdirectories and file paths inside a repository resolve
+to its root. Ordinary folders support file browsing, quick open, text search, and
+editing. Changes and History offer **Initialize Repository** when the folder has
+no Git repository; initialization keeps open editor tabs and unsaved edits.
 
 ## Available now
 
@@ -89,7 +90,7 @@ initialization keeps open editor tabs and unsaved edits.
   nested submodules; with no active file they retain the most recent file's
   repository, falling back to the workspace root before any file is opened.
 - Status bar shows staged/unstaged/untracked markers, upstream ahead/behind
-  counts, conflicts, cursor position, tab width, UTF-8, line ending and language.
+  counts, conflicts, cursor position, UTF-8, line ending and language.
   Click sync to pull with `--ff-only` then push; without an upstream, choose a
   remote to publish the current branch. Counts use locally fetched tracking refs.
 - Click the GitHub status icon to open the repository in the system browser.

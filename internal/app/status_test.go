@@ -130,7 +130,7 @@ func TestStatusGeometryAndEditorMetadata(t *testing.T) {
 		}
 	}
 	text := plain(m.statusLine())
-	for _, value := range []string{"2" + m.symbol(symbolArrowDown) + " 3" + m.symbol(symbolUp), "UTF-8", "LF", "Go", "Tab: 4", "行 1, 列 1"} {
+	for _, value := range []string{"2" + m.symbol(symbolArrowDown) + " 3" + m.symbol(symbolUp), "UTF-8", "LF", "Go", "行 1, 列 1"} {
 		if !strings.Contains(text, value) {
 			t.Fatalf("missing %q: %s", value, text)
 		}
