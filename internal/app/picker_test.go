@@ -92,7 +92,7 @@ func TestQuickPickerGeometryAndScrolledClick(t *testing.T) {
 		for _, height := range []int{8, 24} {
 			m.Update(tea.WindowSizeMsg{Width: width, Height: height})
 			m.openPalette()
-			m.choice = len(m.palette) - 1
+			m.selectPickerIndex(len(m.palette) - 1)
 			for _, line := range strings.Split(m.View().Content, "\n") {
 				if ansi.StringWidth(line) != width {
 					t.Fatalf("picker width at %dx%d: %d", width, height, ansi.StringWidth(line))
@@ -153,10 +153,10 @@ func TestQuickPickerSwitchesWithEditableCommandPrefix(t *testing.T) {
 	defer m.Close()
 	m.snapshot.Files = []string{"file0.go"}
 	m.openPalette()
-	m.choice = 5
+	m.selectPickerIndex(5)
 	m.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	rows := m.filteredActions()
-	if m.modal != "quick" || m.input.Value() != "" || m.input.Prompt != "" || m.choice != 0 || len(rows) != 1 || rows[0].id != "file0.go" {
+	if m.modal != "quick" || m.input.Value() != "" || m.input.Prompt != "" || m.pickerList.Index() != 0 || len(rows) != 1 || rows[0].id != "file0.go" {
 		t.Fatal("deleting > did not switch to file search and reset selection")
 	}
 	m.Update(tea.KeyPressMsg{Code: 'f', Text: "file0"})

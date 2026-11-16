@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/list"
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"github.com/atotto/clipboard"
@@ -142,11 +144,12 @@ type Model struct {
 	notice                  string
 	output                  []string
 	outputVisible           bool
+	contextMenu             *contextMenu
 	modal, modalTitle       string
 	input                   textinput.Model
-	choice                  int
 	palette                 []action
 	lastCommand             string
+	pickerList              list.Model
 	confirm                 func() tea.Cmd
 	confirmationDetail      string
 	dialogTop               int
@@ -186,6 +189,7 @@ func New(ctx context.Context, repo *gitservice.Repository, nerd bool) *Model {
 	m.emptyDiff = m.diffState
 	m.search = newSearch()
 	m.styleInput()
+	m.pickerList = newPickerList(m)
 	m.resize()
 	m.imageIDs = map[int]bool{}
 	m.expanded = map[string]bool{}
@@ -373,7 +377,7 @@ func (m *Model) preview() tea.Cmd {
 
 func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 	_, motion := msg.(tea.MouseMotionMsg)
-	m.hoverOnly = motion && !m.resizingSidebar && m.textDrag == nil && m.diffDrag == nil && m.imagePan == nil
+	m.hoverOnly = motion && m.contextMenu == nil && !m.resizingSidebar && m.textDrag == nil && m.diffDrag == nil && m.imagePan == nil
 	if !m.hoverOnly {
 		m.hoverRender = hoverRenderCache{}
 	}
@@ -419,6 +423,9 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			m.hoverRender = hoverRenderCache{}
 		}
 	}()
+	if cmd, handled := m.contextMenuInput(msg); handled {
+		return m, cmd
+	}
 	switch msg := msg.(type) {
 	case tea.ColorProfileMsg:
 		m.monochrome = msg.Profile <= colorprofile.ASCII
@@ -652,6 +659,9 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			return m, m.clickModal(msg)
 		}
 		m.resizingSidebar = false
+		if msg.Button == tea.MouseRight {
+			return m, m.openContextMenu(msg.X, msg.Y)
+		}
 		if m.sidebarDividerAt(msg.X, msg.Y) {
 			m.resizingSidebar = msg.Button == tea.MouseLeft
 			return m, nil
@@ -668,7 +678,8 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 				if msg.Button == tea.MouseWheelUp {
 					delta = -1
 				}
-				m.choice = min(max(0, len(m.filteredActions())-1), max(0, m.choice+delta))
+				m.syncPickerList()
+				m.selectPickerIndex(m.pickerList.Index() + delta)
 			}
 			return m, nil
 		}
@@ -741,7 +752,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			var cmd tea.Cmd
 			m.input, cmd = m.input.Update(msg)
 			m.syncQuickPicker()
-			m.choice = 0
+			m.selectPickerIndex(0)
 			return m, cmd
 		}
 		if !m.sidebar && m.editing() {
@@ -755,72 +766,83 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	m.stopTextDrag()
 	k := msg.String()
+	if key.Matches(msg, workbenchKeys.ContextMenu) {
+		if m.sidebar {
+			m.ensureSidebar()
+			return m.openContextMenu(m.sideX()+2, m.sidebarHeaderRows()+max(0, m.selected-m.sideTop))
+		}
+		return m.openContextMenu(m.mainX()+2, editorContentRow)
+	}
 	if m.sidebar && m.section == search {
-		switch k {
-		case "ctrl+q", "ctrl+c", "ctrl+p", "ctrl+r", "ctrl+shift+p", "f1", "ctrl+1", "ctrl+2", "ctrl+3", "ctrl+4", "ctrl+shift+f", "ctrl+shift+h", "ctrl+l", "f6", "ctrl+s", "ctrl+w", "alt+left", "alt+right":
+		switch {
+		case key.Matches(msg,
+			workbenchKeys.Quit, workbenchKeys.Copy, workbenchKeys.Files, workbenchKeys.Recent,
+			workbenchKeys.Commands, workbenchKeys.Explorer, workbenchKeys.Changes, workbenchKeys.History,
+			workbenchKeys.Search, workbenchKeys.Replace, workbenchKeys.Sidebar, workbenchKeys.Focus,
+			workbenchKeys.Save, workbenchKeys.Close, workbenchKeys.NextTab, workbenchKeys.PreviousTab):
 		default:
 			return m.searchKey(msg)
 		}
 	}
-	switch k {
-	case "ctrl+q", "ctrl+c":
-		if k == "ctrl+c" && !m.sidebar && (m.editing() || m.diffOpen) {
+	switch {
+	case key.Matches(msg, workbenchKeys.Quit, workbenchKeys.Copy):
+		if key.Matches(msg, workbenchKeys.Copy) && !m.sidebar && (m.editing() || m.diffOpen) {
 			return m.copy(false)
 		}
 		return m.quit()
-	case "ctrl+p":
+	case key.Matches(msg, workbenchKeys.Files):
 		return m.openQuickFiles()
-	case "ctrl+r":
+	case key.Matches(msg, workbenchKeys.Recent):
 		return m.openRecentFolders()
-	case "ctrl+shift+p", "f1":
+	case key.Matches(msg, workbenchKeys.Commands):
 		return m.openPalette()
-	case "ctrl+g":
+	case key.Matches(msg, workbenchKeys.Position):
 		return m.prompt("position", "转到行 · 行:列", "")
-	case "ctrl+shift+f", "ctrl+4":
+	case key.Matches(msg, workbenchKeys.Search):
 		return m.openSearch(false)
-	case "ctrl+shift+h":
+	case key.Matches(msg, workbenchKeys.Replace):
 		return m.openSearch(true)
-	case "ctrl+1":
+	case key.Matches(msg, workbenchKeys.Explorer):
 		return m.selectSection(explorer)
-	case "ctrl+2":
+	case key.Matches(msg, workbenchKeys.Changes):
 		return m.selectSection(changes)
-	case "ctrl+3":
+	case key.Matches(msg, workbenchKeys.History):
 		return m.selectSection(history)
-	case "ctrl+l":
+	case key.Matches(msg, workbenchKeys.Sidebar):
 		return m.toggleSidebar()
-	case "f6":
+	case key.Matches(msg, workbenchKeys.Focus):
 		m.sidebar = !m.sidebar
 		if m.sidebar {
 			m.sidebarVisible = true
 			m.resize()
 		}
 		return nil
-	case "ctrl+j":
+	case key.Matches(msg, workbenchKeys.Output):
 		m.outputVisible = !m.outputVisible
 		m.resize()
 		return nil
-	case "f5":
+	case key.Matches(msg, workbenchKeys.Refresh):
 		if !m.busy {
 			return m.refresh()
 		}
 		return nil
-	case "ctrl+d":
+	case key.Matches(msg, workbenchKeys.DiffLayout):
 		m.split = !m.split
 		m.renderDiff()
 		return nil
-	case "ctrl+s":
+	case key.Matches(msg, workbenchKeys.Save):
 		return m.save()
-	case "ctrl+w":
+	case key.Matches(msg, workbenchKeys.Close):
 		return m.closeTab()
-	case "alt+right":
+	case key.Matches(msg, workbenchKeys.NextTab):
 		return m.switchTab(1)
-	case "alt+left":
+	case key.Matches(msg, workbenchKeys.PreviousTab):
 		return m.switchTab(-1)
-	case "ctrl+f":
+	case key.Matches(msg, workbenchKeys.Find):
 		return m.prompt("find", "Find in current view", m.find)
-	case "f3":
+	case key.Matches(msg, workbenchKeys.FindNext):
 		return m.findNext()
-	case "esc":
+	case key.Matches(msg, workbenchKeys.Escape):
 		m.sidebar = true
 		m.sidebarVisible = true
 		m.resize()

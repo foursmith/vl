@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 
+	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 )
 
@@ -39,25 +40,25 @@ func (m *Model) actions() []action {
 		githubReason = "没有找到 github.com 远程仓库"
 	}
 	actions := []action{
-		{"folder.openRecent", "File: Open Recent Folder", "Ctrl+R", "", m.openRecentFolders},
+		{"folder.openRecent", "File: Open Recent Folder", workbenchKeys.Recent.Help().Key, "", m.openRecentFolders},
 		{"theme.auto", "Preferences: Color Theme — Auto (Follow Terminal)", "", "", func() tea.Cmd { return m.SetThemeMode("auto") }},
 		{"theme.light", "Preferences: Color Theme — Light Modern", "", "", func() tea.Cmd { return m.SetThemeMode("light") }},
 		{"theme.dark", "Preferences: Color Theme — Dark Modern", "", "", func() tea.Cmd { return m.SetThemeMode("dark") }},
-		{"view.explorer", "View: Explorer", "Ctrl+1", "", func() tea.Cmd { return m.selectSection(explorer) }},
+		{"view.explorer", "View: Explorer", workbenchKeys.Explorer.Help().Key, "", func() tea.Cmd { return m.selectSection(explorer) }},
 		{"explorer.newFile", "Explorer: New File", "", "", func() tea.Cmd { return m.newEntry(false) }},
 		{"explorer.newFolder", "Explorer: New Folder", "", "", func() tea.Cmd { return m.newEntry(true) }},
 		{"explorer.collapseAll", "Explorer: Collapse Folders", "", "", m.collapseFolders},
-		{"view.changes", "View: Changes", "Ctrl+2", "", func() tea.Cmd { return m.selectSection(changes) }},
-		{"view.search", "Search: Find in Files", "Ctrl+Shift+F", "", func() tea.Cmd { return m.openSearch(false) }},
-		{"search.replace", "Search: Replace in Files", "Ctrl+Shift+H", "", func() tea.Cmd { return m.openSearch(true) }},
-		{"view.history", "View: Commit History", "Ctrl+3", "", func() tea.Cmd { return m.selectSection(history) }},
-		{"view.diff", "Diff: Toggle Side by Side", "Ctrl+D", "", func() tea.Cmd { m.split = !m.split; m.renderDiff(); return nil }},
-		{"view.sidebar", "View: Toggle Sidebar", "Ctrl+L", "", m.toggleSidebar},
+		{"view.changes", "View: Changes", workbenchKeys.Changes.Help().Key, "", func() tea.Cmd { return m.selectSection(changes) }},
+		{"view.search", "Search: Find in Files", workbenchKeys.Search.Help().Key, "", func() tea.Cmd { return m.openSearch(false) }},
+		{"search.replace", "Search: Replace in Files", workbenchKeys.Replace.Help().Key, "", func() tea.Cmd { return m.openSearch(true) }},
+		{"view.history", "View: Commit History", workbenchKeys.History.Help().Key, "", func() tea.Cmd { return m.selectSection(history) }},
+		{"view.diff", "Diff: Toggle Side by Side", workbenchKeys.DiffLayout.Help().Key, "", func() tea.Cmd { m.split = !m.split; m.renderDiff(); return nil }},
+		{"view.sidebar", "View: Toggle Sidebar", workbenchKeys.Sidebar.Help().Key, "", m.toggleSidebar},
 		{"view.sidebarLeft", "View: Move Sidebar Left", "", "", func() tea.Cmd { m.SetSidebarLayout(m.sidebarWidth, false); return nil }},
 		{"view.sidebarRight", "View: Move Sidebar Right", "", "", func() tea.Cmd { m.SetSidebarLayout(m.sidebarWidth, true); return nil }},
 		{"view.sidebarResetWidth", "View: Reset Sidebar Width", "", "", func() tea.Cmd { m.SetSidebarLayout(0, m.sidebarRight); return nil }},
-		{"view.output", "View: Toggle Output", "Ctrl+J", "", func() tea.Cmd { m.outputVisible = !m.outputVisible; m.resize(); return nil }},
-		{"git.refresh", "Git: Refresh", "F5", "", m.refresh},
+		{"view.output", "View: Toggle Output", workbenchKeys.Output.Help().Key, "", func() tea.Cmd { m.outputVisible = !m.outputVisible; m.resize(); return nil }},
+		{"git.refresh", "Git: Refresh", workbenchKeys.Refresh.Help().Key, "", m.refresh},
 		{"git.stage", "Git: Stage Selected File", "S", fileReason, func() tea.Cmd { return m.stageSelected(false) }},
 		{"git.unstage", "Git: Unstage Selected File", "U", fileReason, func() tea.Cmd { return m.stageSelected(true) }},
 		{"git.stageAll", stageAllLabel, "A", "", func() tea.Cmd { return m.stageAllInRepository(target) }},
@@ -80,13 +81,13 @@ func (m *Model) actions() []action {
 		}},
 		{"git.discard", "Git: Discard Unstaged Changes", "", fileReason, m.discard},
 		{"file.open", "File: Open Selected File", "E", openReason, m.editSelected},
-		{"file.save", "File: Save", "Ctrl+S", docReason, m.save},
-		{"file.close", "File: Close Active Tab", "Ctrl+W", tabReason, m.closeTab},
+		{"file.save", "File: Save", workbenchKeys.Save.Help().Key, docReason, m.save},
+		{"file.close", "File: Close Active Tab", workbenchKeys.Close.Help().Key, tabReason, m.closeTab},
 		{"file.keepOpen", "File: Keep Preview Open", "", tabReason, m.keepTab},
 		{"file.closeOthers", "File: Close Other Tabs", "", "", m.closeOtherTabs},
 		{"file.closeAll", "File: Close All Tabs", "", "", m.closeAllTabs},
-		{"edit.find", "Find: Search Current View", "Ctrl+F", "", func() tea.Cmd { return m.prompt("find", "Find in current view", m.find) }},
-		{"app.quit", "Quit", "Ctrl+Q", "", m.quit},
+		{"edit.find", "Find: Search Current View", workbenchKeys.Find.Help().Key, "", func() tea.Cmd { return m.prompt("find", "Find in current view", m.find) }},
+		{"app.quit", "Quit", workbenchKeys.Quit.Help().Key, "", m.quit},
 	}
 	if m.snapshot.NoRepository {
 		for i := range actions {
@@ -163,7 +164,8 @@ func (m *Model) prompt(kind, title, value string) tea.Cmd {
 		m.input.Placeholder = title
 	}
 	m.input.CursorEnd()
-	m.choice = 0
+	m.pickerList.ResetSelected()
+	m.syncPickerList()
 	return m.input.Focus()
 }
 
@@ -183,6 +185,9 @@ func (m *Model) ask(title string, run func() tea.Cmd) tea.Cmd {
 
 func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 	k := msg.String()
+	if m.isPicker() {
+		m.syncPickerList()
+	}
 	if m.modal == "confirm" || m.modal == "close" {
 		l := m.dialogLayout()
 		top := l.top
@@ -206,10 +211,10 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 		}
 	}
 	if m.isPicker() {
-		switch k {
-		case "ctrl+p":
+		switch {
+		case key.Matches(msg, workbenchKeys.Files):
 			return m.openQuickFiles()
-		case "ctrl+shift+p", "f1":
+		case key.Matches(msg, workbenchKeys.Commands):
 			return m.openPalette()
 		}
 	}
@@ -224,7 +229,7 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 		}
 		return nil
 	}
-	if k == "esc" {
+	if key.Matches(msg, workbenchKeys.Escape) {
 		m.rememberCommitDraft()
 		m.modal = ""
 		m.confirm = nil
@@ -232,18 +237,14 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 		return nil
 	}
 	if m.isPicker() {
-		rows := m.filteredActions()
-		switch k {
-		case "up":
-			m.choice = max(0, m.choice-1)
-			return nil
-		case "down":
-			m.choice = min(max(0, len(rows)-1), m.choice+1)
-			return nil
-		case "enter":
+		if key.Matches(msg, pickerKeys.Accept) {
 			return m.selectPickerChoice()
 		}
+		if cmd, handled := m.pickerListKey(msg); handled {
+			return cmd
+		}
 	}
+
 	if k == "enter" && !m.isPicker() {
 		m.rememberCommitDraft()
 		kind, value := m.modal, strings.TrimSpace(m.input.Value())
@@ -295,7 +296,7 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 	var cmd tea.Cmd
 	m.input, cmd = m.input.Update(msg)
 	m.syncQuickPicker()
-	m.choice = 0
+	m.selectPickerIndex(0)
 	return cmd
 }
 

@@ -31,7 +31,11 @@ change document contents. The status-bar reference picker owns branch and tag
 selection through a single checkout path. Repository-header branch labels reuse
 the same picker with an explicit repository target, retained when selecting a
 create-from reference or entering a new branch name. File search, commands and references
-share one picker layout and click geometry.
+share one picker layout and click geometry. All pickers use one Bubbles list
+for selection, paging and row rendering, with a shared input for search and
+file-position syntax.
+Global shortcuts use Bubbles key bindings, also read by command/menu labels.
+Dialogs, pickers and context menus compose through one Lip Gloss layer helper.
 Changes file, folder and group buttons share action availability rules.
 Changes and History share repository headers. History state and asynchronous
 file-list results use repository plus commit ID as their identity, since the same
@@ -43,8 +47,8 @@ same repository snapshot, including metadata errors, without a separate history 
 ## Dependencies
 
 Use Charm's compatible v2 stack: Bubble Tea for event/render lifecycle, Bubbles
-for command input and diff viewport, Lip Gloss for styling/layout, and Charm's
-ANSI utilities for cell-width-aware clipping. `textmate-go` supplies stateful
+for text input, the diff viewport and picker lists, Lip Gloss for styling/layout,
+and Charm's ANSI utilities for cell-width-aware clipping. `textmate-go` supplies stateful
 syntax tokens, matched against the embedded VS Code Dark Modern theme inheritance
 chain; `atotto/clipboard` supplies system clipboard access. `fsnotify` monitors
 parent directories, and `uax29/graphemes` defines Unicode editing boundaries.

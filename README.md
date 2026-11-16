@@ -198,10 +198,16 @@ no Git repository; initialization keeps open editor tabs and unsaved edits.
   Committing a child never stages or commits its parent's new pointer.
 - Repository discovery and refresh are read-only. Explorer retains its normal
   directory interactions; status-bar branch and remote controls use the workspace root.
+- Right-click context menus for Explorer, Changes, History, editor/diff/image content,
+  and editor tabs. Menus retain text selections and target the clicked file or tab.
+  Use Up/Down, Enter and Esc, or click outside to dismiss; Shift+F10 opens the
+  menu for the focused sidebar row or editor. Long menus scroll in small terminals.
+  Existing discard and unsaved-file confirmations also apply to menu actions.
 - Searchable commands, disabled-command explanations, and Git output panel.
 
 Search files with **Ctrl+P**. Commands are available from **Ctrl+Shift+P** or **F1**.
 Both use the same input: a leading `>` searches commands; remove it to search files.
+All pickers support Up/Down, Page Up/Down and Home/End; typing searches directly.
 Append `:line[:column]` to a filename to jump to that position, or enter
 `:line[:column]` alone to jump within the active text file.
 Commands sort alphabetically by name, with the last used command first; the choice
@@ -226,6 +232,7 @@ the active navigation section and editor tab use underlining.
 | Global | Ctrl+L / Ctrl+J | Toggle sidebar / output |
 | Global | Ctrl+D | Toggle unified / side-by-side diff |
 | Global | F5 | Refresh repository |
+| Sidebar / Content | Right-click / Shift+F10 | Open context menu |
 | Global | Ctrl+Shift+F / Ctrl+4 | Search workspace sidebar |
 | Global | Ctrl+Shift+H | Expand workspace replacement |
 | Search | Tab / Shift+Tab | Move between search, replace, and results |

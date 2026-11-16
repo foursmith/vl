@@ -96,6 +96,7 @@ func (m *Model) resize() {
 	m.viewport.SetWidth(m.mainWidth())
 	m.viewport.SetHeight(m.contentHeight())
 	m.resizeInput()
+	m.syncPickerList()
 	m.renderDiff()
 	m.ensureSidebar()
 	m.ensureEditor()
@@ -174,6 +175,9 @@ func (m *Model) View() tea.View {
 	lines = append(lines, m.statusLine())
 	if m.modal != "" {
 		lines = m.overlay(lines)
+	}
+	if m.contextMenu != nil {
+		lines = m.contextMenuOverlay(lines)
 	}
 	v := tea.NewView(strings.Join(lines, "\n"))
 	v.AltScreen = true
@@ -536,22 +540,14 @@ func (m *Model) overlay(base []string) []string {
 		return m.pickerOverlay(base)
 	}
 	l := m.dialogLayout()
-	w, x, y := l.width, l.x, l.y
+	w := l.width
 	border := theme.Style(m.colors.Border, m.colors.Popup)
 	box := []string{border.Render("┌" + strings.Repeat("─", w-2) + "┐")}
 	for _, s := range l.content {
 		box = append(box, border.Render("│")+s+border.Render("│"))
 	}
 	box = append(box, border.Render("└"+strings.Repeat("─", w-2)+"┘"))
-	for i, s := range box {
-		if y+i >= len(base) {
-			break
-		}
-		left := row(ansi.Cut(base[y+i], 0, x), x, m.colors.Foreground, m.colors.Panel)
-		right := row(ansi.Cut(base[y+i], x+w, m.width), m.width-x-w, m.colors.Foreground, m.colors.Background)
-		base[y+i] = left + s + right
-	}
-	return base
+	return m.composeOverlay(base, box, l.x, l.y)
 }
 
 func (m *Model) click(msg tea.MouseClickMsg) tea.Cmd {

@@ -1,12 +1,9 @@
 package app
 
 import (
-	"path/filepath"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/elegit/internal/fileicon"
 	"github.com/ourongxing/elegit/internal/theme"
 )
 
@@ -17,7 +14,7 @@ type pickerLayout struct {
 func (m *Model) pickerLayout(rows []action) pickerLayout {
 	w := min(96, m.width-4)
 	count := min(16, max(1, m.height-7))
-	start := max(0, m.choice-count+1)
+	start := m.pickerList.Paginator.Page * m.pickerList.Paginator.PerPage
 	return pickerLayout{(m.width - w) / 2, 1, w, start, min(count, max(0, len(rows)-start))}
 }
 
@@ -33,63 +30,25 @@ func (m *Model) pickerOverlay(base []string) []string {
 		border.Render("│") + row(" "+m.input.View(), w, m.colors.Foreground, inputBG) + border.Render("│"),
 		border.Render("╰" + strings.Repeat("─", w) + "╯"),
 	}
-	for i := l.start; i < l.start+l.count; i++ {
-		a := rows[i]
-		fg, surface := m.colors.Foreground, bg
-		if i == m.choice {
-			fg, surface = m.colors.SelectionForeground, m.colors.Selection
-		}
-		if a.disabled != "" {
-			fg = m.colors.Muted
-		}
-		label := " " + safe(a.label)
-		if m.modal == "quick" && !m.commandPicker() && a.id != "" {
-			icon := fileicon.For(a.id, m.nerd)
-			name := " " + row(icon.Glyph, 2, icon.Color, surface) + safe(filepath.Base(a.id))
-			label = ansi.Truncate(name, w-2, "…")
-			if dir := filepath.Dir(a.id); dir != "." {
-				remaining := w - 2 - ansi.StringWidth(label)
-				if remaining > 1 {
-					label += theme.Style(m.colors.Muted, surface).Render(ansi.Truncate(" "+safe(dir), remaining, "…"))
-				}
-			}
-		}
-		if a.key != "" {
-			key := " " + a.key + " "
-			label = ansi.Truncate(label, max(1, w-ansi.StringWidth(key)-2), "…")
-			label += strings.Repeat(" ", max(1, w-ansi.StringWidth(label)-ansi.StringWidth(key)-1))
-			label += theme.Style(m.colors.Muted, surface).Render(key)
-		}
-		marker := " "
-		if m.monochrome && i == m.choice {
-			marker = ">"
-		}
-		box = append(box, row(marker+row(label, w, fg, surface)+" ", l.width, fg, surface))
+	if len(rows) > 0 {
+		lines := strings.Split(m.pickerList.View(), "\n")
+		box = append(box, lines[:l.count]...)
 	}
+
 	if len(rows) == 0 {
 		message := "无匹配结果"
-		if m.modal == "recent" {
-			if m.palette == nil {
-				message = "读取最近文件夹…"
-			} else if m.input.Value() == "" {
-				message = "没有最近打开的文件夹"
-			}
+		if m.modal == "recent" && m.input.Value() == "" {
+			message = "没有最近打开的文件夹"
 		}
 		box = append(box, row("  "+message, l.width, m.colors.Muted, bg))
-	} else if reason := rows[min(m.choice, len(rows)-1)].disabled; reason != "" {
+	} else if reason := rows[min(m.pickerList.Index(), len(rows)-1)].disabled; reason != "" {
 		box = append(box, row("  "+safe(reason), l.width, m.colors.Muted, bg))
 	}
-	for i, line := range box {
-		if l.y+i >= len(base) {
-			break
-		}
-		original := base[l.y+i]
-		base[l.y+i] = ansi.Cut(original, 0, l.x) + line + ansi.Cut(original, l.x+l.width, m.width)
-	}
-	return base
+	return m.composeOverlay(base, box, l.x, l.y)
 }
 
 func (m *Model) clickPicker(msg tea.MouseClickMsg) tea.Cmd {
+	m.syncPickerList()
 	rows := m.filteredActions()
 	l := m.pickerLayout(rows)
 	if msg.Button == tea.MouseLeft && msg.X >= l.x && msg.X < l.x+l.width {
@@ -97,7 +56,7 @@ func (m *Model) clickPicker(msg tea.MouseClickMsg) tea.Cmd {
 			return nil
 		}
 		if index := msg.Y - l.y - 3; index >= 0 && index < l.count {
-			m.choice = l.start + index
+			m.selectPickerIndex(l.start + index)
 			return m.selectPickerChoice()
 		}
 	}
@@ -113,7 +72,8 @@ func (m *Model) selectPickerChoice() tea.Cmd {
 	if len(rows) == 0 {
 		return nil
 	}
-	a := rows[min(m.choice, len(rows)-1)]
+	m.syncPickerList()
+	a := rows[min(m.pickerList.Index(), len(rows)-1)]
 	if a.disabled != "" {
 		m.notice = a.disabled
 		return nil
@@ -136,6 +96,7 @@ func (m *Model) openQuickPicker(value string) tea.Cmd {
 	m.palette = nil
 	cmd := m.prompt("quick", "", value)
 	m.syncQuickPicker()
+	m.syncPickerList()
 	return cmd
 }
 
@@ -151,7 +112,7 @@ func (m *Model) syncQuickPicker() {
 		return
 	}
 	m.modalTitle = title
-	m.choice = 0
+	m.pickerList.ResetSelected()
 	if m.commandPicker() {
 		m.input.Placeholder = ""
 		m.palette = m.commandActions()

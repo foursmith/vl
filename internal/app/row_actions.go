@@ -172,33 +172,44 @@ func (m *Model) clickChangeAction(index, x, w int) (tea.Cmd, bool) {
 		if x < action.x || x >= action.x+action.width {
 			continue
 		}
-		m.selected = index
-		m.sidebar = true
-		if action.disabled != "" {
-			m.notice = action.disabled
-			return nil, true
-		}
-		if m.items[index].repoHeader {
-			switch action.id {
-			case "commit":
-				return m.commitInRepository(m.items[index].repository), true
-			case "refresh":
-				return m.refresh(), true
-			}
-		}
-		if m.items[index].change == nil {
-			return m.runScopeAction(m.items[index], action.id), true
-		}
-		switch action.id {
-		case "open":
-			return m.openFileInExplorer(m.items[index].change.Path), true
-		case "discard":
-			return m.discard(), true
-		case "stage":
-			return m.stageSelected(false), true
-		case "unstage":
-			return m.stageSelected(true), true
-		}
+		return m.runChangeRowAction(index, action.id), true
 	}
 	return nil, false
+}
+
+// Shared by inline buttons and the context menu, including all scope safeguards.
+func (m *Model) runChangeRowAction(index int, id string) tea.Cmd {
+	if index < 0 || index >= len(m.items) {
+		return nil
+	}
+	entry := m.items[index]
+	m.selected, m.sidebar = index, true
+	for _, a := range m.changeRowActions(entry, m.sideWidth()) {
+		if a.id == id && a.disabled != "" {
+			m.notice = a.disabled
+			return nil
+		}
+	}
+	if entry.repoHeader {
+		switch id {
+		case "commit":
+			return m.commitInRepository(entry.repository)
+		case "refresh":
+			return m.refresh()
+		}
+	}
+	if entry.change == nil {
+		return m.runScopeAction(entry, id)
+	}
+	switch id {
+	case "open":
+		return m.openFileInExplorer(entry.change.Path)
+	case "discard":
+		return m.discard()
+	case "stage":
+		return m.stageSelected(false)
+	case "unstage":
+		return m.stageSelected(true)
+	}
+	return nil
 }
