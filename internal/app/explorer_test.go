@@ -30,6 +30,7 @@ func explorerWorkspace(t *testing.T) *Model {
 		t.Fatal(err)
 	}
 	m := New(context.Background(), r, true)
+	m.section = explorer
 	drain(t, m, m.refresh())
 	return m
 }

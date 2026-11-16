@@ -29,32 +29,29 @@ func (m *Model) diffContext() string {
 		context = "暂存区"
 	}
 	if m.diffCommit != "" {
-		context = "提交 · " + m.diffCommit[:min(7, len(m.diffCommit))] + " · 只读"
+		context = "提交 · " + shortOID(m.diffCommit) + " · 只读"
 	}
-	for _, line := range strings.Split(m.patch.Raw, "\n") {
-		if strings.HasPrefix(line, "new file mode ") {
-			context += " · 新文件"
-			if strings.HasSuffix(line, "755") {
-				context += " · 可执行"
-			}
-			break
-		}
-		if strings.HasPrefix(line, "deleted file mode ") {
-			context += " · 已删除"
-			break
-		}
-	}
-	if c := m.diffChange; c != nil && c.Original != "" {
-		context += " · 重命名自 " + safe(c.Original)
-	}
+	fileStatus := ""
 	oldMode, newMode := "", ""
-	for _, line := range strings.Split(m.patch.Raw, "\n") {
-		if strings.HasPrefix(line, "old mode ") {
+	for _, parsed := range m.patch.Lines {
+		line := parsed.Text
+		switch {
+		case fileStatus == "" && strings.HasPrefix(line, "new file mode "):
+			fileStatus = " · 新文件"
+			if strings.HasSuffix(line, "755") {
+				fileStatus += " · 可执行"
+			}
+		case fileStatus == "" && strings.HasPrefix(line, "deleted file mode "):
+			fileStatus = " · 已删除"
+		case strings.HasPrefix(line, "old mode "):
 			oldMode = strings.TrimPrefix(line, "old mode ")
-		}
-		if strings.HasPrefix(line, "new mode ") {
+		case strings.HasPrefix(line, "new mode "):
 			newMode = strings.TrimPrefix(line, "new mode ")
 		}
+	}
+	context += fileStatus
+	if c := m.diffChange; c != nil && c.Original != "" {
+		context += " · 重命名自 " + safe(c.Original)
 	}
 	if oldMode != "" && newMode != "" {
 		context += " · 权限 " + oldMode + " → " + newMode

@@ -74,6 +74,7 @@ func TestEditorCanvasAndCurrentLineBackgrounds(t *testing.T) {
 
 func TestSelectedFilePaintsIconTextAndPadding(t *testing.T) {
 	m := New(context.Background(), &gitservice.Repository{Root: "/tmp/repo"}, true)
+	m.section = explorer
 	m.items = []item{{file: "test.go", label: "test.go"}}
 	m.selected = 0
 	m.sidebar = true

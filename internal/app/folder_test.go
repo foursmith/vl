@@ -22,6 +22,7 @@ func folderWorkspace(t *testing.T) *Model {
 		t.Fatal(err)
 	}
 	m := New(context.Background(), repo, false)
+	m.section = explorer
 	t.Cleanup(m.Close)
 	drain(t, m, m.refresh())
 	return m

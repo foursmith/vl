@@ -68,7 +68,6 @@ func TestAppEditStageCommitWorkflow(t *testing.T) {
 		t.Fatal(err)
 	}
 	m := New(context.Background(), r, false)
-	m.section = changes
 	drain(t, m, m.refresh())
 	if m.current() == nil || m.current().change.Path != "main.go" || len(m.patch.Hunks) != 1 {
 		t.Fatal("initial changed file not selected")

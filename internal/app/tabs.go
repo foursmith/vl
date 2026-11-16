@@ -280,7 +280,7 @@ func (m *Model) tabLabel(index int) string {
 	label := filepath.Base(t.path())
 	if d := t.diff; d != nil {
 		if d.diffCommit != "" {
-			return safe(label) + " · " + d.diffCommit[:min(7, len(d.diffCommit))]
+			return safe(label) + " · " + shortOID(d.diffCommit)
 		}
 		if d.diffStaged {
 			return safe(label) + " · 暂存"

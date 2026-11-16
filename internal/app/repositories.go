@@ -123,18 +123,7 @@ func (m *Model) hasDirtyTabsInRepository(repo string) bool {
 		if t.doc == nil || !t.doc.Dirty() {
 			continue
 		}
-		path, err := filepath.Rel(m.repo.Root, t.doc.Path)
-		if err != nil {
-			continue
-		}
-		path = filepath.ToSlash(path)
-		owner := ""
-		for _, candidate := range m.snapshot.Repositories {
-			if len(candidate) > len(owner) && strings.HasPrefix(path, candidate+"/") {
-				owner = candidate
-			}
-		}
-		if owner == repo {
+		if m.fileRepository(t.doc.Path) == repo {
 			return true
 		}
 	}

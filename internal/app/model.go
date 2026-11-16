@@ -197,7 +197,7 @@ func New(ctx context.Context, repo *gitservice.Repository, nerd bool) *Model {
 	m.commitDrafts = map[string]string{}
 	m.historyStates = map[string]*historyState{}
 	m.historyPages = map[string]*historyPageState{}
-	m.section = explorer
+	m.section = changes
 	m.selected = -1
 	m.openURL = platform.OpenURL
 	m.hoverX, m.hoverY = -1, -1
