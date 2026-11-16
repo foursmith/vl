@@ -19,6 +19,7 @@ import (
 type diffState struct {
 	patch            diff.Patch
 	diffPath         string
+	diffOriginal     string
 	diffRepository   string
 	diffChange       *gitservice.Change
 	diffStaged       bool
@@ -106,6 +107,13 @@ func (m *Model) requestDiff(target diffTarget, read func(context.Context) (strin
 	}
 	d := m.tabs[index].diff
 	d.diffChange, d.read = target.change, read
+	if target.change != nil {
+		d.diffOriginal = target.change.Original
+	}
+	// Commit metadata must not enable worktree staging or editing actions.
+	if target.commit != "" {
+		d.diffChange = nil
+	}
 	// Opening selects a tab; refreshing an existing tab is handled separately.
 	sidebar := m.sidebar
 	m.activateTab(index)

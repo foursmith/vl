@@ -11,6 +11,7 @@ import (
 	"github.com/atotto/clipboard"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/ourongxing/elegit/internal/config"
 	"github.com/ourongxing/elegit/internal/editor"
 	"github.com/ourongxing/elegit/internal/files"
 	gitservice "github.com/ourongxing/elegit/internal/git"
@@ -131,6 +132,7 @@ type Model struct {
 	historyCommit           string
 	historyStates           map[string]*historyState
 	historySeq              int
+	pendingSession          *config.Session
 	tabs                    []tab
 	activeTab               int
 	languagePath            string
@@ -580,7 +582,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		if m.section == explorer {
 			commands = append(commands, m.refreshTree())
 		}
-		commands = append(commands, m.refreshDiffs())
+		commands = append(commands, m.refreshDiffs(), m.restoreSession())
 		if initial && len(m.tabs) == 0 && (m.section == changes || m.section == history) {
 			commands = append(commands, m.preview())
 		}

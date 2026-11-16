@@ -97,7 +97,7 @@ func (m *Model) previewHistory(entry item) tea.Cmd {
 	c := *entry.historyChange
 	id := strings.TrimPrefix(entry.historyID, repositoryPrefix(entry.repository))
 	m.historyCommit = entry.historyID
-	return m.requestDiff(diffTarget{path: c.Path, repository: c.Repository, commit: id, preview: true}, func(ctx context.Context) (string, error) {
+	return m.requestDiff(diffTarget{path: c.Path, repository: c.Repository, commit: id, change: &c, preview: true}, func(ctx context.Context) (string, error) {
 		return m.repo.CommitFileDiff(ctx, id, c)
 	})
 }

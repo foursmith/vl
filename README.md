@@ -48,6 +48,11 @@ initialization keeps open editor tabs and unsaved edits.
   `recent.json` beside `layout.json` in the elegit configuration directory.
   Failed opens preserve the current workspace; unsaved editor changes and
   active Git operations block switching.
+- Open tabs are saved per folder when quitting or switching folders and restored
+  on the next open, including file/image tabs, worktree/index/commit diffs, tab
+  order, active tab, preview state, and text cursor/scroll positions. Sessions
+  live in `~/.config/elegit/workspaces/` on all platforms. Missing files are
+  skipped; unsaved edits still require the existing discard confirmation.
 - Staged, unstaged, untracked, and conflicted file status; automatic refresh.
 - Changes groups use folder trees with independent folding for staged
   and worktree changes. Group headers also collapse independently and retain

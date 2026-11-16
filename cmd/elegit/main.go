@@ -61,10 +61,26 @@ func main() {
 		m.SetThemeMode(*colorTheme)
 	}
 	for {
+		sessionPath, sessionErr := config.SessionPath(repo.Root)
+		if sessionErr == nil {
+			var session config.Session
+			session, sessionErr = config.LoadSession(sessionPath)
+			if sessionErr == nil {
+				m.SetSession(session)
+			}
+		}
+		if sessionErr != nil {
+			fmt.Fprintln(os.Stderr, "Load workspace tabs:", sessionErr)
+		}
 		if recentErr := config.RememberFolder(repo.Root); recentErr != nil {
 			fmt.Fprintln(os.Stderr, "Save recent folders:", recentErr)
 		}
 		_, err = runWorkbench(ctx, m)
+		if sessionErr == nil {
+			if saveErr := config.SaveSession(sessionPath, m.Session()); saveErr != nil {
+				fmt.Fprintln(os.Stderr, "Save workspace tabs:", saveErr)
+			}
+		}
 		m.Close()
 		next := m.NextRepository()
 		if err != nil || next == nil {
