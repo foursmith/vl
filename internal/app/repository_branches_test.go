@@ -85,7 +85,7 @@ func TestRepositoryBranchLabelsReusePickerAndSwitchOnlyTheirRepository(t *testin
 		}
 	}
 	pickBranchAction(t, m, "refs/heads/child-topic")
-	if m.snapshot.Branch != "main" || m.snapshot.Head != rootHead || m.snapshot.RepositoryHistory["child space"].Branch != "child-topic" {
+	if m.snapshot.Branch != "main" || m.snapshot.Head != rootHead || m.snapshot.RepositoryStates["child space"].Branch != "child-topic" {
 		t.Fatal("child branch switch modified parent")
 	}
 	if m.document().Text != "# Child topic\n" {
@@ -96,7 +96,7 @@ func TestRepositoryBranchLabelsReusePickerAndSwitchOnlyTheirRepository(t *testin
 	}
 	clickRepositoryBranch(t, m, history, "child space")
 	pickBranchAction(t, m, "refs/tags/child-tag")
-	if !strings.Contains(m.snapshot.RepositoryHistory["child space"].Branch, "(分离)") || m.snapshot.Branch != "main" {
+	if !m.snapshot.RepositoryStates["child space"].Detached || m.snapshot.Branch != "main" {
 		t.Fatal("history branch picker detached the wrong repository")
 	}
 	clickRepositoryBranch(t, m, changes, "child space")
@@ -107,7 +107,7 @@ func TestRepositoryBranchLabelsReusePickerAndSwitchOnlyTheirRepository(t *testin
 	}
 	m.input.SetValue("child-from-main")
 	drain(t, m, press(m, "enter"))
-	if m.snapshot.RepositoryHistory["child space"].Branch != "child-from-main" || m.snapshot.Branch != "main" {
+	if m.snapshot.RepositoryStates["child space"].Branch != "child-from-main" || m.snapshot.Branch != "main" {
 		t.Fatal("create-from changed parent branch")
 	}
 	if _, err := child.Run(m.ctx, "show-ref", "--verify", "refs/heads/child-from-main"); err != nil {
@@ -127,7 +127,7 @@ func TestRepositoryBranchLabelsReusePickerAndSwitchOnlyTheirRepository(t *testin
 		t.Fatal("status bar reused last child target")
 	}
 	pickBranchAction(t, m, "refs/heads/parent-only")
-	if m.snapshot.Branch != "parent-only" || m.snapshot.RepositoryHistory["child space"].Branch != "child-from-main" {
+	if m.snapshot.Branch != "parent-only" || m.snapshot.RepositoryStates["child space"].Branch != "child-from-main" {
 		t.Fatal("status bar checkout changed child branch")
 	}
 }
@@ -139,7 +139,7 @@ func TestRepositoryBranchPickerProtectsTargetBuffersAndStaleRefs(t *testing.T) {
 	clickRepositoryBranch(t, m, changes, "child space")
 	m.input.SetValue("refs/heads/child-topic")
 	drain(t, m, press(m, "enter"))
-	if m.modal != "refs" || m.busy || m.snapshot.RepositoryHistory["child space"].Branch != "main" {
+	if m.modal != "refs" || m.busy || m.snapshot.RepositoryStates["child space"].Branch != "main" {
 		t.Fatal("branch picker ignored dirty child editor")
 	}
 	press(m, "esc")
@@ -151,21 +151,21 @@ func TestRepositoryBranchPickerProtectsTargetBuffersAndStaleRefs(t *testing.T) {
 		t.Fatal(err)
 	}
 	pickBranchAction(t, m, "refs/heads/child-topic")
-	if m.snapshot.RepositoryHistory["child space"].Branch != "main" || !strings.Contains(m.notice, "reference changed") {
+	if m.snapshot.RepositoryStates["child space"].Branch != "main" || !strings.Contains(m.notice, "reference changed") {
 		t.Fatal("child picker ignored stale ref")
 	}
 	clickRepositoryBranch(t, m, history, "child space")
 	pickBranchAction(t, m, "refs/heads/child-topic")
-	if m.snapshot.RepositoryHistory["child space"].Branch != "child-topic" || !m.document().Dirty() || m.snapshot.Branch != "main" {
+	if m.snapshot.RepositoryStates["child space"].Branch != "child-topic" || !m.document().Dirty() || m.snapshot.Branch != "main" {
 		t.Fatal("unrelated parent edits blocked or were lost during child checkout")
 	}
 }
 
 func TestRepositoryBranchClickTargetsFollowSidebarLayout(t *testing.T) {
 	m, _ := repositoryBranchWorkspace(t)
-	data := m.snapshot.RepositoryHistory["child space"]
+	data := m.snapshot.RepositoryStates["child space"]
 	data.Branch = "a-very-long-branch-name-that-is-truncated"
-	m.snapshot.RepositoryHistory["child space"] = data
+	m.snapshot.RepositoryStates["child space"] = data
 	for _, part := range []section{changes, history} {
 		for _, width := range []int{30, 48, 120} {
 			for _, right := range []bool{false, true} {
@@ -187,7 +187,7 @@ func TestRepositoryBranchClickTargetsFollowSidebarLayout(t *testing.T) {
 	}
 	m.input.SetValue("created-in-parent")
 	drain(t, m, press(m, "enter"))
-	if m.snapshot.Branch != "created-in-parent" || m.snapshot.RepositoryHistory["child space"].Branch != "main" {
+	if m.snapshot.Branch != "created-in-parent" || m.snapshot.RepositoryStates["child space"].Branch != "main" {
 		t.Fatal("global create reused a child repository")
 	}
 }

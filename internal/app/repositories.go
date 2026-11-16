@@ -23,7 +23,11 @@ func (m *Model) repositoryName(path string) string {
 }
 
 func (m *Model) repositoryBranch(path string) string {
-	return m.historyData(path).Branch
+	state := m.repositoryState(path)
+	if state.Detached {
+		return shortOID(state.Head) + " (分离)"
+	}
+	return state.Branch
 }
 
 func (m *Model) changeRepositoryItems() []item {

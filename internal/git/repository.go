@@ -41,23 +41,23 @@ func (c Change) Unstaged() bool { return c.Worktree != ' ' }
 
 type Commit struct{ ID, Short, Subject string }
 type Snapshot struct {
-	NoRepository      bool
-	Branch            string
-	Changes           []Change
-	Commits           []Commit
-	Files             []string
-	Head              string
-	Detached          bool
-	Refs              []Ref
-	Remotes           []Remote
-	Upstream          string
-	Ahead, Behind     int
-	TrackingKnown     bool
-	GitHubURL         string
-	Repositories      []string
-	GitDirectories    []string
-	RepositoryHistory map[string]CommitHistory
-	RepositoryStates  map[string]Snapshot
+	MetadataError    string
+	NoRepository     bool
+	Branch           string
+	Changes          []Change
+	Commits          []Commit
+	Files            []string
+	Head             string
+	Detached         bool
+	Refs             []Ref
+	Remotes          []Remote
+	Upstream         string
+	Ahead, Behind    int
+	TrackingKnown    bool
+	GitHubURL        string
+	Repositories     []string
+	GitDirectories   []string
+	RepositoryStates map[string]Snapshot
 }
 
 // Open resolves repository paths to their root and accepts ordinary folders.
@@ -169,7 +169,6 @@ func (r *Repository) Snapshot(ctx context.Context) (Snapshot, error) {
 	tasks.Go(func() {
 		state, err := r.readChanges(ctx)
 		s.Changes, s.Repositories, s.GitDirectories = state.changes, state.repositories, state.metadata
-		s.RepositoryHistory = state.history
 		s.RepositoryStates = state.states
 		if err == nil {
 			var dirs []string

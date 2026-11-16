@@ -224,7 +224,7 @@ func (m *Model) historyRow(entry item, w int, bg string) (string, string) {
 		}
 	}
 	badges := ""
-	for _, ref := range m.historyData(entry.repository).Refs {
+	for _, ref := range m.repositoryState(entry.repository).Refs {
 		if ref.OID == c.ID {
 			badges += " [" + safe(ref.Name) + "]"
 		}
@@ -241,13 +241,6 @@ func (m *Model) historyRow(entry item, w int, bg string) (string, string) {
 func historyKey(repo, id string) string       { return repositoryPrefix(repo) + id }
 func historyRepositoryKey(repo string) string { return "history:" + repositoryKey(repo) }
 
-func (m *Model) historyData(repo string) gitservice.CommitHistory {
-	if repo == "" {
-		return gitservice.CommitHistory{Branch: m.snapshot.Branch, Commits: m.snapshot.Commits, Refs: m.snapshot.Refs}
-	}
-	return m.snapshot.RepositoryHistory[repo]
-}
-
 func (m *Model) historyRepositoryItems() []item {
 	var result []item
 	for _, repo := range append([]string{""}, m.snapshot.Repositories...) {
@@ -256,11 +249,11 @@ func (m *Model) historyRepositoryItems() []item {
 		if m.changeCollapsed[header.key] {
 			continue
 		}
-		data := m.historyData(repo)
-		if data.Error != "" {
-			result = append(result, item{key: historyRepositoryKey(repo) + ":error", label: data.Error, repository: repo})
+		data := m.repositoryState(repo)
+		if data.MetadataError != "" {
+			result = append(result, item{key: historyRepositoryKey(repo) + ":error", label: data.MetadataError, repository: repo})
 		}
-		if len(data.Commits) == 0 && data.Error == "" {
+		if len(data.Commits) == 0 && data.MetadataError == "" {
 			result = append(result, item{key: historyRepositoryKey(repo) + ":empty", label: "暂无提交", repository: repo})
 		}
 		for i := range data.Commits {

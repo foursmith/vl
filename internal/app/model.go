@@ -167,7 +167,9 @@ type Model struct {
 	hoverX, hoverY          int
 	hoverOnly               bool
 	hoverRender             hoverRenderCache
-	recentSeq               int
+	workspaceSeq            int
+	workspaces              []string
+	workspaceTop            int
 	openingRepository       bool
 	nextRepository          *gitservice.Repository
 }
@@ -195,7 +197,7 @@ func New(ctx context.Context, repo *gitservice.Repository, nerd bool) *Model {
 }
 
 func (m *Model) Init() tea.Cmd {
-	return tea.Batch(m.refresh(), m.tick(), m.startWatcher(), m.probeImages(), tea.Raw(ansi.RequestModeLightDark))
+	return tea.Batch(m.loadWorkspaces(), m.refresh(), m.tick(), m.startWatcher(), m.probeImages(), tea.Raw(ansi.RequestModeLightDark))
 }
 func (m *Model) tick() tea.Cmd {
 	delay := 3 * time.Second
@@ -295,7 +297,7 @@ func (m *Model) moveSelection(delta int) {
 }
 
 func (m *Model) ensureSidebar() {
-	h := max(1, m.bodyHeight()-sidebarHeaderRows)
+	h := max(1, m.bodyHeight()-m.sidebarHeaderRows())
 	if m.selected < m.sideTop {
 		m.sideTop = m.selected
 	}
@@ -306,7 +308,7 @@ func (m *Model) ensureSidebar() {
 }
 
 func (m *Model) clampSidebarScroll() {
-	height := max(1, m.bodyHeight()-sidebarHeaderRows)
+	height := max(1, m.bodyHeight()-m.sidebarHeaderRows())
 	m.sideTop = min(max(0, m.sideTop), max(0, len(m.items)-height))
 }
 
@@ -445,8 +447,23 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		return m, m.terminalColorScheme(false)
 	case uv.LightColorSchemeEvent:
 		return m, m.terminalColorScheme(true)
-	case recentFoldersMsg:
-		m.applyRecentFolders(msg)
+	case workspacesMsg:
+		if msg.seq != m.workspaceSeq {
+			break
+		}
+		if msg.err != nil {
+			if m.modal == "recent" {
+				m.modal = ""
+				m.input.Blur()
+			}
+			m.log("读取最近文件夹失败: " + msg.err.Error())
+		} else {
+			m.workspaces = msg.folders
+			m.resize()
+			if m.modal == "recent" {
+				m.populateRecentFolders()
+			}
+		}
 	case repositoryOpenedMsg:
 		return m, m.finishOpenRepository(msg)
 	case watchReadyMsg:
@@ -648,6 +665,15 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 				}
 				m.choice = min(max(0, len(m.filteredActions())-1), max(0, m.choice+delta))
 			}
+			return m, nil
+		}
+		if m.sidebarAt(msg.X) && msg.Y >= 0 && msg.Y < m.workspaceRows() {
+			if msg.Button == tea.MouseWheelUp {
+				m.workspaceTop--
+			} else if msg.Button == tea.MouseWheelDown {
+				m.workspaceTop++
+			}
+			m.clampWorkspaces()
 			return m, nil
 		}
 		if m.currentImage() != nil && m.imageContentAt(msg.X, msg.Y) {

@@ -52,10 +52,10 @@ func (m *Model) rootButtons(w int) []sidebarButton {
 func (m *Model) sidebarLines() []string { return m.sidebarLinesWidth(m.sideWidth()) }
 
 func (m *Model) hoveredSidebarRow() int {
-	if m.resizingSidebar || m.modal != "" || m.hoverX < 0 || !m.sidebarAt(m.hoverX) || m.hoverY < sidebarHeaderRows || m.hoverY >= m.bodyHeight() {
+	if m.resizingSidebar || m.modal != "" || m.hoverX < 0 || !m.sidebarAt(m.hoverX) || m.hoverY < m.sidebarHeaderRows() || m.hoverY >= m.bodyHeight() {
 		return -1
 	}
-	i := m.sideTop + m.hoverY - sidebarHeaderRows
+	i := m.sideTop + m.hoverY - m.sidebarHeaderRows()
 	if i < 0 || i >= len(m.items) {
 		return -1
 	}
@@ -76,7 +76,7 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 		if active {
 			fg = m.colors.Accent
 		}
-		label := " " + item.glyph + " "
+		label := item.glyph + " "
 		label = ansi.Truncate(label, item.width, "")
 		label += strings.Repeat(" ", max(0, item.width-ansi.StringWidth(label)))
 		nav.WriteString(theme.Style(fg, m.colors.Panel).Render(label))
@@ -100,7 +100,9 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 			root += row("", button.x-ansi.StringWidth(root), m.colors.Foreground, m.colors.Panel) + row(" "+button.glyph, 3, m.colors.Muted, m.colors.Panel)
 		}
 	}
-	lines := []string{row(nav.String(), w, m.colors.Foreground, m.colors.Panel), row(root, w, m.colors.Foreground, m.colors.Panel)}
+	lines := m.workspaceLines(w)
+	lines = append(lines, row(nav.String(), w, m.colors.Foreground, m.colors.Panel))
+	lines = append(lines, row(root, w, m.colors.Foreground, m.colors.Panel))
 	if m.snapshot.NoRepository && (m.section == changes || m.section == history) {
 		for _, text := range []string{"", " 此文件夹尚未初始化 Git 仓库", "", " [初始化 Git 仓库]", " Enter: 初始化"} {
 			lines = append(lines, row(text, w, m.colors.Muted, m.colors.Panel))
@@ -111,8 +113,8 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 		return lines[:h]
 	}
 	hovered := m.hoveredSidebarRow()
-	for y := sidebarHeaderRows; y < h; y++ {
-		i := m.sideTop + y - sidebarHeaderRows
+	for y := m.sidebarHeaderRows(); y < h; y++ {
+		i := m.sideTop + y - m.sidebarHeaderRows()
 		text := ""
 		fg, bg := m.colors.Foreground, m.colors.Panel
 		if i < len(m.items) {
@@ -201,7 +203,7 @@ func (m *Model) explorerRow(entry item, w int, bg string) (string, string) {
 func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 	msg.X -= m.sideX()
 	y := msg.Y
-	if y >= 0 && y < headerHeight {
+	if y >= m.workspaceRows() && y < m.workspaceRows()+headerHeight {
 		for _, item := range m.navigation() {
 			if msg.X >= item.x && msg.X < item.x+item.width {
 				if item.section == search {
@@ -212,11 +214,17 @@ func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 		}
 		return nil
 	}
+	if y >= 0 && y < m.workspaceRows() {
+		if index := m.workspaceTop + y - 1; y > 0 && index < len(m.workspaces) && msg.Button == tea.MouseLeft {
+			return m.openRepository(m.workspaces[index])
+		}
+		return nil
+	}
 	if m.section == search {
 		return m.clickSearch(msg.X, y)
 	}
 	if m.snapshot.NoRepository && (m.section == changes || m.section == history) {
-		if y == sidebarHeaderRows+3 && msg.X >= 1 && msg.X < ansi.StringWidth(" [初始化 Git 仓库]") {
+		if y == m.sidebarHeaderRows()+3 && msg.X >= 1 && msg.X < ansi.StringWidth(" [初始化 Git 仓库]") {
 			return m.initializeRepository()
 		}
 		return nil
@@ -225,7 +233,7 @@ func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 	if !m.sideShown() {
 		w = m.width
 	}
-	if y == sidebarRootRow && m.section == explorer {
+	if y == sidebarRootRow+m.workspaceRows() && m.section == explorer {
 		for _, button := range m.rootButtons(w) {
 			if msg.X >= button.x && msg.X < button.x+3 {
 				switch button.command {
@@ -244,8 +252,8 @@ func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 		m.rebuildItems()
 		return nil
 	}
-	i := m.sideTop + y - sidebarHeaderRows
-	if y < sidebarHeaderRows || i < 0 || i >= len(m.items) {
+	i := m.sideTop + y - m.sidebarHeaderRows()
+	if y < m.sidebarHeaderRows() || i < 0 || i >= len(m.items) {
 		return nil
 	}
 	if m.repositoryBranchAt(m.items[i], msg.X, w) {

@@ -118,9 +118,9 @@ func (m *Model) searchRows() []searchRow {
 }
 func (m *Model) searchResultY() int {
 	if m.search.replace {
-		return 7
+		return 7 + m.workspaceRows()
 	}
-	return 6
+	return 6 + m.workspaceRows()
 }
 func (m *Model) clampSearch() {
 	s := &m.search
@@ -146,7 +146,9 @@ func (m *Model) searchLines(nav string, w int) []string {
 	if s.replace {
 		toggle = " v Replace"
 	}
-	lines := []string{nav, toggle, field(s.query, 0)}
+	lines := m.workspaceLines(w)
+	lines = append(lines, nav)
+	lines = append(lines, toggle, field(s.query, 0))
 	opts := ""
 	for _, control := range s.controls() {
 		fg := m.colors.Muted
@@ -298,14 +300,14 @@ func (m *Model) clickSearch(x, y int) tea.Cmd {
 	s := &m.search
 	m.sidebar = true
 	switch {
-	case y == 1:
+	case y == 1+m.workspaceRows():
 		s.replace = !s.replace
 		if !s.replace && s.focus == 1 {
 			s.focus = 0
 		}
-	case y == 2:
+	case y == 2+m.workspaceRows():
 		s.focus = 0
-	case y == 3:
+	case y == 3+m.workspaceRows():
 		controls := s.controls()
 		i := x / searchOptionWidth
 		if x < 0 || i >= len(controls) {
@@ -313,7 +315,7 @@ func (m *Model) clickSearch(x, y int) tea.Cmd {
 		}
 		*controls[i].enabled = !*controls[i].enabled
 		return m.runSearch()
-	case s.replace && y == 4:
+	case s.replace && y == 4+m.workspaceRows():
 		s.focus = 1
 	case y == m.searchResultY()-2:
 		if s.replace {

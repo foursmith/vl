@@ -4,15 +4,8 @@ import (
 	"path/filepath"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/ourongxing/elegit/internal/config"
 	gitservice "github.com/ourongxing/elegit/internal/git"
 )
-
-type recentFoldersMsg struct {
-	seq     int
-	folders []string
-	err     error
-}
 
 type repositoryOpenedMsg struct {
 	repo *gitservice.Repository
@@ -20,32 +13,15 @@ type repositoryOpenedMsg struct {
 }
 
 func (m *Model) openRecentFolders() tea.Cmd {
-	m.palette = nil
-	m.recentSeq++
-	seq, ctx := m.recentSeq, m.ctx
 	prompt := m.prompt("recent", "最近打开的文件夹", "")
 	m.input.Placeholder = "搜索最近打开的文件夹"
-	return tea.Batch(prompt, func() tea.Msg {
-		folders, err := config.RecentFolders()
-		if ctx.Err() != nil {
-			return nil
-		}
-		return recentFoldersMsg{seq: seq, folders: folders, err: err}
-	})
+	m.populateRecentFolders()
+	return tea.Batch(prompt, m.loadWorkspaces())
 }
 
-func (m *Model) applyRecentFolders(msg recentFoldersMsg) {
-	if msg.seq != m.recentSeq || m.modal != "recent" {
-		return
-	}
-	if msg.err != nil {
-		m.modal = ""
-		m.input.Blur()
-		m.log("读取最近文件夹失败: " + msg.err.Error())
-		return
-	}
+func (m *Model) populateRecentFolders() {
 	m.palette = []action{}
-	for _, folder := range msg.folders {
+	for _, folder := range m.workspaces {
 		m.palette = append(m.palette, action{
 			id: folder, label: filepath.Base(folder) + "  " + folder,
 			run: func() tea.Cmd { return m.openRepository(folder) },

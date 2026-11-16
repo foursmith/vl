@@ -70,9 +70,6 @@ func TestWorkspaceNestedFilesAndOwningRepositories(t *testing.T) {
 	if !summary.Gitlink || !summary.GitlinkDirty || summary.Repository != "" {
 		t.Fatalf("parent summary: %+v", summary)
 	}
-	if s.RepositoryHistory["child space"].Branch != "main" || !strings.Contains(s.RepositoryHistory["child space/nested"].Branch, "(分离)") {
-		t.Fatalf("branches: %+v", s.RepositoryHistory)
-	}
 	if state := s.RepositoryStates["child space"]; state.Branch != "main" || state.Detached || state.Head == "" || len(state.Remotes) == 0 {
 		t.Fatalf("child status metadata: %+v", state)
 	}
@@ -245,7 +242,7 @@ func TestWorkspaceIncludesIndependentCommitHistories(t *testing.T) {
 	run(t, child, "tag", "child-tag")
 	run(t, root, "tag", "root-tag")
 	s := snapshot(t, root)
-	history := s.RepositoryHistory["child space"]
+	history := s.RepositoryStates["child space"]
 	if len(history.Commits) == 0 || history.Commits[0].Subject != "child history change" {
 		t.Fatalf("child history: %+v", history)
 	}
@@ -262,7 +259,7 @@ func TestWorkspaceIncludesIndependentCommitHistories(t *testing.T) {
 	if !seenTag {
 		t.Fatal("child tag missing")
 	}
-	nestedHistory := s.RepositoryHistory["child space/nested"]
+	nestedHistory := s.RepositoryStates["child space/nested"]
 	if len(nestedHistory.Commits) == 0 || nestedHistory.Commits[0].ID != strings.TrimSpace(run(t, nested, "rev-parse", "HEAD")) {
 		t.Fatal("nested history missing")
 	}

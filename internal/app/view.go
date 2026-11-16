@@ -90,6 +90,7 @@ func (m *Model) bodyHeight() int    { return max(1, m.height-1-m.outputHeight())
 func (m *Model) contentHeight() int { return max(1, m.bodyHeight()-editorContentRow) }
 
 func (m *Model) resize() {
+	m.clampWorkspaces()
 	m.hoverOnly = false
 	m.hoverRender = hoverRenderCache{}
 	m.viewport.SetWidth(m.mainWidth())

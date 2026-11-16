@@ -116,10 +116,13 @@ func (m *Model) changeActionRow(entry item, w int, fg, bg string) string {
 }
 
 func (m *Model) hoverHint() string {
+	if index := m.hoveredWorkspace(); index >= 0 {
+		return "切换 Workspace · " + safe(m.workspaces[index])
+	}
 	if m.resizingSidebar || m.sidebarDividerAt(m.hoverX, m.hoverY) {
 		return "拖动调整侧边栏宽度"
 	}
-	if m.modal == "" && m.section == search && m.sidebarAt(m.hoverX) && m.hoverY == 3 {
+	if m.modal == "" && m.section == search && m.sidebarAt(m.hoverX) && m.hoverY == 3+m.workspaceRows() {
 		controls := m.search.controls()
 		i := (m.hoverX - m.sideX()) / searchOptionWidth
 		if i >= 0 && i < len(controls) {

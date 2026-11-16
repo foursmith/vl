@@ -29,7 +29,7 @@ func (m *Model) openBranchPicker(repoPath, mode string) tea.Cmd {
 			action{id: "branch.createFrom", label: m.symbol(symbolAdd) + " 创建新分支依据…", run: func() tea.Cmd { return m.openBranchPicker(repoPath, "base") }},
 			action{id: "branch.detach", label: "签出已分离…", run: func() tea.Cmd { return m.openBranchPicker(repoPath, "detach") }})
 	}
-	for _, ref := range m.historyData(repoPath).Refs {
+	for _, ref := range m.repositoryState(repoPath).Refs {
 		kind, glyph := "分支", m.symbol(symbolBranch)
 		if ref.Kind == gitservice.RemoteBranch {
 			kind, glyph = "远程分支", m.symbol(symbolCloud)

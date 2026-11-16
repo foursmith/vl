@@ -46,6 +46,9 @@ initialization keeps open editor tabs and unsaved edits.
   **File: Open Recent Folder** in the command palette. Successful opens move to
   the front of the searchable list, which keeps the last 20 folders in
   `recent.json` beside `layout.json` in the elegit configuration directory.
+  The same folders appear above the sidebar navigation tabs for direct switching.
+  Names stay compact, duplicate names include a parent directory, and hovering
+  shows the full path. Longer lists scroll independently of the file tree.
   Failed opens preserve the current workspace; unsaved editor changes and
   active Git operations block switching.
 - Open tabs are saved per folder when quitting or switching folders and restored

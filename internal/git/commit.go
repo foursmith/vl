@@ -52,13 +52,6 @@ func (r *Repository) CommitFileDiff(ctx context.Context, id string, c Change) (s
 	return r.Run(ctx, args...)
 }
 
-type CommitHistory struct {
-	Branch  string
-	Commits []Commit
-	Refs    []Ref
-	Error   string
-}
-
 func (r *Repository) readCommits(ctx context.Context) ([]Commit, error) {
 	raw, err := r.Run(ctx, "log", "-100", "-z", "--format=%H%x00%h%x00%s")
 	if err != nil {

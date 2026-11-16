@@ -31,7 +31,7 @@ func TestHistoryGroupsSharedCommitsByRepository(t *testing.T) {
 	t.Setenv("GIT_AUTHOR_DATE", "2026-11-15T12:00:00+08:00")
 	t.Setenv("GIT_COMMITTER_DATE", "2026-11-15T12:00:00+08:00")
 	m, child := childWorkspace(t)
-	shared := strings.TrimSpace(m.snapshot.RepositoryHistory["child space"].Commits[0].ID)
+	shared := strings.TrimSpace(m.snapshot.RepositoryStates["child space"].Commits[0].ID)
 	found := false
 	for _, c := range m.snapshot.Commits {
 		found = found || c.ID == shared
@@ -96,7 +96,7 @@ func TestHistoryChildOnlyCommitDiffAndRefresh(t *testing.T) {
 		t.Fatal(err)
 	}
 	drain(t, m, m.refresh())
-	data := m.snapshot.RepositoryHistory["child space"]
+	data := m.snapshot.RepositoryStates["child space"]
 	if len(data.Commits) == 0 || data.Commits[0].Subject != "child history change" || m.snapshot.Head != rootHead {
 		t.Fatal("child log refresh used parent history")
 	}
@@ -156,7 +156,7 @@ func TestHistoryRepliesWithSameIDStayInTheirRepository(t *testing.T) {
 	t.Cleanup(m.Close)
 	id := strings.Repeat("a", 40)
 	commits := []gitservice.Commit{{ID: id, Subject: "shared"}}
-	m.snapshot = gitservice.Snapshot{Commits: commits, Repositories: []string{"child"}, RepositoryHistory: map[string]gitservice.CommitHistory{"child": {Commits: commits}}}
+	m.snapshot = gitservice.Snapshot{Commits: commits, Repositories: []string{"child"}, RepositoryStates: map[string]gitservice.Snapshot{"child": {Commits: commits}}}
 	m.section = history
 	m.rebuildItems()
 	root := selectHistoryCommit(t, m, "", id)
@@ -199,7 +199,7 @@ func TestHistoryEmptyAndNestedRepositorySections(t *testing.T) {
 	id := strings.Repeat("b", 40)
 	m.snapshot = gitservice.Snapshot{
 		Branch: "main", Repositories: []string{"app", "app/nested"},
-		RepositoryHistory: map[string]gitservice.CommitHistory{"app": {Branch: "dev"}, "app/nested": {Branch: "release", Commits: []gitservice.Commit{{ID: id, Subject: "nested commit"}}}},
+		RepositoryStates: map[string]gitservice.Snapshot{"app": {Branch: "dev"}, "app/nested": {Branch: "release", Commits: []gitservice.Commit{{ID: id, Subject: "nested commit"}}}},
 	}
 	m.section = history
 	m.rebuildItems()
@@ -235,8 +235,8 @@ func TestHistoryCollapsedRepositoryDoesNotOpenLatePreview(t *testing.T) {
 	t.Cleanup(m.Close)
 	id := strings.Repeat("c", 40)
 	m.snapshot = gitservice.Snapshot{
-		Repositories:      []string{"child"},
-		RepositoryHistory: map[string]gitservice.CommitHistory{"child": {Commits: []gitservice.Commit{{ID: id, Subject: "child commit"}}}},
+		Repositories:     []string{"child"},
+		RepositoryStates: map[string]gitservice.Snapshot{"child": {Commits: []gitservice.Commit{{ID: id, Subject: "child commit"}}}},
 	}
 	m.section = history
 	m.rebuildItems()

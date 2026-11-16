@@ -37,7 +37,8 @@ Changes and History share repository headers. History state and asynchronous
 file-list results use repository plus commit ID as their identity, since the same
 commit can appear in more than one repository. Child history files retain workspace
 paths for display and an owning repository for Git queries; branch/tag labels come
-from that repository's refs.
+from that repository's refs. History, branch pickers and status controls read the
+same repository snapshot, including metadata errors, without a separate history map.
 
 ## Dependencies
 
