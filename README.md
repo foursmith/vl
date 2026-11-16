@@ -79,8 +79,10 @@ no Git repository; initialization keeps open editor tabs and unsaved edits.
   context labels; hunk ranges use subdued separators instead of raw patch headers.
 - Stage/unstage a file, stage all, and stage/unstage individual modification
   hunks. Added/deleted/renamed/copied files are staged as a whole.
-- Commit staged changes and inspect the latest 100 commits per repository. History shows branch
-  and tag labels and supports multiple expanded commits, each with its own
+- Commit staged changes and browse repository history, loading older commits
+  automatically as you scroll. History shows branch
+  labels and highlights lightweight and annotated tags before commit titles.
+  It supports multiple expanded commits, each with its own
   collapsible changed-file tree. Select a file for a read-only parent-to-commit
   diff (first parent for merges). Initial commits compare against an empty tree,
   and renames keep their original path.
@@ -157,7 +159,7 @@ no Git repository; initialization keeps open editor tabs and unsaved edits.
   its branch, its own staged/worktree file trees, and refresh,
   commit and stage buttons. Child file paths are relative to that repository.
 - Commit/History uses the same repository sections. Each repository has its own
-  latest 100 commits, branch/tag labels and independently expandable file trees.
+  paged commit history, branch/tag labels and independently expandable file trees.
   Historical file diffs read from that repository, including commits absent from
   the parent's object database. Repository folds are independent between the
   Changes and History pages. Click a repository header's branch name to open

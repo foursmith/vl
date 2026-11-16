@@ -12,7 +12,7 @@ the acceptance scope; unchecked capabilities are not implied by the first build.
 - [x] Unified and paired side-by-side text patches.
 - [x] File stage/unstage and stage all, including unborn repositories.
 - [x] Modification-hunk stage/unstage with stale-diff rejection.
-- [x] Commit staged changes and inspect the latest 100 commits per repository,
+- [x] Commit staged changes and browse commit history with automatic paging per repository,
       with repository sections, independently expandable file trees, repository-scoped
       ref labels and per-file read-only diffs.
 - [x] Local branches: list, create, switch.

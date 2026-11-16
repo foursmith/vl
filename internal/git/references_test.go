@@ -44,12 +44,18 @@ func TestReferenceCheckoutTrackingAndAnnotatedTags(t *testing.T) {
 	run(t, r, "push", "origin", "HEAD:refs/heads/topic")
 	run(t, r, "fetch", "origin")
 	run(t, r, "tag", "-a", "v1", "-m", "release")
+	run(t, r, "tag", "v-light")
 	s, err := r.Snapshot(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if s.Upstream != "origin/main" || !s.TrackingKnown || s.Ahead != 0 || s.Behind != 0 || s.Detached {
 		t.Fatalf("tracking state: %+v", s)
+	}
+	for _, tag := range []string{"v1", "v-light"} {
+		if ref := findRef(t, s, tag, Tag); ref.TargetOID != s.Head {
+			t.Fatalf("tag %s targets %s, want commit %s", tag, ref.TargetOID, s.Head)
+		}
 	}
 	remote := findRef(t, s, "origin/topic", RemoteBranch)
 	if _, err = r.Switch(ctx, remote); err != nil {

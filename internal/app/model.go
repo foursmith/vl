@@ -42,6 +42,7 @@ type item struct {
 	change        *gitservice.Change
 	staged        bool
 	commit        *gitservice.Commit
+	historyPage   *historyPageState
 	historyID     string
 	historyChange *gitservice.Change
 	file          string
@@ -133,6 +134,7 @@ type Model struct {
 	pendingHistory          string
 	historyCommit           string
 	historyStates           map[string]*historyState
+	historyPages            map[string]*historyPageState
 	historySeq              int
 	pendingSession          *config.Session
 	tabs                    []tab
@@ -192,6 +194,7 @@ func New(ctx context.Context, repo *gitservice.Repository, nerd bool) *Model {
 	m.changeCollapsed = map[string]bool{}
 	m.commitDrafts = map[string]string{}
 	m.historyStates = map[string]*historyState{}
+	m.historyPages = map[string]*historyPageState{}
 	m.section = explorer
 	m.selected = -1
 	m.openURL = platform.OpenURL
@@ -382,6 +385,11 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			next = tea.Batch(next, cmd)
 		}
 		m.keepEditedTabs()
+		if !m.hoverOnly {
+			if cmd := m.loadVisibleHistory(); cmd != nil {
+				next = tea.Batch(next, cmd)
+			}
+		}
 		if cmd := m.reloadCleanConflicts(); cmd != nil {
 			if next == nil {
 				next = cmd
@@ -423,6 +431,8 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		return m, cmd
 	}
 	switch msg := msg.(type) {
+	case historyPageMsg:
+		m.applyHistoryPage(msg)
 	case tea.ColorProfileMsg:
 		m.monochrome = msg.Profile <= colorprofile.ASCII
 	case uv.KittyGraphicsEvent:

@@ -39,7 +39,7 @@ func (c Change) Conflicted() bool {
 func (c Change) Staged() bool   { return c.Index != ' ' && c.Index != '?' }
 func (c Change) Unstaged() bool { return c.Worktree != ' ' }
 
-type Commit struct{ ID, Short, Subject string }
+type Commit struct{ ID, Subject string }
 type Snapshot struct {
 	MetadataError    string
 	NoRepository     bool
@@ -206,7 +206,7 @@ func (r *Repository) readMetadata(ctx context.Context, s *Snapshot) error {
 	if s.Branch == "" {
 		s.Branch = "unborn"
 	}
-	s.Commits, err = r.readCommits(ctx)
+	s.Commits, err = r.CommitPage(ctx, "HEAD", 0)
 	if err != nil {
 		return err
 	}

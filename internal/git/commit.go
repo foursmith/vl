@@ -3,6 +3,7 @@ package git
 import (
 	"context"
 	"errors"
+	"strconv"
 	"strings"
 )
 
@@ -52,21 +53,29 @@ func (r *Repository) CommitFileDiff(ctx context.Context, id string, c Change) (s
 	return r.Run(ctx, args...)
 }
 
-func (r *Repository) readCommits(ctx context.Context) ([]Commit, error) {
-	raw, err := r.Run(ctx, "log", "-100", "-z", "--format=%H%x00%h%x00%s")
+const CommitPageSize = 100
+
+// CommitPage keeps subsequent pages anchored to the same history root.
+func (r *Repository) CommitPage(ctx context.Context, revision string, offset int) ([]Commit, error) {
+	if revision != "HEAD" && !validObjectID(revision) || offset < 0 {
+		return nil, errors.New("invalid history page")
+	}
+	raw, err := r.Run(ctx, "log", "--max-count="+strconv.Itoa(CommitPageSize), "--skip="+strconv.Itoa(offset), "-z", "--format=%H%x00%s", revision, "--")
 	if err != nil {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
-		if _, headErr := r.Run(ctx, "rev-parse", "--verify", "HEAD"); headErr == nil {
-			return nil, err
+		if revision == "HEAD" && offset == 0 {
+			if _, headErr := r.Run(ctx, "rev-parse", "--verify", "HEAD"); headErr != nil {
+				return nil, ctx.Err() // Unborn repository, unless the probe was canceled.
+			}
 		}
-		return nil, nil // Unborn repository.
+		return nil, err
 	}
 	fields := strings.Split(raw, "\x00")
 	var commits []Commit
-	for i := 0; i+2 < len(fields); i += 3 {
-		commits = append(commits, Commit{ID: fields[i], Short: fields[i+1], Subject: fields[i+2]})
+	for i := 0; i+1 < len(fields); i += 2 {
+		commits = append(commits, Commit{ID: fields[i], Subject: fields[i+1]})
 	}
 	return commits, nil
 }

@@ -137,6 +137,9 @@ func (m *Model) previewHistoryFirst(id string) tea.Cmd {
 }
 
 func (m *Model) openHistory(entry item) tea.Cmd {
+	if entry.historyPage != nil {
+		return m.loadHistoryPage(entry.historyPage)
+	}
 	if entry.repoHeader {
 		m.changeCollapsed[entry.key] = !m.changeCollapsed[entry.key]
 		m.rebuildItems()
@@ -223,17 +226,24 @@ func (m *Model) historyRow(entry item, w int, bg string) (string, string) {
 			marker = "o"
 		}
 	}
-	badges := ""
+	badges, tags := "", ""
 	for _, ref := range m.repositoryState(entry.repository).Refs {
-		if ref.OID == c.ID {
+		if ref.TargetOID != c.ID {
+			continue
+		}
+		if ref.Kind == gitservice.Tag {
+			tags += theme.Style(m.colors.GitModified, m.colors.Input).Bold(true).Render(" "+safe(ref.Name)+" ") + " "
+		} else {
 			badges += " [" + safe(ref.Name) + "]"
 		}
 	}
 	indent := strings.Repeat("  ", entry.depth)
 	w = max(0, w-len(indent))
-	badgeWidth := min(ansi.StringWidth(badges), max(0, w/2))
-	label := ansi.Truncate(safe(c.Subject), max(0, w-3-badgeWidth), "…")
-	text := theme.Style(m.colors.Accent, bg).Render(marker+" ") + label
+	tagWidth := min(ansi.StringWidth(tags), max(0, w/2))
+	tags = ansi.Truncate(tags, tagWidth, "…")
+	badgeWidth := min(ansi.StringWidth(badges), max(0, (w-tagWidth)/2))
+	label := ansi.Truncate(safe(c.Subject), max(0, w-3-tagWidth-badgeWidth), "…")
+	text := theme.Style(m.colors.Accent, bg).Render(marker+" ") + tags + label
 	text += theme.Style(m.colors.Accent, bg).Render(ansi.Truncate(badges, badgeWidth, "…"))
 	return indent + text, m.colors.Foreground
 }
@@ -256,13 +266,26 @@ func (m *Model) historyRepositoryItems() []item {
 		if len(data.Commits) == 0 && data.MetadataError == "" {
 			result = append(result, item{key: historyRepositoryKey(repo) + ":empty", label: "暂无提交", repository: repo})
 		}
-		for i := range data.Commits {
-			c := &data.Commits[i]
+		commits := data.Commits
+		var page *historyPageState
+		if len(commits) > 0 && data.MetadataError == "" {
+			page = m.historyPage(repo, commits)
+			commits = page.commits
+		}
+		for i := range commits {
+			c := &commits[i]
 			key := historyKey(repo, c.ID)
 			result = append(result, item{label: c.Subject, key: key, commit: c, historyID: key, repository: repo, depth: 1})
 			if m.historyExpanded(key) {
 				result = append(result, m.historyTree(key)...)
 			}
+		}
+		if page != nil && !page.done {
+			label := "加载更多提交…"
+			if page.err != "" {
+				label = "加载失败，Enter 重试: " + page.err
+			}
+			result = append(result, item{key: historyRepositoryKey(repo) + ":more", repository: repo, label: label, historyPage: page})
 		}
 	}
 	return result
@@ -272,6 +295,14 @@ func (m *Model) reconcileHistoryRepositories() {
 	present := map[string]bool{"": true}
 	for _, repo := range m.snapshot.Repositories {
 		present[repo] = true
+	}
+	for repo, page := range m.historyPages {
+		if !present[repo] {
+			if page.cancel != nil {
+				page.cancel()
+			}
+			delete(m.historyPages, repo)
+		}
 	}
 	for key, state := range m.historyStates {
 		if present[state.repository] {

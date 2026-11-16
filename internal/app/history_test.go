@@ -150,3 +150,24 @@ func TestHistoryKeepsMultipleCommitsExpandedWithIndependentLoads(t *testing.T) {
 		t.Fatal("navigation discarded expanded commits")
 	}
 }
+
+func TestHistoryTagBadgesPrecedeLongSubjects(t *testing.T) {
+	m := explorerWorkspace(t)
+	id := strings.Repeat("a", 40)
+	m.snapshot.Refs = []gitservice.Ref{
+		{Name: "main", Kind: gitservice.LocalBranch, OID: id, TargetOID: id},
+		{Name: "v0.2.4", Kind: gitservice.Tag, OID: strings.Repeat("b", 40), TargetOID: id},
+		{Name: "other-tag", Kind: gitservice.Tag, TargetOID: strings.Repeat("c", 40)},
+	}
+	entry := item{commit: &gitservice.Commit{ID: id, Subject: "chore: release with a long subject"}}
+	for _, width := range []int{28, 44, 80} {
+		text, _ := m.historyRow(entry, width, m.colors.Panel)
+		label := plain(text)
+		if !strings.Contains(label, "v0.2.4") || strings.Index(label, "v0.2.4") > strings.Index(label, "chore") || strings.Contains(label, "other-tag") {
+			t.Fatalf("tag missing or misplaced at width %d: %q", width, label)
+		}
+		if ansi.StringWidth(text) > width {
+			t.Fatalf("row exceeds width %d", width)
+		}
+	}
+}

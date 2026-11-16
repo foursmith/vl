@@ -89,3 +89,21 @@ func TestCommitFileDiffMatchesChangesContext(t *testing.T) {
 		t.Fatal("expected two hunks with bounded context")
 	}
 }
+
+func TestCommitPageDistinguishesUnbornAndMissingHistory(t *testing.T) {
+	r := repository(t)
+	ctx := context.Background()
+	if commits, err := r.CommitPage(ctx, "HEAD", 0); err != nil || len(commits) != 0 {
+		t.Fatalf("unborn history: %v %v", commits, err)
+	}
+	if _, err := r.CommitPage(ctx, strings.Repeat("a", 40), CommitPageSize); err == nil {
+		t.Fatal("missing history root was treated as the end of history")
+	}
+	write(t, r, "file.txt", "first\n")
+	run(t, r, "add", ".")
+	run(t, r, "commit", "-m", "first subject")
+	commits, err := r.CommitPage(ctx, "HEAD", 0)
+	if err != nil || len(commits) != 1 || commits[0].Subject != "first subject" || !validObjectID(commits[0].ID) {
+		t.Fatalf("commit record: %+v %v", commits, err)
+	}
+}

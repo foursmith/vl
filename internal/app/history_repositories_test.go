@@ -43,7 +43,7 @@ func TestHistoryGroupsSharedCommitsByRepository(t *testing.T) {
 		repo *gitservice.Repository
 		tag  string
 	}{{m.repo, "parent-only"}, {child, "child-only"}} {
-		if _, err := target.repo.Run(m.ctx, "tag", target.tag, shared); err != nil {
+		if _, err := target.repo.Run(m.ctx, "tag", "-a", target.tag, "-m", "release", shared); err != nil {
 			t.Fatal(err)
 		}
 	}

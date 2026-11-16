@@ -18,9 +18,9 @@ const (
 )
 
 type Ref struct {
-	Name, FullName, OID string
-	Kind                RefKind
-	Current             bool
+	Name, FullName, OID, TargetOID string
+	Kind                           RefKind
+	Current                        bool
 }
 type Remote struct{ Name, URL string }
 
@@ -69,17 +69,17 @@ func (r *Repository) readReferenceState(ctx context.Context, s *Snapshot) error 
 }
 
 func (r *Repository) readRefs(ctx context.Context, s *Snapshot) (string, error) {
-	raw, err := r.Run(ctx, "for-each-ref", "--sort=-committerdate", "--format=%(refname)%00%(objectname)%00%(HEAD)%00%(symref)%00%(upstream:short)%00%(upstream:remotename)", "refs/heads/", "refs/remotes/", "refs/tags/")
+	raw, err := r.Run(ctx, "for-each-ref", "--sort=-committerdate", "--format=%(refname)%00%(objectname)%00%(HEAD)%00%(symref)%00%(upstream:short)%00%(upstream:remotename)%00%(*objectname)", "refs/heads/", "refs/remotes/", "refs/tags/")
 	if err != nil {
 		return "", err
 	}
 	upstreamRemote := ""
 	for _, line := range strings.Split(strings.TrimSuffix(raw, "\n"), "\n") {
 		fields := strings.Split(line, "\x00")
-		if len(fields) != 6 || fields[3] != "" {
+		if len(fields) != 7 || fields[3] != "" {
 			continue
 		}
-		ref := Ref{FullName: fields[0], OID: fields[1], Current: fields[2] == "*"}
+		ref := Ref{FullName: fields[0], OID: fields[1], TargetOID: fields[1], Current: fields[2] == "*"}
 		switch {
 		case strings.HasPrefix(ref.FullName, "refs/heads/"):
 			ref.Kind = LocalBranch
@@ -90,6 +90,10 @@ func (r *Repository) readRefs(ctx context.Context, s *Snapshot) (string, error) 
 		case strings.HasPrefix(ref.FullName, "refs/tags/"):
 			ref.Kind = Tag
 			ref.Name = strings.TrimPrefix(ref.FullName, "refs/tags/")
+			// Annotated refs point at a tag object; history matches its peeled target.
+			if fields[6] != "" {
+				ref.TargetOID = fields[6]
+			}
 		default:
 			continue
 		}
