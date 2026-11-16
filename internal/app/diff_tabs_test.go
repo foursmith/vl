@@ -270,3 +270,51 @@ func TestRemovedHistoryRepositoryClosesItsTabsAndKeepsOtherReview(t *testing.T) 
 		}
 	}
 }
+
+func TestEmptyDiffClosesOnlyItsOwnTab(t *testing.T) {
+	for _, active := range []bool{false, true} {
+		t.Run(fmt.Sprint(active), func(t *testing.T) {
+			m := tabWorkspace(t, 1)
+			defer m.Close()
+			m.openFile("file0.go")
+			doc := m.document()
+			drain(t, m, m.requestDiff(diffTarget{path: "file0.go"}, func(context.Context) (string, error) { return diffTabText("review"), nil }))
+			d := m.diffState
+			if !active {
+				m.activateTab(0)
+			}
+			d.read = func(context.Context) (string, error) { return "", nil }
+			drain(t, m, m.refreshDiffs())
+			if len(m.tabs) != 1 || m.document() != doc || m.diffOpen || d.diffOpen {
+				t.Fatal("empty diff did not close safely or left the wrong tab bound")
+			}
+			// A late reply cannot reopen the removed review.
+			m.finishDiff(diffMsg{target: d, seq: d.diffSeq, raw: diffTabText("late")})
+			if len(m.tabs) != 1 || m.document() != doc {
+				t.Fatal("closed diff reply changed the active document")
+			}
+		})
+	}
+}
+
+func TestEmptyInitialDiffClosesButErrorsAndMetadataStayOpen(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	defer m.Close()
+	drain(t, m, m.requestDiff(diffTarget{path: "empty"}, func(context.Context) (string, error) { return "", nil }))
+	if len(m.tabs) != 0 || m.activeTab != -1 || m.diffOpen || !m.welcomeVisible() {
+		t.Fatal("initial empty diff left a blank tab")
+	}
+	drain(t, m, m.requestDiff(diffTarget{path: "error"}, func(context.Context) (string, error) { return "", fmt.Errorf("read failed") }))
+	if len(m.tabs) != 1 {
+		t.Fatal("read failure closed the tab")
+	}
+	for i, raw := range []string{
+		"diff --git a/file b/file\nold mode 100644\nnew mode 100755\n",
+		"diff --git a/file b/file\nBinary files a/file and b/file differ\n",
+	} {
+		drain(t, m, m.requestDiff(diffTarget{path: fmt.Sprint(i)}, func(context.Context) (string, error) { return raw, nil }))
+	}
+	if len(m.tabs) != 3 {
+		t.Fatal("non-text changes were treated as empty")
+	}
+}

@@ -63,14 +63,18 @@ func TestConfirmationLongUnicodeTargetCanBeReadBeforeConfirming(t *testing.T) {
 					t.Fatal("wrapped Unicode dialog escaped terminal width")
 				}
 			}
-			for i, line := range l.content[:min(l.page, len(l.content))] {
+			padding := 0
+			if m.height >= 10 {
+				padding = 1
+			}
+			for i, line := range l.content[padding:min(padding+l.page, len(l.content))] {
 				if l.top+i >= readLines {
 					seen.WriteString(strings.TrimSpace(plain(line)))
 					readLines++
 				}
 			}
-			if !strings.Contains(plain(strings.Join(l.content, "\n")), "Esc") {
-				t.Fatal("scrolling hid the cancellation hint")
+			if !strings.Contains(plain(strings.Join(l.content, "\n")), "取消") {
+				t.Fatal("scrolling hid the cancel button")
 			}
 			if l.top == l.maxTop {
 				break
@@ -99,18 +103,62 @@ func TestWrappedUnsavedDialogButtonsMatchTheirVisiblePosition(t *testing.T) {
 	m.closeTab()
 	m.modalTitle = "Save changes to a/very/long/目录/important-file.go?"
 	l := m.dialogLayout()
-	if !strings.Contains(plain(l.content[len(l.content)-1]), "Cancel") {
+	if !strings.Contains(plain(l.content[len(l.content)-1]), "取消") {
 		t.Fatal("narrow dialog clipped an action")
 	}
-	m.clickModal(tea.MouseClickMsg{X: l.x + 1 + 17, Y: l.y + len(l.content), Button: tea.MouseLeft})
+	button := l.buttons[2]
+	m.clickModal(tea.MouseClickMsg{X: l.x + button.x, Y: l.y + button.y, Button: tea.MouseLeft})
 	if m.modal != "" || m.document() == nil || !m.document().Dirty() {
 		t.Fatal("visible cancel button discarded or closed the document")
 	}
 	m.closeTab()
 	m.modalTitle = "Save changes to a/very/long/目录/important-file.go?"
 	l = m.dialogLayout()
-	m.clickModal(tea.MouseClickMsg{X: l.x + 1 + 8, Y: l.y + len(l.content), Button: tea.MouseLeft})
+	button = l.buttons[1]
+	m.clickModal(tea.MouseClickMsg{X: l.x + button.x, Y: l.y + button.y, Button: tea.MouseLeft})
 	if m.modal != "" || len(m.tabs) != 0 {
 		t.Fatal("visible discard button did not close the dirty document")
+	}
+}
+
+func TestConfirmationButtonsNavigateAndPreserveCloseChoices(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	defer m.Close()
+	confirmed := false
+	m.ask("Continue?", func() tea.Cmd { confirmed = true; return nil })
+	m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	press(m, "enter")
+	if confirmed || m.modal != "" {
+		t.Fatal("confirmation cancel button did not cancel")
+	}
+	m.ask("Continue?", func() tea.Cmd { confirmed = true; return nil })
+	press(m, "enter")
+	if !confirmed || m.modal != "" {
+		t.Fatal("confirmation button did not run action")
+	}
+	for i := range 2 {
+		confirmed = false
+		m.ask("删除文件 file.txt？", func() tea.Cmd { confirmed = true; return nil })
+		m.confirmationLabel = "删除"
+		l := m.dialogLayout()
+		button := l.buttons[i]
+		m.clickModal(tea.MouseClickMsg{X: l.x + button.x, Y: l.y + button.y, Button: tea.MouseLeft})
+		if confirmed != (i == 0) || m.modal != "" {
+			t.Fatal("confirmation button hit target differs from rendered position")
+		}
+	}
+	m.openFile("file0.go")
+	m.document().Insert("unsaved")
+	m.closeTab()
+	m.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
+	press(m, "enter")
+	if m.modal != "" || m.document() == nil || !m.document().Dirty() {
+		t.Fatal("close cancel did not preserve document")
+	}
+	m.closeTab()
+	m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	press(m, "enter")
+	if m.modal != "" || len(m.tabs) != 0 {
+		t.Fatal("close discard button did not discard")
 	}
 }

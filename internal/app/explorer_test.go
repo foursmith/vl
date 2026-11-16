@@ -107,3 +107,68 @@ func TestExplorerStatusAggregationKeepsConflictPriority(t *testing.T) {
 		t.Fatalf("status aggregation lost severity: %+v", rows)
 	}
 }
+
+func TestExplorerDeleteConfirmsCancelsAndRefreshes(t *testing.T) {
+	m := explorerWorkspace(t)
+	defer m.Close()
+	for i, entry := range m.items {
+		if entry.file == "README.md" {
+			m.selected = i
+		}
+	}
+	path := filepath.Join(m.repo.Root, "README.md")
+	m.Update(tea.KeyPressMsg{Code: tea.KeyDelete})
+	if m.modal != "confirm" {
+		t.Fatal("delete did not ask for confirmation")
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Fatal("file removed before confirmation")
+	}
+	press(m, "esc")
+	if _, err := os.Stat(path); err != nil {
+		t.Fatal("cancel removed file")
+	}
+	m.Update(tea.KeyPressMsg{Code: tea.KeyDelete})
+	drain(t, m, press(m, "enter"))
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("file still exists: %v", err)
+	}
+	for _, entry := range m.items {
+		if entry.file == "README.md" {
+			t.Fatal("deleted file remains in explorer")
+		}
+	}
+}
+
+func TestExplorerDeleteProtectsDirtyFilesAndOtherSections(t *testing.T) {
+	m := explorerWorkspace(t)
+	defer m.Close()
+	m.openFile("README.md")
+	for i, entry := range m.items {
+		if entry.file == "README.md" {
+			m.selected = i
+		}
+	}
+	m.sidebar = true
+	m.document().Insert("unsaved")
+	m.Update(tea.KeyPressMsg{Code: tea.KeyDelete})
+	if m.modal != "" || !strings.Contains(m.notice, "未保存") {
+		t.Fatal("dirty file deletion was allowed")
+	}
+	m.document().Undo()
+	m.Update(tea.KeyPressMsg{Code: tea.KeyDelete})
+	if m.modal != "confirm" {
+		t.Fatal("clean file could not be deleted")
+	}
+	m.document().Insert("changed while confirming")
+	drain(t, m, press(m, "enter"))
+	if _, err := os.Stat(filepath.Join(m.repo.Root, "README.md")); err != nil {
+		t.Fatal("confirmation did not recheck dirty buffer")
+	}
+	drain(t, m, m.selectSection(changes))
+	m.selected = len(m.items) - 1
+	m.Update(tea.KeyPressMsg{Code: tea.KeyDelete})
+	if m.modal != "" || m.busy {
+		t.Fatal("delete applied outside explorer")
+	}
+}

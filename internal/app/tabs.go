@@ -185,6 +185,7 @@ func (m *Model) advanceClose() tea.Cmd {
 		if d.Dirty() {
 			m.modal = "close"
 			m.dialogTop = 0
+			m.confirmationButton = 0
 			path, err := filepath.Rel(m.repo.Root, d.Path)
 			if err != nil {
 				path = d.Path
@@ -442,25 +443,18 @@ func (m *Model) clickModal(msg tea.MouseClickMsg) tea.Cmd {
 	if m.isPicker() {
 		return m.clickPicker(msg)
 	}
-	if m.modal != "close" {
-		return m.updateModal(tea.KeyPressMsg{Code: tea.KeyEscape})
-	}
-	if msg.Button != tea.MouseLeft {
-		return m.chooseClose("cancel")
-	}
-	l := m.dialogLayout()
-	if msg.Y != l.y+len(l.content) || msg.X <= l.x || msg.X >= l.x+l.width-1 {
-		return m.chooseClose("cancel")
-	}
-	column := msg.X - l.x - 1
-	for _, action := range closeActions {
-		width := ansi.StringWidth(action.label)
-		if column < width {
-			return m.chooseClose(action.choice)
+	if m.confirmationDialog() {
+		l := m.dialogLayout()
+		if msg.Button == tea.MouseLeft {
+			for i, button := range l.buttons {
+				if msg.Y == l.y+button.y && msg.X >= l.x+button.x && msg.X < l.x+button.x+button.width {
+					m.confirmationButton = i
+					return m.chooseConfirmation()
+				}
+			}
 		}
-		column -= width
 	}
-	return m.chooseClose("cancel")
+	return m.updateModal(tea.KeyPressMsg{Code: tea.KeyEscape})
 }
 
 func (m *Model) fileDirty(path string) bool {

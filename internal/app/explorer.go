@@ -119,3 +119,39 @@ func (m *Model) createEntry(path string, directory bool) tea.Cmd {
 	}
 	return m.refresh()
 }
+
+func (m *Model) selectedDeletePath() string {
+	entry := m.current()
+	if m.section != explorer || entry == nil {
+		return ""
+	}
+	return entry.file
+}
+
+func (m *Model) deleteSelectedFile() tea.Cmd {
+	path := m.selectedDeletePath()
+	if path == "" {
+		return nil
+	}
+	if m.busy {
+		m.notice = "等待当前操作完成"
+		return nil
+	}
+	if m.fileDirty(path) {
+		m.notice = "先保存或关闭此文件的未保存更改"
+		return nil
+	}
+	root := m.repo.Root
+	cmd := m.ask("删除文件 "+path+"？", func() tea.Cmd {
+		if m.repo.Root != root || m.busy || m.fileDirty(path) {
+			m.notice = "文件状态已更改，请重新操作"
+			return nil
+		}
+		return m.startOperation("Delete file", func() (string, error) {
+			return "", files.Delete(root, path)
+		})
+	})
+	m.confirmationDetail = "将从磁盘永久删除文件，未提交的内容无法通过 Git 恢复。"
+	m.confirmationLabel = "删除"
+	return cmd
+}

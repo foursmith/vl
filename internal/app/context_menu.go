@@ -217,6 +217,9 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 			}
 		}
 		if entry != nil {
+			if m.selectedDeletePath() != "" {
+				add("删除文件…", "Del", bind(m.deleteSelectedFile))
+			}
 			path := entry.file
 			if path == "" {
 				path = entry.folder

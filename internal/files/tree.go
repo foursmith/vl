@@ -75,38 +75,59 @@ func ReadTree(ctx context.Context, root string, expanded map[string]bool) ([]Ent
 	return result, err
 }
 
-func Create(root, path string, directory bool) error {
+// entryPath rejects workspace roots, escapes and Git metadata before any mutation.
+func entryPath(path string) (string, error) {
 	clean := filepath.Clean(path)
-	if filepath.IsAbs(clean) || clean == "." || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
-		return fmt.Errorf("enter a path inside the workspace")
+	if !filepath.IsLocal(clean) || clean == "." {
+		return "", fmt.Errorf("enter a path inside the workspace")
 	}
 	for _, part := range strings.Split(filepath.ToSlash(clean), "/") {
 		if part == ".git" {
-			return fmt.Errorf("cannot create entries in Git metadata")
+			return "", fmt.Errorf("cannot modify Git metadata")
 		}
 	}
-	target := filepath.Join(root, clean)
-	parent := filepath.Dir(target)
-	realParent, err := filepath.EvalSymlinks(parent)
+	return clean, nil
+}
+
+func Create(root, path string, directory bool) error {
+	clean, err := entryPath(path)
 	if err != nil {
 		return err
 	}
-	realRoot, err := filepath.EvalSymlinks(root)
+	dir, err := os.OpenRoot(root)
 	if err != nil {
 		return err
 	}
-	rel, err := filepath.Rel(realRoot, realParent)
-	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return fmt.Errorf("parent folder is outside the workspace")
-	}
+	defer dir.Close()
 	if directory {
-		return os.Mkdir(target, 0755)
+		return dir.Mkdir(clean, 0755)
 	}
-	f, err := os.OpenFile(target, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
+	f, err := dir.OpenFile(clean, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
 	return f.Close()
+}
+
+// Delete removes a single file or symlink, without following it or leaving root.
+func Delete(root, path string) error {
+	clean, err := entryPath(path)
+	if err != nil {
+		return err
+	}
+	dir, err := os.OpenRoot(root)
+	if err != nil {
+		return err
+	}
+	defer dir.Close()
+	info, err := dir.Lstat(clean)
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return fmt.Errorf("select a file, not a folder")
+	}
+	return dir.Remove(clean)
 }
 
 // List enumerates regular folder files without following symlinks or Git metadata.

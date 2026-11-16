@@ -115,3 +115,30 @@ func TestListFolderExcludesMetadataAndSymlinks(t *testing.T) {
 		t.Fatal("cancelled listing succeeded")
 	}
 }
+
+func TestDeleteOnlyRemovesWorkspaceFiles(t *testing.T) {
+	root, outside := t.TempDir(), t.TempDir()
+	os.Mkdir(filepath.Join(root, "folder"), 0755)
+	os.Mkdir(filepath.Join(root, ".git"), 0755)
+	os.WriteFile(filepath.Join(root, ".git/config"), nil, 0644)
+	os.WriteFile(filepath.Join(outside, "keep"), nil, 0644)
+	os.Symlink(outside, filepath.Join(root, "link"))
+	for _, path := range []string{".", "../keep", outside, ".git/config", "folder", "link/keep"} {
+		if err := Delete(root, path); err == nil {
+			t.Fatalf("accepted deletion of %q", path)
+		}
+	}
+	if err := Delete(root, "link"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(outside, "keep")); err != nil {
+		t.Fatal("deleted symlink target")
+	}
+	os.WriteFile(filepath.Join(root, "file"), nil, 0644)
+	if err := Delete(root, "file"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "file")); !os.IsNotExist(err) {
+		t.Fatalf("file was not removed: %v", err)
+	}
+}

@@ -196,6 +196,8 @@ buttons or **S / D / Esc**. File mutations and Git operations run only when requ
 the view does not stage, commit, fetch, or change branches.
 Confirmation dialogs wrap long paths; when the message exceeds the screen, use
 **Up/Down**, **Page Up/Down**, or **Home/End** to read it. The actions stay visible.
+Use **Left/Right** or **Tab/Shift+Tab** to select a button, **Enter/Space** to activate it,
+and **Esc** to cancel. Empty diff tabs close automatically when their changes disappear.
 With `NO_COLOR` set to a nonempty value, lists mark the focused row with `>`;
 the active navigation section and editor tab use underlining.
 
@@ -218,6 +220,7 @@ the active navigation section and editor tab use underlining.
 | Global | Ctrl+Q | Quit, with unsaved-changes confirmation |
 | Sidebar | Up/Down or K/J | Select entry |
 | Sidebar | Enter or Right | Open file/diff, toggle folder, or switch branch |
+| Explorer | Del | Delete selected file from disk, with confirmation |
 | Changes | E | Edit selected file |
 | Changes | Space | Toggle file staging |
 | Changes | S / U / A / C | Stage / unstage / stage all / commit |

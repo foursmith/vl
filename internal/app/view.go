@@ -524,11 +524,15 @@ func (m *Model) overlay(base []string) []string {
 	l := m.dialogLayout()
 	w := l.width
 	border := theme.Style(m.colors.Border, m.colors.Popup)
-	box := []string{border.Render("┌" + strings.Repeat("─", w-2) + "┐")}
+	tl, tr, bl, br := "┌", "┐", "└", "┘"
+	if m.confirmationDialog() {
+		tl, tr, bl, br = "╭", "╮", "╰", "╯"
+	}
+	box := []string{border.Render(tl + strings.Repeat("─", w-2) + tr)}
 	for _, s := range l.content {
 		box = append(box, border.Render("│")+s+border.Render("│"))
 	}
-	box = append(box, border.Render("└"+strings.Repeat("─", w-2)+"┘"))
+	box = append(box, border.Render(bl+strings.Repeat("─", w-2)+br))
 	return m.composeOverlay(base, box, l.x, l.y)
 }
 

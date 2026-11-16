@@ -176,14 +176,23 @@ func (m *Model) finishDiff(msg diffMsg) tea.Cmd {
 	if d == nil || !d.diffOpen || msg.seq != d.diffSeq {
 		return nil
 	}
-	bound := m.diffState
-	m.diffState = d
-	defer func() { m.diffState = bound }()
 	d.diffLoading = false
 	if msg.err != nil {
 		m.log(msg.err.Error())
 		return nil
 	}
+	if msg.raw == "" {
+		for i, t := range m.tabs {
+			if t.diff == d {
+				m.removeTabAt(i)
+				break
+			}
+		}
+		return nil
+	}
+	bound := m.diffState
+	m.diffState = d
+	defer func() { m.diffState = bound }()
 	if msg.raw != d.patch.Raw {
 		d.patch = diff.Parse(msg.raw)
 		d.diffLayout = diffLayoutKey{}

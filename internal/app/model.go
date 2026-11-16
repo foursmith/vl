@@ -152,6 +152,8 @@ type Model struct {
 	pickerList              list.Model
 	confirm                 func() tea.Cmd
 	confirmationDetail      string
+	confirmationLabel       string
+	confirmationButton      int
 	dialogTop               int
 	find                    string
 	expanded                map[string]bool
@@ -826,6 +828,8 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	}
 	if m.sidebar {
 		switch k {
+		case "delete":
+			return m.deleteSelectedFile()
 		case "up", "k":
 			m.moveSelection(-1)
 			return m.preview()

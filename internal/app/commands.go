@@ -175,15 +175,30 @@ func (m *Model) resizeInput() {
 func (m *Model) ask(title string, run func() tea.Cmd) tea.Cmd {
 	m.confirm = run
 	m.confirmationDetail = ""
+	m.confirmationLabel = "确认"
+	m.confirmationButton = 0
 	return m.prompt("confirm", title, "")
 }
 
 func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 	k := msg.String()
+	if m.confirmationDialog() {
+		count := len(m.confirmationActions())
+		switch k {
+		case "right", "tab":
+			m.confirmationButton = (m.confirmationButton + 1) % count
+			return nil
+		case "left", "shift+tab":
+			m.confirmationButton = (m.confirmationButton + count - 1) % count
+			return nil
+		case "enter", "space":
+			return m.chooseConfirmation()
+		}
+	}
 	if m.isPicker() {
 		m.syncPickerList()
 	}
-	if m.modal == "confirm" || m.modal == "close" {
+	if m.confirmationDialog() {
 		l := m.dialogLayout()
 		top := l.top
 		switch k {
@@ -215,7 +230,7 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 	}
 	if m.modal == "close" {
 		switch k {
-		case "s", "enter":
+		case "s":
 			return m.chooseClose("save")
 		case "d":
 			return m.chooseClose("discard")
@@ -246,12 +261,6 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 		m.modal = ""
 		m.input.Blur()
 		switch kind {
-		case "confirm":
-			run := m.confirm
-			m.confirm = nil
-			if run != nil {
-				return run()
-			}
 		case "commit":
 			if value != "" {
 				target := m.commitRepository
