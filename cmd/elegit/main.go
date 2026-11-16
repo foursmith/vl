@@ -19,7 +19,7 @@ func main() {
 	colorTheme := flag.String("theme", "", "color theme: auto, light or dark (default: follow terminal, or saved preference)")
 	version := flag.Bool("version", false, "print version")
 	flag.Usage = func() {
-		fmt.Fprintln(flag.CommandLine.Output(), "Usage: elegit [options] [repository]\n\nA Git workbench with diff review and basic text editing.")
+		fmt.Fprintln(flag.CommandLine.Output(), "Usage: elegit [options] [folder]\n\nA Git workbench with diff review and basic text editing.")
 		flag.PrintDefaults()
 	}
 	flag.Parse()

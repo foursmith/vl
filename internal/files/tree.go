@@ -108,3 +108,31 @@ func Create(root, path string, directory bool) error {
 	}
 	return f.Close()
 }
+
+// List enumerates regular folder files without following symlinks or Git metadata.
+func List(ctx context.Context, root string) ([]string, error) {
+	var paths []string
+	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err != nil {
+			return err
+		}
+		if entry.Name() == ".git" {
+			if entry.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if entry.Type().IsRegular() {
+			rel, err := filepath.Rel(root, path)
+			if err != nil {
+				return err
+			}
+			paths = append(paths, filepath.ToSlash(rel))
+		}
+		return nil
+	})
+	return paths, err
+}

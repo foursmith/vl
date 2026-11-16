@@ -12,7 +12,7 @@ type statusSegment struct {
 	x, width        int
 }
 
-func (m *Model) statusLayout() []statusSegment {
+func (m *Model) gitStatusSegments() []statusSegment {
 	target := m.statusRepository()
 	state := m.repositoryState(target)
 	branch := state.Branch
@@ -73,6 +73,14 @@ func (m *Model) statusLayout() []statusSegment {
 	if conflicts > 0 {
 		left[3].text = fmt.Sprintf("%s %d", m.symbol(symbolWarning), conflicts)
 		left[3].color = m.colors.Deleted
+	}
+	return left
+}
+
+func (m *Model) statusLayout() []statusSegment {
+	left := []statusSegment{{id: "init", text: "初始化 Git 仓库", color: m.colors.Muted}}
+	if !m.snapshot.NoRepository {
+		left = m.gitStatusSegments()
 	}
 	var result []statusSegment
 	x := 0
@@ -143,6 +151,8 @@ func (m *Model) clickStatus(x int) tea.Cmd {
 			continue
 		}
 		switch segment.id {
+		case "init":
+			return m.initializeRepository()
 		case "branch":
 			return m.openBranchPicker(m.statusRepository(), "")
 		case "sync":

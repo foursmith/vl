@@ -23,7 +23,7 @@ terminal password prompts are disabled.
 
 ```sh
 make build
-bin/elegit /path/to/repository
+bin/elegit /path/to/folder
 
 # Override automatic theme detection (also available via F1 → Preferences: Color Theme):
 bin/elegit -theme light /path/to/repository
@@ -32,16 +32,19 @@ bin/elegit -theme light /path/to/repository
 bin/elegit -icons=false /path/to/repository
 ```
 
-With no path, elegit opens the repository containing the current directory.
-Subdirectories and file paths resolve to their enclosing repository.
+With no path, elegit opens the current directory or its enclosing repository.
+Subdirectories and file paths inside a repository resolve to its root. Ordinary
+folders support file browsing, quick open, text search, and editing. Changes and
+History offer **Initialize Repository** when the folder has no Git repository;
+initialization keeps open editor tabs and unsaved edits.
 
 ## Available now
 
 - Centered block-letter welcome screen with clickable command, file-search, and Source
   Control shortcuts; compact branding on small terminals.
-- Open elegit's recent repositories with `Ctrl+R`, the welcome page, or
+- Open elegit's recent folders with `Ctrl+R`, the welcome page, or
   **File: Open Recent Folder** in the command palette. Successful opens move to
-  the front of the searchable list, which keeps the last 20 repositories in
+  the front of the searchable list, which keeps the last 20 folders in
   `recent.json` beside `layout.json` in the elegit configuration directory.
   Failed opens preserve the current workspace; unsaved editor changes and
   active Git operations block switching.

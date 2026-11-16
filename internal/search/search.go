@@ -14,6 +14,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/ourongxing/elegit/internal/files"
 	gitservice "github.com/ourongxing/elegit/internal/git"
 )
 
@@ -120,7 +121,11 @@ func Run(ctx context.Context, root string, o Options, buffers map[string]string)
 			relative = append(relative, rel)
 		}
 		var err error
-		ignored, err = (&gitservice.Repository{Root: root}).Ignored(ctx, relative)
+		repo, openErr := gitservice.Open(ctx, root)
+		if openErr != nil {
+			return result, openErr
+		}
+		ignored, err = repo.Ignored(ctx, relative)
 		if err != nil {
 			return result, fmt.Errorf("check search buffer ignore rules: %w", err)
 		}
@@ -187,6 +192,17 @@ func listFiles(ctx context.Context, root string, includeIgnored bool, paths, see
 		return nil
 	}
 	seen[root] = true
+	repo, err := gitservice.Open(ctx, root)
+	if err != nil {
+		return err
+	}
+	if !repo.HasRepository() {
+		listed, err := files.List(ctx, root)
+		for _, path := range listed {
+			paths[filepath.Join(root, path)] = true
+		}
+		return err
+	}
 	args := []string{"-C", root, "ls-files", "-z", "--cached", "--others"}
 	if !includeIgnored {
 		args = append(args, "--exclude-standard")

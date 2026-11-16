@@ -38,7 +38,7 @@ func (m *Model) actions() []action {
 	if m.repositoryState(m.statusRepository()).GitHubURL == "" {
 		githubReason = "没有找到 github.com 远程仓库"
 	}
-	return []action{
+	actions := []action{
 		{"folder.openRecent", "File: Open Recent Folder", "Ctrl+R", "", m.openRecentFolders},
 		{"theme.auto", "Preferences: Color Theme — Auto (Follow Terminal)", "", "", func() tea.Cmd { return m.SetThemeMode("auto") }},
 		{"theme.light", "Preferences: Color Theme — Light Modern", "", "", func() tea.Cmd { return m.SetThemeMode("light") }},
@@ -88,6 +88,25 @@ func (m *Model) actions() []action {
 		{"edit.find", "Find: Search Current View", "Ctrl+F", "", func() tea.Cmd { return m.prompt("find", "Find in current view", m.find) }},
 		{"app.quit", "Quit", "Ctrl+Q", "", m.quit},
 	}
+	if m.snapshot.NoRepository {
+		for i := range actions {
+			if strings.HasPrefix(actions[i].id, "git.") || actions[i].id == "github.open" {
+				actions[i].disabled = "此文件夹尚未初始化 Git 仓库"
+			}
+		}
+		actions = append(actions, action{id: "git.init", label: "Git: Initialize Repository", run: m.initializeRepository})
+	}
+	return actions
+}
+
+func (m *Model) initializeRepository() tea.Cmd {
+	if !m.snapshot.NoRepository {
+		return nil
+	}
+	if m.repo.HasRepository() {
+		return m.refresh()
+	}
+	return m.startOperation("Initialize repository", func() (string, error) { return m.repo.Run(m.ctx, "init") })
 }
 
 func (m *Model) LastCommand() string      { return m.lastCommand }
@@ -258,6 +277,14 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 }
 
 func (m *Model) operation(title string, run func() (string, error)) tea.Cmd {
+	if m.snapshot.NoRepository {
+		m.notice = "此文件夹尚未初始化 Git 仓库"
+		return nil
+	}
+	return m.startOperation(title, run)
+}
+
+func (m *Model) startOperation(title string, run func() (string, error)) tea.Cmd {
 	if m.busy {
 		m.notice = "Wait for the current Git operation"
 		return nil

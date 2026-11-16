@@ -11,9 +11,18 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/ourongxing/elegit/internal/files"
 )
 
 type Repository struct{ Root string }
+
+// HasRepository checks the workspace itself, including initialization performed
+// outside Elegit after an ordinary folder was opened.
+func (r *Repository) HasRepository() bool {
+	_, err := os.Lstat(filepath.Join(r.Root, ".git"))
+	return !os.IsNotExist(err)
+}
 
 type Change struct {
 	Path, Original  string
@@ -32,6 +41,7 @@ func (c Change) Unstaged() bool { return c.Worktree != ' ' }
 
 type Commit struct{ ID, Short, Subject string }
 type Snapshot struct {
+	NoRepository      bool
 	Branch            string
 	Changes           []Change
 	Commits           []Commit
@@ -50,23 +60,42 @@ type Snapshot struct {
 	RepositoryStates  map[string]Snapshot
 }
 
+// Open resolves repository paths to their root and accepts ordinary folders.
 func Open(ctx context.Context, path string) (*Repository, error) {
 	abs, err := filepath.Abs(path)
 	if err != nil {
 		return nil, err
 	}
-	if info, err := os.Stat(abs); err != nil {
+	info, err := os.Stat(abs)
+	if err != nil {
 		return nil, err
-	} else if !info.IsDir() {
+	}
+	if !info.IsDir() {
 		abs = filepath.Dir(abs)
+	}
+	abs, err = filepath.EvalSymlinks(abs)
+	if err != nil {
+		return nil, err
 	}
 	r := &Repository{Root: abs}
 	out, err := r.Run(ctx, "rev-parse", "--show-toplevel")
-	if err != nil {
-		return nil, fmt.Errorf("open repository: %w", err)
+	if err == nil {
+		r.Root = strings.TrimSuffix(strings.TrimSuffix(out, "\n"), "\r")
+		return r, nil
 	}
-	r.Root = strings.TrimSuffix(strings.TrimSuffix(out, "\n"), "\r")
-	return r, nil
+	if strings.Contains(err.Error(), "fatal: not a git repository (or any") {
+		// A Git marker means discovery failed on a damaged repository.
+		// Preserve that error instead of treating it as an ordinary folder.
+		for dir := abs; ; dir = filepath.Dir(dir) {
+			if _, markerErr := os.Lstat(filepath.Join(dir, ".git")); !os.IsNotExist(markerErr) {
+				break
+			}
+			if filepath.Dir(dir) == dir {
+				return r, nil
+			}
+		}
+	}
+	return nil, fmt.Errorf("open workspace: %w", err)
 }
 
 func (r *Repository) Run(ctx context.Context, args ...string) (string, error) {
@@ -128,6 +157,10 @@ func ParseStatus(raw string) ([]Change, error) {
 }
 
 func (r *Repository) Snapshot(ctx context.Context) (Snapshot, error) {
+	if !r.HasRepository() {
+		paths, err := files.List(ctx, r.Root)
+		return Snapshot{NoRepository: true, Files: paths}, err
+	}
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	var s Snapshot
@@ -138,6 +171,11 @@ func (r *Repository) Snapshot(ctx context.Context) (Snapshot, error) {
 		s.Changes, s.Repositories, s.GitDirectories = state.changes, state.repositories, state.metadata
 		s.RepositoryHistory = state.history
 		s.RepositoryStates = state.states
+		if err == nil {
+			var dirs []string
+			dirs, err = r.MetadataDirectories(ctx)
+			s.GitDirectories = append(s.GitDirectories, dirs...)
+		}
 		statusErr = err
 		if err != nil {
 			cancel()

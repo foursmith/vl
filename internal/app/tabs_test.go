@@ -24,7 +24,11 @@ func tabWorkspace(t *testing.T, count int) *Model {
 			t.Fatal(err)
 		}
 	}
-	m := New(context.Background(), &gitservice.Repository{Root: root}, false)
+	repo := &gitservice.Repository{Root: root}
+	if _, err := repo.Run(context.Background(), "init", "-b", "main"); err != nil {
+		t.Fatal(err)
+	}
+	m := New(context.Background(), repo, false)
 	m.section = explorer
 	m.notice = ""
 	return m

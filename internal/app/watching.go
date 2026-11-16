@@ -11,9 +11,8 @@ import (
 )
 
 type watchReadyMsg struct {
-	watcher  *watcher.Watcher
-	metadata []string
-	err      error
+	watcher *watcher.Watcher
+	err     error
 }
 type watchMsg struct {
 	batch watcher.Batch
@@ -27,14 +26,10 @@ type fileReloadMsg struct {
 }
 
 func (m *Model) startWatcher() tea.Cmd {
-	ctx, repo := m.ctx, m.repo
+	ctx := m.ctx
 	return func() tea.Msg {
-		dirs, err := repo.MetadataDirectories(ctx)
-		if err != nil {
-			return watchReadyMsg{err: err}
-		}
 		w, err := watcher.New(ctx)
-		return watchReadyMsg{watcher: w, metadata: dirs, err: err}
+		return watchReadyMsg{watcher: w, err: err}
 	}
 }
 func (m *Model) nextWatch() tea.Cmd {
@@ -71,10 +66,6 @@ func (m *Model) syncWatch() {
 	for _, dir := range m.snapshot.GitDirectories {
 		config.Recursive = append(config.Recursive, filepath.Join(dir, "refs"))
 	}
-	config.Directories = append(config.Directories, m.watchMetadata...)
-	for _, dir := range m.watchMetadata {
-		config.Recursive = append(config.Recursive, filepath.Join(dir, "refs"))
-	}
 	m.watcher.Sync(config)
 }
 func (m *Model) handleWatch(batch watcher.Batch) tea.Cmd {
@@ -84,7 +75,7 @@ func (m *Model) handleWatch(batch watcher.Batch) tea.Cmd {
 	}
 	for _, path := range batch.Paths {
 		metadata := false
-		for _, dir := range m.watchMetadata {
+		for _, dir := range m.snapshot.GitDirectories {
 			if path == dir || strings.HasPrefix(path, dir+string(filepath.Separator)) {
 				metadata = true
 				break

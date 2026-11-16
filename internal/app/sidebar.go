@@ -101,6 +101,15 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 		}
 	}
 	lines := []string{row(nav.String(), w, m.colors.Foreground, m.colors.Panel), row(root, w, m.colors.Foreground, m.colors.Panel)}
+	if m.snapshot.NoRepository && (m.section == changes || m.section == history) {
+		for _, text := range []string{"", " 此文件夹尚未初始化 Git 仓库", "", " [初始化 Git 仓库]", " Enter: 初始化"} {
+			lines = append(lines, row(text, w, m.colors.Muted, m.colors.Panel))
+		}
+		for len(lines) < h {
+			lines = append(lines, row("", w, m.colors.Foreground, m.colors.Panel))
+		}
+		return lines[:h]
+	}
 	hovered := m.hoveredSidebarRow()
 	for y := sidebarHeaderRows; y < h; y++ {
 		i := m.sideTop + y - sidebarHeaderRows
@@ -205,6 +214,12 @@ func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 	}
 	if m.section == search {
 		return m.clickSearch(msg.X, y)
+	}
+	if m.snapshot.NoRepository && (m.section == changes || m.section == history) {
+		if y == sidebarHeaderRows+3 && msg.X >= 1 && msg.X < ansi.StringWidth(" [初始化 Git 仓库]") {
+			return m.initializeRepository()
+		}
+		return nil
 	}
 	w := m.sideWidth()
 	if !m.sideShown() {

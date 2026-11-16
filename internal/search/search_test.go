@@ -186,3 +186,33 @@ func TestFindAllMatchesAndMultilineAnchors(t *testing.T) {
 		t.Fatalf("line anchors: %+v", matches)
 	}
 }
+
+func TestSearchOrdinaryFolder(t *testing.T) {
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(root, "nested"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{"one.txt", "nested/two.txt"} {
+		if err := os.WriteFile(filepath.Join(root, path), []byte("needle"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Symlink(filepath.Join(root, "one.txt"), filepath.Join(root, "link.txt")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "binary"), []byte("needle\x00"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	result, err := Run(context.Background(), root, Options{Query: "needle"}, nil)
+	if err != nil || result.Count != 2 {
+		t.Fatalf("folder search: %+v, %v", result, err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := Run(ctx, root, Options{Query: "needle"}, nil); err == nil {
+		t.Fatal("cancelled search succeeded")
+	}
+}

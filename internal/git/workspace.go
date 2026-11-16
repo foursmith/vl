@@ -29,6 +29,9 @@ func nestedRepository(ctx context.Context, root string) (*Repository, error) {
 // Ignore rules belong to the repository containing a file. Sending a child's
 // paths to its superproject's check-ignore fails with "path is in submodule".
 func (r *Repository) Ignored(ctx context.Context, paths []string) (map[string]bool, error) {
+	if !r.HasRepository() {
+		return map[string]bool{}, ctx.Err()
+	}
 	type group struct {
 		repo  *Repository
 		paths []string

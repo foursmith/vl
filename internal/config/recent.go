@@ -16,7 +16,7 @@ func loadRecentFolders(path string) ([]string, error) {
 	return folders, err
 }
 
-// RememberFolder moves a successfully opened repository to the front of the list.
+// RememberFolder moves a successfully opened folder to the front of the list.
 func RememberFolder(folder string) error {
 	path, err := configPath("recent.json")
 	if err != nil {

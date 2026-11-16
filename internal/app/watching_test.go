@@ -127,3 +127,17 @@ func TestUndoToCleanAppliesDeferredExternalChange(t *testing.T) {
 		t.Fatal("returning to clean state left stale external content")
 	}
 }
+
+func TestMetadataLockDoesNotRefreshWorkspace(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	metadata := filepath.Join(m.repo.Root, ".git")
+	m.snapshot.GitDirectories = []string{metadata}
+	m.handleWatch(watcher.Batch{Paths: []string{filepath.Join(metadata, "index.lock")}})
+	if m.watchDirty {
+		t.Fatal("Git lock file scheduled a refresh")
+	}
+	m.handleWatch(watcher.Batch{Paths: []string{filepath.Join(metadata, "index")}})
+	if !m.watchDirty {
+		t.Fatal("Git index update did not schedule a refresh")
+	}
+}

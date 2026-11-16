@@ -91,3 +91,27 @@ func TestTreeCompactsOnlySingleDirectoryChains(t *testing.T) {
 		t.Fatalf("cancellation: %v", err)
 	}
 }
+
+func TestListFolderExcludesMetadataAndSymlinks(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "nested", ".git"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{"hello.txt", "nested/.git/config"} {
+		if err := os.WriteFile(filepath.Join(root, path), []byte("content"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Symlink(root, filepath.Join(root, "loop")); err != nil {
+		t.Fatal(err)
+	}
+	paths, err := List(context.Background(), root)
+	if err != nil || len(paths) != 1 || paths[0] != "hello.txt" {
+		t.Fatalf("folder list: %v, %v", paths, err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := List(ctx, root); err == nil {
+		t.Fatal("cancelled listing succeeded")
+	}
+}

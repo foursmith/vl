@@ -44,7 +44,7 @@ func TestAllSidebarTreesShareHoverRendering(t *testing.T) {
 			m := newHoverRenderModel(t)
 			m.section = section
 			change := gitservice.Change{Path: "src/main.go", Index: 'M', Worktree: 'M'}
-			m.snapshot.Changes = []gitservice.Change{change}
+			m.snapshot = gitservice.Snapshot{Changes: []gitservice.Change{change}}
 			m.items = []item{
 				{folder: "src", label: "src", historyID: "commit"},
 				{file: change.Path, label: "main.go", change: &change},

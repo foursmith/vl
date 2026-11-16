@@ -106,7 +106,6 @@ type Model struct {
 	ctx                     context.Context
 	cancel                  context.CancelFunc
 	watcher                 *watcher.Watcher
-	watchMetadata           []string
 	watchDirty              bool
 	repo                    *gitservice.Repository
 	width, height           int
@@ -176,6 +175,7 @@ func New(ctx context.Context, repo *gitservice.Repository, nerd bool) *Model {
 	input := textinput.New()
 	input.CharLimit = 2000
 	m := &Model{cellWidth: 8, cellHeight: 16, colors: theme.Dark(), ctx: ctx, cancel: cancel, repo: repo, width: 120, height: 36, nerd: nerd, sidebar: true, sidebarVisible: true, split: true, diffState: newDiffState(), input: input, activeTab: -1, notice: "Loading repository…"}
+	m.snapshot.NoRepository = !repo.HasRepository()
 	m.emptyDiff = m.diffState
 	m.search = newSearch()
 	m.styleInput()
@@ -225,6 +225,11 @@ func (m *Model) rebuildItems() {
 		}
 	}
 	m.items = nil
+	if m.snapshot.NoRepository && (m.section == changes || m.section == history) {
+		m.selected = -1
+		m.sideTop = 0
+		return
+	}
 	switch m.section {
 	case changes:
 		m.items = m.changeRepositoryItems()
@@ -447,7 +452,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			m.log("文件监视不可用: " + msg.err.Error())
 			return m, nil
 		}
-		m.watcher, m.watchMetadata = msg.watcher, msg.metadata
+		m.watcher = msg.watcher
 		m.syncWatch()
 		return m, m.nextWatch()
 	case watchMsg:
@@ -797,6 +802,9 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 			m.moveSelection(1)
 			return m.preview()
 		case "enter":
+			if m.snapshot.NoRepository && (m.section == changes || m.section == history) {
+				return m.initializeRepository()
+			}
 			return m.openSelected()
 		case "right":
 			if entry := m.current(); m.section == history && entry != nil && entry.commit != nil && m.historyExpanded(historyKey(entry.repository, entry.commit.ID)) {
