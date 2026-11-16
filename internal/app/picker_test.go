@@ -155,7 +155,7 @@ func TestQuickPickerSwitchesWithEditableCommandPrefix(t *testing.T) {
 	m.selectPickerIndex(5)
 	m.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	rows := m.filteredActions()
-	if m.modal != "quick" || m.input.Value() != "" || m.input.Prompt != "" || m.pickerList.Index() != 0 || len(rows) != 1 || rows[0].id != "file0.go" {
+	if m.modal != "quick" || m.input.Value() != "" || m.input.Prompt != "" || m.pickerIndex != 0 || len(rows) != 1 || rows[0].id != "file0.go" {
 		t.Fatal("deleting > did not switch to file search and reset selection")
 	}
 	m.Update(tea.KeyPressMsg{Code: 'f', Text: "file0"})

@@ -18,17 +18,17 @@ func TestPickerListPagingResizeAndMouseTarget(t *testing.T) {
 	}
 	m.openRecentFolders()
 	press(m, "pgdown")
-	if m.pickerList.Index() != 5 {
-		t.Fatalf("page down selected %d", m.pickerList.Index())
+	if m.pickerIndex != 5 {
+		t.Fatalf("page down selected %d", m.pickerIndex)
 	}
 	press(m, "end")
-	if m.pickerList.Index() != 19 {
+	if m.pickerIndex != 19 {
 		t.Fatal("end did not reach last folder")
 	}
 	for _, size := range [][2]int{{30, 8}, {120, 36}, {48, 12}} {
 		m.Update(tea.WindowSizeMsg{Width: size[0], Height: size[1]})
 		lines := strings.Split(m.View().Content, "\n")
-		if len(lines) != m.height || m.pickerList.Index() != 19 {
+		if len(lines) != m.height || m.pickerIndex != 19 {
 			t.Fatal("resize changed frame size or selected folder")
 		}
 		for _, line := range lines {
@@ -57,17 +57,17 @@ func TestPickerListSearchTypingPasteAndWheel(t *testing.T) {
 	m.workspaces = []string{"/work/alpha", "/work/jk", "/work/zulu"}
 	m.openRecentFolders()
 	m.Update(tea.MouseWheelMsg{Button: tea.MouseWheelDown})
-	if m.pickerList.Index() != 1 {
+	if m.pickerIndex != 1 {
 		t.Fatal("wheel did not select next folder")
 	}
 	press(m, "j")
 	press(m, "k")
-	if m.input.Value() != "jk" || m.pickerList.Index() != 0 || len(m.filteredActions()) != 1 {
+	if m.input.Value() != "jk" || m.pickerIndex != 0 || len(m.filteredActions()) != 1 {
 		t.Fatal("list shortcuts captured search text")
 	}
 	m.input.SetValue("")
 	m.Update(tea.PasteMsg{Content: "zulu"})
-	if m.input.Value() != "zulu" || m.pickerList.Index() != 0 {
+	if m.input.Value() != "zulu" || m.pickerIndex != 0 {
 		t.Fatal("paste did not filter and reset selection")
 	}
 	rows := m.filteredActions()
@@ -95,7 +95,7 @@ func TestPickerListModesFilterAndExecuteVisibleAction(t *testing.T) {
 			}
 			m.prompt(mode, title, query)
 			press(m, "pgdown")
-			if m.pickerList.Index() != 5 {
+			if m.pickerIndex != 5 {
 				t.Fatal("paging did not use the shared list")
 			}
 			press(m, "end")
@@ -107,7 +107,7 @@ func TestPickerListModesFilterAndExecuteVisibleAction(t *testing.T) {
 			}
 			m.prompt(mode, title, query)
 			m.Update(tea.PasteMsg{Content: "item27"})
-			if len(m.pickerList.Items()) != 1 || m.pickerList.Index() != 0 {
+			if len(m.filteredActions()) != 1 || m.pickerIndex != 0 {
 				t.Fatal("filter did not reset the list")
 			}
 			for _, line := range strings.Split(m.View().Content, "\n") {
@@ -120,5 +120,60 @@ func TestPickerListModesFilterAndExecuteVisibleAction(t *testing.T) {
 				t.Fatal("filtered enter executed the wrong action")
 			}
 		})
+	}
+}
+
+func TestPickerContinuousScrolling(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	m.Update(tea.WindowSizeMsg{Width: 48, Height: 12})
+	for i := range 23 {
+		m.workspaces = append(m.workspaces, fmt.Sprintf("/workspace/folder%02d", i))
+	}
+	m.openRecentFolders()
+	check := func(selected, top int) {
+		t.Helper()
+		layout := m.pickerLayout(m.filteredActions())
+		if m.pickerIndex != selected || layout.start != top || layout.count != 5 {
+			t.Fatalf("selected=%d viewport=%+v; want selected=%d top=%d count=5", m.pickerIndex, layout, selected, top)
+		}
+		lines := strings.Split(m.View().Content, "\n")
+		for i := range layout.count {
+			want := fmt.Sprintf("folder%02d", top+i)
+			if !strings.Contains(plain(lines[layout.y+3+i]), want) {
+				t.Fatalf("visible row %d missing %s", i, want)
+			}
+		}
+	}
+	for range 4 {
+		press(m, "down")
+	}
+	check(4, 0)
+	press(m, "down")
+	check(5, 1)
+	press(m, "up")
+	check(4, 1)
+	press(m, "end")
+	check(22, 18)
+	press(m, "pgup")
+	check(17, 17)
+	press(m, "pgdown")
+	check(22, 18)
+	m.Update(tea.MouseWheelMsg{Button: tea.MouseWheelDown})
+	check(22, 18)
+	m.Update(tea.MouseWheelMsg{Button: tea.MouseWheelLeft})
+	check(22, 18)
+	press(m, "home")
+	check(0, 0)
+	press(m, "up")
+	check(0, 0)
+	press(m, "end")
+	picked := -1
+	for i := range m.palette {
+		m.palette[i].run = func() tea.Cmd { picked = i; return nil }
+	}
+	layout := m.pickerLayout(m.filteredActions())
+	m.Update(tea.MouseClickMsg{X: layout.x + 2, Y: layout.y + 3, Button: tea.MouseLeft})
+	if picked != 18 {
+		t.Fatalf("bottom viewport click selected %d, want 18", picked)
 	}
 }

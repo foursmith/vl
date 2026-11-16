@@ -27,7 +27,7 @@ func (m *Model) populateRecentFolders() {
 			run: func() tea.Cmd { return m.openRepository(folder) },
 		})
 	}
-	m.syncPickerList()
+	m.syncPicker()
 }
 
 func (m *Model) repositorySwitchBlocked() bool {

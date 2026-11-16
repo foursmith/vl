@@ -95,7 +95,7 @@ func (m *Model) resize() {
 	m.viewport.SetWidth(m.mainWidth())
 	m.viewport.SetHeight(m.contentHeight())
 	m.resizeInput()
-	m.syncPickerList()
+	m.syncPicker()
 	m.renderDiff()
 	m.ensureSidebar()
 	m.ensureEditor()
@@ -112,6 +112,7 @@ type hoverRenderCache struct {
 
 type hoverRenderKey struct {
 	row     int
+	picker  int
 	hint    string
 	divider bool
 }
@@ -128,6 +129,7 @@ func (m *Model) View() tea.View {
 	hoveredRow := m.hoveredSidebarRow()
 	key := hoverRenderKey{
 		row: hoveredRow, hint: m.hoverHint(),
+		picker:  m.hoveredPickerIndex(),
 		divider: m.sidebarDividerAt(m.hoverX, m.hoverY),
 	}
 	if m.hoverOnly && m.hoverRender.main != nil && m.hoverRender.key == key {

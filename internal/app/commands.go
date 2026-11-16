@@ -159,8 +159,8 @@ func (m *Model) prompt(kind, title, value string) tea.Cmd {
 		m.input.Placeholder = title
 	}
 	m.input.CursorEnd()
-	m.pickerList.ResetSelected()
-	m.syncPickerList()
+	m.pickerIndex = 0
+	m.syncPicker()
 	return m.input.Focus()
 }
 
@@ -196,7 +196,7 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 		}
 	}
 	if m.isPicker() {
-		m.syncPickerList()
+		m.syncPicker()
 	}
 	if m.confirmationDialog() {
 		l := m.dialogLayout()
@@ -250,8 +250,8 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 		if key.Matches(msg, pickerKeys.Accept) {
 			return m.selectPickerChoice()
 		}
-		if cmd, handled := m.pickerListKey(msg); handled {
-			return cmd
+		if m.pickerKey(msg) {
+			return nil
 		}
 	}
 

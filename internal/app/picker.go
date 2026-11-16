@@ -11,11 +11,26 @@ type pickerLayout struct {
 	x, y, width, start, count int
 }
 
+func (m *Model) pickerHeight() int { return min(16, max(1, m.height-7)) }
+
+func (l pickerLayout) indexAt(x, y int) int {
+	i := y - l.y - 3
+	if x < l.x || x >= l.x+l.width || i < 0 || i >= l.count {
+		return -1
+	}
+	return l.start + i
+}
+
+func (m *Model) hoveredPickerIndex() int {
+	if !m.isPicker() {
+		return -1
+	}
+	return m.pickerLayout(m.filteredActions()).indexAt(m.hoverX, m.hoverY)
+}
+
 func (m *Model) pickerLayout(rows []action) pickerLayout {
 	w := min(96, m.width-4)
-	count := min(16, max(1, m.height-7))
-	start := m.pickerList.Paginator.Page * m.pickerList.Paginator.PerPage
-	return pickerLayout{(m.width - w) / 2, 1, w, start, min(count, max(0, len(rows)-start))}
+	return pickerLayout{(m.width - w) / 2, 1, w, m.pickerTop, min(m.pickerHeight(), max(0, len(rows)-m.pickerTop))}
 }
 
 func (m *Model) pickerOverlay(base []string) []string {
@@ -30,9 +45,9 @@ func (m *Model) pickerOverlay(base []string) []string {
 		border.Render("│") + row(" "+m.input.View(), w, m.colors.Foreground, inputBG) + border.Render("│"),
 		border.Render("╰" + strings.Repeat("─", w) + "╯"),
 	}
-	if len(rows) > 0 {
-		lines := strings.Split(m.pickerList.View(), "\n")
-		box = append(box, lines[:l.count]...)
+	hovered := l.indexAt(m.hoverX, m.hoverY)
+	for index := l.start; index < l.start+l.count; index++ {
+		box = append(box, m.pickerRow(rows[index], index, l.width, hovered))
 	}
 
 	if len(rows) == 0 {
@@ -41,22 +56,20 @@ func (m *Model) pickerOverlay(base []string) []string {
 			message = "没有最近打开的文件夹"
 		}
 		box = append(box, row("  "+message, l.width, m.colors.Muted, bg))
-	} else if reason := rows[min(m.pickerList.Index(), len(rows)-1)].disabled; reason != "" {
-		box = append(box, row("  "+safe(reason), l.width, m.colors.Muted, bg))
 	}
 	return m.composeOverlay(base, box, l.x, l.y)
 }
 
 func (m *Model) clickPicker(msg tea.MouseClickMsg) tea.Cmd {
-	m.syncPickerList()
+	m.syncPicker()
 	rows := m.filteredActions()
 	l := m.pickerLayout(rows)
 	if msg.Button == tea.MouseLeft && msg.X >= l.x && msg.X < l.x+l.width {
 		if msg.Y >= l.y && msg.Y < l.y+3 {
 			return nil
 		}
-		if index := msg.Y - l.y - 3; index >= 0 && index < l.count {
-			m.selectPickerIndex(l.start + index)
+		if index := l.indexAt(msg.X, msg.Y); index >= 0 {
+			m.selectPickerIndex(index)
 			return m.selectPickerChoice()
 		}
 	}
@@ -68,12 +81,12 @@ func (m *Model) isPicker() bool {
 }
 
 func (m *Model) selectPickerChoice() tea.Cmd {
+	m.syncPicker()
 	rows := m.filteredActions()
 	if len(rows) == 0 {
 		return nil
 	}
-	m.syncPickerList()
-	a := rows[min(m.pickerList.Index(), len(rows)-1)]
+	a := rows[m.pickerIndex]
 	if a.disabled != "" {
 		m.notice = a.disabled
 		return nil
@@ -96,7 +109,7 @@ func (m *Model) openQuickPicker(value string) tea.Cmd {
 	m.palette = nil
 	cmd := m.prompt("quick", "", value)
 	m.syncQuickPicker()
-	m.syncPickerList()
+	m.syncPicker()
 	return cmd
 }
 
@@ -112,7 +125,7 @@ func (m *Model) syncQuickPicker() {
 		return
 	}
 	m.modalTitle = title
-	m.pickerList.ResetSelected()
+	m.pickerIndex = 0
 	if m.commandPicker() {
 		m.input.Placeholder = ""
 		m.palette = m.commandActions()

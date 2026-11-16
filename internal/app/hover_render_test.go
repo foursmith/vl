@@ -168,3 +168,46 @@ func BenchmarkHoverFrame(b *testing.B) {
 		}
 	}
 }
+
+func TestPickerHoverUsesVisibleRowsWithoutChangingSelection(t *testing.T) {
+	for _, mode := range []string{"dark", "light"} {
+		t.Run(mode, func(t *testing.T) {
+			m := newHoverRenderModel(t)
+			m.SetThemeMode(mode)
+			m.Update(tea.WindowSizeMsg{Width: 80, Height: 12})
+			m.workspaces = nil
+			for i := range 23 {
+				m.workspaces = append(m.workspaces, fmt.Sprintf("/workspace/folder%02d", i))
+			}
+			m.openRecentFolders()
+			press(m, "end")
+			layout := m.pickerLayout(m.filteredActions())
+			m.View()
+			for i := range layout.count {
+				y := layout.y + 3 + i
+				m.Update(tea.MouseMotionMsg{X: layout.x + 2, Y: y})
+				assertFreshHoverFrame(t, m)
+				if m.hoveredPickerIndex() != layout.start+i || m.pickerIndex != 22 {
+					t.Fatal("hover did not track the visible row or changed selection")
+				}
+				bg := m.colors.Hover
+				if layout.start+i == 22 {
+					bg = m.colors.Selection
+				}
+				cells := uv.NewStyledString(m.View().Content).Lines(ansi.GraphemeWidth)[y]
+				for _, cell := range cells[layout.x : layout.x+layout.width] {
+					if !sameColor(cell.Style.Bg, lipgloss.Color(bg)) {
+						t.Fatal("picker row has incorrect hover or selection background")
+					}
+				}
+			}
+			for _, point := range [][2]int{{layout.x - 1, 4}, {layout.x, 3}, {layout.x, 9}} {
+				m.Update(tea.MouseMotionMsg{X: point[0], Y: point[1]})
+				assertFreshHoverFrame(t, m)
+				if m.hoveredPickerIndex() != -1 {
+					t.Fatal("hover persisted outside list rows")
+				}
+			}
+		})
+	}
+}

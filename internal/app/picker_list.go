@@ -1,37 +1,28 @@
 package app
 
 import (
-	"fmt"
-	"io"
 	"path/filepath"
 	"strings"
 
 	"charm.land/bubbles/v2/key"
-	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/ourongxing/elegit/internal/fileicon"
 	"github.com/ourongxing/elegit/internal/theme"
 )
 
-func (a action) FilterValue() string { return a.label }
-
-type pickerDelegate struct{ model *Model }
-
-func (pickerDelegate) Height() int                         { return 1 }
-func (pickerDelegate) Spacing() int                        { return 0 }
-func (pickerDelegate) Update(tea.Msg, *list.Model) tea.Cmd { return nil }
-func (d pickerDelegate) Render(out io.Writer, l list.Model, index int, entry list.Item) {
-	m, a := d.model, entry.(action)
+func (m *Model) pickerRow(a action, index, width, hovered int) string {
 	fg, bg := m.colors.Foreground, m.colors.Popup
-	selected := index == l.Index()
+	selected := index == m.pickerIndex
 	if selected {
 		fg, bg = m.colors.SelectionForeground, m.colors.Selection
+	} else if index == hovered {
+		bg = m.colors.Hover
 	}
 	if a.disabled != "" {
 		fg = m.colors.Muted
 	}
-	w := l.Width() - 2
+	w := width - 2
 	label := " " + safe(a.label)
 	if m.modal == "quick" && !m.commandPicker() && a.id != "" {
 		icon := fileicon.For(a.id, m.nerd)
@@ -51,50 +42,45 @@ func (d pickerDelegate) Render(out io.Writer, l list.Model, index int, entry lis
 	if m.monochrome && selected {
 		marker = ">"
 	}
-	fmt.Fprint(out, row(marker+row(label, w, fg, bg)+" ", l.Width(), fg, bg))
+	return row(marker+row(label, w, fg, bg)+" ", width, fg, bg)
 }
 
-func newPickerList(m *Model) list.Model {
-	l := list.New(nil, pickerDelegate{m}, min(96, m.width-4), min(16, max(1, m.height-7)))
-	l.SetShowTitle(false)
-	l.SetShowFilter(false)
-	l.SetShowStatusBar(false)
-	l.SetShowHelp(false)
-	l.SetShowPagination(false)
-	// The shared input also handles command/file modes and line:column syntax.
-	l.SetFilteringEnabled(false)
-	l.DisableQuitKeybindings()
-	l.KeyMap.CursorUp, l.KeyMap.CursorDown = pickerKeys.Up, pickerKeys.Down
-	l.KeyMap.PrevPage, l.KeyMap.NextPage = pickerKeys.PageUp, pickerKeys.PageDown
-	l.KeyMap.GoToStart, l.KeyMap.GoToEnd = pickerKeys.First, pickerKeys.Last
-	return l
-}
-
-// Synchronize in event handlers, never during rendering. Filtering is disabled
-// in the list, so SetItems completes synchronously and produces no command.
-func (m *Model) syncPickerList() {
+// Synchronize selection and scroll position in event handlers, never rendering.
+func (m *Model) syncPicker() {
 	if !m.isPicker() {
 		return
 	}
-	rows := m.filteredActions()
-	items := make([]list.Item, len(rows))
-	for i, a := range rows {
-		items[i] = a
-	}
-	selected := m.pickerList.Index()
-	m.pickerList.SetSize(min(96, m.width-4), min(16, max(1, m.height-7)))
-	m.pickerList.SetItems(items)
-	m.pickerList.Select(min(selected, max(0, len(rows)-1)))
+	count := len(m.filteredActions())
+	height := m.pickerHeight()
+	m.pickerIndex = min(max(0, m.pickerIndex), max(0, count-1))
+	m.pickerTop = min(m.pickerTop, m.pickerIndex)
+	m.pickerTop = max(m.pickerTop, m.pickerIndex-height+1)
+	m.pickerTop = min(max(0, m.pickerTop), max(0, count-height))
 }
+
 func (m *Model) selectPickerIndex(index int) {
-	m.syncPickerList()
-	m.pickerList.Select(min(max(0, index), max(0, len(m.pickerList.Items())-1)))
+	m.pickerIndex = index
+	m.syncPicker()
 }
-func (m *Model) pickerListKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
-	if !key.Matches(msg, pickerKeys.Up, pickerKeys.Down, pickerKeys.PageUp, pickerKeys.PageDown, pickerKeys.First, pickerKeys.Last) {
-		return nil, false
+
+func (m *Model) pickerKey(msg tea.KeyPressMsg) bool {
+	index := m.pickerIndex
+	switch {
+	case key.Matches(msg, pickerKeys.Up):
+		index--
+	case key.Matches(msg, pickerKeys.Down):
+		index++
+	case key.Matches(msg, pickerKeys.PageUp):
+		index -= m.pickerHeight()
+	case key.Matches(msg, pickerKeys.PageDown):
+		index += m.pickerHeight()
+	case key.Matches(msg, pickerKeys.First):
+		index = 0
+	case key.Matches(msg, pickerKeys.Last):
+		index = len(m.filteredActions()) - 1
+	default:
+		return false
 	}
-	updated, cmd := m.pickerList.Update(msg)
-	m.pickerList = updated
-	return cmd, true
+	m.selectPickerIndex(index)
+	return true
 }

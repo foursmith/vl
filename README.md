@@ -186,6 +186,8 @@ no Git repository; initialization keeps open editor tabs and unsaved edits.
 Search files with **Ctrl+P**. Commands are available from **Ctrl+Shift+P** or **F1**.
 Both use the same input: a leading `>` searches commands; remove it to search files.
 All pickers support Up/Down, Page Up/Down and Home/End; typing searches directly.
+Lists scroll one row at a time and highlight hovered rows without changing the
+keyboard selection. Command availability hints appear in the status bar.
 Append `:line[:column]` to a filename to jump to that position, or enter
 `:line[:column]` alone to jump within the active text file.
 Commands sort alphabetically by name, with the last used command first; the choice

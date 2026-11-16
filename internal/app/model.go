@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"charm.land/bubbles/v2/key"
-	"charm.land/bubbles/v2/list"
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"github.com/atotto/clipboard"
@@ -149,7 +148,8 @@ type Model struct {
 	input                   textinput.Model
 	palette                 []action
 	lastCommand             string
-	pickerList              list.Model
+	pickerIndex             int
+	pickerTop               int
 	confirm                 func() tea.Cmd
 	confirmationDetail      string
 	confirmationLabel       string
@@ -189,7 +189,6 @@ func New(ctx context.Context, repo *gitservice.Repository, nerd bool) *Model {
 	m.snapshot.NoRepository = !repo.HasRepository()
 	m.emptyDiff = m.diffState
 	m.styleInput()
-	m.pickerList = newPickerList(m)
 	m.resize()
 	m.imageIDs = map[int]bool{}
 	m.expanded = map[string]bool{}
@@ -672,12 +671,14 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 	case tea.MouseWheelMsg:
 		if m.modal != "" {
 			if m.isPicker() {
+				if msg.Button != tea.MouseWheelUp && msg.Button != tea.MouseWheelDown {
+					return m, nil
+				}
 				delta := 1
 				if msg.Button == tea.MouseWheelUp {
 					delta = -1
 				}
-				m.syncPickerList()
-				m.selectPickerIndex(m.pickerList.Index() + delta)
+				m.selectPickerIndex(m.pickerIndex + delta)
 			}
 			return m, nil
 		}
