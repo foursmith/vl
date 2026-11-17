@@ -3,6 +3,7 @@ package imagepreview
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"fmt"
 	"image"
 	_ "image/gif"
@@ -24,6 +25,7 @@ type Image struct {
 	pixels       image.Image
 	bounds       image.Rectangle
 	vector       *svg.Document
+	digest       [sha256.Size]byte
 }
 
 func Supported(path string) bool {
@@ -54,11 +56,20 @@ func Open(path string) (*Image, error) {
 	if err != nil {
 		return nil, err
 	}
+	return Decode(path, data)
+}
+
+// Decode applies the same preview limits to Git blobs and disk files.
+func Decode(path string, data []byte) (*Image, error) {
 	if len(data) > MaxBytes {
 		return nil, fmt.Errorf("image exceeds 32 MiB preview limit")
 	}
 	if strings.EqualFold(filepath.Ext(path), ".svg") {
-		return openSVG(path, data)
+		im, err := openSVG(path, data)
+		if im != nil {
+			im.digest = sha256.Sum256(data)
+		}
+		return im, err
 	}
 	config, _, err := image.DecodeConfig(bytes.NewReader(data))
 	if err != nil {
@@ -71,7 +82,12 @@ func Open(path string) (*Image, error) {
 	if err != nil {
 		return nil, fmt.Errorf("image preview: %w", err)
 	}
-	return &Image{Path: path, Format: format, pixels: pixels, bounds: pixels.Bounds()}, nil
+	return &Image{Path: path, Format: format, pixels: pixels, bounds: pixels.Bounds(), digest: sha256.Sum256(data)}, nil
+}
+
+// SameContent identifies previews whose source bytes and decoding format match.
+func (im *Image) SameContent(other *Image) bool {
+	return other != nil && im.Format == other.Format && im.digest == other.digest
 }
 
 // Bounds returns source dimensions without rasterizing vector content.

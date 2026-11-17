@@ -15,6 +15,9 @@ type toolbarButton struct {
 }
 
 func (m *Model) diffModeButton() toolbarButton {
+	if m.images != nil {
+		return toolbarButton{}
+	}
 	label := "统一"
 	if m.split && m.mainWidth() >= 68 {
 		label = "并排"
@@ -74,6 +77,11 @@ func (m *Model) contentToolbar() string {
 	}
 	if !m.diffOpen {
 		return row("", w, m.colors.Foreground, m.colors.Background)
+	}
+	if m.images != nil {
+		label := " " + m.diffContext() + " · 图片对比 "
+		width := min(w, ansi.StringWidth(label))
+		return m.breadcrumb(m.diffPath, w-width) + row(label, width, m.colors.Muted, m.colors.Background)
 	}
 	button := m.diffModeButton()
 	stats := ""

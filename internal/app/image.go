@@ -39,6 +39,13 @@ func (m *Model) currentImage() *imagepreview.Image {
 func (m *Model) imageLines() []string {
 	t := &m.tabs[m.activeTab]
 	w, h := m.mainWidth(), m.contentHeight()
+	return m.imagePreviewLines(t.image, w, h)
+}
+
+func (m *Model) imagePreviewLines(im *imageState, w, h int) []string {
+	if h <= 0 || w <= 0 {
+		return nil
+	}
 	if !m.kittySupported {
 		text := "当前终端未响应 Kitty 图片协议，需要支持 Unicode 占位的终端"
 		if !m.kittyProbeDone {
@@ -48,12 +55,12 @@ func (m *Model) imageLines() []string {
 		lines[h/2] = "  " + text
 		return lines
 	}
-	if t.image.width == w && t.image.height == h && t.image.rows != nil {
-		return t.image.rows
+	if im.width == w && im.height == h && im.rows != nil {
+		return im.rows
 	}
-	region := m.imageRegion()
+	region := im.ViewRegion(max(1, w-4), max(1, h-2), m.cellWidth, m.cellHeight, im.zoom, im.centerX, im.centerY)
 	cols, rows := region.Columns, region.Rows
-	content, err := t.image.KittyRegionRows(t.image.id, region)
+	content, err := im.KittyRegionRows(im.id, region)
 	lines := make([]string, h)
 	if err != nil {
 		lines[h/2] = "  " + safe(err.Error())
@@ -63,7 +70,7 @@ func (m *Model) imageLines() []string {
 	for r, line := range content {
 		lines[y+r] = strings.Repeat(" ", x) + line
 	}
-	t.image.width, t.image.height, t.image.rows = w, h, lines
+	im.width, im.height, im.rows = w, h, lines
 	return lines
 }
 
@@ -124,6 +131,9 @@ func (m *Model) allocateImageID() int {
 func (m *Model) retireImage(t *tab) {
 	if t.image != nil {
 		m.imageRetired = append(m.imageRetired, t.image.id)
+	}
+	if t.diff != nil {
+		m.setDiffImages(t.diff, nil)
 	}
 }
 

@@ -108,6 +108,10 @@ no Git repository; initialization keeps open editor tabs and unsaved edits.
   behavior: a single click reuses one clean preview, double-click/Enter keeps a
   file open, and editing permanently keeps its tab even after undo.
 - Read-only PNG, JPEG, GIF (first frame), and SVG previews in file tabs.
+  Image diffs show the old and new versions side by side for working-tree,
+  staged, and commit changes, with dimensions and absent sides labeled.
+  Image diffs fit each version to its half of the view; stage or unstage the
+  whole file from Changes.
   Previews use the [Kitty graphics protocol](https://sw.kovidgoyal.net/kitty/graphics-protocol/)
   with Unicode placeholders, requiring a compatible terminal with 256-color support.
   The terminal is probed on startup; unsupported terminals show an explanation.

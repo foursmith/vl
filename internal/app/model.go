@@ -79,6 +79,7 @@ type diffMsg struct {
 	seq    int
 	raw    string
 	err    error
+	images *diffImages
 }
 type operationMsg struct {
 	title, output string
@@ -447,6 +448,13 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			for i := range m.tabs {
 				if im := m.tabs[i].image; im != nil {
 					im.rows = nil
+				}
+				if d := m.tabs[i].diff; d != nil && d.images != nil {
+					for _, im := range d.images.sides {
+						if im != nil {
+							im.rows = nil
+						}
+					}
 				}
 			}
 		}

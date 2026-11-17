@@ -41,6 +41,7 @@ type diffState struct {
 	diffSeq          int
 	viewport         viewport.Model
 	read             func(context.Context) (string, error)
+	images           *diffImages
 }
 
 func newDiffState() *diffState {
@@ -54,6 +55,7 @@ func (d *diffState) clearContent() {
 	}
 	d.diffSyntax, d.diffEmphasis = nil, nil
 	d.patch = diff.Patch{}
+	d.images = nil
 	d.diffRows, d.diffRowHunks = nil, nil
 	d.diffLayout = diffLayoutKey{}
 	d.diffSelection = diffSelection{}
@@ -130,13 +132,19 @@ func (m *Model) loadDiff(d *diffState, reset bool) tea.Cmd {
 	d.diffSeq++
 	d.diffLoading = true
 	if reset {
+		m.setDiffImages(d, nil)
 		d.clearContent()
 	}
 	seq, read := d.diffSeq, d.read
+	imageRead := m.diffImageReader(d)
 	return func() tea.Msg {
 		defer cancel()
 		raw, err := read(ctx)
-		return diffMsg{target: d, seq: seq, raw: raw, err: err}
+		msg := diffMsg{target: d, seq: seq, raw: raw, err: err}
+		if err == nil && raw != "" && imageRead != nil {
+			msg.images = imageRead(ctx)
+		}
+		return msg
 	}
 }
 
@@ -193,6 +201,7 @@ func (m *Model) finishDiff(msg diffMsg) tea.Cmd {
 	bound := m.diffState
 	m.diffState = d
 	defer func() { m.diffState = bound }()
+	m.setDiffImages(d, msg.images)
 	if msg.raw != d.patch.Raw {
 		d.patch = diff.Parse(msg.raw)
 		d.diffLayout = diffLayoutKey{}
@@ -248,6 +257,9 @@ func diffEmphasis(pairs []diff.Pair) map[*diff.Line]diffRange {
 }
 
 func (m *Model) highlightDiff() tea.Cmd {
+	if m.images != nil {
+		return nil
+	}
 	if m.diffSyntaxCancel != nil {
 		m.diffSyntaxCancel()
 	}
@@ -325,6 +337,9 @@ func diffSpans(ctx context.Context, patch diff.Patch, path string, light bool) m
 }
 
 func (m *Model) diffView() []string {
+	if m.images != nil {
+		return m.diffImageLines()
+	}
 	var lines []string
 	w := m.mainWidth()
 	for i := m.viewport.YOffset(); i < min(len(m.diffRows), m.viewport.YOffset()+m.contentHeight()); i++ {

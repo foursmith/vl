@@ -403,6 +403,10 @@ func (m *Model) stageAllInRepository(target string) tea.Cmd {
 }
 
 func (m *Model) stageHunk(reverse bool) tea.Cmd {
+	if m.images != nil {
+		m.notice = "Stage or unstage the whole image file from Changes"
+		return nil
+	}
 	if m.diffLoading || m.diffChange == nil || m.editing() {
 		m.notice = "Open a working-tree or index diff first"
 		return nil

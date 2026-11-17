@@ -12,6 +12,7 @@ import (
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/charmbracelet/x/ansi/kitty"
+	gitservice "github.com/ourongxing/elegit/internal/git"
 	"github.com/ourongxing/elegit/internal/imagepreview"
 )
 
@@ -37,6 +38,54 @@ func TestImageProtocolDetectionAndCellSize(t *testing.T) {
 	m.Update(uv.KittyGraphicsEvent{Options: kitty.Options{ID: 3}, Payload: []byte("ERROR")})
 	if !m.kittySupported {
 		t.Fatal("unrelated reply disabled image rendering")
+	}
+}
+
+func TestDiffImagesSurviveTerminalRenderer(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	defer m.Close()
+	m.kittySupported = true
+	writePreviewPNG(t, filepath.Join(m.repo.Root, "image.png"), 80, 40)
+	imageGit(t, m, "add", "image.png")
+	writePreviewPNG(t, filepath.Join(m.repo.Root, "image.png"), 120, 60)
+	drain(t, m, m.requestDiff(diffTarget{path: "image.png"}, readImageDiff(m, gitservice.Change{Path: "image.png"}, false, "")))
+	var output bytes.Buffer
+	renderer := uv.NewTerminalRenderer(&output, []string{"TERM=xterm-kitty", "COLORTERM=truecolor"})
+	renderer.SetFullscreen(true)
+	renderer.SetColorProfile(colorprofile.ANSI256)
+	frame := func() {
+		scr := uv.NewScreenBuffer(m.width, m.height)
+		uv.NewStyledString(m.View().Content).Draw(scr, uv.Rect(0, 0, m.width, m.height))
+		renderer.Render(scr.RenderBuffer)
+		if err := renderer.Flush(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	frame()
+	for _, im := range m.images.sides {
+		if im == nil || !strings.Contains(output.String(), fmt.Sprintf("i=%d", im.id)) {
+			t.Fatal("diff image upload did not reach terminal output")
+		}
+	}
+	output.Reset()
+	frame()
+	if strings.Contains(output.String(), "\x1b_G") {
+		t.Fatal("unchanged image diff retransmitted pixels")
+	}
+	left, right := m.images.sides[0], m.images.sides[1]
+	drain(t, m, m.refreshDiffs())
+	if m.images.sides[0] != left || m.images.sides[1] != right {
+		t.Fatal("unchanged refresh replaced image placements")
+	}
+	output.Reset()
+	frame()
+	if strings.Contains(output.String(), "\x1b_G") {
+		t.Fatal("unchanged refresh retransmitted pixels")
+	}
+	writePreviewPNG(t, filepath.Join(m.repo.Root, "image.png"), 140, 60)
+	drain(t, m, m.refreshDiffs())
+	if m.images.sides[0] != left || m.images.sides[1] == right || m.images.sides[1].Bounds().Dx() != 140 {
+		t.Fatal("changed refresh replaced the unchanged side or retained old pixels")
 	}
 }
 

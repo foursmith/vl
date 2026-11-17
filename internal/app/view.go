@@ -242,6 +242,13 @@ type diffLayoutKey struct {
 }
 
 func (m *Model) renderDiff() {
+	if m.images != nil {
+		m.diffRows, m.diffRowHunks = nil, nil
+		m.diffSelection = diffSelection{}
+		m.diffHunk = -1
+		m.viewport.SetContent("")
+		return
+	}
 	w := m.mainWidth()
 	key := diffLayoutKey{m.patch.Raw, m.diffPath, w, m.split && w >= 68}
 	if m.diffRows != nil && m.diffLayout == key {
@@ -322,7 +329,7 @@ func diffSourceText(line *diff.Line) string {
 }
 
 func (m *Model) nextHunk(delta int) {
-	if len(m.patch.Hunks) == 0 {
+	if m.images != nil || len(m.patch.Hunks) == 0 {
 		return
 	}
 	m.diffHunk = min(max(0, m.diffHunk+delta), len(m.patch.Hunks)-1)
