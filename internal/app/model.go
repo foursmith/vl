@@ -191,6 +191,7 @@ type Model struct {
 	findMatcher             *searchservice.Matcher
 	findHidden              bool
 	expanded                map[string]bool
+	uncompressed            map[string]bool
 	treeEntries             []files.Entry
 	treeSeq                 int
 	revealFile              string
@@ -233,6 +234,7 @@ func newModel(ctx context.Context, repo *gitservice.Repository, nerd, editorOnly
 	m.imageIDs = map[int]bool{}
 	if !editorOnly {
 		m.expanded = map[string]bool{}
+		m.uncompressed = map[string]bool{}
 		m.changeCollapsed = map[string]bool{}
 		m.commitDrafts = map[string]string{}
 		m.historyStates = map[string]*historyState{}

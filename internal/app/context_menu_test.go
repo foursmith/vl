@@ -62,17 +62,28 @@ func TestContextMenuSplitsCompactFolders(t *testing.T) {
 			}
 			press(m, "esc")
 			drain(t, m, m.refreshTree())
-			if m.current() == nil || m.current().label != "parent/chain/leaf" || m.current().depth != 0 {
-				t.Fatal("tree refresh did not restore compact folders")
-			}
-			if m.folderExpanded(*m.current()) != open {
-				t.Fatal("tree refresh changed the leaf's open state")
-			}
+			assertSplit()
+			drain(t, m, m.refresh())
+			assertSplit()
+			drain(t, m, m.openSelected())
+			drain(t, m, m.openSelected())
+			assertSplit()
 			drain(t, m, m.collapseFolders())
 			for _, entry := range m.items {
-				if entry.depth != 0 {
-					t.Fatal("collapse all exposed children")
+				if entry.depth != 0 || entry.folder == "parent/chain/leaf" {
+					t.Fatal("collapse all exposed children or recompressed the split chain")
 				}
+			}
+			reopened := New(t.Context(), m.repo, false)
+			t.Cleanup(reopened.Close)
+			reopened.section = explorer
+			drain(t, reopened, reopened.refreshTree())
+			found := false
+			for _, entry := range reopened.items {
+				found = found || entry.folder == "parent/chain/leaf" && entry.label == "parent/chain/leaf"
+			}
+			if !found {
+				t.Fatal("reopened workspace retained the split state")
 			}
 		})
 	}
