@@ -199,6 +199,9 @@ func (m *Model) advanceClose() tea.Cmd {
 	}
 	m.closeQueue = nil
 	m.modal = ""
+	if m.editorOnly && len(m.tabs) == 0 {
+		return tea.Quit
+	}
 	return nil
 }
 
@@ -251,7 +254,7 @@ func (m *Model) removeTabAt(index int) {
 	if len(m.tabs) == 0 {
 		m.activeTab = -1
 		m.diffState = m.emptyDiff
-		m.sidebar = true
+		m.sidebar = !m.editorOnly
 	} else if wasActive {
 		sidebar := m.sidebar
 		m.activateTab(min(index, len(m.tabs)-1))

@@ -128,6 +128,7 @@ type Model struct {
 	width, height           int
 	nerd                    bool
 	section                 section
+	editorOnly              bool
 	sidebar, sidebarVisible bool
 	sidebarWidth            int
 	sidebarRight            bool
@@ -199,20 +200,29 @@ type Model struct {
 }
 
 func New(ctx context.Context, repo *gitservice.Repository, nerd bool) *Model {
+	return newModel(ctx, repo, nerd, false)
+}
+
+func newModel(ctx context.Context, repo *gitservice.Repository, nerd, editorOnly bool) *Model {
 	ctx, cancel := context.WithCancel(ctx)
 	input := textinput.New()
 	input.CharLimit = 2000
-	m := &Model{displayLanguage: i18n.English, cellWidth: 8, cellHeight: 16, colors: theme.Dark(), colorTheme: theme.Builtin("dark_modern"), darkTheme: theme.Builtin("dark_modern"), lightTheme: theme.Builtin("light_modern"), ctx: ctx, cancel: cancel, repo: repo, width: 120, height: 36, nerd: nerd, sidebar: true, sidebarVisible: true, split: true, diffState: newDiffState(), input: input, activeTab: -1, notice: "Loading repository…"}
-	m.snapshot.NoRepository = !repo.HasRepository()
+	m := &Model{displayLanguage: i18n.English, cellWidth: 8, cellHeight: 16, colors: theme.Dark(), colorTheme: theme.Builtin("dark_modern"), darkTheme: theme.Builtin("dark_modern"), lightTheme: theme.Builtin("light_modern"), ctx: ctx, cancel: cancel, repo: repo, width: 120, height: 36, nerd: nerd, editorOnly: editorOnly, sidebar: !editorOnly, sidebarVisible: !editorOnly, split: true, diffState: newDiffState(), input: input, activeTab: -1, notice: "Loading repository…"}
+	m.snapshot.NoRepository = editorOnly || !repo.HasRepository()
+	if editorOnly {
+		m.notice = ""
+	}
 	m.emptyDiff = m.diffState
 	m.styleInput()
 	m.resize()
 	m.imageIDs = map[int]bool{}
-	m.expanded = map[string]bool{}
-	m.changeCollapsed = map[string]bool{}
-	m.commitDrafts = map[string]string{}
-	m.historyStates = map[string]*historyState{}
-	m.historyPages = map[string]*historyPageState{}
+	if !editorOnly {
+		m.expanded = map[string]bool{}
+		m.changeCollapsed = map[string]bool{}
+		m.commitDrafts = map[string]string{}
+		m.historyStates = map[string]*historyState{}
+		m.historyPages = map[string]*historyPageState{}
+	}
 	m.section = changes
 	m.selected = -1
 	m.openURL = platform.OpenURL
@@ -221,7 +231,11 @@ func New(ctx context.Context, repo *gitservice.Repository, nerd bool) *Model {
 }
 
 func (m *Model) Init() tea.Cmd {
-	return tea.Batch(m.loadWorkspaces(), m.refresh(), m.tick(), m.startWatcher(), m.probeImages(), m.pollSystemAppearance(false), tea.Raw(ansi.RequestModeLightDark))
+	commands := []tea.Cmd{m.tick(), m.startWatcher(), m.probeImages(), m.pollSystemAppearance(false), tea.Raw(ansi.RequestModeLightDark)}
+	if !m.editorOnly {
+		commands = append(commands, m.loadWorkspaces(), m.refresh())
+	}
+	return tea.Batch(commands...)
 }
 func (m *Model) tick() tea.Cmd {
 	delay := 3 * time.Second
@@ -232,6 +246,9 @@ func (m *Model) tick() tea.Cmd {
 }
 
 func (m *Model) refresh() tea.Cmd {
+	if m.editorOnly {
+		return nil
+	}
 	if m.refreshCancel != nil {
 		m.refreshCancel()
 	}
@@ -813,6 +830,9 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	m.stopTextDrag()
 	k := msg.String()
+	if m.editorOnly && key.Matches(msg, workbenchKeys.Recent, workbenchKeys.Explorer, workbenchKeys.Changes, workbenchKeys.History, workbenchKeys.Sidebar, workbenchKeys.Focus, workbenchKeys.Output, workbenchKeys.DiffLayout) {
+		return nil
+	}
 	if m.vimEnabled && m.editing() && m.sidebar {
 		m.tabs[m.activeTab].vim.CancelPending()
 	}
@@ -826,7 +846,7 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 			m.ensureSidebar()
 			return m.openContextMenu(m.sideX()+2, m.sidebarHeaderRows()+max(0, m.selected-m.sideTop))
 		}
-		return m.openContextMenu(m.mainX()+2, editorContentRow)
+		return m.openContextMenu(m.mainX()+2, m.contentRow())
 	}
 	switch {
 	case key.Matches(msg, workbenchKeys.Quit, workbenchKeys.Copy):
@@ -883,6 +903,9 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	case key.Matches(msg, workbenchKeys.FindNext):
 		return m.findNext()
 	case key.Matches(msg, workbenchKeys.Escape):
+		if m.editorOnly {
+			return nil
+		}
 		m.sidebar = true
 		m.sidebarVisible = true
 		m.resize()
@@ -947,7 +970,7 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 			if k == "-" {
 				factor = 1 / factor
 			}
-			m.zoomImage(factor, m.mainX()+m.mainWidth()/2, editorContentRow+m.contentHeight()/2)
+			m.zoomImage(factor, m.mainX()+m.mainWidth()/2, m.contentRow()+m.contentHeight()/2)
 		case "left":
 			m.panImage(-3, 0)
 		case "right":

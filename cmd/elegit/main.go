@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"syscall"
 
 	tea "charm.land/bubbletea/v2"
@@ -25,7 +26,7 @@ func main() {
 	themeType := flag.String("theme-type", "", "local theme uiTheme from its extension: vs, vs-dark, hc-light, hc-black (default: theme type, or vs-dark)")
 	version := flag.Bool("version", false, "print version")
 	flag.Usage = func() {
-		fmt.Fprintln(flag.CommandLine.Output(), "Usage: elegit [options] [folder]\n\nA Git workbench with diff review and basic text editing.\nWithout a folder, opens the most recent workspace.")
+		fmt.Fprintln(flag.CommandLine.Output(), "Usage: elegit [options] [folder|file]\n\nA Git workbench with diff review and basic text editing.\nA file opens in editor-only mode. Without a path, opens the most recent workspace.")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -62,12 +63,12 @@ func main() {
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 	defer cancel()
-	repo, err := git.Open(ctx, path)
+	m, repo, editorOnly, err := startupModel(ctx, path, *icons)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	m := app.New(ctx, repo, *icons)
+	configureMemory(editorOnly)
 	layoutPath, layoutErr := config.LayoutPath()
 	var layout config.Layout
 	if layoutErr == nil {
@@ -88,37 +89,42 @@ func main() {
 		layoutStore = config.NewLayoutStore(layoutPath)
 		m.SetLayoutStore(layoutStore)
 	}
-	for {
-		sessionPath, sessionErr := config.SessionPath(repo.Root)
-		if sessionErr == nil {
-			var session config.Session
-			session, sessionErr = config.LoadSession(sessionPath)
-			if sessionErr == nil {
-				m.SetSession(session)
-			}
-		}
-		if sessionErr != nil {
-			fmt.Fprintln(os.Stderr, "Load workspace tabs:", sessionErr)
-		}
-		if recentErr := config.RememberFolder(repo.Root); recentErr != nil {
-			fmt.Fprintln(os.Stderr, "Save recent folders:", recentErr)
-		}
-		_, err = runWorkbench(ctx, m)
-		if sessionErr == nil {
-			if saveErr := config.SaveSession(sessionPath, m.Session()); saveErr != nil {
-				fmt.Fprintln(os.Stderr, "Save workspace tabs:", saveErr)
-			}
-		}
+	if editorOnly {
+		err = runProgram(ctx, m)
 		m.Close()
-		next := m.NextRepository()
-		if err != nil || next == nil {
-			break
+	} else {
+		for {
+			sessionPath, sessionErr := config.SessionPath(repo.Root)
+			if sessionErr == nil {
+				var session config.Session
+				session, sessionErr = config.LoadSession(sessionPath)
+				if sessionErr == nil {
+					m.SetSession(session)
+				}
+			}
+			if sessionErr != nil {
+				fmt.Fprintln(os.Stderr, "Load workspace tabs:", sessionErr)
+			}
+			if recentErr := config.RememberFolder(repo.Root); recentErr != nil {
+				fmt.Fprintln(os.Stderr, "Save recent folders:", recentErr)
+			}
+			err = runProgram(ctx, m)
+			if sessionErr == nil {
+				if saveErr := config.SaveSession(sessionPath, m.Session()); saveErr != nil {
+					fmt.Fprintln(os.Stderr, "Save workspace tabs:", saveErr)
+				}
+			}
+			m.Close()
+			next := m.NextRepository()
+			if err != nil || next == nil {
+				break
+			}
+			preferences := m.Layout()
+			repo = next
+			m = app.New(ctx, repo, *icons)
+			m.SetLayout(preferences)
+			m.SetLayoutStore(layoutStore)
 		}
-		preferences := m.Layout()
-		repo = next
-		m = app.New(ctx, repo, *icons)
-		m.SetLayout(preferences)
-		m.SetLayoutStore(layoutStore)
 	}
 	if layoutErr != nil {
 		fmt.Fprintln(os.Stderr, "Load layout preferences:", layoutErr)
@@ -157,11 +163,37 @@ func startupPath(args []string) (string, error) {
 	return path, nil
 }
 
-func runWorkbench(ctx context.Context, m *app.Model) (tea.Model, error) {
+func runProgram(ctx context.Context, m *app.Model) error {
 	defer func() { fmt.Fprint(os.Stdout, m.ImageCleanupSequence()+m.ThemeNotificationRestoreSequence()) }()
 	options := []tea.ProgramOption{tea.WithContext(ctx)}
 	if os.Getenv("NO_COLOR") != "" {
 		options = append(options, tea.WithColorProfile(colorprofile.ASCII))
 	}
-	return tea.NewProgram(m, options...).Run()
+	_, err := tea.NewProgram(m, options...).Run()
+	return err
+}
+
+// A direct file invocation is independent of Git discovery and workspace sessions.
+func startupModel(ctx context.Context, path string, icons bool) (*app.Model, *git.Repository, bool, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, nil, false, err
+	}
+	if !info.IsDir() {
+		m, err := app.NewEditor(ctx, path, icons)
+		return m, nil, true, err
+	}
+	repo, err := git.Open(ctx, path)
+	if err != nil {
+		return nil, nil, false, err
+	}
+	return app.New(ctx, repo, icons), repo, false, nil
+}
+
+// File editing favors a smaller heap over the workbench's allocation throughput.
+// An explicit GOGC remains authoritative, including GOGC=off.
+func configureMemory(editorOnly bool) {
+	if _, configured := os.LookupEnv("GOGC"); editorOnly && !configured {
+		debug.SetGCPercent(50)
+	}
 }

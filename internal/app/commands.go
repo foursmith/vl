@@ -16,6 +16,10 @@ type action struct {
 }
 
 func (m *Model) actions() []action {
+	editorActions := m.editorActions()
+	if m.editorOnly {
+		return editorActions
+	}
 	target := m.selectedRepository()
 	suffix := " · " + m.repositoryName(target)
 	commitLabel, stageAllLabel := m.tr("Git: Commit Staged")+suffix, m.tr("Git: Stage All Changes")+suffix
@@ -23,7 +27,6 @@ func (m *Model) actions() []action {
 	if m.current() == nil || m.current().change == nil {
 		fileReason = m.tr("Select a file in Changes")
 	}
-	docReason := ""
 	tabReason := ""
 	if m.activeTab < 0 {
 		tabReason = m.tr("No active tab")
@@ -32,18 +35,12 @@ func (m *Model) actions() []action {
 	if m.current() == nil || m.current().change == nil && m.current().file == "" {
 		openReason = m.tr("Select a file in Explorer or Changes")
 	}
-	if !m.editing() {
-		docReason = m.tr("Open a text file first")
-	}
 	githubReason := ""
 	if m.repositoryState(m.statusRepository()).GitHubURL == "" {
 		githubReason = m.tr("No GitHub remote found")
 	}
 	actions := []action{
 		{"folder.openRecent", m.tr("File: Open Recent Folder"), workbenchKeys.Recent.Help().Key, "", m.openRecentFolders},
-		{"theme.select", m.tr("Preferences: Color Theme"), "", "", m.openThemePicker},
-		{"vim.toggle", m.tr("Preferences: Toggle Vim Mode"), "", "", m.toggleVim},
-		{"language.select", m.tr("Preferences: Configure Display Language"), "", "", m.openLanguagePicker},
 
 		{"view.explorer", m.tr("View: Show Explorer"), workbenchKeys.Explorer.Help().Key, "", func() tea.Cmd { return m.selectSection(explorer) }},
 		{"explorer.newFile", m.tr("Explorer: New File"), "", "", func() tea.Cmd { return m.newEntry(false) }},
@@ -80,13 +77,9 @@ func (m *Model) actions() []action {
 		}},
 		{"git.discard", m.tr("Git: Discard Unstaged Changes"), "", fileReason, m.discard},
 		{"file.open", m.tr("File: Open Selected File"), "E", openReason, m.editSelected},
-		{"file.save", m.tr("File: Save"), workbenchKeys.Save.Help().Key, docReason, m.save},
-		{"file.close", m.tr("View: Close Editor"), workbenchKeys.Close.Help().Key, tabReason, m.closeTab},
 		{"file.keepOpen", m.tr("View: Keep Editor"), "", tabReason, m.keepTab},
 		{"file.closeOthers", m.tr("View: Close Other Editors"), "", "", m.closeOtherTabs},
 		{"file.closeAll", m.tr("View: Close All Editors"), "", "", m.closeAllTabs},
-		{"edit.find", m.tr("Find: Search Current View"), workbenchKeys.Find.Help().Key, "", func() tea.Cmd { return m.prompt("find", m.tr("Find in current view"), m.find) }},
-		{"app.quit", m.tr("Quit"), workbenchKeys.Quit.Help().Key, "", m.quit},
 	}
 	if m.snapshot.NoRepository {
 		for i := range actions {
@@ -96,11 +89,11 @@ func (m *Model) actions() []action {
 		}
 		actions = append(actions, action{id: "git.init", label: m.tr("Git: Initialize Repository"), run: m.initializeRepository})
 	}
-	return actions
+	return append(editorActions, actions...)
 }
 
 func (m *Model) initializeRepository() tea.Cmd {
-	if !m.snapshot.NoRepository {
+	if m.editorOnly || !m.snapshot.NoRepository {
 		return nil
 	}
 	if m.repo.HasRepository() {

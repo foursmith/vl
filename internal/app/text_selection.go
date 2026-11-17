@@ -33,7 +33,7 @@ func (m *Model) positionEditor(x, y int, extend bool) {
 	if m.vimEnabled && t.vim.VisualMode {
 		t.vim.Reset(d)
 	}
-	line := min(len(d.Lines())-1, max(0, m.editorRowAt(y-editorContentRow)))
+	line := min(len(d.Lines())-1, max(0, m.editorRowAt(y-m.contentRow())))
 	col := textColumn(d.Lines()[line], x-m.mainX()-7+t.left)
 	anchor := d.Anchor
 	if anchor < 0 {
@@ -88,7 +88,7 @@ func (m *Model) positionDiff(x, y int, extend bool) {
 			width = m.mainWidth() - leftWidth - 1
 		}
 	}
-	i := min(len(m.diffRows)-1, max(0, m.viewport.YOffset()+y-editorContentRow))
+	i := min(len(m.diffRows)-1, max(0, m.viewport.YOffset()+y-m.contentRow()))
 	code := codeLine(m.selectionLine(i, s.right))
 	gutter := min(width, m.diffGutter)
 	goal := min(max(0, local-gutter), width-gutter) + m.diffLeft
@@ -158,12 +158,12 @@ func (m *Model) dragText(x, y int) {
 	if m.textDrag != nil && m.editing() && m.document() == m.textDrag {
 		m.positionEditor(x, y, true)
 	} else if m.diffDrag != nil && !m.editing() && m.diffState == m.diffDrag {
-		if y < editorContentRow {
+		if y < m.contentRow() {
 			m.viewport.ScrollUp(1)
 		} else if y >= m.bodyHeight() {
 			m.viewport.ScrollDown(1)
 		}
-		m.positionDiff(x, min(max(y, editorContentRow), m.bodyHeight()-1), true)
+		m.positionDiff(x, min(max(y, m.contentRow()), m.bodyHeight()-1), true)
 	} else {
 		m.stopTextDrag()
 	}

@@ -16,7 +16,7 @@ import (
 	gitservice "github.com/ourongxing/elegit/internal/git"
 )
 
-func drain(t *testing.T, m *Model, cmd tea.Cmd) {
+func drain(t testing.TB, m *Model, cmd tea.Cmd) {
 	t.Helper()
 	queue := []tea.Cmd{cmd}
 	for i := 0; len(queue) > 0; i++ {

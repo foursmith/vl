@@ -90,7 +90,7 @@ func (m *Model) welcomeLines() []string {
 func (m *Model) clickWelcome(msg tea.MouseClickMsg) tea.Cmd {
 	x, y, width, logoRows := m.welcomeLayout()
 	x += m.mainX()
-	index := msg.Y - editorContentRow - y - logoRows - m.welcomeGap(logoRows)
+	index := msg.Y - m.contentRow() - y - logoRows - m.welcomeGap(logoRows)
 	if msg.X < x || msg.X >= x+width || index < 0 || index >= len(welcomeActions) {
 		return nil
 	}

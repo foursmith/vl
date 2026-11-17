@@ -55,6 +55,9 @@ func (m *Model) vimKey(k string) (bool, tea.Cmd) {
 	case "saveClose":
 		return true, m.saveEditor(true)
 	case "focus":
+		if m.editorOnly {
+			return true, nil
+		}
 		m.sidebar = true
 		m.sidebarVisible = true
 		m.resize()

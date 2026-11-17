@@ -86,8 +86,15 @@ const headerHeight = 1
 const tabRow = 0
 const editorContentRow = headerHeight + 1
 
+func (m *Model) contentRow() int {
+	if m.editorOnly {
+		return 1
+	}
+	return editorContentRow
+}
+
 func (m *Model) bodyHeight() int    { return max(1, m.height-1-m.outputHeight()) }
-func (m *Model) contentHeight() int { return max(1, m.bodyHeight()-editorContentRow) }
+func (m *Model) contentHeight() int { return max(1, m.bodyHeight()-m.contentRow()) }
 
 func (m *Model) resize() {
 	m.clampWorkspaces()
@@ -214,7 +221,7 @@ func (m *Model) editorCursor() *tea.Cursor {
 	if m.vimEnabled && !t.vim.InsertMode {
 		shape, blink = tea.CursorBlock, false
 	}
-	return &tea.Cursor{Position: tea.Position{X: m.mainX() + x, Y: editorContentRow + y}, Shape: shape, Blink: blink, Color: lipgloss.Color(m.colors.Foreground)}
+	return &tea.Cursor{Position: tea.Position{X: m.mainX() + x, Y: m.contentRow() + y}, Shape: shape, Blink: blink, Color: lipgloss.Color(m.colors.Foreground)}
 }
 
 func (m *Model) mainLines() []string {
@@ -222,7 +229,10 @@ func (m *Model) mainLines() []string {
 	if m.width < 70 && m.sidebar && m.sidebarVisible {
 		return m.sidebarLinesWidth(w)
 	}
-	lines := []string{m.tabBar()}
+	var lines []string
+	if !m.editorOnly {
+		lines = append(lines, m.tabBar())
+	}
 	lines = append(lines, m.contentToolbar())
 	var content []string
 	editing := m.editing()
@@ -248,7 +258,7 @@ func (m *Model) mainLines() []string {
 			content[middle] = theme.Style(m.colors.Foreground, m.colors.Background).Render("  " + message)
 		}
 	}
-	for i := 0; i < h-editorContentRow; i++ {
+	for i := 0; i < h-m.contentRow(); i++ {
 		text := ""
 		if i < len(content) {
 			text = content[i]
@@ -632,7 +642,7 @@ func (m *Model) overlay(base []string) []string {
 }
 
 func (m *Model) click(msg tea.MouseClickMsg) tea.Cmd {
-	if msg.Y >= 0 && msg.Y < headerHeight && msg.X >= m.mainX() && msg.X < m.mainX()+m.mainWidth() && !(m.width < 70 && m.sidebar && m.sidebarVisible) && (msg.Button == tea.MouseLeft || msg.Button == tea.MouseMiddle) {
+	if !m.editorOnly && msg.Y >= 0 && msg.Y < headerHeight && msg.X >= m.mainX() && msg.X < m.mainX()+m.mainWidth() && !(m.width < 70 && m.sidebar && m.sidebarVisible) && (msg.Button == tea.MouseLeft || msg.Button == tea.MouseMiddle) {
 		return m.clickTab(msg)
 	}
 	if msg.Button != tea.MouseLeft {
@@ -644,7 +654,7 @@ func (m *Model) click(msg tea.MouseClickMsg) tea.Cmd {
 	if m.sidebarAt(msg.X) {
 		return m.clickSidebar(msg)
 	}
-	if msg.Y == editorContentRow-1 && !m.editing() && m.diffOpen {
+	if msg.Y == m.contentRow()-1 && !m.editing() && m.diffOpen {
 		button := m.diffModeButton()
 		if msg.X >= m.mainX()+button.x && msg.X < m.mainX()+button.x+button.width {
 			if m.mainWidth() < 68 {
@@ -661,10 +671,10 @@ func (m *Model) click(msg tea.MouseClickMsg) tea.Cmd {
 	if m.welcomeVisible() {
 		return m.clickWelcome(msg)
 	}
-	if msg.Y >= editorContentRow && msg.Y < m.bodyHeight() {
+	if msg.Y >= m.contentRow() && msg.Y < m.bodyHeight() {
 		m.beginTextDrag(msg)
 		if !m.editing() && m.diffOpen {
-			i := m.viewport.YOffset() + msg.Y - editorContentRow
+			i := m.viewport.YOffset() + msg.Y - m.contentRow()
 			if i < len(m.diffRowHunks) && m.diffRowHunks[i] >= 0 {
 				m.diffHunk = m.diffRowHunks[i]
 			}

@@ -50,6 +50,41 @@ retries. The engine supports incremental documents, but this integration still
 recomputes each requested immutable text snapshot rather than retaining mutable
 TextMate document state across edits.
 
+## Standalone editor memory
+
+Direct file invocations use a GC growth target of 50 instead of Go's default
+100. This trades some allocation throughput for less heap headroom in the
+single-file editor. An explicitly set `GOGC` (including `off`) takes precedence;
+folder workspaces retain their existing GC policy. This is not a hard memory
+limit and does not remove syntax highlighting, undo history or file watching.
+
+On macOS / Apple M4, the before/after executable comparison used the same saved
+preferences, 80 × 24 PTYs, a 30 KiB Go file copied from `internal/app/model.go`
+and a tiny UTF-8 text file. `vmmap -summary` reported physical footprint:
+
+| Workload | Before | Editor GC target 50 |
+| --- | ---: | ---: |
+| Text file, idle for 10 seconds | 12.5 MiB | 11.8 MiB |
+| Go file, idle for 10 seconds | 19.5 MiB | 17.7 MiB |
+| Text file, insert then undo, settle 10 seconds | 13.4 MiB | 12.5 MiB |
+| Go file, insert then undo, settle 10 seconds | 24.5 MiB | 19.7 MiB |
+
+These are short local samples, not a memory ceiling. File size, language grammar,
+editing history, terminal size and user GC settings affect the result. A separate
+heap profile attributed most retained application allocations to TextMate grammar
+scanners and regexes, rather than workspace model state.
+
+`BenchmarkEditorEditHighlight` includes an edit/frame/background-highlight cycle
+and an undo/frame/background-highlight cycle, including the edit debounce timer.
+Three 1-second runs measured 75.3–82.2 ms per cycle at `GOGC=100` and 76.4–79.4 ms
+at `GOGC=50`; these samples do not establish a latency improvement. Run the two
+settings separately, without concurrent test workloads:
+
+```sh
+GOGC=100 go test ./internal/app -run '^$' -bench '^BenchmarkEditorEditHighlight$' -benchtime=1s -count=3
+GOGC=50 go test ./internal/app -run '^$' -bench '^BenchmarkEditorEditHighlight$' -benchtime=1s -count=3
+```
+
 ## Changes and checks
 
 - Wheel input scrolls the sidebar viewport without changing selection or

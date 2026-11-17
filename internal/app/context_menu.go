@@ -239,7 +239,7 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 			}
 		}
 	} else if x >= m.mainX() && x < m.mainX()+m.mainWidth() && !(m.width < 70 && m.sidebar && m.sidebarVisible) && y >= 0 && y < m.bodyHeight() {
-		if y == tabRow {
+		if !m.editorOnly && y == tabRow {
 			found := false
 			for _, slot := range m.tabLayout() {
 				if slot.control == 0 && x-m.mainX() >= slot.x && x-m.mainX() < slot.x+slot.width {
@@ -255,7 +255,7 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 			m.sidebar = false
 		}
 		if m.activeTab >= 0 && m.activeTab < len(m.tabs) {
-			if y == tabRow {
+			if !m.editorOnly && y == tabRow {
 				add(m.tr("Close"), workbenchKeys.Close.Help().Key, m.closeTab)
 				add(m.tr("Close Others"), "", m.closeOtherTabs)
 				add(m.tr("Close All"), "", m.closeAllTabs)

@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"testing"
 
 	"github.com/ourongxing/elegit/internal/config"
@@ -48,5 +50,47 @@ func TestStartupPathUsesExplicitPathOrMostRecentWorkspace(t *testing.T) {
 	}
 	if got, err := startupPath([]string{"."}); err != nil || got != "." {
 		t.Fatalf("explicit path depends on recent history: %q, %v", got, err)
+	}
+}
+
+func TestStartupFileBypassesGit(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "file.txt")
+	if err := os.WriteFile(path, []byte("hello"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", t.TempDir())
+	m, repo, only, err := startupModel(context.Background(), path, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer m.Close()
+	if !only || repo != nil {
+		t.Fatal("file opened as workspace")
+	}
+	if _, _, _, err := startupModel(context.Background(), filepath.Join(dir, "missing"), false); err == nil {
+		t.Fatal("missing file accepted")
+	}
+}
+
+func TestEditorMemoryPolicyPreservesOverridesAndWorkbench(t *testing.T) {
+	previous := debug.SetGCPercent(100)
+	defer debug.SetGCPercent(previous)
+	t.Setenv("GOGC", "")
+	os.Unsetenv("GOGC")
+	configureMemory(false)
+	if got := debug.SetGCPercent(100); got != 100 {
+		t.Fatalf("workbench GC = %d", got)
+	}
+	configureMemory(true)
+	if got := debug.SetGCPercent(100); got != 50 {
+		t.Fatalf("editor GC = %d", got)
+	}
+	for _, value := range []string{"off", "200", ""} {
+		os.Setenv("GOGC", value)
+		configureMemory(true)
+		if got := debug.SetGCPercent(100); got != 100 {
+			t.Fatalf("overrode GOGC=%q: %d", value, got)
+		}
 	}
 }

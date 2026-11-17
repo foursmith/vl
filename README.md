@@ -9,13 +9,15 @@ Advanced Git capabilities are still in progress; see the [roadmap](docs/ROADMAP.
 
 ## Run
 
-Requires Go **1.27.3+**, Git on `PATH`, and an interactive UTF-8 terminal.
+Requires Go **1.27.3+** and an interactive UTF-8 terminal.
+Folder workspaces also require Git on `PATH`.
 A Nerd Font is recommended; use `-icons=false` for plain-text controls and markers.
 Git uses your existing credentials or SSH agent; terminal password prompts are disabled.
 
 ```sh
 make build
 bin/elegit /path/to/folder
+bin/elegit /path/to/file.go  # editor-only mode
 
 # Startup overrides; themes and language can also be changed through F1.
 bin/elegit -theme light_modern
@@ -28,6 +30,15 @@ With no path, elegit opens the most recent workspace, or asks for a path if none
 exists. Use `bin/elegit .` to open the current directory. Paths inside a Git
 repository resolve to its root. Ordinary folders support browsing and editing;
 Changes and History offer **Initialize Repository**.
+
+Passing an existing text file opens only the editor, without tabs, the sidebar, Git
+controls, repository discovery or workspace session restoration. Git is not
+required for this mode; Git history, commit state and commands are not initialized.
+**Ctrl+S** saves;
+**Ctrl+W** closes the file and exits (with a save/discard/cancel prompt for edits).
+**Ctrl+Q** quits. Search, clipboard, undo/redo, themes and the saved Vim preference
+remain available. Direct file editing does not change recent workspaces or their
+saved tabs.
 
 ## Features
 

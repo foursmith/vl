@@ -167,14 +167,14 @@ func (m *Model) imageRegion() imagepreview.Region {
 
 func (m *Model) imageContentAt(x, y int) bool {
 	return !m.sidebarAt(x) &&
-		x >= m.mainX() && x < m.mainX()+m.mainWidth() && y >= editorContentRow && y < editorContentRow+m.contentHeight()
+		x >= m.mainX() && x < m.mainX()+m.mainWidth() && y >= m.contentRow() && y < m.contentRow()+m.contentHeight()
 }
 
 func (m *Model) imagePointer(region imagepreview.Region, x, y int) (float64, float64) {
 	cw, ch := m.cellWidth, m.cellHeight
 	left, top := (m.mainWidth()-region.Columns)/2, (m.contentHeight()-region.Rows)/2
 	px := (float64(x-m.mainX()-left) + .5) * float64(cw)
-	py := (float64(y-editorContentRow-top) + .5) * float64(ch)
+	py := (float64(y-m.contentRow()-top) + .5) * float64(ch)
 	return min(max(0, px), region.Width*region.Scale), min(max(0, py), region.Height*region.Scale)
 }
 

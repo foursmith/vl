@@ -23,6 +23,9 @@ func (m *Model) openFileInExplorer(path string) tea.Cmd {
 }
 
 func (m *Model) revealDocument(path string) tea.Cmd {
+	if m.editorOnly {
+		return nil
+	}
 	m.section = explorer
 	m.sidebarVisible = true
 	for parent := filepath.ToSlash(filepath.Dir(path)); parent != "." && parent != "/"; parent = filepath.ToSlash(filepath.Dir(parent)) {

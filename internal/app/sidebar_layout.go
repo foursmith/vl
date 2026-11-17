@@ -10,7 +10,7 @@ const (
 	minMainWidth    = 40
 )
 
-func (m *Model) sideShown() bool { return m.sidebarVisible && m.width >= 70 }
+func (m *Model) sideShown() bool { return !m.editorOnly && m.sidebarVisible && m.width >= 70 }
 func (m *Model) sideWidth() int {
 	if !m.sideShown() {
 		return 0
