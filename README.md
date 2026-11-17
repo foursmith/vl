@@ -38,7 +38,7 @@ controls, repository discovery or workspace session restoration. Git is not
 required for this mode; Git history, commit state and commands are not initialized.
 **Ctrl+S** saves;
 **Ctrl+W** closes the file and exits (with a save/discard/cancel prompt for edits).
-**Ctrl+Q** quits. Search, clipboard, undo/redo, themes and the saved Vim preference
+**Ctrl+Q** quits. Search, clipboard, undo/redo, themes and Vim editing
 remain available. Direct file editing does not change recent workspaces or their
 saved tabs.
 
@@ -60,8 +60,8 @@ colons take precedence over location suffixes.
 - **Explorer and tabs:** compact folder trees, file search, preview/kept tabs,
   context menus, recent workspaces and per-folder session restoration.
 - **Text editing:** grapheme-aware movement, selection, system clipboard, undo/redo,
-  literal search, line jumps, syntax highlighting and save. Optional Vim mode adds
-  Visual selection, Flash jumps, Surround and repeat commands.
+  literal search, line jumps, syntax highlighting and save. Vim is the only interaction
+  mode, with Normal/Insert/Visual editing, Flash jumps, Surround and repeat commands.
 - **Images:** read-only PNG, JPEG, GIF (first frame) and SVG previews, with zoom and pan.
 - **Workspace UI:** sticky code/folder context, resizable left/right sidebar,
   output panel, English/简体中文, and built-in or local themes.
@@ -94,17 +94,21 @@ cannot restore it.
 
 ## Keyboard shortcuts
 
-- [普通快捷键](docs/KEYBINDINGS.md): workspace, sidebar, editor, Diff, images and pickers.
-- [Vim 快捷键](docs/VIM.md): modes, operators, text objects, Visual, Flash and Surround.
+- [快捷键总览](docs/KEYBINDINGS.md): workspace, sidebar, editor, Diff, images and pickers.
+- [文本编辑详解](docs/VIM.md): Normal/Insert/Visual, operators, text objects, Flash and Surround.
 
-Enable Vim through **Ctrl+Shift+P → Preferences: Toggle Vim Mode** (search `vim`). It is off
-by default and applies only to editable text tabs. Workbench shortcuts remain available.
+vl uses one Vim keybinding set throughout. Text tabs open in Normal; press `i` to
+insert and `Esc` to return to Normal. In content tabs, `Space 1`–`Space 9`
+switch tabs and `Space q` closes the current tab. Diff is a read-only editor: it shares
+Vim motions, Visual selection, yanking, search and Flash while blocking text changes.
+Diff hunk actions live in the context menu and command palette; `[`/`]` navigate hunks.
+Workbench shortcuts remain available.
 
 ## Appearance and preferences
 
 Use **Ctrl+Shift+P → Preferences: Color Theme** to preview and select a theme, or
 **Preferences: Configure Display Language** to switch between English and 简体中文.
-Theme, language, Vim and layout preferences persist across restarts and workspace switches.
+Theme, language and layout preferences persist across restarts and workspace switches.
 
 Dark/light terminal notifications select the remembered matching theme; macOS
 system appearance is the fallback. A manually selected mismatched theme stays selected.

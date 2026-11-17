@@ -185,3 +185,48 @@ func (m *Model) deleteSelectedEntry() tea.Cmd {
 	m.confirmationLabel = m.tr("Delete")
 	return cmd
 }
+
+// File yanks are separate from the text clipboard used by the editor.
+func (m *Model) yankEntry() tea.Cmd {
+	path := m.selectedEntryPath()
+	if path == "" {
+		return nil
+	}
+	if m.deletePathDirty(path) {
+		m.notice = m.tr("Save or close unsaved changes in this path first")
+		return nil
+	}
+	m.explorerYankRoot, m.explorerYankPath = m.repo.Root, path
+	m.notice = m.tr("Copied %s", path)
+	return nil
+}
+
+func (m *Model) pasteEntryPrompt() tea.Cmd {
+	if m.explorerYankPath == "" || m.explorerYankRoot != m.repo.Root {
+		m.notice = m.tr("Copy an entry in this workspace with yy first")
+		return nil
+	}
+	parent := "."
+	if entry := m.current(); entry != nil {
+		if entry.folder != "" {
+			parent = entry.folder
+		} else if entry.file != "" {
+			parent = filepath.Dir(entry.file)
+		}
+	}
+	name := filepath.Base(m.explorerYankPath)
+	destination := filepath.Join(parent, name)
+	if destination == filepath.FromSlash(m.explorerYankPath) {
+		destination = filepath.Join(parent, name+"-copy")
+	}
+	return m.prompt("pasteFile", m.tr("Copy to"), filepath.ToSlash(destination))
+}
+
+func (m *Model) pasteEntry(destination string) tea.Cmd {
+	root, source := m.explorerYankRoot, m.explorerYankPath
+	if root != m.repo.Root || source == "" || m.deletePathDirty(source) {
+		m.notice = m.tr("Path state changed; try again")
+		return nil
+	}
+	return m.startOperation("Copy file", func() (string, error) { return "", files.Copy(m.ctx, root, source, destination) })
+}

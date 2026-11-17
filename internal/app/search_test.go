@@ -33,7 +33,7 @@ func TestSearchHighlightsAllAndClearsUntilNext(t *testing.T) {
 	m.tabs = []tab{{doc: d}}
 	m.activeTab = 0
 	m.sidebar = false
-	m.vimEnabled = true
+
 	m.find = "one"
 	m.findNext()
 	check := func(want int) {

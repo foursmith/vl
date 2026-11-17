@@ -6,21 +6,28 @@ import (
 	"github.com/ourongxing/vl/internal/editor"
 )
 
-func (m *Model) toggleVim() tea.Cmd {
-	m.vimEnabled = !m.vimEnabled
-	for i := range m.tabs {
-		t := &m.tabs[i]
-		if t.doc != nil {
-			t.vim.Reset(t.doc)
-		}
-	}
-	m.ensureEditor()
-	return m.savePreferences()
-}
-
 func (m *Model) vimKey(k string) (bool, tea.Cmd) {
 	v := &m.tabs[m.activeTab].vim
-	d := m.document()
+	d := m.editorDocument()
+	if d.ReadOnly && !v.CommandPending() && !v.VisualMode {
+		if k == "[" {
+			m.nextHunk(-1)
+			return true, nil
+		}
+		if k == "]" {
+			m.nextHunk(1)
+			return true, nil
+		}
+	}
+	if !v.InsertMode && !v.CommandPending() && (k == "pgup" || k == "pgdown") {
+		rows := m.contentHeight()
+		if k == "pgup" {
+			rows = -rows
+		}
+		v.MovePage(d, rows)
+		m.ensureTextCursor()
+		return true, nil
+	}
 	if k == "f" {
 		if operator, ok := v.FlashOperator(); ok {
 			return true, m.startFlash(operator)
@@ -39,21 +46,11 @@ func (m *Model) vimKey(k string) (bool, tea.Cmd) {
 	if !v.Handle(d, k) {
 		return false, nil
 	}
-	m.ensureEditor()
+	m.ensureTextCursor()
 	if text, ready := v.TakeClipboardCopy(); ready {
 		return true, func() tea.Msg { return clipboardMsg{err: clipboard.WriteAll(text)} }
 	}
 	switch v.TakeAction() {
-	case "clearSearch":
-		m.findHidden = true
-		d.ClearSelection()
-		v.Reset(d)
-	case "save":
-		return true, m.save()
-	case "close":
-		return true, m.closeTab()
-	case "saveClose":
-		return true, m.saveEditor(true)
 	case "focus":
 		if m.editorOnly {
 			return true, nil
@@ -92,7 +89,7 @@ func (m *Model) applyVimClipboard(msg vimClipboardMsg) tea.Cmd {
 		m.log(msg.err.Error())
 		return nil
 	}
-	if !m.vimEnabled || m.sidebar || m.modal != "" || !m.editing() || m.document() != msg.doc {
+	if m.sidebar || m.modal != "" || !m.editing() || m.document() != msg.doc {
 		return nil
 	}
 	d := m.document()

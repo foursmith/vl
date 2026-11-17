@@ -1,6 +1,5 @@
 {
- "Type to search · label to jump · Tab next · Esc cancel": "输入搜索 · 标签跳转 · Tab 下一组 · Esc 取消",
-  "Preferences: Toggle Vim Mode": "首选项：切换 Vim 模式",
+  "Type to search · label to jump · Tab next · Esc cancel": "输入搜索 · 标签跳转 · Tab 下一组 · Esc 取消",
   "Configure Display Language": "配置显示语言",
   "Preferences: Configure Display Language": "首选项：配置显示语言",
   "Display language changed": "已切换显示语言",
@@ -146,7 +145,6 @@
   "Save edited files before staging all changes": "请先保存编辑中的文件，再暂存所有更改",
   "Stage or unstage the whole image file from Changes": "请在“更改”中暂存或取消暂存整个图片文件",
   "Open a working-tree or index diff first": "请先打开工作区或暂存区的差异",
-  "Use S in a working-tree diff or U in an index diff": "在工作区差异中按 S 暂存，在暂存区差异中按 U 取消暂存",
   "Commit diffs are read-only": "提交差异为只读",
   "Select a non-conflicted working-tree file to discard": "请选择工作区中无冲突的文件来放弃更改",
   "Save or close edited files before discarding": "请先保存或关闭编辑中的文件，再放弃更改",
@@ -306,5 +304,18 @@
   "File unavailable on disk: %s: %s": "文件在磁盘上不可用：%s：%s",
   "Closed %s: %s": "已关闭 %s：%s",
   "Delete untracked file %s?": "删除未跟踪的文件 %s？",
-  "%s changes": "%s 的更改"
+  "%s changes": "%s 的更改",
+  "Copied %s": "已复制 %s",
+  "Copy an entry in this workspace with yy first": "请先用 yy 复制当前工作区中的文件或文件夹",
+  "Copy to": "复制到",
+  "File operations act on one selected entry": "文件操作每次仅处理所选的一项",
+  "Copy file": "复制文件",
+  "Use Stage Hunk in a working-tree diff or Unstage Hunk in an index diff": "工作区 Diff 使用暂存修改块，暂存区 Diff 使用取消暂存修改块",
+  "Read-only": "只读",
+  "Stage Hunk": "暂存修改块",
+  "Unstage Hunk": "取消暂存修改块",
+  "Open Working Tree File": "打开工作区文件",
+  "Focus Other Diff Side": "切换 Diff 左右侧焦点",
+  "Open a working-tree diff first": "请先打开工作区 Diff",
+  "Open an index diff first": "请先打开暂存区 Diff"
 }

@@ -13,9 +13,8 @@ func TestVimWorkbenchRouting(t *testing.T) {
 	m.tabs = []tab{{doc: d}}
 	m.activeTab = 0
 	m.sidebar = false
-	drain(t, m, m.toggleVim())
-	if !m.Layout().VimMode || !strings.Contains(m.statusLine(), "NORMAL") {
-		t.Fatal("mode not visible or persisted")
+	if !strings.Contains(m.statusLine(), "NORMAL") {
+		t.Fatal("default Vim mode not visible")
 	}
 	press(m, "i")
 	press(m, "X")
@@ -50,10 +49,9 @@ func TestVimWorkbenchRouting(t *testing.T) {
 		t.Fatal("Vim intercepted sidebar")
 	}
 	m.sidebar = false
-	drain(t, m, m.toggleVim())
 	press(m, "Z")
-	if d.Text == "Xone two\nthree" {
-		t.Fatal("disabled mode intercepted text")
+	if d.Text != "Xone two\nthree" {
+		t.Fatal("Normal mode accepted ordinary text")
 	}
 }
 
@@ -63,7 +61,7 @@ func TestVimVisualRenderingAndRouting(t *testing.T) {
 	m.tabs = []tab{{doc: d}}
 	m.activeTab = 0
 	m.sidebar = false
-	m.vimEnabled = true
+
 	press(m, "v")
 	character := strings.Join(m.editorLines(), "\n")
 	if d.SelectedText() != "a" || !strings.Contains(m.statusLine(), "VISUAL") {
@@ -102,7 +100,7 @@ func TestVimWordObjectsThroughWorkbench(t *testing.T) {
 	m.tabs = []tab{{doc: d}}
 	m.activeTab = 0
 	m.sidebar = false
-	m.vimEnabled = true
+
 	press(m, "d")
 	press(m, "a")
 	if d.Text != "alpha beta gamma" || m.tabs[0].vim.InsertMode {
@@ -131,7 +129,7 @@ func TestVimColonReusesQuickPosition(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	defer m.Close()
 	m.openFile("file0.go")
-	m.vimEnabled = true
+
 	d := m.document()
 	d.Edit("first\n中文value\nthird")
 	d.SetPosition(0, 2)
@@ -173,7 +171,7 @@ func TestVimFlashTargetsAndRepeatThroughWorkbench(t *testing.T) {
 	m.tabs = []tab{{doc: d}}
 	m.activeTab = 0
 	m.sidebar = false
-	m.vimEnabled = true
+
 	for _, tt := range []struct {
 		query  string
 		cursor int

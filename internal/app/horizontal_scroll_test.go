@@ -49,9 +49,8 @@ func TestDiffHorizontalScrollKeepsGuttersAndSplitBoundary(t *testing.T) {
 	for _, split := range []bool{false, true} {
 		m.split = split
 		m.renderDiff()
-		for i := 0; i < 100; i++ {
-			m.Update(tea.KeyPressMsg{Code: tea.KeyRight})
-		}
+		press(m, "G")
+		press(m, "L") // The read-only editor reveals the cursor at the source line's end.
 		if m.diffLeft == 0 || m.viewport.YOffset() != 0 {
 			t.Fatal("horizontal keys did not preserve vertical position")
 		}

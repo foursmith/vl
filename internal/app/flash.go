@@ -35,10 +35,11 @@ type flashState struct {
 }
 
 func (m *Model) startFlash(operator string) tea.Cmd {
-	d := m.document()
+	d := m.editorDocument()
 	t := &m.tabs[m.activeTab]
 	t.vim.CancelPending()
-	m.flash = &flashState{operator: operator, doc: d, text: d.Text, cursor: d.Cursor, anchor: d.Anchor, top: t.top, left: t.left, width: m.mainWidth(), height: m.contentHeight(), visual: t.vim.VisualMode, linewise: t.vim.VisualLine}
+	top, left, width, _ := m.textViewport()
+	m.flash = &flashState{operator: operator, doc: d, text: d.Text, cursor: d.Cursor, anchor: d.Anchor, top: top, left: left, width: width, height: m.contentHeight(), visual: t.vim.VisualMode, linewise: t.vim.VisualLine}
 	m.flashRevision++
 	return nil
 }
@@ -52,11 +53,12 @@ func (m *Model) cancelFlash() {
 }
 func (m *Model) flashValid() bool {
 	f := m.flash
-	if f == nil || !m.vimEnabled || m.sidebar || m.modal != "" || m.contextMenu != nil || !m.editing() || m.document() != f.doc {
+	if f == nil || m.sidebar || m.modal != "" || m.contextMenu != nil || m.editorDocument() == nil || m.editorDocument() != f.doc {
 		return false
 	}
 	t := &m.tabs[m.activeTab]
-	return f.doc.Text == f.text && f.doc.Cursor == f.cursor && f.doc.Anchor == f.anchor && t.top == f.top && t.left == f.left && m.mainWidth() == f.width && m.contentHeight() == f.height && !t.vim.InsertMode && t.vim.VisualMode == f.visual && t.vim.VisualLine == f.linewise
+	top, left, width, _ := m.textViewport()
+	return f.doc.Text == f.text && f.doc.Cursor == f.cursor && f.doc.Anchor == f.anchor && top == f.top && left == f.left && width == f.width && m.contentHeight() == f.height && !t.vim.InsertMode && t.vim.VisualMode == f.visual && t.vim.VisualLine == f.linewise
 }
 func (m *Model) flashKey(msg tea.KeyPressMsg) tea.Cmd {
 	if !m.flashValid() {
@@ -140,7 +142,7 @@ func (m *Model) finishFlash(offset int) tea.Cmd {
 	m.cancelFlash()
 	v := &m.tabs[m.activeTab].vim
 	v.ApplyFlash(f.doc, offset, f.query, f.operator)
-	m.ensureEditor()
+	m.ensureTextCursor()
 	if text, ready := v.TakeClipboardCopy(); ready {
 		return func() tea.Msg { return clipboardMsg{err: clipboard.WriteAll(text)} }
 	}
@@ -152,9 +154,10 @@ func (m *Model) rebuildFlash() {
 	if f.query != "" {
 		d := f.doc
 		seen := map[int]bool{}
+		_, _, _, gutter := m.textViewport()
 		for y := 0; y < m.contentHeight(); y++ {
-			row := m.editorRowAt(y)
-			if row >= len(d.Lines()) || seen[row] {
+			row := m.textRowAt(y)
+			if row < 0 || row >= len(d.Lines()) || seen[row] {
 				continue
 			}
 			seen[row] = true
@@ -170,12 +173,12 @@ func (m *Model) rebuildFlash() {
 			}
 			boundaries = append(boundaries, boundary{len(text), runes, cells})
 			for _, start := range boundaries[:len(boundaries)-1] {
-				if start.cells < f.left || start.cells >= f.left+max(1, f.width-7) || !strings.HasPrefix(text[start.bytes:], f.query) {
+				if start.cells < f.left || start.cells >= f.left+max(1, f.width-gutter) || !strings.HasPrefix(text[start.bytes:], f.query) {
 					continue
 				}
 				endByte := start.bytes + len(f.query)
 				j := sort.Search(len(boundaries), func(n int) bool { return boundaries[n].bytes >= endByte })
-				if j >= len(boundaries) || boundaries[j].bytes != endByte || boundaries[j].cells > f.left+max(1, f.width-7) {
+				if j >= len(boundaries) || boundaries[j].bytes != endByte || boundaries[j].cells > f.left+max(1, f.width-gutter) {
 					continue
 				}
 				target := flashTarget{offset: d.LineOffset(row) + start.runes, end: d.LineOffset(row) + boundaries[j].runes}

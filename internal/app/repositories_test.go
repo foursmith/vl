@@ -257,7 +257,6 @@ func TestRepositoryFoldNavigationAndScopeStayIndependent(t *testing.T) {
 		t.Fatal("child folder scope crossed repository boundary")
 	}
 	m.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
-	m.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
 	if !m.current().header || m.current().repoHeader || m.current().repository != "child space" {
 		t.Fatal("left selected another repository's group")
 	}

@@ -45,7 +45,7 @@ func (m *Model) quickPositionActions(value string) ([]action, bool) {
 		return action{id: path, label: path, key: key, disabled: reason, run: run}
 	}
 	if query == "" {
-		d := m.document()
+		d := m.editorDocument()
 		if d == nil {
 			return []action{{label: m.tr("Current file"), disabled: m.tr("Open a text file first, then enter :line[:column]")}}, true
 		}
@@ -64,13 +64,13 @@ func (m *Model) quickPositionActions(value string) ([]action, bool) {
 				if !m.openDocument(path, false) {
 					return nil
 				}
-				if d := m.document(); d != nil {
+				if d := m.editorDocument(); d != nil {
 					d.SetPosition(line-1, column-1)
 				} else {
 					m.notice = m.tr("Go to line is unavailable in image previews")
 				}
 				cmd := m.revealDocument(path)
-				m.ensureEditor()
+				m.ensureTextCursor()
 				return cmd
 			}))
 		}
@@ -79,7 +79,7 @@ func (m *Model) quickPositionActions(value string) ([]action, bool) {
 }
 
 func (m *Model) goToPosition(value string) tea.Cmd {
-	d := m.document()
+	d := m.editorDocument()
 	if d == nil {
 		return nil
 	}
@@ -94,9 +94,9 @@ func (m *Model) goToPosition(value string) tea.Cmd {
 
 // SetEditorPosition uses one-based line and rune column numbers, clamped to the file.
 func (m *Model) SetEditorPosition(line, column int) {
-	if d := m.document(); d != nil {
+	if d := m.editorDocument(); d != nil {
 		d.SetPosition(line-1, column-1)
 		m.sidebar = false
-		m.ensureEditor()
+		m.ensureTextCursor()
 	}
 }

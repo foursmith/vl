@@ -34,6 +34,10 @@ type vimRecording struct {
 }
 
 func (v *Vim) Handle(d *Document, key string) bool {
+	if d.ReadOnly && !v.readOnlyKey(key) {
+		v.CancelPending()
+		return true
+	}
 	if key == "." && !v.InsertMode && !v.VisualMode && !v.CommandPending() {
 		count := max(1, v.count)
 		v.clear()

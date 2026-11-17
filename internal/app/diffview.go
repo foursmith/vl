@@ -11,12 +11,17 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"github.com/clipperhouse/uax29/v2/graphemes"
 	"github.com/ourongxing/vl/internal/diff"
+	"github.com/ourongxing/vl/internal/editor"
 	gitservice "github.com/ourongxing/vl/internal/git"
 	"github.com/ourongxing/vl/internal/highlight"
 	"github.com/ourongxing/vl/internal/theme"
 )
 
 type diffState struct {
+	review           *editor.Document
+	reviewRows       []int
+	reviewLine       map[*diff.Line]int
+	reviewRight      bool
 	patch            diff.Patch
 	diffPath         string
 	diffOriginal     string
@@ -45,7 +50,9 @@ type diffState struct {
 }
 
 func newDiffState() *diffState {
-	return &diffState{viewport: viewport.New(), diffHunk: -1}
+	view := viewport.New()
+	view.KeyMap = viewport.KeyMap{} // Text navigation belongs to the shared editor.
+	return &diffState{viewport: view, diffHunk: -1}
 }
 
 func (m *Model) splitDiff() bool {
@@ -63,6 +70,9 @@ func (d *diffState) clearContent() {
 	d.diffRows, d.diffRowHunks = nil, nil
 	d.diffLayout = diffLayoutKey{}
 	d.diffSelection = diffSelection{}
+	d.review = nil
+	d.reviewRows = nil
+	d.reviewLine = nil
 	d.diffLeft, d.diffWidth = 0, 0
 	d.diffHunk = -1
 	d.viewport.SetContent("")
@@ -409,15 +419,37 @@ func (m *Model) diffRow(line *diff.Line, width int, right bool, selected diffRan
 	} else if line.Kind == diff.Deleted {
 		emphasis = m.colors.DeletedText
 	}
-	return row(label, gutter, m.colors.LineNumber, m.colors.Background) + diffCode(m.colors, code, m.diffSyntax[line], width-gutter, m.diffLeft, bg, emphasis, m.diffEmphasis[line], selected)
+	overlay := diffCodeOverlay{}
+	if logical, ok := m.reviewLine[line]; ok && right == m.reviewRight && m.review != nil {
+		overlay.offset = m.review.LineOffset(logical)
+		if !m.findHidden {
+			overlay.find = m.find
+		}
+		if m.flashValid() {
+			overlay.flash = m.flash
+		}
+	}
+	return row(label, gutter, m.colors.LineNumber, m.colors.Background) + diffCode(m.colors, code, m.diffSyntax[line], width-gutter, m.diffLeft, bg, emphasis, m.diffEmphasis[line], selected, overlay)
+}
+
+type diffCodeOverlay struct {
+	find   string
+	offset int
+	flash  *flashState
 }
 
 // Paint token runs only up to the visible right edge, preserving source rune
 // offsets for syntax and emphasis while clipping by terminal display columns.
-func diffCode(colors theme.Palette, code string, spans []highlight.Span, width, left int, bg, emphasis string, changed diffRange, selected diffRange) string {
+func diffCode(colors theme.Palette, code string, spans []highlight.Span, width, left int, bg, emphasis string, changed diffRange, selected diffRange, overlays ...diffCodeOverlay) string {
 	if width <= 0 {
 		return ""
 	}
+	overlay := diffCodeOverlay{}
+	if len(overlays) > 0 {
+		overlay = overlays[0]
+	}
+	matches := searchRanges(code, overlay.find)
+	matchIndex := 0
 	var out, run strings.Builder
 	color := colors.Foreground
 	var font theme.FontStyle
@@ -465,6 +497,22 @@ func diffCode(colors theme.Palette, code string, spans []highlight.Span, width, 
 			}
 			if colors.EditorSelectionForeground != "" {
 				next = colors.EditorSelectionForeground
+			}
+		}
+		for matchIndex < len(matches) && matches[matchIndex][1] <= runeColumn {
+			matchIndex++
+		}
+		if matchIndex < len(matches) && matches[matchIndex][0] < column {
+			nextBG = colors.FindMatchHighlight
+			if runeColumn >= selected.start && runeColumn < selected.end {
+				nextBG = colors.FindMatch
+			}
+		}
+		if f := overlay.flash; f != nil && f.matches[overlay.offset+runeColumn] {
+			nextBG = colors.PopupSelection
+			if label := f.marks[overlay.offset+runeColumn]; label != "" {
+				display = label + strings.Repeat(" ", max(0, ansi.StringWidth(display)-1))
+				next, nextBG, nextFont = colors.Background, colors.Accent, theme.Bold
 			}
 		}
 		if next != color || nextBG != runBG || nextFont != font {

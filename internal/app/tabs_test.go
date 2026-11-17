@@ -292,6 +292,7 @@ func TestTabCloseHitboxesAndInactiveMiddleClose(t *testing.T) {
 func TestCloseDirtySaveDiscardCancelAndSaveFailure(t *testing.T) {
 	m := tabWorkspace(t, 2)
 	m.openPreviewFile("file0.go")
+	press(m, "i")
 	press(m, "x")
 	first := m.document()
 	m.closeTab()
@@ -309,6 +310,7 @@ func TestCloseDirtySaveDiscardCancelAndSaveFailure(t *testing.T) {
 		t.Fatal("save and close failed")
 	}
 	m.openFile("file1.go")
+	press(m, "i")
 	press(m, "x")
 	os.WriteFile(m.document().Path, []byte("external\n"), 0644)
 	m.closeTab()

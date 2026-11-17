@@ -55,10 +55,10 @@ func (m *Model) actions() []action {
 		{"view.sidebarResetWidth", m.tr("View: Reset Sidebar Width"), "", "", func() tea.Cmd { m.SetSidebarLayout(0, m.sidebarRight); return nil }},
 		{"view.output", m.tr("View: Toggle Output"), workbenchKeys.Output.Help().Key, "", func() tea.Cmd { m.outputVisible = !m.outputVisible; m.resize(); return nil }},
 		{"git.refresh", m.tr("Git: Refresh"), workbenchKeys.Refresh.Help().Key, "", m.refresh},
-		{"git.stage", m.tr("Git: Stage Changes"), "S", fileReason, func() tea.Cmd { return m.stageSelected(false) }},
-		{"git.unstage", m.tr("Git: Unstage Changes"), "U", fileReason, func() tea.Cmd { return m.stageSelected(true) }},
-		{"git.stageAll", stageAllLabel, "A", "", func() tea.Cmd { return m.stageAllInRepository(target) }},
-		{"git.commit", commitLabel, "C", m.commitDisabled(target), func() tea.Cmd { return m.commitInRepository(target) }},
+		{"git.stage", m.tr("Git: Stage Changes"), "s", fileReason, func() tea.Cmd { return m.stageSelected(false) }},
+		{"git.unstage", m.tr("Git: Unstage Changes"), "u", fileReason, func() tea.Cmd { return m.stageSelected(true) }},
+		{"git.stageAll", stageAllLabel, "a", "", func() tea.Cmd { return m.stageAllInRepository(target) }},
+		{"git.commit", commitLabel, "c", m.commitDisabled(target), func() tea.Cmd { return m.commitInRepository(target) }},
 		{"git.fetch", m.tr("Git: Fetch"), "", "", func() tea.Cmd { return m.gitOperation("Fetch", "fetch", "--all", "--prune") }},
 		{"git.pull", m.tr("Git: Pull (Fast Forward Only)"), "", "", func() tea.Cmd { return m.gitOperation("Pull", "pull", "--ff-only") }},
 		{"git.push", m.tr("Git: Push"), "", "", func() tea.Cmd { return m.gitOperation("Push", "push") }},
@@ -76,7 +76,7 @@ func (m *Model) actions() []action {
 			return m.ask(m.tr("Apply and remove the latest stash?"), func() tea.Cmd { return m.gitOperation("Stash pop", "stash", "pop") })
 		}},
 		{"git.discard", m.tr("Git: Discard Unstaged Changes"), "", fileReason, m.discard},
-		{"file.open", m.tr("File: Open Selected File"), "E", openReason, m.editSelected},
+		{"file.open", m.tr("File: Open Selected File"), "e", openReason, m.editSelected},
 		{"file.keepOpen", m.tr("View: Keep Editor"), "", tabReason, m.keepTab},
 		{"file.closeOthers", m.tr("View: Close Other Editors"), "", "", m.closeOtherTabs},
 		{"file.closeAll", m.tr("View: Close All Editors"), "", "", m.closeAllTabs},
@@ -88,6 +88,9 @@ func (m *Model) actions() []action {
 			}
 		}
 		actions = append(actions, action{id: "git.init", label: m.tr("Git: Initialize Repository"), run: m.initializeRepository})
+	}
+	if m.diffOpen && !m.editing() && m.images == nil {
+		actions = append(actions, m.reviewActions()...)
 	}
 	return append(editorActions, actions...)
 }
@@ -141,6 +144,7 @@ func (m *Model) filteredActions() []action {
 }
 
 func (m *Model) prompt(kind, title, value string) tea.Cmd {
+	m.leaderTarget = ""
 	m.resizingSidebar = false
 	m.modal, m.modalTitle = kind, title
 	m.dialogTop = 0
@@ -176,13 +180,17 @@ func (m *Model) ask(title string, run func() tea.Cmd) tea.Cmd {
 
 func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 	k := msg.String()
+	if k == "ctrl+[" {
+		msg = tea.KeyPressMsg{Code: tea.KeyEscape}
+		k = "esc"
+	}
 	if m.confirmationDialog() {
 		count := len(m.confirmationActions())
 		switch k {
-		case "right", "tab":
+		case "right", "l", "tab":
 			m.confirmationButton = (m.confirmationButton + 1) % count
 			return nil
-		case "left", "shift+tab":
+		case "left", "h", "shift+tab":
 			m.confirmationButton = (m.confirmationButton + count - 1) % count
 			return nil
 		case "enter", "space":
@@ -193,9 +201,9 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 		l := m.dialogLayout()
 		top := l.top
 		switch k {
-		case "up":
+		case "up", "k":
 			top--
-		case "down":
+		case "down", "j":
 			top++
 		case "pgup":
 			top -= l.page
@@ -279,6 +287,8 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 			return m.findNext()
 		case "newFile":
 			return m.createEntry(value, false)
+		case "pasteFile":
+			return m.pasteEntry(value)
 		case "newFolder":
 			return m.createEntry(value, true)
 		case "position":
@@ -404,7 +414,7 @@ func (m *Model) stageHunk(reverse bool) tea.Cmd {
 		return nil
 	}
 	if m.diffStaged != reverse {
-		m.notice = m.tr("Use S in a working-tree diff or U in an index diff")
+		m.notice = m.tr("Use Stage Hunk in a working-tree diff or Unstage Hunk in an index diff")
 		return nil
 	}
 	patch, err := m.patch.HunkPatch(m.diffHunk)
@@ -436,6 +446,9 @@ func (m *Model) stageHunk(reverse bool) tea.Cmd {
 func (m *Model) commit() tea.Cmd { return m.commitInRepository(m.selectedRepository()) }
 
 func (m *Model) openSelected() tea.Cmd {
+	if m.snapshot.NoRepository && (m.section == changes || m.section == history) {
+		return m.initializeRepository()
+	}
 	entry := m.current()
 	if entry == nil {
 		return nil
@@ -559,8 +572,7 @@ func (m *Model) findNext() tea.Cmd {
 	if m.find == "" {
 		return nil
 	}
-	if m.editing() {
-		d := m.document()
+	if d := m.editorDocument(); d != nil {
 		runes := []rune(d.Text)
 		start := min(d.Cursor+1, len(runes))
 		index := strings.Index(string(runes[start:]), m.find)
@@ -572,21 +584,10 @@ func (m *Model) findNext() tea.Cmd {
 			prefix := []rune(string(runes[start:])[:index])
 			d.SelectRange(start+len(prefix), start+len(prefix)+len([]rune(m.find)))
 			m.sidebar = false
-			m.ensureEditor()
+			m.ensureTextCursor()
 		} else {
 			m.notice = m.tr("No match")
 		}
-	} else {
-		lines := strings.Split(m.viewport.GetContent(), "\n")
-		start := m.viewport.YOffset() + 1
-		for i := 0; i < len(lines); i++ {
-			n := (start + i) % len(lines)
-			if strings.Contains(strings.ToLower(plain(lines[n])), strings.ToLower(m.find)) {
-				m.viewport.SetYOffset(n)
-				return nil
-			}
-		}
-		m.notice = m.tr("No match")
 	}
 	return nil
 }

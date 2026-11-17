@@ -96,9 +96,9 @@ func TestTreeStageUnstageAndParentNavigation(t *testing.T) {
 		t.Fatal("left did not select parent directory")
 	}
 	parentKey := m.current().key
-	m.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
+	m.Update(tea.KeyPressMsg{Code: tea.KeyRight})
 	if !m.changeCollapsed[parentKey] || m.current() == nil || m.current().key != parentKey {
-		t.Fatal("left did not collapse selected directory")
+		t.Fatal("right did not collapse selected directory")
 	}
 	m.Update(tea.KeyPressMsg{Code: tea.KeyRight})
 	if m.changeCollapsed[parentKey] {
@@ -186,8 +186,12 @@ func TestChangeGroupsKeyboardAndCollapsedBatchActions(t *testing.T) {
 	// Ordinary repositories use the same header and omit empty change groups.
 	m.selected = 0
 	press(m, "left")
+	if m.selected != 0 || m.changeCollapsed[repositoryKey("")] {
+		t.Fatal("left must leave the root in place without folding")
+	}
+	press(m, "right")
 	if !m.changeCollapsed[repositoryKey("")] || len(m.items) != 1 {
-		t.Fatal("left did not collapse repository")
+		t.Fatal("right did not collapse repository")
 	}
 	press(m, "right")
 	press(m, "down")
@@ -203,10 +207,13 @@ func TestChangeGroupsKeyboardAndCollapsedBatchActions(t *testing.T) {
 		t.Fatal("right did not expand changes group")
 	}
 	press(m, "right")
-	if m.changeCollapsed[changeKey("", false, "group", "")] {
-		t.Fatal("right collapsed an expanded group")
+	if !m.changeCollapsed[changeKey("", false, "group", "")] {
+		t.Fatal("right did not collapse an expanded group")
 	}
 	press(m, "left")
+	if m.current() == nil || !m.current().repoHeader {
+		t.Fatal("left did not select the group parent")
+	}
 	drain(t, m, clickScopeAction(t, m, "", true, false, "stage"))
 	for _, c := range m.snapshot.Changes {
 		if !c.Staged() {
@@ -249,7 +256,7 @@ func TestCompactChangeTreeNavigationAndFolding(t *testing.T) {
 		t.Fatal("compact root did not select group")
 	}
 	selectFolder("apps/web/src")
-	press(m, "left")
+	press(m, "right")
 	if !m.changeCollapsed[changeKey("", false, "directory", "apps/web/src")] {
 		t.Fatal("compact folder did not collapse")
 	}
@@ -285,8 +292,12 @@ func TestCompactExplorerNavigation(t *testing.T) {
 		t.Fatal("parent navigation failed")
 	}
 	drain(t, m, press(m, "left"))
+	if !m.expanded["apps/web/src/hooks"] {
+		t.Fatal("left folded a root folder")
+	}
+	drain(t, m, press(m, "right"))
 	if m.expanded["apps/web/src/hooks"] {
-		t.Fatal("collapse failed")
+		t.Fatal("right did not collapse the folder")
 	}
 }
 

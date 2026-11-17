@@ -16,7 +16,6 @@ type Vim struct {
 	pending                string
 	count, operatorCount   int
 	clipboardText          string
-	leader                 bool
 	action                 string
 	clipboardReady         bool
 	record                 *vimRecording
@@ -27,9 +26,6 @@ type Vim struct {
 func (v *Vim) Label() string {
 	if v.InsertMode {
 		return "INSERT"
-	}
-	if v.leader {
-		return "LEADER"
 	}
 	if v.surround != nil {
 		label := "SURROUND " + v.surround.kind
@@ -80,7 +76,6 @@ func (v *Vim) clear() {
 	v.pending = ""
 	v.count = 0
 	v.operatorCount = 0
-	v.leader = false
 	v.surround = nil
 }
 func (v *Vim) clamp(d *Document) {
@@ -116,7 +111,7 @@ func (v *Vim) handleKey(d *Document, key string) bool {
 	if v.surround != nil {
 		return v.handleSurround(d, key)
 	}
-	if (v.pending == "" || v.leader || key == "space" || key == " ") && v.handleCommand(d, key) {
+	if v.pending == "" && v.handleCommand(d, key) {
 		return true
 	}
 	if v.VisualMode && d.Anchor < 0 {
@@ -465,4 +460,17 @@ func (v *Vim) operate(d *Document, op string, start, end int, linewise bool) {
 	} else {
 		d.EndEditGroup()
 	}
+}
+
+// MovePage uses the same motion/selection rules for a viewport-sized movement.
+func (v *Vim) MovePage(d *Document, rows int) {
+	key := "j"
+	if rows < 0 {
+		key = "k"
+		rows = -rows
+	}
+	count := max(1, v.count)
+	v.clear()
+	v.motion(d, key, min(1000000, rows*count), false)
+	v.clampUnlessInsert(d)
 }

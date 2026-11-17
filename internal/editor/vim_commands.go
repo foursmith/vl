@@ -15,26 +15,6 @@ func (v *Vim) TakeClipboardCopy() (string, bool) {
 	return text, ready
 }
 func (v *Vim) handleCommand(d *Document, key string) bool {
-	if v.leader {
-		v.clear()
-		switch key {
-		case "enter":
-			v.action = "clearSearch"
-		case "q":
-			v.action = "close"
-		case "z":
-			v.action = "saveClose"
-		case "w":
-			v.action = "save"
-		}
-		return true
-	}
-	if key == "space" || key == " " {
-		v.clear()
-		v.leader = true
-		return true
-	}
-
 	switch key {
 	case "p":
 		v.clear()
@@ -195,4 +175,27 @@ func (v *Vim) JumpTo(d *Document, offset int) {
 		d.ClearSelection()
 		v.clamp(d)
 	}
+}
+
+// AcceptsLeader distinguishes command input from Insert and Surround input.
+// Workspace commands are parsed by the app, not by the text editing engine.
+func (v *Vim) AcceptsLeader() bool { return !v.InsertMode && v.surround == nil }
+
+// Read-only documents share motions, text objects, selection and yank commands.
+// Reject mutations before interpreting them so they cannot enter Insert or
+// change clipboard/undo state. Document guards also protect direct callers.
+func (v *Vim) readOnlyKey(key string) bool {
+	if v.pending == "y" || v.pending == "yi" || v.pending == "ya" {
+		return key != "s"
+	}
+	if v.VisualMode && (v.pending == "i" || v.pending == "a") {
+		return true
+	}
+	switch key {
+	case "i", "a", "o":
+		return v.VisualMode
+	case "I", "A", "O", "x", "D", "C", "d", "c", "p", "P", "u", "U", ".", "tab", "shift+tab", ">", "<", "`", "S":
+		return false
+	}
+	return true
 }

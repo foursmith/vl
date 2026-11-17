@@ -208,6 +208,9 @@ func (m *Model) View() tea.View {
 }
 
 func (m *Model) editorCursor() *tea.Cursor {
+	if !m.editing() && m.diffOpen {
+		return m.reviewCursor()
+	}
 	if !m.editing() || m.sidebar || m.modal != "" || m.contextMenu != nil {
 		return nil
 	}
@@ -227,7 +230,7 @@ func (m *Model) editorCursor() *tea.Cursor {
 		return nil
 	}
 	shape, blink := tea.CursorBar, true
-	if m.vimEnabled && !t.vim.InsertMode {
+	if !t.vim.InsertMode {
 		shape, blink = tea.CursorBlock, false
 	}
 	return &tea.Cursor{Position: tea.Position{X: m.mainX() + x, Y: m.contentRow() + y}, Shape: shape, Blink: blink, Color: lipgloss.Color(m.colors.Foreground)}
@@ -300,6 +303,10 @@ func (m *Model) renderDiff() {
 	if m.diffRows != nil && m.diffLayout == key {
 		return
 	}
+	reviewRight := key.split
+	if key.split && m.diffLayout.split && m.review != nil {
+		reviewRight = m.reviewRight
+	}
 	m.diffLayout = key
 	m.diffSelection = diffSelection{}
 	m.diffDrag = nil
@@ -336,15 +343,9 @@ func (m *Model) renderDiff() {
 		}
 		return false
 	}
-	content := make([]string, 0, len(m.patch.Lines))
 	appendRow := func(pair diff.Pair) {
 		m.diffRows = append(m.diffRows, pair)
 		m.diffRowHunks = append(m.diffRowHunks, pair.Hunk)
-		text := diffSourceText(pair.Left)
-		if key.split && pair.Right != nil && pair.Right != pair.Left {
-			text += " " + diffSourceText(pair.Right)
-		}
-		content = append(content, ansi.Truncate(text, w, ""))
 	}
 	if key.split {
 		for _, pair := range pairs {
@@ -360,18 +361,9 @@ func (m *Model) renderDiff() {
 			}
 		}
 	}
-	// Bubbles owns scrolling/search offsets; ANSI painting is limited to visible rows.
-	m.viewport.SetContentLines(content)
-}
-
-func diffSourceText(line *diff.Line) string {
-	if line == nil {
-		return ""
-	}
-	if line.Kind == diff.HunkHeader {
-		return hunkLabel(line.Text)
-	}
-	return safe(line.Text)
+	// The viewport only tracks row geometry; the shared document owns search.
+	m.viewport.SetContentLines(make([]string, len(m.diffRows)))
+	m.rebuildReview(reviewRight)
 }
 
 func (m *Model) nextHunk(delta int) {
@@ -382,6 +374,7 @@ func (m *Model) nextHunk(delta int) {
 	for i, hunk := range m.diffRowHunks {
 		if hunk == m.diffHunk {
 			m.viewport.SetYOffset(i)
+			m.reviewToRow(i)
 			break
 		}
 	}

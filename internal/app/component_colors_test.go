@@ -41,7 +41,16 @@ func TestComponentsDoNotBorrowEditorOrPickerColors(t *testing.T) {
 	}
 	for _, noGit := range []bool{false, true} {
 		m.snapshot.NoRepository = noGit
-		for _, cell := range uv.NewStyledString(m.statusLine()).Lines(ansi.GraphemeWidth)[0] {
+		modeWidth := 0
+		for _, segment := range m.statusLayout() {
+			if segment.id == "vim" {
+				modeWidth = segment.width
+			}
+		}
+		for x, cell := range uv.NewStyledString(m.statusLine()).Lines(ansi.GraphemeWidth)[0] {
+			if x < modeWidth {
+				continue
+			} // The mode badge deliberately uses its own background.
 			if !sameColor(cell.Style.Bg, lipgloss.Color("#171819")) {
 				t.Fatal("status bar borrowed sidebar/no-folder background")
 			}

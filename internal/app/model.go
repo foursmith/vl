@@ -100,15 +100,17 @@ type clipboardMsg struct {
 }
 
 type Model struct {
-	vimEnabled                     bool
-	flash                          *flashState
-	flashRevision                  uint64
-	displayLanguage                i18n.Language
-	kittySupported, kittyProbeDone bool
-	cellWidth, cellHeight          int
-	imageIDs                       map[int]bool
-	imageRetired                   []int
-	imagePan                       *imagePan
+	navigationState                    navigationState
+	leaderTarget                       string
+	explorerYankRoot, explorerYankPath string
+	flash                              *flashState
+	flashRevision                      uint64
+	displayLanguage                    i18n.Language
+	kittySupported, kittyProbeDone     bool
+	cellWidth, cellHeight              int
+	imageIDs                           map[int]bool
+	imageRetired                       []int
+	imagePan                           *imagePan
 
 	colors                  theme.Palette
 	monochrome              bool
@@ -329,18 +331,6 @@ func (m *Model) current() *item {
 	return &m.items[m.selected]
 }
 
-func (m *Model) moveSelection(delta int) {
-	if m.selected < 0 && len(m.items) > 0 {
-		m.selected = 0
-		m.ensureSidebar()
-		return
-	}
-	if i := m.selected + delta; i >= 0 && i < len(m.items) {
-		m.selected = i
-	}
-	m.ensureSidebar()
-}
-
 func (m *Model) ensureSidebar() {
 	h := max(1, m.bodyHeight()-m.sidebarHeaderRows())
 	if m.selected < m.sideTop {
@@ -407,6 +397,12 @@ func (m *Model) preview() tea.Cmd {
 	}
 	if m.section == history {
 		return m.previewHistory(*entry)
+	}
+	if m.section == explorer && entry.file != "" {
+		sidebar := m.sidebar
+		cmd := m.openPreviewFile(entry.file)
+		m.sidebar = sidebar
+		return cmd
 	}
 	if entry.change == nil {
 		return nil
@@ -606,6 +602,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			m.resizingSidebar = false
 		}
 	case tea.BlurMsg:
+		m.leaderTarget = ""
 		m.imagePan = nil
 		m.stopTextDrag()
 		m.resizingSidebar = false
@@ -716,8 +713,10 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			m.ensureEditor()
 		}
 	case tea.MouseClickMsg:
+		m.leaderTarget = ""
+		m.navigationState = navigationState{}
 		m.cancelFlash()
-		if m.vimEnabled && m.editing() {
+		if m.editing() {
 			m.tabs[m.activeTab].vim.CancelPending()
 		}
 		m.imagePan = nil
@@ -805,6 +804,8 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			return m, m.flashKey(msg)
 		}
 		if m.modal != "" {
+			m.leaderTarget = ""
+			m.navigationState = navigationState{}
 			return m, m.updateModal(msg)
 		}
 		return m, m.key(msg)
@@ -819,11 +820,11 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			m.selectPickerIndex(0)
 			return m, cmd
 		}
-		if !m.sidebar && m.editing() && m.vimEnabled && m.tabs[m.activeTab].vim.PasteSurround(m.document(), msg.Content) {
+		if !m.sidebar && m.editing() && m.tabs[m.activeTab].vim.PasteSurround(m.document(), msg.Content) {
 			m.ensureEditor()
 			return m, nil
 		}
-		if !m.sidebar && m.editing() && (!m.vimEnabled || m.tabs[m.activeTab].vim.InsertMode) {
+		if !m.sidebar && m.editing() && m.tabs[m.activeTab].vim.InsertMode {
 			m.document().Insert(msg.Content)
 			m.ensureEditor()
 		}
@@ -834,21 +835,38 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	m.stopTextDrag()
 	k := msg.String()
+	if k == "ctrl+[" {
+		msg = tea.KeyPressMsg{Code: tea.KeyEscape}
+		k = "esc"
+	}
 	if m.editorOnly && key.Matches(msg, workbenchKeys.Recent, workbenchKeys.Explorer, workbenchKeys.Changes, workbenchKeys.History, workbenchKeys.Sidebar, workbenchKeys.Focus, workbenchKeys.Output, workbenchKeys.DiffLayout) {
 		return nil
 	}
-	if m.vimEnabled && m.editing() && m.sidebar {
+	if m.editing() && m.sidebar {
 		m.tabs[m.activeTab].vim.CancelPending()
 	}
-	if !m.sidebar && m.editing() && m.vimEnabled {
+	if handled, cmd := m.leaderKey(k); handled {
+		return cmd
+	}
+	if !m.sidebar && m.editorDocument() != nil {
 		if handled, cmd := m.vimKey(k); handled {
 			return cmd
 		}
+	}
+	if m.sidebar && m.section == explorer && k == "p" {
+		m.navigationState = navigationState{}
+		return m.pasteEntryPrompt()
+	}
+	if handled, cmd := m.navigationKey(k); handled {
+		return cmd
 	}
 	if key.Matches(msg, workbenchKeys.ContextMenu) {
 		if m.sidebar {
 			m.ensureSidebar()
 			return m.openContextMenu(m.sideX()+2, m.sidebarHeaderRows()+max(0, m.selected-m.sideTop))
+		}
+		if cursor := m.editorCursor(); cursor != nil {
+			return m.openContextMenu(cursor.X, cursor.Y)
 		}
 		return m.openContextMenu(m.mainX()+2, m.contentRow())
 	}
@@ -895,9 +913,9 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		m.renderDiff()
 		return nil
 	case key.Matches(msg, workbenchKeys.Save):
-		return m.save()
+		return m.runShortcut(shortcut{action: shortcutSave})
 	case key.Matches(msg, workbenchKeys.Close):
-		return m.closeTab()
+		return m.runShortcut(shortcut{action: shortcutClose})
 	case key.Matches(msg, workbenchKeys.NextTab):
 		return m.switchTab(1)
 	case key.Matches(msg, workbenchKeys.PreviousTab):
@@ -919,38 +937,8 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		switch k {
 		case "delete":
 			return m.deleteSelectedEntry()
-		case "up", "k":
-			m.moveSelection(-1)
-			return m.preview()
-		case "down", "j":
-			m.moveSelection(1)
-			return m.preview()
 		case "enter":
-			if m.snapshot.NoRepository && (m.section == changes || m.section == history) {
-				return m.initializeRepository()
-			}
 			return m.openSelected()
-		case "right":
-			if entry := m.current(); m.section == history && entry != nil && entry.commit != nil && m.historyExpanded(historyKey(entry.repository, entry.commit.ID)) {
-				return nil
-			}
-			if entry := m.current(); entry != nil && (entry.header || entry.folder != "") && m.folderExpanded(*entry) {
-				return nil
-			}
-			return m.openSelected()
-		case "left":
-			if entry := m.current(); m.section == history && entry != nil && entry.commit != nil {
-				if m.historyExpanded(historyKey(entry.repository, entry.commit.ID)) {
-					return m.openHistory(*entry)
-				}
-				m.selectHistoryParent(*entry)
-				return nil
-			}
-			if entry := m.current(); entry != nil && (entry.header || entry.folder != "") && m.folderExpanded(*entry) {
-				return m.openSelected()
-			}
-			m.selectParentFolder()
-			return nil
 		case "e":
 			return m.editSelected()
 		case "space":
@@ -975,14 +963,6 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 				factor = 1 / factor
 			}
 			m.zoomImage(factor, m.mainX()+m.mainWidth()/2, m.contentRow()+m.contentHeight()/2)
-		case "left":
-			m.panImage(-3, 0)
-		case "right":
-			m.panImage(3, 0)
-		case "up":
-			m.panImage(0, -3)
-		case "down":
-			m.panImage(0, 3)
 		case "0":
 			m.resetImageZoom()
 		case "enter":
@@ -990,9 +970,8 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		}
 		return nil
 	}
-	if m.editing() {
-		d := m.document()
-		if m.vimEnabled && m.tabs[m.activeTab].vim.InsertMode {
+	if d := m.editorDocument(); d != nil {
+		if m.tabs[m.activeTab].vim.InsertMode {
 			d.BeginEditGroup()
 		}
 		switch k {
@@ -1005,6 +984,9 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		case "ctrl+x":
 			return m.copy(true)
 		case "ctrl+v":
+			if d.ReadOnly {
+				return nil
+			}
 			return m.paste()
 		case "backspace":
 			d.Delete(true)
@@ -1033,42 +1015,16 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 				}
 			}
 		}
-		if m.vimEnabled && m.tabs[m.activeTab].vim.VisualMode {
+		if m.tabs[m.activeTab].vim.VisualMode {
 			m.tabs[m.activeTab].vim.SyncVisual(d)
 		}
-		m.ensureEditor()
+		m.ensureTextCursor()
 		return nil
 	}
-	switch k {
-	case "left", "right":
-		delta := 3
-		if k == "left" {
-			delta = -delta
-		}
-		m.scrollHorizontal(delta)
-		return nil
-	case "enter":
+	if k == "enter" {
 		return m.keepTab()
-	case "]", "n":
-		m.nextHunk(1)
-		return nil
-	case "[", "p":
-		m.nextHunk(-1)
-		return nil
-	case "s":
-		return m.stageHunk(false)
-	case "u":
-		return m.stageHunk(true)
-	case "e":
-		return m.editDiff()
-	case "tab":
-		m.split = !m.split
-		m.renderDiff()
-		return nil
 	}
-	var cmd tea.Cmd
-	m.viewport, cmd = m.viewport.Update(msg)
-	return cmd
+	return nil
 }
 
 func (m *Model) document() *editor.Document {

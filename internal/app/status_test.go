@@ -125,7 +125,7 @@ func TestStatusGeometryAndEditorMetadata(t *testing.T) {
 			branch = branch || s.id == "branch"
 			github = github || s.id == "github"
 		}
-		if !branch || !github || ansi.StringWidth(m.statusLine()) != width {
+		if !branch || (width >= 48 && !github) || ansi.StringWidth(m.statusLine()) != width {
 			t.Fatalf("missing controls or incorrect width %d", width)
 		}
 	}

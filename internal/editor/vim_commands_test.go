@@ -31,28 +31,12 @@ func TestVimUserMappings(t *testing.T) {
 		})
 	}
 }
-func TestVimLeaderActions(t *testing.T) {
-	for _, tt := range []struct{ key, action string }{{"enter", "clearSearch"}, {"q", "close"}, {"z", "saveClose"}, {"w", "save"}} {
-		d := &Document{Text: "abc", Anchor: -1}
-		v := &Vim{}
-		vimKeys(d, v, "space")
-		if v.Label() != "LEADER" {
-			t.Fatal(v.Label())
-		}
-		vimKeys(d, v, tt.key)
-		if got := v.TakeAction(); got != tt.action || v.TakeAction() != "" || d.Text != "abc" {
-			t.Fatalf("%s: %q", tt.key, got)
-		}
-	}
+func TestVimFocusAction(t *testing.T) {
 	d := &Document{Text: "one two", Anchor: -1}
 	v := &Vim{}
 	vimKeys(d, v, "c", "w")
 	if v.TakeAction() != "focus" || v.InsertMode || d.Text != "one two" {
 		t.Fatal("cw did not become focus mapping")
-	}
-	vimKeys(d, v, "space", "esc", "q")
-	if v.TakeAction() != "" {
-		t.Fatal("Escape left leader action armed")
 	}
 }
 func TestVimClipboardYank(t *testing.T) {
@@ -95,21 +79,13 @@ func TestVimClipboardPaste(t *testing.T) {
 	}
 }
 
-func TestVimUnifiedClipboardAndRemovedAliases(t *testing.T) {
+func TestVimUnifiedClipboard(t *testing.T) {
 	for _, keys := range [][]string{{"d", "w"}, {"c", "e"}, {"x"}} {
 		d := &Document{Text: "one two", Anchor: -1}
 		v := &Vim{}
 		vimKeys(d, v, keys...)
 		if text, ready := v.TakeClipboardCopy(); !ready || text == "" {
 			t.Fatalf("%v did not write clipboard", keys)
-		}
-	}
-	for _, key := range []string{"y", "p"} {
-		d := &Document{Text: "abc", Anchor: -1}
-		v := &Vim{}
-		vimKeys(d, v, "space", key)
-		if v.TakeAction() != "" || v.pending != "" {
-			t.Fatal("removed leader alias still active")
 		}
 	}
 	d := &Document{Text: "abc", Anchor: -1}

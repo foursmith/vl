@@ -28,8 +28,9 @@ func TestEditorCursorModePositionAndVisibility(t *testing.T) {
 			}
 		}
 	}
+	m.tabs[0].vim.InsertMode = true
 	check()
-	m.vimEnabled = true
+	m.tabs[0].vim.InsertMode = false
 	if c := m.View().Cursor; c == nil || c.Shape != tea.CursorBlock || c.Blink {
 		t.Fatalf("Vim navigation cursor: %+v", c)
 	}

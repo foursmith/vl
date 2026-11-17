@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -12,6 +13,7 @@ import (
 type contextMenu struct {
 	x, y, selected, top int
 	actions             []action
+	navigation          navigationState
 }
 
 type contextMenuLayout struct{ x, y, width, count int }
@@ -42,24 +44,53 @@ func (m *Model) contextMenuInput(msg tea.Msg) (tea.Cmd, bool) {
 		m.contextMenu = nil
 		return nil, false
 	case tea.KeyPressMsg:
-		switch msg.String() {
+		m.navigationState = navigationState{}
+		k := msg.String()
+		if k == "ctrl+[" {
+			k = "esc"
+		}
+		if k == "h" {
+			k = "esc"
+		}
+		if k == "l" {
+			k = "enter"
+		}
+		if k != "d" && k != "y" {
+			action, count, handled := menu.navigation.key(fmt.Sprintf("menu:%d", menu.selected), k)
+			if handled {
+				switch action {
+				case "":
+					return nil, true
+				case "up":
+					m.moveContextMenu(-count)
+				case "down":
+					m.moveContextMenu(count)
+				case "first":
+					menu.selected = min(len(menu.actions)-1, count-1)
+					m.ensureContextMenu()
+				case "last":
+					menu.selected = len(menu.actions) - 1
+					m.ensureContextMenu()
+				case "pageUp":
+					m.moveContextMenu(-count * m.contextMenuLayout().count)
+				case "pageDown":
+					m.moveContextMenu(count * m.contextMenuLayout().count)
+				}
+				return nil, true
+			}
+		} else {
+			menu.navigation = navigationState{}
+		}
+		switch k {
 		case "esc", "shift+f10":
 			m.contextMenu = nil
 		case "ctrl+q":
 			m.contextMenu = nil
 			return m.quit(), true
-		case "up", "k":
-			m.moveContextMenu(-1)
-		case "down", "j", "tab":
+		case "tab":
 			m.moveContextMenu(1)
 		case "shift+tab":
 			m.moveContextMenu(-1)
-		case "home":
-			menu.selected = 0
-			m.ensureContextMenu()
-		case "end":
-			menu.selected = len(menu.actions) - 1
-			m.ensureContextMenu()
 		case "enter", "space":
 			return m.runContextMenu(), true
 		}
@@ -99,7 +130,7 @@ func (m *Model) contextMenuInput(msg tea.Msg) (tea.Cmd, bool) {
 
 func (m *Model) moveContextMenu(delta int) {
 	menu := m.contextMenu
-	menu.selected = (menu.selected + delta + len(menu.actions)) % len(menu.actions)
+	menu.selected = ((menu.selected+delta)%len(menu.actions) + len(menu.actions)) % len(menu.actions)
 	m.ensureContextMenu()
 }
 func (m *Model) ensureContextMenu() {
@@ -148,6 +179,7 @@ func (m *Model) contextMenuOverlay(base []string) []string {
 }
 
 func (m *Model) openContextMenu(x, y int) tea.Cmd {
+	m.leaderTarget = ""
 	if m.modal != "" || m.width < 30 || m.height < 8 {
 		return nil
 	}
@@ -197,7 +229,9 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 		if m.section == explorer {
 			if entry != nil {
 				add(m.tr("Open"), "Enter", bind(m.openSelected))
+				add(m.tr("Copy"), "yy", bind(m.yankEntry))
 			}
+			add(m.tr("Paste"), "p", bind(m.pasteEntryPrompt))
 			add(m.tr("New File…"), "", bind(func() tea.Cmd { return m.newEntry(false) }))
 			add(m.tr("New Folder…"), "", bind(func() tea.Cmd { return m.newEntry(true) }))
 			add(m.tr("Refresh"), workbenchKeys.Refresh.Help().Key, m.refresh)
@@ -222,7 +256,7 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 				if entry.folder != "" {
 					label = m.tr("Delete Folder…")
 				}
-				add(label, "Del", bind(m.deleteSelectedEntry))
+				add(label, "dd / Del", bind(m.deleteSelectedEntry))
 			}
 			path := entry.file
 			if path == "" {
@@ -276,6 +310,10 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 				add(m.tr("Save"), workbenchKeys.Save.Help().Key, m.save)
 				add(m.tr("Find…"), workbenchKeys.Find.Help().Key, func() tea.Cmd { return m.prompt("find", m.tr("Find in current view"), m.find) })
 			} else if m.diffOpen {
+				if index := m.viewport.YOffset() + y - m.contentRow(); index >= 0 && index < len(m.diffRowHunks) {
+					m.diffHunk = m.diffRowHunks[index]
+				}
+				actions = append(actions, m.reviewActions()...)
 				reason := ""
 				if m.diffSelectedText() == "" {
 					reason = m.tr("Select text first")

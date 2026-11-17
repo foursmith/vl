@@ -30,7 +30,7 @@ func textColumn(text string, goal int) int {
 func (m *Model) positionEditor(x, y int, extend bool) {
 	t := &m.tabs[m.activeTab]
 	d := t.doc
-	if m.vimEnabled && t.vim.VisualMode {
+	if t.vim.VisualMode {
 		t.vim.Reset(d)
 	}
 	line := min(len(d.Lines())-1, max(0, m.editorRowAt(y-m.contentRow())))
@@ -97,6 +97,7 @@ func (m *Model) positionDiff(x, y int, extend bool) {
 		s.anchor, s.active = p, true
 	}
 	s.cursor = p
+	m.syncReviewMouse()
 }
 
 func (s diffSelection) bounds() (textPoint, textPoint) {

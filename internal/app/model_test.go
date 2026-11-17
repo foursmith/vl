@@ -76,6 +76,7 @@ func TestAppEditStageCommitWorkflow(t *testing.T) {
 	if !m.editing() || m.sidebar {
 		t.Fatal("editor did not take focus")
 	}
+	press(m, "i")
 	press(m, "s")
 	press(m, "ctrl+z")
 	if m.document().Dirty() {
@@ -179,6 +180,7 @@ func TestDiffRefreshPreservesScrollAndTypedKeys(t *testing.T) {
 	}
 	m.tabs = []tab{{doc: &editor.Document{Path: "/tmp/a.go", Text: "\t中文\n", Anchor: -1}}}
 	m.activeTab = 0
+	press(m, "i")
 	press(m, "s")
 	if m.document().Text != "s\t中文\n" || m.busy {
 		t.Fatal("editor key was routed to Git")

@@ -16,6 +16,7 @@ import (
 const MaxFileSize = 4 << 20
 
 type Document struct {
+	ReadOnly            bool
 	Path                string
 	Text                string
 	saved               []byte
@@ -101,7 +102,7 @@ func (d *Document) Bytes() []byte {
 func (d *Document) SameDisk(other *Document) bool { return bytes.Equal(d.saved, other.saved) }
 
 func (d *Document) Dirty() bool {
-	return d.Text != d.savedText || d.CRLF != d.savedCRLF || d.BOM != d.savedBOM
+	return !d.ReadOnly && (d.Text != d.savedText || d.CRLF != d.savedCRLF || d.BOM != d.savedBOM)
 }
 
 // Lines is a read-only view, rebuilt only when document text changes.
@@ -152,6 +153,9 @@ func (d *Document) LineRuneCount(line int) int {
 func (d *Document) PlainASCII(line int) bool { d.Lines(); return d.plainASCII[line] }
 
 func (d *Document) Edit(text string) {
+	if d.ReadOnly {
+		return
+	}
 	if text == d.Text {
 		return
 	}
@@ -196,6 +200,9 @@ func (d *Document) EndEditGroup() {
 }
 
 func (d *Document) Undo() {
+	if d.ReadOnly {
+		return
+	}
 	d.EndEditGroup()
 	if len(d.undo) == 0 {
 		return
@@ -208,6 +215,9 @@ func (d *Document) Undo() {
 }
 
 func (d *Document) Redo() {
+	if d.ReadOnly {
+		return
+	}
 	d.EndEditGroup()
 	if len(d.redo) == 0 {
 		return
@@ -277,6 +287,9 @@ func (d *Document) SelectVisual(anchor, cursor int, linewise bool) {
 func (d *Document) ClearSelection() { d.Anchor = -1; d.selectionKind = 0 }
 
 func (d *Document) Insert(text string) {
+	if d.ReadOnly {
+		return
+	}
 	a, b := d.Selection()
 	start, end := d.ByteOffset(a), d.ByteOffset(b)
 	text = strings.ReplaceAll(text, "\r\n", "\n")
@@ -288,6 +301,9 @@ func (d *Document) Insert(text string) {
 }
 
 func (d *Document) Delete(backward bool) {
+	if d.ReadOnly {
+		return
+	}
 	a, b := d.Selection()
 	if a == b {
 		d.Lines()
@@ -407,6 +423,9 @@ func (d *Document) SetPosition(row, col int) {
 }
 
 func (d *Document) Save() error {
+	if d.ReadOnly {
+		return errors.New("file is read-only")
+	}
 	current, err := os.ReadFile(d.Path)
 	if err != nil {
 		return err

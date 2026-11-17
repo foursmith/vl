@@ -16,7 +16,7 @@ func flashModel(t *testing.T, text string) *Model {
 	m.activeTab = 0
 	m.sidebar = false
 	m.sidebarVisible = false
-	m.vimEnabled = true
+
 	m.Update(tea.WindowSizeMsg{Width: 100, Height: 18})
 	return m
 }

@@ -12,9 +12,9 @@ type vimFlashEdit struct {
 	count           int
 }
 
-func (v *Vim) CommandPending() bool { return v.leader || v.pending != "" || v.surround != nil }
+func (v *Vim) CommandPending() bool { return v.pending != "" || v.surround != nil }
 func (v *Vim) FlashOperator() (string, bool) {
-	if v.InsertMode || v.leader {
+	if v.InsertMode {
 		return "", false
 	}
 	if v.surround != nil {

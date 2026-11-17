@@ -57,7 +57,7 @@ func TestEditorModeIsolatedAndFullWidth(t *testing.T) {
 	if m.refresh() != nil || m.loading {
 		t.Fatal("editor started Git refresh")
 	}
-	m.vimEnabled = true
+
 	press(m, "c")
 	press(m, "w")
 	if m.sidebar || m.sidebarVisible {

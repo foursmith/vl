@@ -15,7 +15,7 @@ func TestNewFileDiffUsesCompactContextAndContent(t *testing.T) {
 	m.diffPath = "go.mod"
 	m.patch = diff.Parse("diff --git a/go.mod b/go.mod\nnew file mode 100644\nindex 000..111\n--- /dev/null\n+++ b/go.mod\n@@ -0,0 +1,2 @@\n+module example\n+go 1.26.7\n")
 	m.renderDiff()
-	text := plain(m.viewport.GetContent())
+	text := plain(strings.Join(m.diffView(), "\n"))
 	if strings.Contains(text, "new file mode") || strings.Contains(text, "@@") || strings.Contains(text, "diff --git") || !strings.Contains(text, "module example") {
 		t.Fatalf("raw headers leaked into new-file content: %s", text)
 	}
@@ -34,7 +34,7 @@ func TestCompactHunkRangesRetainNavigationAndModeMetadata(t *testing.T) {
 	m.diffPath = "file.go"
 	m.patch = diff.Parse("diff --git a/file.go b/file.go\nold mode 100644\nnew mode 100755\n--- a/file.go\n+++ b/file.go\n@@ -1,2 +1,2 @@\n-old\n+new\n same\n")
 	m.renderDiff()
-	text := plain(m.viewport.GetContent())
+	text := plain(strings.Join(m.diffView(), "\n"))
 	if !strings.Contains(text, "1–2 → 1–2") || strings.Contains(text, "old mode") || strings.Contains(text, "@@") {
 		t.Fatalf("hunk presentation: %s", text)
 	}
@@ -71,13 +71,13 @@ func TestLargeDiffPaintsOnlyViewportAndKeepsHunkSelection(t *testing.T) {
 	m.diffPath = "file.go"
 	showDiffFixture(m)
 	m.renderDiff()
-	if strings.Contains(m.viewport.GetContent(), "\x1b") {
-		t.Fatal("diff layout eagerly painted offscreen ANSI rows")
+	if m.viewport.TotalLineCount() != len(m.diffRows) {
+		t.Fatal("viewport geometry does not cover the complete diff")
 	}
 	if len(m.diffView()) > m.contentHeight() {
 		t.Fatal("diff rendered beyond its viewport")
 	}
-	m.nextHunk(1)
+	m.nextHunk(0) // The read-only cursor initially selects the first hunk.
 	if m.diffHunk != 0 || !strings.Contains(plain(strings.Join(m.diffView(), "\n")), m.symbol(symbolRight)) {
 		t.Fatal("current hunk marker missing after navigation")
 	}
@@ -88,7 +88,7 @@ func TestLargeDiffPaintsOnlyViewportAndKeepsHunkSelection(t *testing.T) {
 	m.find = "new value 19"
 	m.findNext()
 	if !strings.Contains(plain(strings.Join(m.diffView(), "\n")), "new value 19") {
-		t.Fatal("search no longer maps plain content to rendered diff rows")
+		t.Fatal("source search no longer reveals the matching Diff row")
 	}
 	m.closeTab()
 	if len(m.diffRows) != 0 || m.diffLayout.raw != "" {

@@ -102,7 +102,9 @@ does not install hooks or alter a repository's configuration.
   saved text and encoding flags without serializing the file on every frame.
 - Syntax tokenization runs in cancellable, debounced commands with document/text
   identity checks. Its completion never changes scroll position or editor focus.
-- Diff layout holds plain search rows; only viewport rows receive ANSI painting.
+- Diff layout maps rendered rows to a read-only source document; the shared Vim
+  engine owns navigation, selection and search. The viewport tracks row geometry,
+  and only visible rows receive ANSI painting.
   Hunk navigation reuses the layout, and unchanged Git output reuses parsed data.
 - Editor rendering groups equal styles into runs and caches only visible rows.
   Text, current line, selection and horizontal layout changes invalidate rows;

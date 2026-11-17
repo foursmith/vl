@@ -28,7 +28,7 @@ func TestUnicodePaintingMouseAndHorizontalScrollShareBoundaries(t *testing.T) {
 	if !found {
 		t.Fatal("renderer split the family grapheme")
 	}
-	if c := m.editorCursor(); c == nil || c.Shape != tea.CursorBar || c.X != m.mainX()+8 {
+	if c := m.editorCursor(); c == nil || c.Shape != tea.CursorBlock || c.X != m.mainX()+8 {
 		t.Fatalf("cursor did not align with emoji boundary: %+v", c)
 	}
 	for _, click := range []struct{ cell, col int }{{1, 1}, {2, 1}, {3, 1 + utf8.RuneCountInString(family)}, {4, 3 + utf8.RuneCountInString(family)}} {

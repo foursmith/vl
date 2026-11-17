@@ -122,7 +122,8 @@ GOGC=50 go test ./internal/app -run '^$' -bench '^BenchmarkEditorEditHighlight$'
 - Editor style runs are batched. Rendered rows are retained only for the visible
   viewport and invalidated by text, current line, selection, layout or new
   highlight results.
-- Diff layout/search content stays plain; only visible rows are painted. Hunk
+- Diff search uses the shared source document; the viewport stores only row
+  geometry and only visible rows are painted. Hunk
   navigation reuses the layout. Identical Git diff results reuse parsed data.
 - Replaced diff/snapshot requests are cancelled. Snapshot status, metadata and
   file reads run as three independent tasks. Remote URLs use at most four Git

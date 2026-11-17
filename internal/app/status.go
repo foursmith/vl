@@ -100,7 +100,7 @@ func (m *Model) statusLayout() []statusSegment {
 	} else if !m.snapshot.NoRepository {
 		left = m.gitStatusSegments()
 	}
-	if m.vimEnabled && m.editing() {
+	if m.editorDocument() != nil {
 		v := &m.tabs[m.activeTab].vim
 		label, color := v.Label(), m.colors.Accent
 		if v.InsertMode {
@@ -108,10 +108,15 @@ func (m *Model) statusLayout() []statusSegment {
 		} else if v.VisualMode || v.CommandPending() {
 			color = m.colors.GitModified
 		}
+		if m.leaderActive() {
+			label, color = "LEADER", m.colors.GitModified
+		}
 		if flash := m.flashLabel(); flash != "" {
 			label, color = flash, m.colors.GitModified
 		}
 		left = append([]statusSegment{{id: "vim", text: label, color: m.colors.Background, background: color}}, left...)
+	} else if m.leaderActive() {
+		left = append([]statusSegment{{id: "vim", text: "LEADER", color: m.colors.Background, background: m.colors.GitModified}}, left...)
 	}
 	var result []statusSegment
 	x := 0
@@ -125,7 +130,7 @@ func (m *Model) statusLayout() []statusSegment {
 		x += segment.width
 	}
 	var candidates []statusSegment
-	if d := m.document(); d != nil {
+	if d := m.editorDocument(); d != nil {
 		line, col := d.Position()
 		eol := "LF"
 		if d.CRLF {
@@ -133,6 +138,9 @@ func (m *Model) statusLayout() []statusSegment {
 		}
 		language := m.tr(m.language(d.Path).Name)
 		candidates = []statusSegment{{id: "position", text: m.tr("Ln %d, Col %d", line+1, col+1)}, {id: "encoding", text: "UTF-8"}, {id: "eol", text: eol}, {id: "language", text: language}}
+		if d.ReadOnly {
+			candidates = append([]statusSegment{{id: "readOnly", text: m.tr("Read-only")}}, candidates...)
+		}
 	}
 	if im := m.currentImage(); im != nil {
 		b := im.Bounds()
