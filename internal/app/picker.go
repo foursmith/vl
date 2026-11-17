@@ -51,9 +51,9 @@ func (m *Model) pickerOverlay(base []string) []string {
 	}
 
 	if len(rows) == 0 {
-		message := "无匹配结果"
+		message := m.tr("No matches")
 		if m.modal == "recent" && m.input.Value() == "" {
-			message = "没有最近打开的文件夹"
+			message = m.tr("No recent folders")
 		}
 		box = append(box, border.Render("│")+row("  "+message, w, m.colors.Muted, bg)+border.Render("│"))
 	}
@@ -77,7 +77,7 @@ func (m *Model) clickPicker(msg tea.MouseClickMsg) tea.Cmd {
 }
 
 func (m *Model) isPicker() bool {
-	return m.modal == "quick" || m.modal == "remotes" || m.modal == "refs" || m.modal == "recent" || m.modal == "themes"
+	return m.modal == "quick" || m.modal == "remotes" || m.modal == "refs" || m.modal == "recent" || m.modal == "themes" || m.modal == "languages"
 }
 
 func (m *Model) selectPickerChoice() tea.Cmd {
@@ -121,9 +121,9 @@ func (m *Model) syncQuickPicker() {
 	if m.modal != "quick" {
 		return
 	}
-	title := "打开文件"
+	title := m.tr("Open File")
 	if m.commandPicker() {
-		title = "Commands"
+		title = m.tr("Commands")
 	}
 	if m.modalTitle == title && m.palette != nil {
 		return
@@ -135,7 +135,7 @@ func (m *Model) syncQuickPicker() {
 		m.palette = m.commandActions()
 		return
 	}
-	m.input.Placeholder = "按名称搜索文件（追加 : 跳转行）"
+	m.input.Placeholder = m.tr("Search files by name (append : to go to line)")
 	m.palette = make([]action, 0, len(m.snapshot.Files))
 	for _, path := range m.snapshot.Files {
 		m.palette = append(m.palette, action{id: path, label: path, run: func() tea.Cmd { return m.openFileInExplorer(path) }})

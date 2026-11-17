@@ -190,7 +190,7 @@ func (m *Model) finishDiff(msg diffMsg) tea.Cmd {
 	}
 	d.diffLoading = false
 	if msg.err != nil {
-		m.log(msg.err.Error())
+		m.log(m.tr(msg.err.Error()))
 		return nil
 	}
 	if msg.raw == "" {
@@ -370,7 +370,7 @@ func (m *Model) diffRow(line *diff.Line, width int, right bool, selected diffRan
 		text = safe(line.Text)
 		fg = m.colors.Muted
 		if m.diffPath != "" && strings.HasPrefix(line.Text, "Binary files ") {
-			text = "  二进制文件已更改"
+			text = m.tr("  Binary file changed")
 		}
 	case diff.HunkHeader:
 		fg, bg = m.colors.Muted, m.colors.Panel

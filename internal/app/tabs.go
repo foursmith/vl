@@ -53,7 +53,7 @@ func (m *Model) openDocument(path string, preview bool) bool {
 	if imagepreview.Supported(abs) {
 		im, err := imagepreview.Open(abs)
 		if err != nil {
-			m.log(err.Error())
+			m.log(m.tr(err.Error()))
 			return false
 		}
 		m.activateTab(m.insertTab(tab{image: newImageState(im, m.allocateImageID()), preview: preview}))
@@ -61,7 +61,7 @@ func (m *Model) openDocument(path string, preview bool) bool {
 	}
 	d, err := editor.Open(abs)
 	if err != nil {
-		m.log(err.Error())
+		m.log(m.tr(err.Error()))
 		return false
 	}
 	m.activateTab(m.insertTab(tab{doc: d, preview: preview}))
@@ -190,7 +190,7 @@ func (m *Model) advanceClose() tea.Cmd {
 			if err != nil {
 				path = d.Path
 			}
-			m.modalTitle = "Save changes to " + path + "?"
+			m.modalTitle = m.tr("Save changes to %s?", path)
 			m.input.Blur()
 			return nil
 		}
@@ -215,11 +215,11 @@ func (m *Model) chooseClose(choice string) tea.Cmd {
 	d := m.closeQueue[0]
 	if choice == "save" {
 		if m.busy {
-			m.notice = "Wait for the current Git operation before saving"
+			m.notice = m.tr("Wait for the current Git operation before saving")
 			return nil
 		}
 		if err := d.Save(); err != nil {
-			m.log(err.Error())
+			m.log(m.tr(err.Error()))
 			return nil
 		}
 	}
@@ -283,9 +283,9 @@ func (m *Model) tabLabel(index int) string {
 			return safe(label) + " · " + shortOID(d.diffCommit)
 		}
 		if d.diffStaged {
-			return safe(label) + " · 暂存"
+			return safe(label) + m.tr(" · Staged")
 		}
-		return safe(label) + " · Diff"
+		return safe(label) + m.tr(" · Diff")
 	}
 	for i, other := range m.tabs {
 		if i != index && other.diff == nil && filepath.Base(other.path()) == label {

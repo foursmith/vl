@@ -525,7 +525,7 @@ func TestThemeSaveFailureRemainsVisible(t *testing.T) {
 	m := tabWorkspace(t, 0)
 	m.SetLayoutStore(config.NewLayoutStore(filepath.Join(parent, "layout.json")))
 	drain(t, m, m.SetTheme("light_plus", ""))
-	if m.committedTheme().ID != "light_plus" || !strings.Contains(m.notice, "Save theme preferences:") {
+	if m.committedTheme().ID != "light_plus" || !strings.Contains(m.notice, "Save preferences:") {
 		t.Fatal("save failure was silent or discarded selection")
 	}
 }

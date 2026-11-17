@@ -15,7 +15,7 @@ import (
 func (m *Model) SetTheme(name, uiTheme string) tea.Cmd {
 	selected, err := theme.Load(name, uiTheme)
 	if err != nil {
-		m.notice = "Load theme: " + err.Error()
+		m.notice = m.tr("Load theme: %s", m.tr(err.Error()))
 		return nil
 	}
 	return m.SetColorTheme(selected)
@@ -28,7 +28,7 @@ func (m *Model) SetColorTheme(selected *theme.Theme) tea.Cmd {
 	} else {
 		m.darkTheme = selected
 	}
-	return tea.Batch(m.applyTheme(selected), m.saveThemePreferences())
+	return tea.Batch(m.applyTheme(selected), m.savePreferences())
 }
 
 func (m *Model) committedTheme() *theme.Theme {
@@ -63,12 +63,12 @@ func (m *Model) externalColorScheme(light bool, source string) tea.Cmd {
 		for i := range m.palette {
 			m.palette[i].key = ""
 			if m.palette[i].id == selected.ID {
-				m.palette[i].key = "Current"
+				m.palette[i].key = m.tr("Current")
 			}
 		}
-		return m.saveThemePreferences()
+		return m.savePreferences()
 	}
-	return tea.Batch(m.applyTheme(selected), m.saveThemePreferences())
+	return tea.Batch(m.applyTheme(selected), m.savePreferences())
 }
 
 func (m *Model) applyTheme(selected *theme.Theme) tea.Cmd {
@@ -160,7 +160,7 @@ func (m *Model) applyLocalThemes(msg localThemesMsg) {
 	}
 	m.localThemes = msg.themes
 	if msg.err != nil {
-		m.notice = "Load local themes: " + msg.err.Error()
+		m.notice = m.tr("Load local themes: %s", m.tr(msg.err.Error()))
 	}
 	if m.modal != "themes" {
 		return
@@ -206,17 +206,17 @@ func (m *Model) themeChoices() []action {
 		return strings.Compare(a.ID, b.ID)
 	})
 	for _, selected := range available {
-		kind := "Dark"
+		kind := m.tr("Dark")
 		if selected.IsLight() {
-			kind = "Light"
+			kind = m.tr("Light")
 		}
 		label := kind + " · " + selected.Name
 		if strings.HasPrefix(selected.ID, "local:") {
-			label += " · Local"
+			label += m.tr(" · Local")
 		}
 		choice := action{id: selected.ID, label: label, run: func() tea.Cmd { return m.chooseTheme(selected) }}
 		if current.ID == selected.ID {
-			choice.key = "Current"
+			choice.key = m.tr("Current")
 		}
 		choices = append(choices, choice)
 	}
@@ -227,9 +227,9 @@ func (m *Model) openThemePicker() tea.Cmd {
 	restore := m.cancelThemePreview()
 	m.themeBeforePreview = m.colorTheme
 	m.palette = m.themeChoices()
-	cmd := m.prompt("themes", "Select Color Theme", "")
+	cmd := m.prompt("themes", m.tr("Select Color Theme"), "")
 	for i, choice := range m.palette {
-		if choice.key == "Current" {
+		if choice.key == m.tr("Current") {
 			m.selectPickerIndex(i)
 			break
 		}
@@ -272,11 +272,11 @@ func (m *Model) restoreThemeSlot(id, kind string, light bool) {
 	}
 	selected, err := theme.Load(id, kind)
 	if err != nil {
-		m.notice = "Load remembered theme: " + err.Error()
+		m.notice = m.tr("Load remembered theme: %s", m.tr(err.Error()))
 		return
 	}
 	if selected.IsLight() != light {
-		m.notice = "Remembered theme has changed appearance: " + id
+		m.notice = m.tr("Remembered theme has changed appearance: %s", id)
 		return
 	}
 	if light {

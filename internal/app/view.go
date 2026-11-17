@@ -120,7 +120,7 @@ type hoverRenderKey struct {
 
 func (m *Model) View() tea.View {
 	if m.width < 30 || m.height < 8 {
-		v := tea.NewView(row("Resize terminal to at least 30 × 8", m.width, m.colors.Foreground, m.colors.Background))
+		v := tea.NewView(row(m.tr("Resize terminal to at least 30 × 8"), m.width, m.colors.Foreground, m.colors.Background))
 		v.AltScreen = true
 		v.BackgroundColor = lipgloss.Color(m.colors.Panel)
 		return v
@@ -162,7 +162,7 @@ func (m *Model) View() tea.View {
 		lines = append(lines, line)
 	}
 	if h := m.outputHeight(); h > 0 {
-		lines = append(lines, row("  OUTPUT   ·   Git", m.width, m.colors.OutputForeground, m.colors.OutputBackground))
+		lines = append(lines, row(m.tr("  OUTPUT   ·   Git"), m.width, m.colors.OutputForeground, m.colors.OutputBackground))
 		output := m.output
 		start := max(0, len(output)-(h-1))
 		for i := 0; i < h-1; i++ {
@@ -208,9 +208,9 @@ func (m *Model) mainLines() []string {
 	} else if m.welcomeVisible() {
 		content = m.welcomeLines()
 	} else {
-		message := "No changes in this diff"
+		message := m.tr("No changes in this diff")
 		if m.section == changes && len(m.snapshot.Changes) == 0 {
-			message = "Working tree clean"
+			message = m.tr("Working tree clean")
 		}
 		if m.diffLoading {
 			message = ""
@@ -582,7 +582,7 @@ func (m *Model) click(msg tea.MouseClickMsg) tea.Cmd {
 		button := m.diffModeButton()
 		if msg.X >= m.mainX()+button.x && msg.X < m.mainX()+button.x+button.width {
 			if m.mainWidth() < 68 {
-				m.notice = "编辑区至少需要 68 列才能并排显示"
+				m.notice = m.tr("The editor needs at least 68 columns for side-by-side diff")
 				return nil
 			}
 			m.split = !m.split

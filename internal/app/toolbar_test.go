@@ -20,7 +20,7 @@ func TestNewFileDiffUsesCompactContextAndContent(t *testing.T) {
 		t.Fatalf("raw headers leaked into new-file content: %s", text)
 	}
 	toolbar := plain(m.contentToolbar())
-	if !strings.Contains(toolbar, "新文件") || !strings.Contains(toolbar, "+2") || strings.Contains(toolbar, "−0") || strings.Contains(toolbar, "Working Tree") {
+	if !strings.Contains(toolbar, "New file") || !strings.Contains(toolbar, "+2") || strings.Contains(toolbar, "−0") || !strings.Contains(toolbar, "Working Tree") {
 		t.Fatalf("toolbar: %s", toolbar)
 	}
 	if m.tabLabel(m.activeTab) != "go.mod · Diff" {

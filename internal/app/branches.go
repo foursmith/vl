@@ -21,21 +21,21 @@ func (m *Model) openBranchPicker(repoPath, mode string) tea.Cmd {
 	m.palette = nil
 	if mode == "" {
 		m.palette = append(m.palette,
-			action{id: "branch.create", label: m.symbol(symbolAdd) + " 创建新分支…", run: func() tea.Cmd {
+			action{id: "branch.create", label: m.symbol(symbolAdd) + m.tr(" Create Branch…"), run: func() tea.Cmd {
 				m.branchStart = ""
 				m.branchRepository = repoPath
-				return m.prompt("branch", "新分支名称"+suffix, "")
+				return m.prompt("branch", m.tr("New branch name")+suffix, "")
 			}},
-			action{id: "branch.createFrom", label: m.symbol(symbolAdd) + " 创建新分支依据…", run: func() tea.Cmd { return m.openBranchPicker(repoPath, "base") }},
-			action{id: "branch.detach", label: "签出已分离…", run: func() tea.Cmd { return m.openBranchPicker(repoPath, "detach") }})
+			action{id: "branch.createFrom", label: m.symbol(symbolAdd) + m.tr(" Create Branch From…"), run: func() tea.Cmd { return m.openBranchPicker(repoPath, "base") }},
+			action{id: "branch.detach", label: m.tr("Checkout to (Detached)…"), run: func() tea.Cmd { return m.openBranchPicker(repoPath, "detach") }})
 	}
 	for _, ref := range m.repositoryState(repoPath).Refs {
-		kind, glyph := "分支", m.symbol(symbolBranch)
+		kind, glyph := m.tr("Branch"), m.symbol(symbolBranch)
 		if ref.Kind == gitservice.RemoteBranch {
-			kind, glyph = "远程分支", m.symbol(symbolCloud)
+			kind, glyph = m.tr("Remote Branch"), m.symbol(symbolCloud)
 		}
 		if ref.Kind == gitservice.Tag {
-			kind, glyph = "标签", m.symbol(symbolTag)
+			kind, glyph = m.tr("Tag"), m.symbol(symbolTag)
 		}
 		mark := ""
 		if ref.Current {
@@ -44,27 +44,27 @@ func (m *Model) openBranchPicker(repoPath, mode string) tea.Cmd {
 		label := glyph + " " + ref.Name + "  " + shortOID(ref.OID) + mark
 		disabled := ""
 		if m.hasDirtyTabsForCheckout(repoPath) && mode != "base" && (!ref.Current || mode == "detach") {
-			disabled = "先保存或关闭未保存的文件"
+			disabled = m.tr("Save or close unsaved files first")
 		}
 		m.palette = append(m.palette, action{id: ref.FullName, label: label, key: kind, disabled: disabled, run: func() tea.Cmd {
 			if mode == "base" {
 				m.branchStart = ref.OID
 				m.branchRepository = repoPath
-				return m.prompt("branch", "新分支名称 · 基于 "+ref.Name+suffix, "")
+				return m.prompt("branch", m.tr("New branch name · Based on %s", ref.Name)+suffix, "")
 			}
 			return m.checkout(repoPath, ref, mode == "detach")
 		}})
 	}
-	title := "选择要签出的分支或标记"
+	title := m.tr("Select a branch or tag to check out")
 	if mode == "base" {
-		title = "选择新分支的起点"
+		title = m.tr("Select a starting point for the new branch")
 	}
 	if mode == "detach" {
-		title = "选择以分离 HEAD 签出的引用"
+		title = m.tr("Select a ref to check out with detached HEAD")
 	}
 	title += suffix
 	cmd := m.prompt("refs", title, "")
-	m.input.Placeholder = title + " · 输入名称或提交号"
+	m.input.Placeholder = title + m.tr(" · Enter a name or commit ID")
 	return cmd
 }
 
@@ -72,11 +72,11 @@ func shortOID(oid string) string { return oid[:min(7, len(oid))] }
 
 func (m *Model) checkout(repoPath string, ref gitservice.Ref, detach bool) tea.Cmd {
 	if ref.Current && !detach {
-		m.notice = "已在分支 " + ref.Name
+		m.notice = m.tr("Already on branch %s", ref.Name)
 		return nil
 	}
 	if m.hasDirtyTabsForCheckout(repoPath) {
-		m.notice = "先保存或关闭未保存的文件"
+		m.notice = m.tr("Save or close unsaved files first")
 		return nil
 	}
 	if detach {
@@ -95,11 +95,11 @@ func (m *Model) syncRepository() tea.Cmd {
 	target := m.statusRepository()
 	state := m.repositoryState(target)
 	if state.Detached {
-		m.notice = "分离 HEAD 状态下不能同步分支"
+		m.notice = m.tr("Cannot sync a branch with detached HEAD")
 		return nil
 	}
 	if m.hasDirtyTabs() {
-		m.notice = "先保存或关闭未保存的文件"
+		m.notice = m.tr("Save or close unsaved files first")
 		return nil
 	}
 	if state.Upstream == "" {
@@ -121,19 +121,19 @@ func (m *Model) publishBranch() tea.Cmd {
 func (m *Model) publishBranchInRepository(target string) tea.Cmd {
 	state := m.repositoryState(target)
 	if state.Detached || state.Head == "" {
-		m.notice = "先创建分支并完成首次提交"
+		m.notice = m.tr("Create a branch and make an initial commit first")
 		return nil
 	}
 	if len(state.Remotes) == 0 {
-		m.notice = "没有配置远程仓库"
+		m.notice = m.tr("No remotes configured")
 		return nil
 	}
 	m.palette = nil
 	branch := state.Branch
 	for _, remote := range state.Remotes {
-		m.palette = append(m.palette, action{id: remote.Name, label: remote.Name, key: "发布分支", run: func() tea.Cmd {
+		m.palette = append(m.palette, action{id: remote.Name, label: remote.Name, key: m.tr("Publish Branch"), run: func() tea.Cmd {
 			if m.hasDirtyTabs() {
-				m.notice = "先保存或关闭未保存的文件"
+				m.notice = m.tr("Save or close unsaved files first")
 				return nil
 			}
 			return m.operation("Publish", func() (string, error) {
@@ -145,13 +145,13 @@ func (m *Model) publishBranchInRepository(target string) tea.Cmd {
 			})
 		}})
 	}
-	return m.prompt("remotes", "选择发布分支的远程仓库", "")
+	return m.prompt("remotes", m.tr("Select a remote to publish the branch"), "")
 }
 
 func (m *Model) openGitHub() tea.Cmd {
 	target := m.repositoryState(m.statusRepository()).GitHubURL
 	if target == "" {
-		m.notice = "没有找到 github.com 远程仓库"
+		m.notice = m.tr("No GitHub remote found")
 		return nil
 	}
 	open := m.openURL
@@ -161,7 +161,7 @@ func (m *Model) openGitHub() tea.Cmd {
 func (m *Model) createBranch(name string) tea.Cmd {
 	target := m.branchRepository
 	if m.hasDirtyTabsForCheckout(target) {
-		m.notice = "先保存或关闭未保存的文件"
+		m.notice = m.tr("Save or close unsaved files first")
 		return nil
 	}
 	start := m.branchStart

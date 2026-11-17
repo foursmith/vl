@@ -26,15 +26,15 @@ func (m *Model) changeRowActions(entry item, w int) []rowAction {
 	if entry.repoHeader {
 		scope := m.scopedChanges(entry)
 		actions := []rowAction{
-			{id: "refresh", glyph: m.symbol(symbolRefresh), label: "刷新仓库"},
-			{id: "commit", glyph: m.symbol(symbolCheck), label: "提交此仓库的暂存更改", disabled: m.commitDisabled(entry.repository)},
-			{id: "stage", glyph: m.symbol(symbolAdd), label: "暂存此仓库的全部更改", disabled: m.changeActionDisabled(entry, "stage", scope)},
+			{id: "refresh", glyph: m.symbol(symbolRefresh), label: m.tr("Refresh")},
+			{id: "commit", glyph: m.symbol(symbolCheck), label: m.tr("Commit Staged"), disabled: m.commitDisabled(entry.repository)},
+			{id: "stage", glyph: m.symbol(symbolAdd), label: m.tr("Stage All Changes"), disabled: m.changeActionDisabled(entry, "stage", scope)},
 		}
 		branchWidth := ansi.StringWidth(m.repositoryBranchText(entry, w, len(actions)*3))
 		for i := range actions {
 			actions[i].width, actions[i].x = 3, w-branchWidth-(len(actions)-i)*3
 			if m.busy {
-				actions[i].disabled = "等待当前 Git 操作完成"
+				actions[i].disabled = m.tr("Wait for the current Git operation to finish")
 			}
 		}
 		return actions
@@ -44,14 +44,14 @@ func (m *Model) changeRowActions(entry item, w int) []rowAction {
 	}
 	var actions []rowAction
 	if entry.change != nil || entry.header {
-		actions = append(actions, rowAction{id: "open", glyph: m.symbol(symbolOpen), label: "打开所有更改文件"})
+		actions = append(actions, rowAction{id: "open", glyph: m.symbol(symbolOpen), label: m.tr("Open All Changed Files")})
 	}
 	if !entry.staged {
-		actions = append(actions, rowAction{id: "discard", glyph: m.symbol(symbolDiscard), label: "丢弃此范围的全部更改"})
+		actions = append(actions, rowAction{id: "discard", glyph: m.symbol(symbolDiscard), label: m.tr("Discard All Changes")})
 	}
-	stage := rowAction{id: "stage", glyph: m.symbol(symbolAdd), label: "暂存此范围的全部更改"}
+	stage := rowAction{id: "stage", glyph: m.symbol(symbolAdd), label: m.tr("Stage All Changes")}
 	if entry.staged {
-		stage = rowAction{id: "unstage", glyph: m.symbol(symbolRemove), label: "取消暂存此范围的全部更改"}
+		stage = rowAction{id: "unstage", glyph: m.symbol(symbolRemove), label: m.tr("Unstage All Changes")}
 	}
 	actions = append(actions, stage)
 	scope := m.scopedChanges(entry)
@@ -62,16 +62,16 @@ func (m *Model) changeRowActions(entry item, w int) []rowAction {
 		if entry.change != nil {
 			switch a.id {
 			case "open":
-				a.label = "打开文件"
+				a.label = m.tr("Open File")
 			case "discard":
-				a.label = "丢弃更改"
+				a.label = m.tr("Discard Changes")
 				if entry.change.Untracked() {
-					a.label = "删除未跟踪文件"
+					a.label = m.tr("Delete Untracked File")
 				}
 			case "stage":
-				a.label = "暂存更改"
+				a.label = m.tr("Stage Changes")
 			case "unstage":
-				a.label = "取消暂存"
+				a.label = m.tr("Unstage Changes")
 			}
 		}
 	}
@@ -117,10 +117,10 @@ func (m *Model) changeActionRow(entry item, w int, fg, bg string, state treeRowS
 
 func (m *Model) hoverHint() string {
 	if index := m.hoveredWorkspace(); index >= 0 {
-		return "切换 Workspace · " + safe(m.workspaces[index])
+		return m.tr("Switch workspace · %s", safe(m.workspaces[index]))
 	}
 	if m.resizingSidebar || m.sidebarDividerAt(m.hoverX, m.hoverY) {
-		return "拖动调整侧边栏宽度"
+		return m.tr("Drag to resize sidebar")
 	}
 	if index := m.hoveredSidebarRow(); index >= 0 {
 		width := m.sideWidth()
@@ -128,7 +128,7 @@ func (m *Model) hoverHint() string {
 			width = m.width
 		}
 		if m.repositoryBranchAt(m.items[index], m.hoverX-m.sideX(), width) {
-			return "切换 " + m.repositoryName(m.items[index].repository) + " 的分支"
+			return m.tr("Switch branch · %s", m.repositoryName(m.items[index].repository))
 		}
 	}
 	i := m.hoveredChangeRow()

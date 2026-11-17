@@ -14,10 +14,12 @@ import (
 	"github.com/ourongxing/elegit/internal/app"
 	"github.com/ourongxing/elegit/internal/config"
 	"github.com/ourongxing/elegit/internal/git"
+	"github.com/ourongxing/elegit/internal/i18n"
 	"github.com/ourongxing/elegit/internal/theme"
 )
 
 func main() {
+	displayLanguage := flag.String("lang", "", "display language: en or zh-CN (default: saved preference, or en)")
 	icons := flag.Bool("icons", true, "use Nerd Font glyphs adapted from Material Icon Theme; set -icons=false for plain text")
 	colorTheme := flag.String("theme", "", "color theme: builtin ID (dark_modern, dark_plus, dark_vs, light_modern, light_plus, light_vs), local:filename from ~/.config/elegit/themes, or a theme file")
 	themeType := flag.String("theme-type", "", "local theme uiTheme from its extension: vs, vs-dark, hc-light, hc-black (default: theme type, or vs-dark)")
@@ -30,6 +32,11 @@ func main() {
 	if *version {
 		fmt.Println("elegit 0.1.0-dev")
 		return
+	}
+	language, validLanguage := i18n.Parse(*displayLanguage)
+	if !validLanguage {
+		fmt.Fprintln(os.Stderr, "Unsupported display language; use -lang en or -lang zh-CN")
+		os.Exit(2)
 	}
 	var selectedTheme *theme.Theme
 	if *themeType != "" && *colorTheme == "" {
@@ -68,6 +75,9 @@ func main() {
 	}
 	if layoutErr == nil {
 		m.SetLayout(layout)
+	}
+	if *displayLanguage != "" {
+		m.SetDisplayLanguage(string(language))
 	}
 	if selectedTheme != nil {
 		m.SetColorTheme(selectedTheme)

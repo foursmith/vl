@@ -48,7 +48,7 @@ func TestExternalReloadKeepsEditsMadeWhileReadWasPending(t *testing.T) {
 		t.Fatal(err)
 	}
 	drain(t, m, cmd)
-	if m.document() != original || !strings.Contains(original.Text, "unsaved") || !strings.Contains(m.notice, "未保存") {
+	if m.document() != original || !strings.Contains(original.Text, "unsaved") || !strings.Contains(m.notice, "unsaved") {
 		t.Fatal("external reload overwrote pending local edits")
 	}
 	if err := original.Save(); err == nil {

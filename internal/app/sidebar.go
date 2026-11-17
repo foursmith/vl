@@ -66,7 +66,7 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 	lines := m.workspaceLines(w)
 	lines = append(lines, row(nav.String(), w, m.colors.SideForeground, m.colors.Panel))
 	if m.snapshot.NoRepository && (m.section == changes || m.section == history) {
-		for _, text := range []string{"", " 此文件夹尚未初始化 Git 仓库", "", " [初始化 Git 仓库]", " Enter: 初始化"} {
+		for _, text := range []string{"", m.tr(" Not a Git repository"), "", m.tr(" [Initialize Repository]"), m.tr(" Enter: Initialize")} {
 			lines = append(lines, row(text, w, m.colors.Muted, m.colors.Panel))
 		}
 		for len(lines) < h {
@@ -219,7 +219,7 @@ func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 		return nil
 	}
 	if m.snapshot.NoRepository && (m.section == changes || m.section == history) {
-		if y == m.sidebarHeaderRows()+3 && msg.X >= 1 && msg.X < ansi.StringWidth(" [初始化 Git 仓库]") {
+		if y == m.sidebarHeaderRows()+3 && msg.X >= 1 && msg.X < ansi.StringWidth(m.tr(" [Initialize Repository]")) {
 			return m.initializeRepository()
 		}
 		return nil

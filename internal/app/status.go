@@ -23,7 +23,7 @@ func (m *Model) gitStatusSegments() []statusSegment {
 		branch = "…"
 	}
 	if state.Detached {
-		branch = shortOID(state.Head) + " (分离)"
+		branch = shortOID(state.Head) + m.tr(" (detached)")
 	}
 	staged, unstaged, untracked, conflicts := false, false, false, 0
 	repositoryChanges := 0
@@ -62,7 +62,7 @@ func (m *Model) gitStatusSegments() []statusSegment {
 	if m.busy {
 		sync = "…"
 	} else if state.Upstream == "" && !state.Detached {
-		sync = m.symbol(symbolPublish) + " 发布"
+		sync = m.symbol(symbolPublish) + m.tr(" Publish")
 	} else if state.TrackingKnown {
 		sync = fmt.Sprintf("%s %d%s %d%s", syncIcon, state.Behind, m.symbol(symbolArrowDown), state.Ahead, m.symbol(symbolUp))
 	} else if state.Upstream != "" {
@@ -83,7 +83,7 @@ func (m *Model) gitStatusSegments() []statusSegment {
 func (m *Model) statusLayout() []statusSegment {
 	foreground := m.colors.StatusForeground
 	dim := theme.WithOpacity(foreground, .6)
-	left := []statusSegment{{id: "init", text: "初始化 Git 仓库", color: dim}}
+	left := []statusSegment{{id: "init", text: m.tr("Initialize Repository"), color: dim}}
 	if !m.snapshot.NoRepository {
 		left = m.gitStatusSegments()
 	}
@@ -105,13 +105,13 @@ func (m *Model) statusLayout() []statusSegment {
 		if d.CRLF {
 			eol = "CRLF"
 		}
-		language := m.language(d.Path).Name
-		candidates = []statusSegment{{id: "position", text: fmt.Sprintf("行 %d, 列 %d", line+1, col+1)}, {id: "encoding", text: "UTF-8"}, {id: "eol", text: eol}, {id: "language", text: language}}
+		language := m.tr(m.language(d.Path).Name)
+		candidates = []statusSegment{{id: "position", text: m.tr("Ln %d, Col %d", line+1, col+1)}, {id: "encoding", text: "UTF-8"}, {id: "eol", text: eol}, {id: "language", text: language}}
 	}
 	if im := m.currentImage(); im != nil {
 		b := im.Bounds()
 		zoom := m.imageRegion().Scale
-		candidates = []statusSegment{{id: "image", text: fmt.Sprintf("%s · %d × %d · %.0f%% · 只读", im.Format, b.Dx(), b.Dy(), zoom*100)}}
+		candidates = []statusSegment{{id: "image", text: m.tr("%s · %d × %d · %.0f%% · Read-only", im.Format, b.Dx(), b.Dy(), zoom*100)}}
 	}
 	var right []statusSegment
 	rightWidth := 0
@@ -168,7 +168,7 @@ func (m *Model) clickStatus(x int) tea.Cmd {
 		case "changes":
 			return m.selectSectionInRepository(changes, m.statusRepository())
 		case "position":
-			return m.prompt("position", "转到行 · 行:列", "")
+			return m.prompt("position", m.tr("Go to line · line:column"), "")
 		}
 	}
 	return nil

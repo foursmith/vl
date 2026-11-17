@@ -82,10 +82,12 @@ func (m *Model) Layout() config.Layout {
 		LightThemeType:     light.UIThemeOverride,
 		ThemeType:          selected.UIThemeOverride,
 		LastCommand:        m.lastCommand,
+		Language:           string(m.displayLanguage),
 	}
 }
 
 func (m *Model) SetLayout(layout config.Layout) {
+	m.SetDisplayLanguage(layout.Language)
 	m.workspaceCollapsed, m.lastCommand = layout.WorkspaceCollapsed, layout.LastCommand
 	m.SetSidebarLayout(layout.SidebarWidth, layout.SidebarRight)
 	m.restoreThemeSlot(layout.DarkTheme, layout.DarkThemeType, false)
@@ -117,13 +119,13 @@ func (m *Model) toggleSidebar() tea.Cmd {
 	return nil
 }
 
-// SetLayoutStore enables immediate persistence after a confirmed theme selection.
+// SetLayoutStore enables immediate persistence after a language or theme selection.
 // Startup restoration runs before attaching the shared store.
 func (m *Model) SetLayoutStore(store *config.LayoutStore) { m.layoutStore = store }
 
 type layoutSavedMsg struct{ err error }
 
-func (m *Model) saveThemePreferences() tea.Cmd {
+func (m *Model) savePreferences() tea.Cmd {
 	if m.layoutStore == nil {
 		return nil
 	}

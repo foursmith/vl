@@ -18,6 +18,7 @@ import (
 	"github.com/ourongxing/elegit/internal/files"
 	gitservice "github.com/ourongxing/elegit/internal/git"
 	"github.com/ourongxing/elegit/internal/highlight"
+	"github.com/ourongxing/elegit/internal/i18n"
 	"github.com/ourongxing/elegit/internal/imagepreview"
 	"github.com/ourongxing/elegit/internal/platform"
 	"github.com/ourongxing/elegit/internal/theme"
@@ -96,6 +97,7 @@ type clipboardMsg struct {
 }
 
 type Model struct {
+	displayLanguage                i18n.Language
 	kittySupported, kittyProbeDone bool
 	cellWidth, cellHeight          int
 	imageIDs                       map[int]bool
@@ -195,7 +197,7 @@ func New(ctx context.Context, repo *gitservice.Repository, nerd bool) *Model {
 	ctx, cancel := context.WithCancel(ctx)
 	input := textinput.New()
 	input.CharLimit = 2000
-	m := &Model{cellWidth: 8, cellHeight: 16, colors: theme.Dark(), colorTheme: theme.Builtin("dark_modern"), darkTheme: theme.Builtin("dark_modern"), lightTheme: theme.Builtin("light_modern"), ctx: ctx, cancel: cancel, repo: repo, width: 120, height: 36, nerd: nerd, sidebar: true, sidebarVisible: true, split: true, diffState: newDiffState(), input: input, activeTab: -1, notice: "Loading repository…"}
+	m := &Model{displayLanguage: i18n.English, cellWidth: 8, cellHeight: 16, colors: theme.Dark(), colorTheme: theme.Builtin("dark_modern"), darkTheme: theme.Builtin("dark_modern"), lightTheme: theme.Builtin("light_modern"), ctx: ctx, cancel: cancel, repo: repo, width: 120, height: 36, nerd: nerd, sidebar: true, sidebarVisible: true, split: true, diffState: newDiffState(), input: input, activeTab: -1, notice: "Loading repository…"}
 	m.snapshot.NoRepository = !repo.HasRepository()
 	m.emptyDiff = m.diffState
 	m.styleInput()
@@ -448,7 +450,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 	switch msg := msg.(type) {
 	case layoutSavedMsg:
 		if msg.err != nil {
-			m.notice = "Save theme preferences: " + msg.err.Error()
+			m.notice = m.tr("Save preferences: %s", m.tr(msg.err.Error()))
 		}
 	case localThemesMsg:
 		m.applyLocalThemes(msg)
@@ -498,7 +500,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 				m.modal = ""
 				m.input.Blur()
 			}
-			m.log("更新工作区列表失败: " + msg.err.Error())
+			m.log(m.tr("Failed to update workspace list: %s", m.tr(msg.err.Error())))
 		} else {
 			m.workspaces = msg.folders
 			m.resize()
@@ -510,7 +512,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		return m, m.finishOpenRepository(msg)
 	case watchReadyMsg:
 		if msg.err != nil {
-			m.log("文件监视不可用: " + msg.err.Error())
+			m.log(m.tr("File watcher unavailable: %s", m.tr(msg.err.Error())))
 			return m, nil
 		}
 		m.watcher = msg.watcher
@@ -581,9 +583,9 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		m.hoverX, m.hoverY = -1, -1
 	case browserMsg:
 		if msg.err != nil {
-			m.log("打开浏览器失败: " + msg.err.Error())
+			m.log(m.tr("Failed to open browser: %s", m.tr(msg.err.Error())))
 		} else {
-			m.notice = "已打开 " + msg.target
+			m.notice = m.tr("Opened %s", msg.target)
 		}
 	case treeMsg:
 		if msg.seq != m.treeSeq {
@@ -591,7 +593,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}
 		if msg.err != nil {
 			m.revealFile = ""
-			m.log(msg.err.Error())
+			m.log(m.tr(msg.err.Error()))
 			return m, nil
 		}
 		m.treeEntries = msg.entries
@@ -626,14 +628,14 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}
 		m.loading = false
 		if msg.err != nil {
-			m.log(msg.err.Error())
+			m.log(m.tr(msg.err.Error()))
 			return m, nil
 		}
 		m.snapshot = msg.snapshot
 		m.reconcileHistoryRepositories()
 		m.syncWatch()
 		m.rebuildItems()
-		initial := m.notice == "Loading repository…"
+		initial := m.notice == m.tr("Loading repository…")
 		if initial {
 			m.notice = ""
 		}
@@ -655,9 +657,9 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 	case operationMsg:
 		m.busy = false
 		if msg.err != nil {
-			m.log(msg.err.Error())
+			m.log(m.tr(msg.err.Error()))
 		} else {
-			m.log(msg.title + " completed")
+			m.log(m.tr("%s completed", m.tr(msg.title)))
 			if strings.TrimSpace(msg.output) != "" {
 				m.addOutput(msg.output)
 			}
@@ -671,7 +673,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		return m, m.refresh()
 	case clipboardMsg:
 		if msg.err != nil {
-			m.log(msg.err.Error())
+			m.log(m.tr(msg.err.Error()))
 		} else if msg.doc != nil && m.document() == msg.doc {
 			if msg.cut {
 				if msg.doc.SelectedText() == msg.text {
@@ -806,7 +808,7 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	case key.Matches(msg, workbenchKeys.Commands):
 		return m.openPalette()
 	case key.Matches(msg, workbenchKeys.Position):
-		return m.prompt("position", "转到行 · 行:列", "")
+		return m.prompt("position", m.tr("Go to line · line:column"), "")
 	case key.Matches(msg, workbenchKeys.Explorer):
 		return m.selectSection(explorer)
 	case key.Matches(msg, workbenchKeys.Changes):
@@ -844,7 +846,7 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	case key.Matches(msg, workbenchKeys.PreviousTab):
 		return m.switchTab(-1)
 	case key.Matches(msg, workbenchKeys.Find):
-		return m.prompt("find", "Find in current view", m.find)
+		return m.prompt("find", m.tr("Find in current view"), m.find)
 	case key.Matches(msg, workbenchKeys.FindNext):
 		return m.findNext()
 	case key.Matches(msg, workbenchKeys.Escape):
@@ -856,7 +858,7 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	if m.sidebar {
 		switch k {
 		case "delete":
-			return m.deleteSelectedFile()
+			return m.deleteSelectedEntry()
 		case "up", "k":
 			m.moveSelection(-1)
 			return m.preview()
@@ -1012,19 +1014,19 @@ func (m *Model) document() *editor.Document {
 
 func (m *Model) save() tea.Cmd {
 	if m.busy {
-		m.notice = "Wait for the current Git operation before saving"
+		m.notice = m.tr("Wait for the current Git operation before saving")
 		return nil
 	}
 	d := m.document()
 	if d == nil {
-		m.notice = "Open a file to edit first"
+		m.notice = m.tr("Open a file to edit first")
 		return nil
 	}
 	if err := d.Save(); err != nil {
-		m.log(err.Error())
+		m.log(m.tr(err.Error()))
 		return nil
 	}
-	m.notice = "Saved " + filepath.Base(d.Path)
+	m.notice = m.tr("Saved %s", filepath.Base(d.Path))
 	return m.refresh()
 }
 
@@ -1036,7 +1038,7 @@ func (m *Model) reloadCleanTabs() {
 		if t.image != nil {
 			fresh, err := imagepreview.Open(t.image.Path)
 			if err != nil {
-				m.log(err.Error())
+				m.log(m.tr(err.Error()))
 			} else {
 				t.image.Image, t.image.rows = fresh, nil
 			}
@@ -1045,7 +1047,7 @@ func (m *Model) reloadCleanTabs() {
 			t.highlightJob.stop()
 			d, err := editor.Open(t.doc.Path)
 			if err != nil {
-				m.log("Closed " + filepath.Base(t.doc.Path) + ": " + err.Error())
+				m.log(m.tr("Closed %s: %s", filepath.Base(t.doc.Path), m.tr(err.Error())))
 				continue
 			}
 			line, col := t.doc.Position()

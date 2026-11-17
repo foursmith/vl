@@ -78,6 +78,7 @@ func (m *Model) welcomeLines() []string {
 		lines[y+i] = strings.Repeat(" ", x+padding) + theme.Style(m.colors.Brand, m.colors.Background).Render(text)
 	}
 	for i, a := range welcomeActions {
+		a.label = m.tr(a.label)
 		padding := max(2, width-ansi.StringWidth(a.label)-ansi.StringWidth(a.key))
 		lines[y+logoRows+m.welcomeGap(logoRows)+i] = strings.Repeat(" ", x) +
 			theme.Style(m.colors.Muted, m.colors.Background).Render(a.label) + strings.Repeat(" ", padding) +

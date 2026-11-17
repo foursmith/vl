@@ -31,6 +31,10 @@ bin/elegit -theme light_modern
 bin/elegit -theme dark_plus
 bin/elegit -theme local:my-theme.json /path/to/repository
 
+# Select the interface language (also available via F1 → Preferences: Configure Display Language):
+bin/elegit -lang zh-CN /path/to/repository
+bin/elegit -lang en /path/to/repository
+
 # Plain-text icons when the terminal font lacks Nerd Font glyphs:
 bin/elegit -icons=false /path/to/repository
 ```
@@ -42,10 +46,18 @@ to its root. Ordinary folders support file browsing, quick open, and
 editing. Changes and History offer **Initialize Repository** when the folder has
 no Git repository; initialization keeps open editor tabs and unsaved edits.
 
+English is the default display language. Use **F1 → Preferences: Configure Display Language**
+(search `language` in either language) to switch between **English** and **简体中文**
+without restarting. The selection is saved immediately as `language` in `layout.json`
+and retained across workspace switches. `-lang en` or `-lang zh-CN` overrides the
+saved choice at startup. File contents, names, commit messages, and raw Git output
+keep their original text. English strings are the fallback for missing translations;
+the Simplified Chinese catalog lives in `internal/i18n/zh-CN.json`.
+
 ## Available now
 
-- Centered block-letter welcome screen with clickable command, file-search, and Source
-  Control shortcuts; compact branding on small terminals.
+- Centered block-letter welcome screen with clickable command, file-search, and
+  Changes shortcuts; compact branding on small terminals.
 - Open elegit's recent folders with `Ctrl+R`, the welcome page, or
   **File: Open Recent Folder** in the command palette. Successful opens move to
   the front of the searchable list, which keeps the last 20 folders in
@@ -137,8 +149,8 @@ no Git repository; initialization keeps open editor tabs and unsaved edits.
   references are skipped; embedded images and installed system fonts are supported.
   Files are limited to 32 MiB and 16 megapixels, with transfers bounded to a
   4096-pixel edge.
-- Single-child folder chains display as one compact path in Explorer, Source
-  Control, and commit history; branching folders and folders containing files
+- Single-child folder chains display as one compact path in Explorer, Changes,
+  and commit history; branching folders and folders containing files
   retain their own rows.
 - Explorer folders start collapsed. Ignored paths remain visible in gray; files
   show Git status letters and folders show aggregate change dots. New file,
@@ -213,7 +225,7 @@ Append `:line[:column]` to a filename to jump to that position, or enter
 Commands sort alphabetically by name, with the last used command first; the choice
 is remembered across restarts and repository switches.
 
-Clean tabs close immediately; unsaved files offer **Save / Discard / Cancel**, using either the
+Clean tabs close immediately; unsaved files offer **Save / Don't Save / Cancel**, using either the
 buttons or **S / D / Esc**. File mutations and Git operations run only when requested; refreshing
 the view does not stage, commit, fetch, or change branches.
 Confirmation dialogs wrap long paths; when the message exceeds the screen, use
@@ -242,7 +254,7 @@ the active navigation section and editor tab use underlining.
 | Global | Ctrl+Q | Quit, with unsaved-changes confirmation |
 | Sidebar | Up/Down or K/J | Select entry |
 | Sidebar | Enter or Right | Open file/diff, toggle folder, or switch branch |
-| Explorer | Del | Delete selected file from disk, with confirmation |
+| Explorer | Del | Delete selected file or folder from disk, with confirmation |
 | Changes | E | Edit selected file |
 | Changes | Space | Toggle file staging |
 | Changes | S / U / A / C | Stage / unstage / stage all / commit |
@@ -274,7 +286,7 @@ and legacy CR-only files are rejected rather than silently converted. It does
 not currently offer Save As, LSP, or multi-cursor.
 File and diff tabs share one opening order and the same switch/close controls.
 Single-clicking files or diffs reuses one preview tab; double-clicking the row or
-tab, pressing Enter, or running Keep Preview Open keeps it open. Kept working-tree,
+tab, pressing Enter, or running **View: Keep Editor** keeps it open. Kept working-tree,
 staged and commit diffs retain independent tabs, including for the same file.
 Reopening the same source selects its existing tab.
 File tabs open live worktree files; commit diffs are read-only patches.

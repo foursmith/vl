@@ -109,7 +109,7 @@ func TestHoverDiscardRequiresConfirmationAndHonorsCancel(t *testing.T) {
 	path := filepath.Join(m.repo.Root, "cmd/main.go")
 	a, y := hoverAction(t, m, "cmd/main.go", "discard")
 	m.Update(tea.MouseClickMsg{X: a.x + 1, Y: y, Button: tea.MouseLeft})
-	if m.modal != "confirm" || !strings.Contains(m.confirmationDetail, "无法恢复") || m.busy {
+	if m.modal != "confirm" || !strings.Contains(m.confirmationDetail, "cannot be recovered") || m.busy {
 		t.Fatal("untracked deletion did not require explicit confirmation")
 	}
 	m.Update(tea.MouseClickMsg{X: 0, Y: 0, Button: tea.MouseLeft})
@@ -130,7 +130,7 @@ func TestHoverActionsDisableDuringGitOperation(t *testing.T) {
 	a, y := hoverAction(t, m, "cmd/main.go", "stage")
 	m.busy = true
 	_, cmd := m.Update(tea.MouseClickMsg{X: a.x + 1, Y: y, Button: tea.MouseLeft})
-	if cmd != nil || !strings.Contains(m.notice, "等待") {
+	if cmd != nil || !strings.Contains(m.notice, "Wait") {
 		t.Fatal("busy hover button started another operation")
 	}
 }

@@ -47,9 +47,9 @@ func (m *Model) imagePreviewLines(im *imageState, w, h int) []string {
 		return nil
 	}
 	if !m.kittySupported {
-		text := "当前终端未响应 Kitty 图片协议，需要支持 Unicode 占位的终端"
+		text := m.tr("No response to the Kitty graphics protocol; a terminal with Unicode placeholder support is required")
 		if !m.kittyProbeDone {
-			text = "正在检测终端图片协议…"
+			text = m.tr("Detecting terminal graphics protocol…")
 		}
 		lines := make([]string, h)
 		lines[h/2] = "  " + text
@@ -63,7 +63,7 @@ func (m *Model) imagePreviewLines(im *imageState, w, h int) []string {
 	content, err := im.KittyRegionRows(im.id, region)
 	lines := make([]string, h)
 	if err != nil {
-		lines[h/2] = "  " + safe(err.Error())
+		lines[h/2] = "  " + safe(m.tr(err.Error()))
 		return lines
 	}
 	x, y := (w-cols)/2, (h-rows)/2
@@ -87,7 +87,7 @@ func (m *Model) finishImageReload(msg imageReloadMsg) {
 			continue
 		}
 		if msg.err != nil {
-			notice := "图片在磁盘上不可用: " + msg.err.Error()
+			notice := m.tr("Image unavailable on disk: %s", m.tr(msg.err.Error()))
 			if t.diskNotice != notice {
 				t.diskNotice = notice
 				m.log(notice)

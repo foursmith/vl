@@ -109,7 +109,7 @@ func Create(root, path string, directory bool) error {
 	return f.Close()
 }
 
-// Delete removes a single file or symlink, without following it or leaving root.
+// Delete removes an entry and its children, without following symlinks or leaving root.
 func Delete(root, path string) error {
 	clean, err := entryPath(path)
 	if err != nil {
@@ -120,14 +120,11 @@ func Delete(root, path string) error {
 		return err
 	}
 	defer dir.Close()
-	info, err := dir.Lstat(clean)
+	_, err = dir.Lstat(clean)
 	if err != nil {
 		return err
 	}
-	if info.IsDir() {
-		return fmt.Errorf("select a file, not a folder")
-	}
-	return dir.Remove(clean)
+	return dir.RemoveAll(clean)
 }
 
 // List enumerates regular folder files without following symlinks or Git metadata.

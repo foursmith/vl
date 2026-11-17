@@ -63,7 +63,7 @@ func TestStatusBranchPickerCheckoutAndCreateFromReference(t *testing.T) {
 	m.openBranchPicker("", "")
 	m.input.SetValue("refs/tags/v1")
 	drain(t, m, press(m, "enter"))
-	if !m.snapshot.Detached || !strings.Contains(m.statusLine(), "分离") {
+	if !m.snapshot.Detached || !strings.Contains(m.statusLine(), "detached") {
 		t.Fatal("tag checkout did not expose detached state")
 	}
 }
@@ -130,7 +130,7 @@ func TestStatusGeometryAndEditorMetadata(t *testing.T) {
 		}
 	}
 	text := plain(m.statusLine())
-	for _, value := range []string{"2" + m.symbol(symbolArrowDown) + " 3" + m.symbol(symbolUp), "UTF-8", "LF", "Go", "行 1, 列 1"} {
+	for _, value := range []string{"2" + m.symbol(symbolArrowDown) + " 3" + m.symbol(symbolUp), "UTF-8", "LF", "Go", "Ln 1, Col 1"} {
 		if !strings.Contains(text, value) {
 			t.Fatalf("missing %q: %s", value, text)
 		}
@@ -323,10 +323,10 @@ func TestStatusSyncAndPublishTargetChildRepository(t *testing.T) {
 	}
 	drain(t, m, m.refresh())
 	m.openFile("child space/README.md")
-	if !strings.Contains(statusPart(t, m, "branch").text, "分离") {
+	if !strings.Contains(statusPart(t, m, "branch").text, "detached") {
 		t.Fatal("child detached HEAD is hidden")
 	}
-	if cmd := m.syncRepository(); cmd != nil || !strings.Contains(m.notice, "分离") {
+	if cmd := m.syncRepository(); cmd != nil || !strings.Contains(m.notice, "detached") {
 		t.Fatal("detached child sync was not blocked")
 	}
 }

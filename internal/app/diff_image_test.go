@@ -143,7 +143,7 @@ func TestDiffImagesReadActualReviewVersions(t *testing.T) {
 			}
 			m.kittySupported, m.kittyProbeDone = false, true
 			m.Update(tea.WindowSizeMsg{Width: 160, Height: 35})
-			if view := m.View().Content; strings.Contains(view, "\x1b_G") || !strings.Contains(view, "未响应") {
+			if view := m.View().Content; strings.Contains(view, "\x1b_G") || !strings.Contains(view, "No response") {
 				t.Fatal("unsupported terminal did not degrade gracefully")
 			}
 			m.closeAllTabs()

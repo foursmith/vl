@@ -123,10 +123,13 @@ func TestDeleteOnlyRemovesWorkspaceFiles(t *testing.T) {
 	os.WriteFile(filepath.Join(root, ".git/config"), nil, 0644)
 	os.WriteFile(filepath.Join(outside, "keep"), nil, 0644)
 	os.Symlink(outside, filepath.Join(root, "link"))
-	for _, path := range []string{".", "../keep", outside, ".git/config", "folder", "link/keep"} {
+	for _, path := range []string{".", "../keep", outside, ".git/config", "link/keep"} {
 		if err := Delete(root, path); err == nil {
 			t.Fatalf("accepted deletion of %q", path)
 		}
+	}
+	if err := Delete(root, "folder"); err != nil {
+		t.Fatal(err)
 	}
 	if err := Delete(root, "link"); err != nil {
 		t.Fatal(err)
@@ -140,5 +143,29 @@ func TestDeleteOnlyRemovesWorkspaceFiles(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(root, "file")); !os.IsNotExist(err) {
 		t.Fatalf("file was not removed: %v", err)
+	}
+}
+
+func TestDeleteFolderRecursivelyWithoutFollowingSymlinks(t *testing.T) {
+	root, outside := t.TempDir(), t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "folder/nested"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{filepath.Join(root, "folder/nested/file"), filepath.Join(outside, "keep")} {
+		if err := os.WriteFile(path, []byte("content"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Symlink(outside, filepath.Join(root, "folder/link")); err != nil {
+		t.Fatal(err)
+	}
+	if err := Delete(root, "folder"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "folder")); !os.IsNotExist(err) {
+		t.Fatalf("folder remains: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(outside, "keep")); err != nil {
+		t.Fatalf("symlink target changed: %v", err)
 	}
 }

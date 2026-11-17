@@ -163,8 +163,8 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 		index := m.workspaceTop + y - 1
 		if index >= 0 && index < len(m.workspaces) {
 			folder := m.workspaces[index]
-			add("打开", "", func() tea.Cmd { return m.openRepository(folder) })
-			add("从工作区列表移除", "", func() tea.Cmd { return m.removeWorkspace(folder) })
+			add(m.tr("Open"), "", func() tea.Cmd { return m.openRepository(folder) })
+			add(m.tr("Remove from workspace list"), "", func() tea.Cmd { return m.removeWorkspace(folder) })
 		}
 	} else if m.sidebarAt(x) && y >= m.workspaceRows()+headerHeight && y < m.bodyHeight() {
 		m.sidebar = true
@@ -187,7 +187,7 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 							return run()
 						}
 					}
-					m.notice = "目标已更改，请重新打开菜单"
+					m.notice = m.tr("Target changed; reopen the menu")
 					return nil
 				}
 				m.selected = -1
@@ -196,29 +196,33 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 		}
 		if m.section == explorer {
 			if entry != nil {
-				add("打开", "Enter", bind(m.openSelected))
+				add(m.tr("Open"), "Enter", bind(m.openSelected))
 			}
-			add("新建文件…", "", bind(func() tea.Cmd { return m.newEntry(false) }))
-			add("新建文件夹…", "", bind(func() tea.Cmd { return m.newEntry(true) }))
-			add("刷新", workbenchKeys.Refresh.Help().Key, m.refresh)
-			add("折叠所有文件夹", "", m.collapseFolders)
+			add(m.tr("New File…"), "", bind(func() tea.Cmd { return m.newEntry(false) }))
+			add(m.tr("New Folder…"), "", bind(func() tea.Cmd { return m.newEntry(true) }))
+			add(m.tr("Refresh"), workbenchKeys.Refresh.Help().Key, m.refresh)
+			add(m.tr("Collapse Folders"), "", m.collapseFolders)
 		} else if m.section == changes && entry != nil {
 			for _, a := range m.changeRowActions(*entry, m.sideWidth()) {
 				actions = append(actions, action{label: a.label, disabled: a.disabled, run: bind(func() tea.Cmd { return m.runChangeRowAction(m.selected, a.id) })})
 			}
 			if entry.change != nil {
-				add("打开差异", "Enter", bind(m.openSelected))
+				add(m.tr("Open Changes"), "Enter", bind(m.openSelected))
 			}
 		} else if entry != nil {
-			add("打开 / 展开", "Enter", bind(m.openSelected))
+			add(m.tr("Open / Expand"), "Enter", bind(m.openSelected))
 			if entry.repoHeader {
 				repo := entry.repository
-				add("切换分支…", "", func() tea.Cmd { return m.openBranchPicker(repo, "") })
+				add(m.tr("Checkout to…"), "", func() tea.Cmd { return m.openBranchPicker(repo, "") })
 			}
 		}
 		if entry != nil {
-			if m.selectedDeletePath() != "" {
-				add("删除文件…", "Del", bind(m.deleteSelectedFile))
+			if m.selectedEntryPath() != "" {
+				label := m.tr("Delete…")
+				if entry.folder != "" {
+					label = m.tr("Delete Folder…")
+				}
+				add(label, "Del", bind(m.deleteSelectedEntry))
 			}
 			path := entry.file
 			if path == "" {
@@ -252,35 +256,35 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 		}
 		if m.activeTab >= 0 && m.activeTab < len(m.tabs) {
 			if y == tabRow {
-				add("关闭", workbenchKeys.Close.Help().Key, m.closeTab)
-				add("关闭其他标签页", "", m.closeOtherTabs)
-				add("关闭所有标签页", "", m.closeAllTabs)
+				add(m.tr("Close"), workbenchKeys.Close.Help().Key, m.closeTab)
+				add(m.tr("Close Others"), "", m.closeOtherTabs)
+				add(m.tr("Close All"), "", m.closeAllTabs)
 				if m.tabs[m.activeTab].preview {
-					add("保持打开", "", m.keepTab)
+					add(m.tr("Keep Open"), "", m.keepTab)
 				}
 			} else if m.editing() {
 				selected := m.document().SelectedText() != ""
-				reason := "请先选择文本"
+				reason := m.tr("Select text first")
 				if selected {
 					reason = ""
 				}
-				actions = append(actions, action{label: "复制", key: workbenchKeys.Copy.Help().Key, disabled: reason, run: func() tea.Cmd { return m.copy(false) }}, action{label: "剪切", key: "Ctrl+X", disabled: reason, run: func() tea.Cmd { return m.copy(true) }})
-				add("粘贴", "Ctrl+V", m.paste)
-				add("全选", "Ctrl+A", func() tea.Cmd { m.document().SelectAll(); return nil })
-				add("撤销", "Ctrl+Z", func() tea.Cmd { m.document().Undo(); m.ensureEditor(); return nil })
-				add("重做", "Ctrl+Y", func() tea.Cmd { m.document().Redo(); m.ensureEditor(); return nil })
-				add("保存", workbenchKeys.Save.Help().Key, m.save)
-				add("查找…", workbenchKeys.Find.Help().Key, func() tea.Cmd { return m.prompt("find", "Find in current view", m.find) })
+				actions = append(actions, action{label: m.tr("Copy"), key: workbenchKeys.Copy.Help().Key, disabled: reason, run: func() tea.Cmd { return m.copy(false) }}, action{label: m.tr("Cut"), key: "Ctrl+X", disabled: reason, run: func() tea.Cmd { return m.copy(true) }})
+				add(m.tr("Paste"), "Ctrl+V", m.paste)
+				add(m.tr("Select All"), "Ctrl+A", func() tea.Cmd { m.document().SelectAll(); return nil })
+				add(m.tr("Undo"), "Ctrl+Z", func() tea.Cmd { m.document().Undo(); m.ensureEditor(); return nil })
+				add(m.tr("Redo"), "Ctrl+Y", func() tea.Cmd { m.document().Redo(); m.ensureEditor(); return nil })
+				add(m.tr("Save"), workbenchKeys.Save.Help().Key, m.save)
+				add(m.tr("Find…"), workbenchKeys.Find.Help().Key, func() tea.Cmd { return m.prompt("find", m.tr("Find in current view"), m.find) })
 			} else if m.diffOpen {
 				reason := ""
 				if m.diffSelectedText() == "" {
-					reason = "请先选择文本"
+					reason = m.tr("Select text first")
 				}
-				actions = append(actions, action{label: "复制", key: workbenchKeys.Copy.Help().Key, disabled: reason, run: func() tea.Cmd { return m.copy(false) }})
-				add("切换差异布局", workbenchKeys.DiffLayout.Help().Key, func() tea.Cmd { m.split = !m.split; m.renderDiff(); return nil })
-				add("查找…", workbenchKeys.Find.Help().Key, func() tea.Cmd { return m.prompt("find", "Find in current view", m.find) })
+				actions = append(actions, action{label: m.tr("Copy"), key: workbenchKeys.Copy.Help().Key, disabled: reason, run: func() tea.Cmd { return m.copy(false) }})
+				add(m.tr("Toggle Inline View"), workbenchKeys.DiffLayout.Help().Key, func() tea.Cmd { m.split = !m.split; m.renderDiff(); return nil })
+				add(m.tr("Find…"), workbenchKeys.Find.Help().Key, func() tea.Cmd { return m.prompt("find", m.tr("Find in current view"), m.find) })
 			} else if m.currentImage() != nil {
-				add("恢复适应窗口", "0", func() tea.Cmd { m.resetImageZoom(); return nil })
+				add(m.tr("Fit to Window"), "0", func() tea.Cmd { m.resetImageZoom(); return nil })
 			}
 			actions = append(actions, m.copyPathActions(m.tabs[m.activeTab].path())...)
 		}
@@ -303,5 +307,5 @@ func (m *Model) copyPathActions(path string) []action {
 	copy := func(text string) func() tea.Cmd {
 		return func() tea.Cmd { return func() tea.Msg { return clipboardMsg{err: clipboard.WriteAll(text)} } }
 	}
-	return []action{{label: "复制路径", run: copy(absolute)}, {label: "复制相对路径", run: copy(filepath.ToSlash(relative))}}
+	return []action{{label: m.tr("Copy Path"), run: copy(absolute)}, {label: m.tr("Copy Relative Path"), run: copy(filepath.ToSlash(relative))}}
 }

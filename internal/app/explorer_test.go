@@ -153,7 +153,7 @@ func TestExplorerDeleteProtectsDirtyFilesAndOtherSections(t *testing.T) {
 	m.sidebar = true
 	m.document().Insert("unsaved")
 	m.Update(tea.KeyPressMsg{Code: tea.KeyDelete})
-	if m.modal != "" || !strings.Contains(m.notice, "未保存") {
+	if m.modal != "" || !strings.Contains(m.notice, "unsaved") {
 		t.Fatal("dirty file deletion was allowed")
 	}
 	m.document().Undo()
@@ -171,5 +171,50 @@ func TestExplorerDeleteProtectsDirtyFilesAndOtherSections(t *testing.T) {
 	m.Update(tea.KeyPressMsg{Code: tea.KeyDelete})
 	if m.modal != "" || m.busy {
 		t.Fatal("delete applied outside explorer")
+	}
+}
+
+func TestExplorerDeleteFolderConfirmsAndProtectsDirtyDescendants(t *testing.T) {
+	m := explorerWorkspace(t)
+	defer m.Close()
+	m.openFile("cmd/main.go")
+	for i, entry := range m.items {
+		if entry.folder == "cmd" {
+			m.selected = i
+		}
+	}
+	m.sidebar = true
+	m.document().Insert("unsaved")
+	m.Update(tea.KeyPressMsg{Code: tea.KeyDelete})
+	if m.modal != "" || !strings.Contains(m.notice, "unsaved") {
+		t.Fatal("folder containing dirty file could be deleted")
+	}
+	m.document().Undo()
+	press(m, "shift+f10")
+	chooseContextAction(t, m, "Delete Folder…")
+	if m.modal != "confirm" || !strings.Contains(m.confirmationDetail, "all its contents") {
+		t.Fatal("folder deletion did not explain recursive removal")
+	}
+	m.document().Insert("changed while confirming")
+	drain(t, m, press(m, "enter"))
+	path := filepath.Join(m.repo.Root, "cmd/main.go")
+	if _, err := os.Stat(path); err != nil {
+		t.Fatal("folder confirmation failed to recheck dirty descendants")
+	}
+	m.document().Undo()
+	m.Update(tea.KeyPressMsg{Code: tea.KeyDelete})
+	press(m, "esc")
+	if _, err := os.Stat(path); err != nil {
+		t.Fatal("cancel deleted folder contents")
+	}
+	m.Update(tea.KeyPressMsg{Code: tea.KeyDelete})
+	drain(t, m, press(m, "enter"))
+	if _, err := os.Stat(filepath.Dir(path)); !os.IsNotExist(err) {
+		t.Fatalf("folder remains after confirmation: %v", err)
+	}
+	for _, entry := range m.items {
+		if entry.folder == "cmd" || strings.HasPrefix(entry.file, "cmd/") {
+			t.Fatal("deleted folder remains in explorer")
+		}
 	}
 }

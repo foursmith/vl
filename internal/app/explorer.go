@@ -3,6 +3,7 @@ package app
 import (
 	"maps"
 	"path/filepath"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/ourongxing/elegit/internal/files"
@@ -104,16 +105,16 @@ func (m *Model) newEntry(directory bool) tea.Cmd {
 			path = filepath.ToSlash(filepath.Dir(entry.file)) + "/"
 		}
 	}
-	kind, title := "newFile", "New File"
+	kind, title := "newFile", m.tr("New File")
 	if directory {
-		kind, title = "newFolder", "New Folder"
+		kind, title = "newFolder", m.tr("New Folder")
 	}
 	return m.prompt(kind, title, path)
 }
 
 func (m *Model) createEntry(path string, directory bool) tea.Cmd {
 	if err := files.Create(m.repo.Root, path, directory); err != nil {
-		m.log(err.Error())
+		m.log(m.tr(err.Error()))
 		return nil
 	}
 	for parent := filepath.ToSlash(filepath.Dir(path)); parent != "." && parent != "/"; parent = filepath.ToSlash(filepath.Dir(parent)) {
@@ -125,38 +126,59 @@ func (m *Model) createEntry(path string, directory bool) tea.Cmd {
 	return m.refresh()
 }
 
-func (m *Model) selectedDeletePath() string {
+func (m *Model) selectedEntryPath() string {
 	entry := m.current()
 	if m.section != explorer || entry == nil {
 		return ""
 	}
+	if entry.folder != "" {
+		return entry.folder
+	}
 	return entry.file
 }
 
-func (m *Model) deleteSelectedFile() tea.Cmd {
-	path := m.selectedDeletePath()
+func (m *Model) deletePathDirty(path string) bool {
+	absolute := filepath.Join(m.repo.Root, path)
+	for _, tab := range m.tabs {
+		if tab.doc != nil && tab.doc.Dirty() && (tab.doc.Path == absolute || strings.HasPrefix(tab.doc.Path, absolute+string(filepath.Separator))) {
+			return true
+		}
+	}
+	return false
+}
+
+func (m *Model) deleteSelectedEntry() tea.Cmd {
+	path := m.selectedEntryPath()
 	if path == "" {
 		return nil
 	}
 	if m.busy {
-		m.notice = "等待当前操作完成"
+		m.notice = m.tr("Wait for the current operation to finish")
 		return nil
 	}
-	if m.fileDirty(path) {
-		m.notice = "先保存或关闭此文件的未保存更改"
+	if m.deletePathDirty(path) {
+		m.notice = m.tr("Save or close unsaved changes in this path first")
 		return nil
 	}
 	root := m.repo.Root
-	cmd := m.ask("删除文件 "+path+"？", func() tea.Cmd {
-		if m.repo.Root != root || m.busy || m.fileDirty(path) {
-			m.notice = "文件状态已更改，请重新操作"
+	operation := "Delete file"
+	title := m.tr("Delete file %s?", path)
+	detail := m.tr("This permanently deletes the file from disk. Uncommitted content cannot be recovered by Git.")
+	if m.current().folder != "" {
+		operation = "Delete folder"
+		title = m.tr("Delete folder %s?", path)
+		detail = m.tr("This permanently deletes the folder and all its contents from disk. Uncommitted content cannot be recovered by Git.")
+	}
+	cmd := m.ask(title, func() tea.Cmd {
+		if m.repo.Root != root || m.busy || m.deletePathDirty(path) {
+			m.notice = m.tr("Path state changed; try again")
 			return nil
 		}
-		return m.startOperation("Delete file", func() (string, error) {
+		return m.startOperation(operation, func() (string, error) {
 			return "", files.Delete(root, path)
 		})
 	})
-	m.confirmationDetail = "将从磁盘永久删除文件，未提交的内容无法通过 Git 恢复。"
-	m.confirmationLabel = "删除"
+	m.confirmationDetail = detail
+	m.confirmationLabel = m.tr("Delete")
 	return cmd
 }

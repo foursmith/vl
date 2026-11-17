@@ -44,7 +44,7 @@ func TestFolderBrowseSearchEditAndInitialize(t *testing.T) {
 	m.document().Insert("edited ")
 	doc := m.document()
 	drain(t, m, m.selectSection(changes))
-	if len(m.items) != 0 || !strings.Contains(strings.Join(m.sidebarLines(), "\n"), "初始化 Git 仓库") {
+	if len(m.items) != 0 || !strings.Contains(strings.Join(m.sidebarLines(), "\n"), "Initialize Repository") {
 		t.Fatal("missing folder empty state")
 	}
 	for _, a := range m.actions() {

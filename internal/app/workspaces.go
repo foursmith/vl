@@ -86,7 +86,7 @@ func (m *Model) workspaceLines(w int) []string {
 	if n == 0 {
 		return nil
 	}
-	header := " " + m.treeChevron(!m.workspaceCollapsed) + " WORKSPACES"
+	header := " " + m.treeChevron(!m.workspaceCollapsed) + m.tr(" WORKSPACES")
 	if !m.workspaceCollapsed && n-1 < len(m.workspaces) {
 		header += " ↕"
 	}

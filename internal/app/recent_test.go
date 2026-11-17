@@ -174,7 +174,7 @@ func TestFailedAndCurrentFolderKeepRepository(t *testing.T) {
 		t.Fatal("failed switch changed repository or stayed pending")
 	}
 	drain(t, m, m.openRepository(old.Root))
-	if m.NextRepository() != nil || !strings.Contains(m.notice, "已在此仓库") {
+	if m.NextRepository() != nil || !strings.Contains(m.notice, "Already in this repository") {
 		t.Fatal("current repository restarted")
 	}
 }
@@ -202,7 +202,7 @@ func TestWorkspaceContextMenuRemovesCapturedFolder(t *testing.T) {
 			}
 			// The action must remain bound to the clicked folder if the list changes.
 			m.workspaces[0], m.workspaces[1] = m.workspaces[1], m.workspaces[0]
-			drain(t, m, chooseContextAction(t, m, "从工作区列表移除"))
+			drain(t, m, chooseContextAction(t, m, "Remove from workspace list"))
 			if len(m.workspaces) != 1 || m.workspaces[0] != other {
 				t.Fatalf("remaining: %v", m.workspaces)
 			}

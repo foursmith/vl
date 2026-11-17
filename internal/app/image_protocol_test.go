@@ -24,7 +24,7 @@ func TestImageProtocolDetectionAndCellSize(t *testing.T) {
 		t.Fatal("transmitted before detection")
 	}
 	m.Update(imageProbeTimeoutMsg{})
-	if !strings.Contains(strings.Join(m.imageLines(), ""), "未响应") {
+	if !strings.Contains(strings.Join(m.imageLines(), ""), "No response") {
 		t.Fatal("missing unsupported-terminal explanation")
 	}
 	m.Update(uv.KittyGraphicsEvent{Options: kitty.Options{ID: kittyProbeID}, Payload: []byte("OK")})

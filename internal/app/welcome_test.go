@@ -78,7 +78,7 @@ func TestWelcomeDoesNotReplaceOpenOrLoadingContent(t *testing.T) {
 		t.Fatal("pending diff shows welcome or a loading placeholder")
 	}
 	toolbar := plain(m.contentToolbar())
-	if !strings.Contains(toolbar, "file0.go") || strings.Contains(toolbar, "载入中") {
+	if !strings.Contains(toolbar, "file0.go") || strings.Contains(toolbar, "Loading") {
 		t.Fatal("pending diff hides its path behind a loading placeholder")
 	}
 	m.diffLoading = false

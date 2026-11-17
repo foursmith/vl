@@ -208,7 +208,7 @@ func TestHistoryEmptyAndNestedRepositorySections(t *testing.T) {
 		if e.repoHeader {
 			headers++
 		}
-		if e.label == "暂无提交" {
+		if e.label == "No commits yet" {
 			empty++
 		}
 	}
@@ -216,7 +216,7 @@ func TestHistoryEmptyAndNestedRepositorySections(t *testing.T) {
 		t.Fatal("empty or nested repository sections missing")
 	}
 	for _, entry := range m.items {
-		if entry.label == "暂无提交" {
+		if entry.label == "No commits yet" {
 			m.sidebar = true
 			if cmd := m.openHistory(entry); cmd != nil || !m.sidebar {
 				t.Fatal("empty history note stole focus")

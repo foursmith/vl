@@ -19,6 +19,7 @@ cmd/elegit                 flags, process lifetime, concrete composition
         ├── internal/watcher    bounded/coalesced directory notifications
         ├── internal/highlight  TextMate scopes → Dark Modern theme spans
         ├── internal/platform    system browser opener
+        ├── internal/i18n       English message keys and Simplified Chinese catalog
         ├── internal/theme      Modern Dark workbench colors
         └── internal/fileicon   Material-style terminal icon associations
 ```
@@ -42,6 +43,12 @@ commit can appear in more than one repository. Child history files retain worksp
 paths for display and an owning repository for Git queries; branch/tag labels come
 from that repository's refs. History, branch pickers and status controls read the
 same repository snapshot, including metadata errors, without a separate history map.
+
+Display language belongs to presentation. `internal/i18n` translates complete
+messages and formats their arguments; command IDs, operation identities, paths,
+file contents and raw Git output remain unchanged. The language picker and
+`-lang` accept `en` and `zh-CN`. The selected language is saved with layout
+preferences and retained when switching workspaces.
 
 ## Dependencies
 

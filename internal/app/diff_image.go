@@ -102,11 +102,11 @@ func (m *Model) diffImageLines() []string {
 		return nil
 	}
 	widths := [2]int{(w - 1) / 2, w - 1 - (w-1)/2}
-	labels := [2]string{"Index", "Working tree"}
+	labels := [2]string{m.tr("Index"), m.tr("Working tree")}
 	if m.diffCommit != "" {
-		labels = [2]string{"Parent", "Commit"}
+		labels = [2]string{m.tr("Parent"), m.tr("Commit")}
 	} else if m.diffStaged {
-		labels = [2]string{"HEAD", "Index"}
+		labels = [2]string{"HEAD", m.tr("Index")}
 	}
 	var columns [2][]string
 	for side, width := range widths {
@@ -118,9 +118,9 @@ func (m *Model) diffImageLines() []string {
 			label += fmt.Sprintf(" · %d × %d", b.Dx(), b.Dy())
 			copy(columns[side][1:], m.imagePreviewLines(im, width, h-1))
 		} else {
-			text := "不存在"
+			text := m.tr("Missing")
 			if err := m.images.errors[side]; err != nil {
-				text = safe(err.Error())
+				text = safe(m.tr(err.Error()))
 			}
 			columns[side][1+(h-1)/2] = "  " + text
 		}

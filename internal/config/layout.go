@@ -7,6 +7,7 @@ import (
 
 // Layout stores user preferences independently of the current terminal size.
 type Layout struct {
+	Language           string `json:"language,omitempty"`
 	WorkspaceCollapsed bool   `json:"workspaceCollapsed,omitempty"`
 	LastCommand        string `json:"lastCommand,omitempty"`
 	DarkTheme          string `json:"darkTheme,omitempty"`

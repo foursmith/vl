@@ -44,12 +44,12 @@ func TestMonochromeSelectionRemainsVisibleWithoutColor(t *testing.T) {
 func TestConfirmationLongUnicodeTargetCanBeReadBeforeConfirming(t *testing.T) {
 	m := tabWorkspace(t, 0)
 	defer m.Close()
-	title := "删除未跟踪文件 " + strings.Repeat("目录👨‍👩‍👧‍👦/", 30) + "重要文件.txt？"
+	title := "Delete untracked file " + strings.Repeat("目录👨‍👩‍👧‍👦/", 30) + "重要文件.txt?"
 	for _, size := range [][2]int{{120, 36}, {60, 20}, {30, 8}} {
 		m.Update(tea.WindowSizeMsg{Width: size[0], Height: size[1]})
 		confirmed := false
 		m.ask(title, func() tea.Cmd { confirmed = true; return nil })
-		m.confirmationDetail = "Git 无法恢复此文件。"
+		m.confirmationDetail = "This file cannot be recovered by Git."
 		var seen strings.Builder
 		readLines := 0
 		for {
@@ -73,7 +73,7 @@ func TestConfirmationLongUnicodeTargetCanBeReadBeforeConfirming(t *testing.T) {
 					readLines++
 				}
 			}
-			if !strings.Contains(plain(strings.Join(l.content, "\n")), "取消") {
+			if !strings.Contains(plain(strings.Join(l.content, "\n")), "Cancel") {
 				t.Fatal("scrolling hid the cancel button")
 			}
 			if l.top == l.maxTop {
@@ -81,7 +81,7 @@ func TestConfirmationLongUnicodeTargetCanBeReadBeforeConfirming(t *testing.T) {
 			}
 			m.Update(tea.KeyPressMsg{Code: tea.KeyPgDown})
 		}
-		if !strings.Contains(strings.ReplaceAll(seen.String(), " ", ""), strings.ReplaceAll(title, " ", "")) || !strings.Contains(seen.String(), "无法恢复") {
+		if !strings.Contains(strings.ReplaceAll(seen.String(), " ", ""), strings.ReplaceAll(title, " ", "")) || !strings.Contains(strings.ReplaceAll(seen.String(), " ", ""), "cannotberecovered") {
 			t.Fatalf("scrolling at %v did not expose the complete target and warning: %q", size, seen.String())
 		}
 		if confirmed {
@@ -103,7 +103,7 @@ func TestWrappedUnsavedDialogButtonsMatchTheirVisiblePosition(t *testing.T) {
 	m.closeTab()
 	m.modalTitle = "Save changes to a/very/long/目录/important-file.go?"
 	l := m.dialogLayout()
-	if !strings.Contains(plain(l.content[len(l.content)-1]), "取消") {
+	if !strings.Contains(plain(l.content[len(l.content)-1]), "Cancel") {
 		t.Fatal("narrow dialog clipped an action")
 	}
 	button := l.buttons[2]
@@ -138,8 +138,8 @@ func TestConfirmationButtonsNavigateAndPreserveCloseChoices(t *testing.T) {
 	}
 	for i := range 2 {
 		confirmed = false
-		m.ask("删除文件 file.txt？", func() tea.Cmd { confirmed = true; return nil })
-		m.confirmationLabel = "删除"
+		m.ask("Delete file file.txt?", func() tea.Cmd { confirmed = true; return nil })
+		m.confirmationLabel = "Delete"
 		l := m.dialogLayout()
 		button := l.buttons[i]
 		m.clickModal(tea.MouseClickMsg{X: l.x + button.x, Y: l.y + button.y, Button: tea.MouseLeft})

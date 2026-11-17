@@ -25,7 +25,7 @@ func (m *Model) repositoryName(path string) string {
 func (m *Model) repositoryBranch(path string) string {
 	state := m.repositoryState(path)
 	if state.Detached {
-		return shortOID(state.Head) + " (分离)"
+		return shortOID(state.Head) + m.tr(" (detached)")
 	}
 	return state.Branch
 }
@@ -44,9 +44,9 @@ func (m *Model) changeRepositoryItems() []item {
 			if count == 0 {
 				continue
 			}
-			label := "CHANGES"
+			label := m.tr("CHANGES")
 			if staged {
-				label = "STAGED CHANGES"
+				label = m.tr("STAGED CHANGES")
 			}
 			key := changeKey(repo, staged, "group", "")
 			result = append(result, item{label: fmt.Sprintf("%s  %d", label, count), key: key, header: true, staged: staged, repository: repo, depth: 1})
@@ -72,7 +72,7 @@ func (m *Model) selectedRepository() string {
 
 func (m *Model) commitDisabled(repo string) string {
 	if m.busy {
-		return "等待当前 Git 操作完成"
+		return m.tr("Wait for the current Git operation to finish")
 	}
 	staged := false
 	for _, c := range m.snapshot.Changes {
@@ -80,12 +80,12 @@ func (m *Model) commitDisabled(repo string) string {
 			continue
 		}
 		if c.Conflicted() {
-			return "先解决此仓库的全部冲突"
+			return m.tr("Resolve all conflicts in this repository first")
 		}
 		staged = staged || c.Staged()
 	}
 	if !staged {
-		return "此仓库没有暂存更改"
+		return m.tr("No staged changes in this repository")
 	}
 	return ""
 }
@@ -96,7 +96,7 @@ func (m *Model) commitInRepository(repo string) tea.Cmd {
 		return nil
 	}
 	m.commitRepository = repo
-	title := "Commit staged changes · " + m.repositoryName(repo)
+	title := m.tr("Commit staged changes · %s", m.repositoryName(repo))
 	if branch := m.repositoryBranch(repo); branch != "" {
 		title += " [" + branch + "]"
 	}

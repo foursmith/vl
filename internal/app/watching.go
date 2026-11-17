@@ -71,7 +71,7 @@ func (m *Model) syncWatch() {
 func (m *Model) handleWatch(batch watcher.Batch) tea.Cmd {
 	if batch.Err != nil {
 		m.watchDirty = true
-		m.log("文件监视: " + batch.Err.Error())
+		m.log(m.tr("File watcher: %s", batch.Err.Error()))
 	}
 	for _, path := range batch.Paths {
 		metadata := false
@@ -134,7 +134,7 @@ func (m *Model) finishReload(msg fileReloadMsg) {
 		}
 		if msg.err != nil {
 			t.reloadWhenClean = false
-			notice := "文件在磁盘上不可用: " + filepath.Base(t.doc.Path) + ": " + msg.err.Error()
+			notice := m.tr("File unavailable on disk: %s: %s", filepath.Base(t.doc.Path), m.tr(msg.err.Error()))
 			if t.diskNotice != notice {
 				t.diskNotice = notice
 				m.log(notice)
@@ -148,7 +148,7 @@ func (m *Model) finishReload(msg fileReloadMsg) {
 		}
 		if t.doc.Dirty() {
 			t.reloadWhenClean = true
-			notice := "文件已被外部修改，保留未保存内容: " + filepath.Base(t.doc.Path)
+			notice := m.tr("File changed on disk; keeping unsaved changes: %s", filepath.Base(t.doc.Path))
 			if t.diskNotice != notice {
 				t.diskNotice = notice
 				m.log(notice)

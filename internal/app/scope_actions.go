@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	gitservice "github.com/ourongxing/elegit/internal/git"
+	"github.com/ourongxing/elegit/internal/i18n"
 )
 
 // Scope membership comes from the full snapshot, including collapsed descendants.
@@ -31,30 +32,30 @@ func (m *Model) scopedChanges(entry item) []gitservice.Change {
 
 func (m *Model) changeActionDisabled(entry item, id string, scope []gitservice.Change) string {
 	if m.busy {
-		return "等待当前 Git 操作完成"
+		return m.tr("Wait for the current Git operation to finish")
 	}
 	if len(scope) == 0 {
-		return "此范围没有更改"
+		return m.tr("No changes in this scope")
 	}
 	switch id {
 	case "open":
 		if entry.change != nil && entry.change.Gitlink {
-			return "子模块提交指针，请查看 diff 或选择子仓库文件"
+			return m.tr("Submodule commit pointer; view the diff or select files in the submodule")
 		}
 		if c := entry.change; c != nil && (c.Worktree == 'D' || c.Index == 'D' && c.Worktree == ' ') {
-			return "文件已删除"
+			return m.tr("File deleted")
 		}
 	case "discard":
 		for _, c := range scope {
 			if c.Gitlink {
-				return "仓库目录不能作为文件丢弃"
+				return m.tr("Cannot discard a repository directory as a file")
 			}
 			if c.Conflicted() {
-				return "先解决文件冲突"
+				return m.tr("Resolve file conflicts first")
 			}
 		}
 		if m.hasDirtyTabsInRepository(entry.repository) {
-			return "先保存或关闭未保存的文件"
+			return m.tr("Save or close unsaved files first")
 		}
 	case "stage":
 		stageable := false
@@ -62,11 +63,11 @@ func (m *Model) changeActionDisabled(entry item, id string, scope []gitservice.C
 			stageable = stageable || !c.GitlinkDirty
 		}
 		if !stageable {
-			return "子模块内部文件有更改，请在其仓库中暂存和提交"
+			return m.tr("Submodule has file changes; stage and commit them in its repository")
 		}
 		for _, c := range scope {
 			if m.fileDirty(c.Path) {
-				return "先保存此范围的文件"
+				return m.tr("Save files in this scope first")
 			}
 		}
 	}
@@ -86,7 +87,7 @@ func (m *Model) runScopeAction(entry item, id string) tea.Cmd {
 			}
 		}
 		if len(stageable) == 0 {
-			m.notice = "子模块内部文件有更改，请在其仓库中暂存和提交"
+			m.notice = m.tr("Submodule has file changes; stage and commit them in its repository")
 			return nil
 		}
 		scope = stageable
@@ -105,7 +106,8 @@ func (m *Model) runScopeAction(entry item, id string) tea.Cmd {
 			m.notice = reason
 			return nil
 		}
-		title := map[string]string{"stage": "Stage", "unstage": "Unstage", "discard": "Discard"}[id]
+		title := map[string]string{"stage": "Stage", "unstage": "Unstage Changes", "discard": "Discard"}[id]
+		language := m.displayLanguage
 		return m.operation(title, func() (string, error) {
 			for i, c := range scope {
 				var err error
@@ -118,10 +120,10 @@ func (m *Model) runScopeAction(entry item, id string) tea.Cmd {
 					_, err = m.repo.Discard(m.ctx, c)
 				}
 				if err != nil {
-					return "", fmt.Errorf("已完成 %d/%d，%s: %w", i, len(scope), c.Path, err)
+					return "", fmt.Errorf(i18n.Text(language, "Completed %d/%d, %s: %w"), i, len(scope), c.Path, err)
 				}
 			}
-			return fmt.Sprintf("已处理 %d 个文件", len(scope)), nil
+			return i18n.Text(language, "Processed %d files", len(scope)), nil
 		})
 	}
 	if id != "discard" {
@@ -129,9 +131,9 @@ func (m *Model) runScopeAction(entry item, id string) tea.Cmd {
 	}
 	name := entry.folder
 	if name == "" {
-		name = m.repositoryName(entry.repository) + " 的更改分组"
+		name = m.tr("%s changes", m.repositoryName(entry.repository))
 	}
-	cmd := m.ask(fmt.Sprintf("丢弃 %s 中的 %d 个文件更改？", name, len(scope)), run)
-	m.confirmationDetail = "仅处理当前范围；未跟踪文件将被删除，Git 无法恢复。"
+	cmd := m.ask(m.tr("Discard changes to %d files in %s?", len(scope), name), run)
+	m.confirmationDetail = m.tr("Only affects this scope. Untracked files will be deleted and cannot be recovered by Git.")
 	return cmd
 }

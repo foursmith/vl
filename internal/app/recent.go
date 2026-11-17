@@ -13,8 +13,8 @@ type repositoryOpenedMsg struct {
 }
 
 func (m *Model) openRecentFolders() tea.Cmd {
-	prompt := m.prompt("recent", "最近打开的文件夹", "")
-	m.input.Placeholder = "搜索最近打开的文件夹"
+	prompt := m.prompt("recent", m.tr("Open Recent"), "")
+	m.input.Placeholder = m.tr("Search recent folders")
 	m.populateRecentFolders()
 	return tea.Batch(prompt, m.loadWorkspaces())
 }
@@ -32,11 +32,11 @@ func (m *Model) populateRecentFolders() {
 
 func (m *Model) repositorySwitchBlocked() bool {
 	if m.busy || m.openingRepository {
-		m.notice = "请等待当前操作完成"
+		m.notice = m.tr("Wait for the current operation to finish")
 		return true
 	}
 	if m.hasDirtyTabs() {
-		m.notice = "先保存或关闭未保存的文件"
+		m.notice = m.tr("Save or close unsaved files first")
 		return true
 	}
 	return false
@@ -57,7 +57,7 @@ func (m *Model) openRepository(path string) tea.Cmd {
 func (m *Model) finishOpenRepository(msg repositoryOpenedMsg) tea.Cmd {
 	m.openingRepository = false
 	if msg.err != nil {
-		m.log("打开文件夹失败: " + msg.err.Error())
+		m.log(m.tr("Failed to open folder: %s", m.tr(msg.err.Error())))
 		return nil
 	}
 	// Editing or a Git operation may have started while discovery was running.
@@ -65,7 +65,7 @@ func (m *Model) finishOpenRepository(msg repositoryOpenedMsg) tea.Cmd {
 		return nil
 	}
 	if msg.repo.Root == m.repo.Root {
-		m.notice = "已在此仓库"
+		m.notice = m.tr("Already in this repository")
 		return nil
 	}
 	m.nextRepository = msg.repo

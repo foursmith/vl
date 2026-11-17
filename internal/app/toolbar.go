@@ -27,12 +27,12 @@ func (m *Model) diffModeButton() toolbarButton {
 }
 
 func (m *Model) diffContext() string {
-	context := "工作区"
+	context := m.tr("Working Tree")
 	if m.diffStaged {
-		context = "暂存区"
+		context = m.tr("Staged")
 	}
 	if m.diffCommit != "" {
-		context = "提交 · " + shortOID(m.diffCommit) + " · 只读"
+		context = m.tr("Commit · ") + shortOID(m.diffCommit) + m.tr(" · Read-only")
 	}
 	fileStatus := ""
 	oldMode, newMode := "", ""
@@ -40,12 +40,12 @@ func (m *Model) diffContext() string {
 		line := parsed.Text
 		switch {
 		case fileStatus == "" && strings.HasPrefix(line, "new file mode "):
-			fileStatus = " · 新文件"
+			fileStatus = m.tr(" · New file")
 			if strings.HasSuffix(line, "755") {
-				fileStatus += " · 可执行"
+				fileStatus += m.tr(" · Executable")
 			}
 		case fileStatus == "" && strings.HasPrefix(line, "deleted file mode "):
-			fileStatus = " · 已删除"
+			fileStatus = m.tr(" · Deleted")
 		case strings.HasPrefix(line, "old mode "):
 			oldMode = strings.TrimPrefix(line, "old mode ")
 		case strings.HasPrefix(line, "new mode "):
@@ -54,10 +54,10 @@ func (m *Model) diffContext() string {
 	}
 	context += fileStatus
 	if c := m.diffChange; c != nil && c.Original != "" {
-		context += " · 重命名自 " + safe(c.Original)
+		context += m.tr(" · Renamed from ") + safe(c.Original)
 	}
 	if oldMode != "" && newMode != "" {
-		context += " · 权限 " + oldMode + " → " + newMode
+		context += m.tr(" · Mode ") + oldMode + " → " + newMode
 	}
 	return context
 }
@@ -65,9 +65,9 @@ func (m *Model) diffContext() string {
 func (m *Model) contentToolbar() string {
 	w := m.mainWidth()
 	if im := m.currentImage(); im != nil {
-		label := fmt.Sprintf(" %.0f%% · 0 适配 ", m.imageRegion().Scale*100)
+		label := m.tr(" %.0f%% · 0 Fit ", m.imageRegion().Scale*100)
 		if w >= 52 {
-			label = fmt.Sprintf(" %.0f%% · +/- 缩放 · 方向键平移 · 0 适配 ", m.imageRegion().Scale*100)
+			label = m.tr(" %.0f%% · +/- Zoom · Arrows Pan · 0 Fit ", m.imageRegion().Scale*100)
 		}
 		width := min(w, ansi.StringWidth(label))
 		return m.breadcrumb(im.Path, w-width) + row(label, width, m.colors.Muted, m.colors.Background)
@@ -79,7 +79,7 @@ func (m *Model) contentToolbar() string {
 		return row("", w, m.colors.Foreground, m.colors.Background)
 	}
 	if m.images != nil {
-		label := " " + m.diffContext() + " · 图片对比 "
+		label := " " + m.diffContext() + m.tr(" · Image comparison ")
 		width := min(w, ansi.StringWidth(label))
 		return m.breadcrumb(m.diffPath, w-width) + row(label, width, m.colors.Muted, m.colors.Background)
 	}

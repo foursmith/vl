@@ -96,7 +96,7 @@ func TestContextMenuTargetsClickedTabAndConfirmsDirtyClose(t *testing.T) {
 	if m.document() != first {
 		t.Fatal("menu targets active rather than clicked tab")
 	}
-	chooseContextAction(t, m, "关闭")
+	chooseContextAction(t, m, "Close")
 	if m.contextMenu != nil || m.modal != "close" || len(m.tabs) != 2 {
 		t.Fatal("dirty close bypassed confirmation")
 	}
@@ -107,23 +107,23 @@ func TestContextMenuChangeActionsAndStaleTargets(t *testing.T) {
 	drain(t, m, m.selectSection(changes))
 	_, y := hoverAction(t, m, "cmd/main.go", "stage")
 	m.Update(tea.MouseClickMsg{X: m.sideX() + 4, Y: y, Button: tea.MouseRight})
-	drain(t, m, chooseContextAction(t, m, "暂存更改"))
+	drain(t, m, chooseContextAction(t, m, "Stage Changes"))
 	if m.current() == nil || !m.current().staged || m.current().change.Path != "cmd/main.go" {
 		t.Fatal("stage targeted wrong row")
 	}
 	_, y = hoverAction(t, m, "README.md", "discard")
 	m.Update(tea.MouseClickMsg{X: m.sideX() + 4, Y: y, Button: tea.MouseRight})
-	chooseContextAction(t, m, "删除未跟踪文件")
+	chooseContextAction(t, m, "Delete Untracked File")
 	if m.modal != "confirm" {
 		t.Fatal("discard bypassed confirmation")
 	}
 	m.modal = ""
 	m.Update(tea.MouseClickMsg{X: m.sideX() + 4, Y: y, Button: tea.MouseRight})
 	m.items = nil
-	if cmd := chooseContextAction(t, m, "暂存更改"); cmd != nil {
+	if cmd := chooseContextAction(t, m, "Stage Changes"); cmd != nil {
 		t.Fatal("stale menu scheduled mutation")
 	}
-	if !strings.Contains(m.notice, "目标已更改") {
+	if !strings.Contains(m.notice, "Target changed") {
 		t.Fatal("stale target not explained")
 	}
 }
@@ -132,12 +132,12 @@ func TestContextMenuMouseAndDisabledActions(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	m.openFile("file0.go")
 	m.Update(tea.MouseClickMsg{X: m.mainX() + 3, Y: 4, Button: tea.MouseRight})
-	chooseContextAction(t, m, "复制")
-	if m.contextMenu == nil || m.notice != "请先选择文本" {
+	chooseContextAction(t, m, "Copy")
+	if m.contextMenu == nil || m.notice != "Select text first" {
 		t.Fatal("disabled action executed or lost its explanation")
 	}
 	for i, a := range m.contextMenu.actions {
-		if a.label != "全选" {
+		if a.label != "Select All" {
 			continue
 		}
 		l := m.contextMenuLayout()

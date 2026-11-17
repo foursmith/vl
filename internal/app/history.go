@@ -111,7 +111,7 @@ func (m *Model) applyHistoryFiles(msg historyFilesMsg) tea.Cmd {
 	state.loading = false
 	state.cancel = nil
 	if msg.err != nil {
-		m.log(msg.err.Error())
+		m.log(m.tr(msg.err.Error()))
 		return nil
 	}
 	state.files, state.loaded = msg.files, true
@@ -132,7 +132,7 @@ func (m *Model) previewHistoryFirst(id string) tea.Cmd {
 			return m.previewHistory(entry)
 		}
 	}
-	m.notice = "This commit has no visible file changes"
+	m.notice = m.tr("This commit has no visible file changes")
 	return nil
 }
 
@@ -264,7 +264,7 @@ func (m *Model) historyRepositoryItems() []item {
 			result = append(result, item{key: historyRepositoryKey(repo) + ":error", label: data.MetadataError, repository: repo})
 		}
 		if len(data.Commits) == 0 && data.MetadataError == "" {
-			result = append(result, item{key: historyRepositoryKey(repo) + ":empty", label: "暂无提交", repository: repo})
+			result = append(result, item{key: historyRepositoryKey(repo) + ":empty", label: m.tr("No commits yet"), repository: repo})
 		}
 		commits := data.Commits
 		var page *historyPageState
@@ -281,9 +281,9 @@ func (m *Model) historyRepositoryItems() []item {
 			}
 		}
 		if page != nil && !page.done {
-			label := "加载更多提交…"
+			label := m.tr("Load more commits…")
 			if page.err != "" {
-				label = "加载失败，Enter 重试: " + page.err
+				label = m.tr("Failed to load; press Enter to retry: %s", page.err)
 			}
 			result = append(result, item{key: historyRepositoryKey(repo) + ":more", repository: repo, label: label, historyPage: page})
 		}

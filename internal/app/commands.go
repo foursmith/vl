@@ -18,81 +18,82 @@ type action struct {
 func (m *Model) actions() []action {
 	target := m.selectedRepository()
 	suffix := " · " + m.repositoryName(target)
-	commitLabel, stageAllLabel := "Git: Commit Staged Changes"+suffix, "Git: Stage All Changes"+suffix
+	commitLabel, stageAllLabel := m.tr("Git: Commit Staged")+suffix, m.tr("Git: Stage All Changes")+suffix
 	fileReason := ""
 	if m.current() == nil || m.current().change == nil {
-		fileReason = "Select a file in Changes"
+		fileReason = m.tr("Select a file in Changes")
 	}
 	docReason := ""
 	tabReason := ""
 	if m.activeTab < 0 {
-		tabReason = "No active tab"
+		tabReason = m.tr("No active tab")
 	}
 	openReason := ""
 	if m.current() == nil || m.current().change == nil && m.current().file == "" {
-		openReason = "Select a file in Explorer or Changes"
+		openReason = m.tr("Select a file in Explorer or Changes")
 	}
 	if !m.editing() {
-		docReason = "Open a text file first"
+		docReason = m.tr("Open a text file first")
 	}
 	githubReason := ""
 	if m.repositoryState(m.statusRepository()).GitHubURL == "" {
-		githubReason = "没有找到 github.com 远程仓库"
+		githubReason = m.tr("No GitHub remote found")
 	}
 	actions := []action{
-		{"folder.openRecent", "File: Open Recent Folder", workbenchKeys.Recent.Help().Key, "", m.openRecentFolders},
-		{"theme.select", "Preferences: Color Theme", "", "", m.openThemePicker},
+		{"folder.openRecent", m.tr("File: Open Recent Folder"), workbenchKeys.Recent.Help().Key, "", m.openRecentFolders},
+		{"theme.select", m.tr("Preferences: Color Theme"), "", "", m.openThemePicker},
+		{"language.select", m.tr("Preferences: Configure Display Language"), "", "", m.openLanguagePicker},
 
-		{"view.explorer", "View: Explorer", workbenchKeys.Explorer.Help().Key, "", func() tea.Cmd { return m.selectSection(explorer) }},
-		{"explorer.newFile", "Explorer: New File", "", "", func() tea.Cmd { return m.newEntry(false) }},
-		{"explorer.newFolder", "Explorer: New Folder", "", "", func() tea.Cmd { return m.newEntry(true) }},
-		{"explorer.collapseAll", "Explorer: Collapse Folders", "", "", m.collapseFolders},
-		{"view.changes", "View: Changes", workbenchKeys.Changes.Help().Key, "", func() tea.Cmd { return m.selectSection(changes) }},
-		{"view.history", "View: Commit History", workbenchKeys.History.Help().Key, "", func() tea.Cmd { return m.selectSection(history) }},
-		{"view.diff", "Diff: Toggle Side by Side", workbenchKeys.DiffLayout.Help().Key, "", func() tea.Cmd { m.split = !m.split; m.renderDiff(); return nil }},
-		{"view.sidebar", "View: Toggle Sidebar", workbenchKeys.Sidebar.Help().Key, "", m.toggleSidebar},
-		{"view.sidebarLeft", "View: Move Sidebar Left", "", "", func() tea.Cmd { m.SetSidebarLayout(m.sidebarWidth, false); return nil }},
-		{"view.sidebarRight", "View: Move Sidebar Right", "", "", func() tea.Cmd { m.SetSidebarLayout(m.sidebarWidth, true); return nil }},
-		{"view.sidebarResetWidth", "View: Reset Sidebar Width", "", "", func() tea.Cmd { m.SetSidebarLayout(0, m.sidebarRight); return nil }},
-		{"view.output", "View: Toggle Output", workbenchKeys.Output.Help().Key, "", func() tea.Cmd { m.outputVisible = !m.outputVisible; m.resize(); return nil }},
-		{"git.refresh", "Git: Refresh", workbenchKeys.Refresh.Help().Key, "", m.refresh},
-		{"git.stage", "Git: Stage Selected File", "S", fileReason, func() tea.Cmd { return m.stageSelected(false) }},
-		{"git.unstage", "Git: Unstage Selected File", "U", fileReason, func() tea.Cmd { return m.stageSelected(true) }},
+		{"view.explorer", m.tr("View: Show Explorer"), workbenchKeys.Explorer.Help().Key, "", func() tea.Cmd { return m.selectSection(explorer) }},
+		{"explorer.newFile", m.tr("Explorer: New File"), "", "", func() tea.Cmd { return m.newEntry(false) }},
+		{"explorer.newFolder", m.tr("Explorer: New Folder"), "", "", func() tea.Cmd { return m.newEntry(true) }},
+		{"explorer.collapseAll", m.tr("Explorer: Collapse Folders in Explorer"), "", "", m.collapseFolders},
+		{"view.changes", m.tr("View: Changes"), workbenchKeys.Changes.Help().Key, "", func() tea.Cmd { return m.selectSection(changes) }},
+		{"view.history", m.tr("View: Commit History"), workbenchKeys.History.Help().Key, "", func() tea.Cmd { return m.selectSection(history) }},
+		{"view.diff", m.tr("Diff Editor: Toggle Inline View"), workbenchKeys.DiffLayout.Help().Key, "", func() tea.Cmd { m.split = !m.split; m.renderDiff(); return nil }},
+		{"view.sidebar", m.tr("View: Toggle Sidebar"), workbenchKeys.Sidebar.Help().Key, "", m.toggleSidebar},
+		{"view.sidebarLeft", m.tr("View: Move Sidebar Left"), "", "", func() tea.Cmd { m.SetSidebarLayout(m.sidebarWidth, false); return nil }},
+		{"view.sidebarRight", m.tr("View: Move Sidebar Right"), "", "", func() tea.Cmd { m.SetSidebarLayout(m.sidebarWidth, true); return nil }},
+		{"view.sidebarResetWidth", m.tr("View: Reset Sidebar Width"), "", "", func() tea.Cmd { m.SetSidebarLayout(0, m.sidebarRight); return nil }},
+		{"view.output", m.tr("View: Toggle Output"), workbenchKeys.Output.Help().Key, "", func() tea.Cmd { m.outputVisible = !m.outputVisible; m.resize(); return nil }},
+		{"git.refresh", m.tr("Git: Refresh"), workbenchKeys.Refresh.Help().Key, "", m.refresh},
+		{"git.stage", m.tr("Git: Stage Changes"), "S", fileReason, func() tea.Cmd { return m.stageSelected(false) }},
+		{"git.unstage", m.tr("Git: Unstage Changes"), "U", fileReason, func() tea.Cmd { return m.stageSelected(true) }},
 		{"git.stageAll", stageAllLabel, "A", "", func() tea.Cmd { return m.stageAllInRepository(target) }},
 		{"git.commit", commitLabel, "C", m.commitDisabled(target), func() tea.Cmd { return m.commitInRepository(target) }},
-		{"git.fetch", "Git: Fetch", "", "", func() tea.Cmd { return m.gitOperation("Fetch", "fetch", "--all", "--prune") }},
-		{"git.pull", "Git: Pull (Fast Forward Only)", "", "", func() tea.Cmd { return m.gitOperation("Pull", "pull", "--ff-only") }},
-		{"git.push", "Git: Push", "", "", func() tea.Cmd { return m.gitOperation("Push", "push") }},
-		{"git.branch", "Git: Create Branch", "", "", func() tea.Cmd {
+		{"git.fetch", m.tr("Git: Fetch"), "", "", func() tea.Cmd { return m.gitOperation("Fetch", "fetch", "--all", "--prune") }},
+		{"git.pull", m.tr("Git: Pull (Fast Forward Only)"), "", "", func() tea.Cmd { return m.gitOperation("Pull", "pull", "--ff-only") }},
+		{"git.push", m.tr("Git: Push"), "", "", func() tea.Cmd { return m.gitOperation("Push", "push") }},
+		{"git.branch", m.tr("Git: Create Branch…"), "", "", func() tea.Cmd {
 			m.branchStart = ""
 			m.branchRepository = ""
-			return m.prompt("branch", "Create and switch to branch", "")
+			return m.prompt("branch", m.tr("Create and switch to branch"), "")
 		}},
-		{"git.checkout", "Git: Checkout Branch or Tag", "", "", func() tea.Cmd { return m.openBranchPicker("", "") }},
-		{"git.sync", "Git: Sync with Upstream", "", "", m.syncRepository},
-		{"git.publish", "Git: Publish Branch", "", "", m.publishBranch},
-		{"github.open", "GitHub: Open Repository", "", githubReason, m.openGitHub},
-		{"git.stash", "Git: Stash Changes (Including Untracked)", "", "", func() tea.Cmd { return m.prompt("stash", "Stash message", "") }},
-		{"git.stashPop", "Git: Pop Latest Stash", "", "", func() tea.Cmd {
-			return m.ask("Apply and remove the latest stash?", func() tea.Cmd { return m.gitOperation("Stash pop", "stash", "pop") })
+		{"git.checkout", m.tr("Git: Checkout to…"), "", "", func() tea.Cmd { return m.openBranchPicker("", "") }},
+		{"git.sync", m.tr("Git: Sync"), "", "", m.syncRepository},
+		{"git.publish", m.tr("Git: Publish Branch"), "", "", m.publishBranch},
+		{"github.open", m.tr("GitHub: Open Repository"), "", githubReason, m.openGitHub},
+		{"git.stash", m.tr("Git: Stash (Include Untracked)"), "", "", func() tea.Cmd { return m.prompt("stash", m.tr("Stash message"), "") }},
+		{"git.stashPop", m.tr("Git: Pop Latest Stash"), "", "", func() tea.Cmd {
+			return m.ask(m.tr("Apply and remove the latest stash?"), func() tea.Cmd { return m.gitOperation("Stash pop", "stash", "pop") })
 		}},
-		{"git.discard", "Git: Discard Unstaged Changes", "", fileReason, m.discard},
-		{"file.open", "File: Open Selected File", "E", openReason, m.editSelected},
-		{"file.save", "File: Save", workbenchKeys.Save.Help().Key, docReason, m.save},
-		{"file.close", "File: Close Active Tab", workbenchKeys.Close.Help().Key, tabReason, m.closeTab},
-		{"file.keepOpen", "File: Keep Preview Open", "", tabReason, m.keepTab},
-		{"file.closeOthers", "File: Close Other Tabs", "", "", m.closeOtherTabs},
-		{"file.closeAll", "File: Close All Tabs", "", "", m.closeAllTabs},
-		{"edit.find", "Find: Search Current View", workbenchKeys.Find.Help().Key, "", func() tea.Cmd { return m.prompt("find", "Find in current view", m.find) }},
-		{"app.quit", "Quit", workbenchKeys.Quit.Help().Key, "", m.quit},
+		{"git.discard", m.tr("Git: Discard Unstaged Changes"), "", fileReason, m.discard},
+		{"file.open", m.tr("File: Open Selected File"), "E", openReason, m.editSelected},
+		{"file.save", m.tr("File: Save"), workbenchKeys.Save.Help().Key, docReason, m.save},
+		{"file.close", m.tr("View: Close Editor"), workbenchKeys.Close.Help().Key, tabReason, m.closeTab},
+		{"file.keepOpen", m.tr("View: Keep Editor"), "", tabReason, m.keepTab},
+		{"file.closeOthers", m.tr("View: Close Other Editors"), "", "", m.closeOtherTabs},
+		{"file.closeAll", m.tr("View: Close All Editors"), "", "", m.closeAllTabs},
+		{"edit.find", m.tr("Find: Search Current View"), workbenchKeys.Find.Help().Key, "", func() tea.Cmd { return m.prompt("find", m.tr("Find in current view"), m.find) }},
+		{"app.quit", m.tr("Quit"), workbenchKeys.Quit.Help().Key, "", m.quit},
 	}
 	if m.snapshot.NoRepository {
 		for i := range actions {
 			if strings.HasPrefix(actions[i].id, "git.") || actions[i].id == "github.open" {
-				actions[i].disabled = "此文件夹尚未初始化 Git 仓库"
+				actions[i].disabled = m.tr("This folder is not a Git repository")
 			}
 		}
-		actions = append(actions, action{id: "git.init", label: "Git: Initialize Repository", run: m.initializeRepository})
+		actions = append(actions, action{id: "git.init", label: m.tr("Git: Initialize Repository"), run: m.initializeRepository})
 	}
 	return actions
 }
@@ -174,7 +175,7 @@ func (m *Model) resizeInput() {
 func (m *Model) ask(title string, run func() tea.Cmd) tea.Cmd {
 	m.confirm = run
 	m.confirmationDetail = ""
-	m.confirmationLabel = "确认"
+	m.confirmationLabel = m.tr("Confirm")
 	m.confirmationButton = 0
 	return m.prompt("confirm", title, "")
 }
@@ -303,7 +304,7 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 
 func (m *Model) operation(title string, run func() (string, error)) tea.Cmd {
 	if m.snapshot.NoRepository {
-		m.notice = "此文件夹尚未初始化 Git 仓库"
+		m.notice = m.tr("This folder is not a Git repository")
 		return nil
 	}
 	return m.startOperation(title, run)
@@ -311,11 +312,11 @@ func (m *Model) operation(title string, run func() (string, error)) tea.Cmd {
 
 func (m *Model) startOperation(title string, run func() (string, error)) tea.Cmd {
 	if m.busy {
-		m.notice = "Wait for the current Git operation"
+		m.notice = m.tr("Wait for the current Git operation")
 		return nil
 	}
 	m.busy = true
-	m.notice = title + "…"
+	m.notice = m.tr(title) + "…"
 	m.refreshSeq++
 	if m.refreshCancel != nil {
 		m.refreshCancel()
@@ -337,7 +338,7 @@ func (m *Model) startOperation(title string, run func() (string, error)) tea.Cmd
 
 func (m *Model) gitOperation(title string, args ...string) tea.Cmd {
 	if (title == "Pull" || title == "Stash" || title == "Stash pop") && m.hasDirtyTabs() {
-		m.notice = "Save or close edited files before this operation"
+		m.notice = m.tr("Save or close edited files before this operation")
 		return nil
 	}
 	return m.operation(title, func() (string, error) { return m.repo.Run(m.ctx, args...) })
@@ -355,30 +356,30 @@ func (m *Model) stageSelected(unstage bool) tea.Cmd {
 		return m.runScopeAction(scope, id)
 	}
 	if entry == nil || entry.change == nil {
-		m.notice = "Select a changed file first"
+		m.notice = m.tr("Select a changed file first")
 		return nil
 	}
 	c := *entry.change
 	if !unstage && c.GitlinkDirty {
-		m.notice = "子模块内部文件有更改，请在其仓库中暂存和提交"
+		m.notice = m.tr("Submodule has file changes; stage and commit them in its repository")
 		return nil
 	}
 	if !unstage && m.fileDirty(c.Path) {
-		m.notice = "Save this file before staging"
+		m.notice = m.tr("Save this file before staging")
 		return nil
 	}
 	if unstage {
 		if !c.Staged() {
-			m.notice = "This file has no staged changes"
+			m.notice = m.tr("This file has no staged changes")
 			return nil
 		}
-		return m.operation("Unstage "+c.Path, func() (string, error) { return m.repo.Unstage(m.ctx, c) })
+		return m.operation(m.tr("Unstage %s", c.Path), func() (string, error) { return m.repo.Unstage(m.ctx, c) })
 	}
 	if !c.Unstaged() {
-		m.notice = "This file has no unstaged changes"
+		m.notice = m.tr("This file has no unstaged changes")
 		return nil
 	}
-	return m.operation("Stage "+c.Path, func() (string, error) { return m.repo.Stage(m.ctx, c) })
+	return m.operation(m.tr("Stage %s", c.Path), func() (string, error) { return m.repo.Stage(m.ctx, c) })
 }
 
 func (m *Model) stageAll() tea.Cmd {
@@ -387,7 +388,7 @@ func (m *Model) stageAll() tea.Cmd {
 
 func (m *Model) stageAllInRepository(target string) tea.Cmd {
 	if m.hasDirtyTabsInRepository(target) {
-		m.notice = "Save edited files before staging all changes"
+		m.notice = m.tr("Save edited files before staging all changes")
 		return nil
 	}
 	return m.operation("Stage all", func() (string, error) {
@@ -401,20 +402,20 @@ func (m *Model) stageAllInRepository(target string) tea.Cmd {
 
 func (m *Model) stageHunk(reverse bool) tea.Cmd {
 	if m.images != nil {
-		m.notice = "Stage or unstage the whole image file from Changes"
+		m.notice = m.tr("Stage or unstage the whole image file from Changes")
 		return nil
 	}
 	if m.diffLoading || m.diffChange == nil || m.editing() {
-		m.notice = "Open a working-tree or index diff first"
+		m.notice = m.tr("Open a working-tree or index diff first")
 		return nil
 	}
 	if m.diffStaged != reverse {
-		m.notice = "Use S in a working-tree diff or U in an index diff"
+		m.notice = m.tr("Use S in a working-tree diff or U in an index diff")
 		return nil
 	}
 	patch, err := m.patch.HunkPatch(m.diffHunk)
 	if err != nil {
-		m.notice = err.Error()
+		m.notice = m.tr(err.Error())
 		return nil
 	}
 	c, staged, raw := *m.diffChange, m.diffStaged, m.patch.Raw
@@ -482,7 +483,7 @@ func (m *Model) editSelected() tea.Cmd {
 	}
 	if entry.change != nil {
 		if entry.change.Gitlink {
-			m.notice = "子模块提交指针；请在对应仓库中选择文件"
+			m.notice = m.tr("Submodule commit pointer; select files in its repository")
 			return nil
 		}
 		return m.openFile(entry.change.Path)
@@ -491,11 +492,11 @@ func (m *Model) editSelected() tea.Cmd {
 }
 func (m *Model) editDiff() tea.Cmd {
 	if m.diffCommit != "" {
-		m.notice = "Commit diffs are read-only"
+		m.notice = m.tr("Commit diffs are read-only")
 		return nil
 	}
 	if m.diffChange != nil && m.diffChange.Gitlink {
-		m.notice = "子模块提交指针；请在对应仓库中选择文件"
+		m.notice = m.tr("Submodule commit pointer; select files in its repository")
 		return nil
 	}
 	if m.diffPath != "" {
@@ -511,41 +512,41 @@ func (m *Model) discard() tea.Cmd {
 	}
 	c := *entry.change
 	if c.Gitlink {
-		m.notice = "仓库目录不能作为文件丢弃"
+		m.notice = m.tr("Cannot discard a repository directory as a file")
 		return nil
 	}
 	if c.Conflicted() || entry.staged {
-		m.notice = "Select a non-conflicted working-tree file to discard"
+		m.notice = m.tr("Select a non-conflicted working-tree file to discard")
 		return nil
 	}
 	if m.hasDirtyTabsInRepository(c.Repository) {
-		m.notice = "Save or close edited files before discarding"
+		m.notice = m.tr("Save or close edited files before discarding")
 		return nil
 	}
-	title := "Permanently discard unstaged edits to " + c.Path + "?"
+	title := m.tr("Permanently discard unstaged edits to %s?", c.Path)
 	if c.Untracked() {
-		title = "删除未跟踪文件 " + c.Path + "？"
+		title = m.tr("Delete untracked file %s?", c.Path)
 	}
 	cmd := m.ask(title, func() tea.Cmd {
 		if m.hasDirtyTabsInRepository(c.Repository) {
-			m.notice = "Save or close edited files before discarding"
+			m.notice = m.tr("Save or close edited files before discarding")
 			return nil
 		}
 		return m.operation("Discard", func() (string, error) { return m.repo.Discard(m.ctx, c) })
 	})
 	if c.Untracked() {
-		m.confirmationDetail = "Git 无法恢复此文件。"
+		m.confirmationDetail = m.tr("This file cannot be recovered by Git.")
 	}
 	return cmd
 }
 
 func (m *Model) quit() tea.Cmd {
 	if m.busy {
-		m.notice = "Wait for the current Git operation before quitting"
+		m.notice = m.tr("Wait for the current Git operation before quitting")
 		return nil
 	}
 	if m.hasDirtyTabs() {
-		return m.ask("Discard unsaved editor changes and quit?", func() tea.Cmd { return tea.Quit })
+		return m.ask(m.tr("Discard unsaved editor changes and quit?"), func() tea.Cmd { return tea.Quit })
 	}
 	return tea.Quit
 }
@@ -578,7 +579,7 @@ func (m *Model) findNext() tea.Cmd {
 			m.sidebar = false
 			m.ensureEditor()
 		} else {
-			m.notice = "No match"
+			m.notice = m.tr("No match")
 		}
 	} else {
 		lines := strings.Split(m.viewport.GetContent(), "\n")
@@ -590,7 +591,7 @@ func (m *Model) findNext() tea.Cmd {
 				return nil
 			}
 		}
-		m.notice = "No match"
+		m.notice = m.tr("No match")
 	}
 	return nil
 }

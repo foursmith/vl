@@ -12,17 +12,17 @@ import (
 func parsePosition(value string) (line, column int, err error) {
 	parts := strings.Split(strings.TrimSpace(value), ":")
 	if len(parts) > 2 {
-		return 0, 0, fmt.Errorf("输入行号或 行:列")
+		return 0, 0, fmt.Errorf("Enter a line number or line:column")
 	}
 	line, err = strconv.Atoi(parts[0])
 	if err != nil || line < 1 {
-		return 0, 0, fmt.Errorf("行号必须大于 0")
+		return 0, 0, fmt.Errorf("Line number must be greater than 0")
 	}
 	column = 1
 	if len(parts) == 2 {
 		column, err = strconv.Atoi(parts[1])
 		if err != nil || column < 1 {
-			return 0, 0, fmt.Errorf("列号必须大于 0")
+			return 0, 0, fmt.Errorf("Column number must be greater than 0")
 		}
 	}
 	return line, column, nil
@@ -55,11 +55,11 @@ func (m *Model) quickPositionActions(value string) ([]action, bool) {
 	line, column, err := parsePosition(position)
 	reason := ""
 	if err != nil {
-		reason = err.Error()
+		reason = m.tr(err.Error())
 	}
 	key := ""
 	if err == nil {
-		key = fmt.Sprintf("行 %d, 列 %d", line, column)
+		key = m.tr("Ln %d, Col %d", line, column)
 	}
 	makeAction := func(path string, run func() tea.Cmd) action {
 		return action{id: path, label: path, key: key, disabled: reason, run: run}
@@ -67,7 +67,7 @@ func (m *Model) quickPositionActions(value string) ([]action, bool) {
 	if query == "" {
 		d := m.document()
 		if d == nil {
-			return []action{{label: "当前文件", disabled: "先打开一个文本文件，再输入 :行号[:列号]"}}, true
+			return []action{{label: m.tr("Current file"), disabled: m.tr("Open a text file first, then enter :line[:column]")}}, true
 		}
 		path, relErr := filepath.Rel(m.repo.Root, d.Path)
 		if relErr != nil {
@@ -87,7 +87,7 @@ func (m *Model) quickPositionActions(value string) ([]action, bool) {
 				if d := m.document(); d != nil {
 					d.SetPosition(line-1, column-1)
 				} else {
-					m.notice = "图片预览不支持跳转行号"
+					m.notice = m.tr("Go to line is unavailable in image previews")
 				}
 				cmd := m.revealDocument(path)
 				m.ensureEditor()
@@ -105,7 +105,7 @@ func (m *Model) goToPosition(value string) tea.Cmd {
 	}
 	line, column, err := parsePosition(value)
 	if err != nil {
-		m.notice = err.Error()
+		m.notice = m.tr(err.Error())
 		return nil
 	}
 	d.SetPosition(line-1, column-1)

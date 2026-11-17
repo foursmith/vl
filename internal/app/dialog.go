@@ -20,9 +20,9 @@ type confirmationAction struct{ label, choice string }
 
 func (m *Model) confirmationActions() []confirmationAction {
 	if m.modal == "close" {
-		return []confirmationAction{{"保存", "save"}, {"不保存", "discard"}, {"取消", "cancel"}}
+		return []confirmationAction{{m.tr("Save"), "save"}, {m.tr("Don't Save"), "discard"}, {m.tr("Cancel"), "cancel"}}
 	}
-	return []confirmationAction{{m.confirmationLabel, "confirm"}, {"取消", "cancel"}}
+	return []confirmationAction{{m.confirmationLabel, "confirm"}, {m.tr("Cancel"), "cancel"}}
 }
 
 func (m *Model) confirmationDialog() bool { return m.modal == "confirm" || m.modal == "close" }
@@ -68,7 +68,7 @@ func (m *Model) confirmationLayout() dialogLayout {
 	var message []string
 	detail := m.confirmationDetail
 	if m.modal == "close" {
-		detail = "Unsaved changes will be lost."
+		detail = m.tr("Unsaved changes will be lost.")
 	}
 	for i, text := range []string{m.modalTitle, detail} {
 		if text == "" {
@@ -99,7 +99,7 @@ func (m *Model) confirmationLayout() dialogLayout {
 	}
 	l.content = append(l.content, message[l.top:min(len(message), l.top+l.page)]...)
 	if l.maxTop > 0 {
-		l.content = append(l.content, center("↑/↓ 滚动", m.colors.Muted))
+		l.content = append(l.content, center(m.tr("↑/↓ Scroll"), m.colors.Muted))
 	}
 	l.content = append(l.content, blank)
 	actions := m.confirmationActions()

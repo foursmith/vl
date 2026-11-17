@@ -32,7 +32,7 @@ func TestQuickPositionCurrentAndOtherFile(t *testing.T) {
 	m.openQuickFiles()
 	m.Update(tea.PasteMsg{Content: "file1.go:3:2"})
 	rows := m.filteredActions()
-	if len(rows) != 1 || rows[0].id != "file1.go" || rows[0].key != "行 3, 列 2" {
+	if len(rows) != 1 || rows[0].id != "file1.go" || rows[0].key != "Ln 3, Col 2" {
 		t.Fatalf("location suffix filtered out file: %+v", rows)
 	}
 	l := m.pickerLayout(rows)
