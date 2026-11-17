@@ -17,6 +17,7 @@
     "editor.background": "src/vs/platform/theme/common/colors/editorColors.ts",
     "editor.foreground": "src/vs/platform/theme/common/colors/editorColors.ts",
     "editor.lineHighlightBackground": "src/vs/editor/common/core/editorColorRegistry.ts",
+    "editor.lineHighlightBorder": "src/vs/editor/common/core/editorColorRegistry.ts",
     "editor.selectionBackground": "src/vs/platform/theme/common/colors/editorColors.ts",
     "editor.selectionForeground": "src/vs/platform/theme/common/colors/editorColors.ts",
     "editorActiveLineNumber.foreground": "src/vs/editor/common/core/editorColorRegistry.ts",
@@ -317,6 +318,22 @@
       }
     },
     "editor.lineHighlightBackground": null,
+    "editor.lineHighlightBorder": {
+      "variants": {
+        "dark": {
+          "hex": "#282828"
+        },
+        "light": {
+          "hex": "#EEEEEE"
+        },
+        "hcDark": {
+          "hex": "#F38518"
+        },
+        "hcLight": {
+          "ref": "contrastBorder"
+        }
+      }
+    },
     "editor.selectionBackground": {
       "variants": {
         "light": {

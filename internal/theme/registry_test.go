@@ -67,3 +67,13 @@ func TestExtensionTypeWinsAndIncludesDoNotSetThemeType(t *testing.T) {
 		t.Fatal("included JSON type overrode the root theme's default category")
 	}
 }
+
+func TestEditorDecorationPalette(t *testing.T) {
+	for _, id := range []string{"dark_plus", "light_plus"} {
+		th := Builtin(id)
+		p := th.Palette()
+		if p.CurrentLine == p.Background {
+			t.Fatalf("%s current line is invisible", id)
+		}
+	}
+}

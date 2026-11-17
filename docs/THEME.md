@@ -222,3 +222,7 @@ state between hunks because the patch omits the intervening source.
 
 This implements TextMate syntax highlighting, not language-server semantic
 highlighting or bracket-pair colorization.
+
+The current line uses `editor.lineHighlightBackground`, falling back to
+`editor.lineHighlightBorder` as a cell background when the theme has no visible
+line fill. Terminal cells cannot draw a line outline without consuming source space.
