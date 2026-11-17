@@ -129,6 +129,13 @@ text. The single editor group's active state does not change merely because
 sidebar keyboard focus changes. A folder without Git is still an open folder
 for status bar styling.
 
+The single-row tab strip adapts `tab.activeBorderTop` to a thin leading marker.
+File tabs share Explorer's Git decoration colors. Breadcrumbs use
+`breadcrumb.foreground` and `breadcrumb.background`; pinned code rows use
+`editorStickyScroll.background`, inheriting the editor background when absent.
+The final pinned row uses `editorStickyScroll.border` for its bottom rule,
+with the panel border as the terminal default. The rule shares the row cache.
+
 The TUI cannot paint browser shadows. Picker/menu frames therefore remain a
 separate terminal adaptation when the registered border is absent or too faint.
 This does not rewrite registered colors or brighten the theme's selected-row

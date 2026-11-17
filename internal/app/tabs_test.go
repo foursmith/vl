@@ -15,6 +15,31 @@ import (
 	gitservice "github.com/ourongxing/vl/internal/git"
 )
 
+func TestTabHeaderDecorationsPreserveDirtyAndDiffState(t *testing.T) {
+	m := tabWorkspace(t, 2)
+	defer m.Close()
+	root, err := filepath.EvalSymlinks(m.repo.Root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.repo.Root = root
+	m.openFile("file0.go")
+	m.openPreviewFile("file1.go")
+	m.snapshot.Changes = []gitservice.Change{{Path: "file0.go", Index: ' ', Worktree: 'M'}}
+	if got := plain(m.tabBar()); !strings.Contains(got, "file0.go M") || strings.Count(got, "▎") != 1 {
+		t.Fatalf("missing Git decoration or active marker: %q", got)
+	}
+	m.activateTab(0)
+	m.document().Edit("changed")
+	if got := plain(m.tabBar()); !strings.Contains(got, m.symbol(symbolDot)) || strings.Contains(got, "file0.go M") {
+		t.Fatalf("unsaved marker must take priority: %q", got)
+	}
+	showDiffFixture(m)
+	if decoration := m.tabDecoration(m.activeTab); decoration.status != 0 {
+		t.Fatal("historical diff inherited working tree status")
+	}
+}
+
 func tabWorkspace(t *testing.T, count int) *Model {
 	t.Helper()
 	root := t.TempDir()

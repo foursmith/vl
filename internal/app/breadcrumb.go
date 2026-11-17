@@ -14,7 +14,6 @@ func (m *Model) breadcrumb(path string, width int) string {
 	if width <= 0 {
 		return ""
 	}
-	language := m.language(path)
 	if filepath.IsAbs(path) {
 		if relative, err := filepath.Rel(m.repo.Root, path); err == nil {
 			path = relative
@@ -22,12 +21,10 @@ func (m *Model) breadcrumb(path string, width int) string {
 	}
 	path = filepath.ToSlash(path)
 	icon := fileicon.For(path, m.nerd)
-	separator := theme.Style(m.colors.Muted, m.colors.Background).Render(" " + m.symbol(symbolRight) + " ")
-	iconText := row(icon.Glyph, 2, icon.Color, m.colors.Background)
+	separator := theme.Style(m.colors.BreadcrumbForeground, m.colors.BreadcrumbBackground).Render(" " + m.symbol(symbolRight) + " ")
+	iconText := row(icon.Glyph, 2, icon.Color, m.colors.BreadcrumbBackground)
 	name := safe(filepath.Base(path))
-	languageText := theme.Style(m.colors.Muted, m.colors.Background).Render(m.symbol(symbolWrench) + " " + language.ID)
-	file := iconText + name
-	tail := file + separator + languageText
+	tail := iconText + name
 	dir := filepath.ToSlash(filepath.Dir(path))
 	prefix := ""
 	if dir != "." {
@@ -47,18 +44,13 @@ func (m *Model) breadcrumb(path string, width int) string {
 				content = tail
 			}
 		} else {
-			room := available - ansi.StringWidth(iconText) - 3 - ansi.StringWidth(languageText)
-			if room >= 6 {
-				content = iconText + ansi.Truncate(name, room, "…") + separator + languageText
-			} else {
-				content = iconText + ansi.Truncate(name, max(0, available-ansi.StringWidth(iconText)), "…")
-			}
+			content = iconText + ansi.Truncate(name, max(0, available-ansi.StringWidth(iconText)), "…")
 		}
 	}
-	return row(" "+content, width, m.colors.Muted, m.colors.Background)
+	return row(" "+content, width, m.colors.BreadcrumbForeground, m.colors.BreadcrumbBackground)
 }
 
-// Breadcrumb and footer share the current file's cached language lookup.
+// Cache the current file's language for the footer.
 func (m *Model) language(path string) highlight.LanguageInfo {
 	if m.languagePath != path || m.languageInfo.ID == "" {
 		m.languagePath = path

@@ -8,12 +8,14 @@ import (
 	"os"
 	"os/signal"
 	"runtime/debug"
+	"strings"
 	"syscall"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/colorprofile"
 	"github.com/ourongxing/vl/internal/app"
 	"github.com/ourongxing/vl/internal/config"
+	"github.com/ourongxing/vl/internal/editor"
 	"github.com/ourongxing/vl/internal/git"
 	"github.com/ourongxing/vl/internal/i18n"
 	"github.com/ourongxing/vl/internal/theme"
@@ -26,7 +28,7 @@ func main() {
 	themeType := flag.String("theme-type", "", "local theme uiTheme from its extension: vs, vs-dark, hc-light, hc-black (default: theme type, or vs-dark)")
 	version := flag.Bool("version", false, "print version")
 	flag.Usage = func() {
-		fmt.Fprintln(flag.CommandLine.Output(), "Usage: vl [options] [folder|file]\n\nA VSCode-like Git diff viewer with basic text editing.\nA file opens in editor-only mode. Without a path, opens the most recent workspace.")
+		fmt.Fprintln(flag.CommandLine.Output(), "Usage: vl [options] [folder|file[:line[:column]]]\n\nA VSCode-like Git diff viewer with basic text editing.\nA file opens in editor-only mode. Line and column numbers start at 1.\nWithout a path, opens the most recent workspace.")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -175,12 +177,19 @@ func runProgram(ctx context.Context, m *app.Model) error {
 
 // A direct file invocation is independent of Git discovery and workspace sessions.
 func startupModel(ctx context.Context, path string, icons bool) (*app.Model, *git.Repository, bool, error) {
+	path, line, column, err := startupLocation(path)
+	if err != nil {
+		return nil, nil, false, err
+	}
 	info, err := os.Stat(path)
 	if err != nil {
 		return nil, nil, false, err
 	}
 	if !info.IsDir() {
 		m, err := app.NewEditor(ctx, path, icons)
+		if err == nil && line > 0 {
+			m.SetEditorPosition(line, column)
+		}
 		return m, nil, true, err
 	}
 	repo, err := git.Open(ctx, path)
@@ -188,6 +197,33 @@ func startupModel(ctx context.Context, path string, icons bool) (*app.Model, *gi
 		return nil, nil, false, err
 	}
 	return app.New(ctx, repo, icons), repo, false, nil
+}
+
+// Existing paths take precedence over location suffixes, including colon names.
+func startupLocation(value string) (path string, line, column int, err error) {
+	if _, err := os.Stat(value); err == nil || !os.IsNotExist(err) {
+		return value, 0, 0, nil
+	}
+	for end := len(value); end > 0; {
+		colon := strings.LastIndex(value[:end], ":")
+		if colon < 0 {
+			break
+		}
+		end = colon
+		info, statErr := os.Stat(value[:colon])
+		if statErr != nil {
+			continue
+		}
+		if info.IsDir() {
+			return "", 0, 0, fmt.Errorf("location requires a file: %s", value)
+		}
+		line, column, err := editor.ParsePosition(value[colon+1:])
+		if err != nil {
+			return "", 0, 0, fmt.Errorf("invalid file location %q: %w", value, err)
+		}
+		return value[:colon], line, column, nil
+	}
+	return value, 0, 0, nil
 }
 
 // File editing favors a smaller heap over the workbench's allocation throughput.

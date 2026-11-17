@@ -5,6 +5,9 @@ import "charm.land/lipgloss/v2"
 // Palette maps supported VS Code workbench color IDs to terminal surfaces.
 // See docs/THEME.md for pinned sources and opaque diff overlay composition.
 type Palette struct {
+	TabActiveBorderTop                                                                 string
+	StickyBorder                                                                       string
+	BreadcrumbForeground, BreadcrumbBackground, StickyBackground                       string
 	SideBarBorder                                                                      string
 	LineNumberActive                                                                   string
 	NavigationForeground, NavigationInactiveForeground                                 string

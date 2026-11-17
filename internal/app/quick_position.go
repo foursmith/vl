@@ -1,32 +1,12 @@
 package app
 
 import (
-	"fmt"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/ourongxing/vl/internal/editor"
 )
-
-func parsePosition(value string) (line, column int, err error) {
-	parts := strings.Split(strings.TrimSpace(value), ":")
-	if len(parts) > 2 {
-		return 0, 0, fmt.Errorf("Enter a line number or line:column")
-	}
-	line, err = strconv.Atoi(parts[0])
-	if err != nil || line < 1 {
-		return 0, 0, fmt.Errorf("Line number must be greater than 0")
-	}
-	column = 1
-	if len(parts) == 2 {
-		column, err = strconv.Atoi(parts[1])
-		if err != nil || column < 1 {
-			return 0, 0, fmt.Errorf("Column number must be greater than 0")
-		}
-	}
-	return line, column, nil
-}
 
 // An exact filename wins over the suffix syntax, including names containing ':'.
 func (m *Model) quickPositionActions(value string) ([]action, bool) {
@@ -52,7 +32,7 @@ func (m *Model) quickPositionActions(value string) ([]action, bool) {
 		return nil, false
 	}
 	query, position := strings.TrimSpace(value[:colon]), value[colon+1:]
-	line, column, err := parsePosition(position)
+	line, column, err := editor.ParsePosition(position)
 	reason := ""
 	if err != nil {
 		reason = m.tr(err.Error())
@@ -103,13 +83,20 @@ func (m *Model) goToPosition(value string) tea.Cmd {
 	if d == nil {
 		return nil
 	}
-	line, column, err := parsePosition(value)
+	line, column, err := editor.ParsePosition(value)
 	if err != nil {
 		m.notice = m.tr(err.Error())
 		return nil
 	}
-	d.SetPosition(line-1, column-1)
-	m.sidebar = false
-	m.ensureEditor()
+	m.SetEditorPosition(line, column)
 	return nil
+}
+
+// SetEditorPosition uses one-based line and rune column numbers, clamped to the file.
+func (m *Model) SetEditorPosition(line, column int) {
+	if d := m.document(); d != nil {
+		d.SetPosition(line-1, column-1)
+		m.sidebar = false
+		m.ensureEditor()
+	}
 }

@@ -17,7 +17,6 @@ const (
 	symbolLeft
 	symbolRight
 	symbolDown
-	symbolWrench
 	symbolSync
 	symbolGitHub
 	symbolCloud
@@ -47,7 +46,6 @@ var uiSymbols = [...]struct{ plain, nerd string }{
 	symbolLeft:      {"<", "\ueab5"},
 	symbolRight:     {">", "\ueab6"},
 	symbolDown:      {"v", "\ueab4"},
-	symbolWrench:    {"#", "\ueb65"},
 	symbolSync:      {"R", "\uea77"},
 	symbolGitHub:    {"GitHub", "\uea84"},
 	symbolCloud:     {"@", "\uebaa"},

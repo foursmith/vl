@@ -19,6 +19,7 @@ Git uses your existing credentials or SSH agent; terminal password prompts are d
 make build
 bin/vl /path/to/folder
 bin/vl /path/to/file.go  # editor-only mode
+bin/vl /path/to/file.go:30:5  # jump to line 30, column 5 (column is optional)
 
 # Startup overrides; themes and language can also be changed through F1.
 bin/vl -theme light_modern
@@ -32,7 +33,7 @@ exists. Use `bin/vl .` to open the current directory. Paths inside a Git
 repository resolve to its root. Ordinary folders support browsing and editing;
 Changes and History offer **Initialize Repository**.
 
-Passing an existing text file opens only the editor, without tabs, the sidebar, Git
+Passing an existing text file opens only the editor, without tabs, breadcrumbs, the sidebar, Git
 controls, repository discovery or workspace session restoration. Git is not
 required for this mode; Git history, commit state and commands are not initialized.
 **Ctrl+S** saves;
@@ -40,6 +41,10 @@ required for this mode; Git history, commit state and commands are not initializ
 **Ctrl+Q** quits. Search, clipboard, undo/redo, themes and the saved Vim preference
 remain available. Direct file editing does not change recent workspaces or their
 saved tabs.
+
+File locations use one-based line and character column numbers; positions beyond
+the file are clamped to its end or the line's end. Existing paths containing
+colons take precedence over location suffixes.
 
 ## Features
 
@@ -71,7 +76,9 @@ The file/command picker accepts `>` for commands, `:line[:column]` for a positio
 in the current file, or `filename:line[:column]` to open a file at that position.
 
 A single click opens a reusable preview tab. Double-click or Enter keeps it open;
-editing also keeps a text tab. Tabs and text cursor/scroll positions are restored
+editing also keeps a text tab. The active tab has a thin accent marker; file tabs
+share Explorer's Git colors and status letters. An unsaved dot takes precedence
+over the Git status letter. Tabs and text cursor/scroll positions are restored
 per folder. Unsaved edits require confirmation before closing, quitting or
 switching workspaces.
 

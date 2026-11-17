@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -49,6 +50,15 @@ func TestStickyEditorPaintingHitTestingAndInvalidation(t *testing.T) {
 	rows := m.editorLines()
 	if !strings.Contains(ansi.Strip(rows[0]), "func outer") || !strings.Contains(ansi.Strip(rows[1]), "if ready") {
 		t.Fatal("missing nested context", rows[:2])
+	}
+	for _, painted := range [][]string{rows, m.editorLines()} {
+		for y, row := range painted {
+			for _, cell := range uv.NewStyledString(row).Lines(ansi.GraphemeWidth)[0] {
+				if (cell.Style.Underline != 0) != (y == 1) {
+					t.Fatal("sticky separator missing or leaked into another row", y)
+				}
+			}
+		}
 	}
 	if m.editorRowAt(0) != 0 || m.editorRowAt(1) != 1 || m.editorRowAt(2) != 12 {
 		t.Fatal("paint and hit test disagree")

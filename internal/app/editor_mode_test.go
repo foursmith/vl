@@ -29,7 +29,7 @@ func TestEditorModeIsolatedAndFullWidth(t *testing.T) {
 		if m.sidebar || m.sidebarVisible || m.sideShown() || m.mainWidth() != width || m.modal != "" {
 			t.Fatal("editor escaped into workspace UI")
 		}
-		if m.contentRow() != 1 || !strings.Contains(plain(m.mainLines()[1]), "hello 世界") {
+		if m.contentRow() != 0 || !strings.Contains(plain(m.mainLines()[0]), "hello 世界") {
 			t.Fatal("editor content did not move up after removing tabs")
 		}
 		if strings.Contains(plain(m.mainLines()[0]), " x ") {

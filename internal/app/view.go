@@ -88,7 +88,7 @@ const editorContentRow = headerHeight + 1
 
 func (m *Model) contentRow() int {
 	if m.editorOnly {
-		return 1
+		return 0
 	}
 	return editorContentRow
 }
@@ -232,8 +232,8 @@ func (m *Model) mainLines() []string {
 	var lines []string
 	if !m.editorOnly {
 		lines = append(lines, m.tabBar())
+		lines = append(lines, m.contentToolbar())
 	}
-	lines = append(lines, m.contentToolbar())
 	var content []string
 	editing := m.editing()
 	if m.currentImage() != nil {
@@ -501,7 +501,7 @@ func (m *Model) editorLines() []string {
 		offset := d.LineOffset(i)
 		gutterBG := m.colors.Background
 		if y < len(sticky) {
-			gutterBG = m.colors.Panel
+			gutterBG = m.colors.StickyBackground
 		}
 		bg := gutterBG
 		if i == line {
@@ -616,9 +616,25 @@ func (m *Model) editorLines() []string {
 		}
 		gutter := theme.Style(numberColor, gutterBG).Render(fmt.Sprintf("%5d  ", i+1))
 		rendered := row(gutter+row(text.String(), max(1, m.mainWidth()-7), m.colors.Foreground, bg), m.mainWidth(), m.colors.Foreground, m.colors.Background)
+		if len(sticky) > 0 && y == len(sticky)-1 {
+			// Underline the final pinned row without taking a row from the editor.
+			var out strings.Builder
+			var pen uv.Style
+			for _, cell := range uv.NewStyledString(rendered).Lines(ansi.GraphemeWidth)[0] {
+				style := cell.Style
+				style.Underline = uv.UnderlineSingle
+				style.UnderlineColor = lipgloss.Color(theme.Composite(m.colors.StickyBorder, m.colors.StickyBackground))
+				out.WriteString(style.Diff(&pen))
+				out.WriteString(cell.Content)
+				pen = style
+			}
+			out.WriteString("\x1b[0m")
+			rendered = out.String()
+		}
 		t.renderedRows[i] = rendered
 		lines = append(lines, rendered)
 	}
+
 	return lines
 }
 

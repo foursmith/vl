@@ -29,7 +29,7 @@ func TestEditorAndDiffShareFileIconAndBreadcrumbs(t *testing.T) {
 	}
 	m.openPreviewFile(path)
 	text := plain(m.contentToolbar())
-	if !strings.Contains(text, "app "+m.symbol(symbolRight)) || !strings.Contains(text, "eslint.config.mjs") || !strings.Contains(text, "javascript") {
+	if !strings.Contains(text, "app "+m.symbol(symbolRight)) || !strings.Contains(text, "eslint.config.mjs") || strings.Contains(text, "javascript") {
 		t.Fatalf("breadcrumb: %s", text)
 	}
 	icon := fileicon.For(path, true)
@@ -57,7 +57,7 @@ func TestEditorAndDiffShareFileIconAndBreadcrumbs(t *testing.T) {
 	}
 }
 
-func TestBreadcrumbTruncatesAncestorsBeforeFileAndLanguage(t *testing.T) {
+func TestBreadcrumbTruncatesAncestorsBeforeFile(t *testing.T) {
 	m := tabWorkspace(t, 0)
 	path := "very/long/ancestor/with/extra/names/component.jsx"
 	for _, width := range []int{1, 8, 20, 35, 80} {
@@ -66,7 +66,7 @@ func TestBreadcrumbTruncatesAncestorsBeforeFileAndLanguage(t *testing.T) {
 		}
 	}
 	text := plain(m.breadcrumb(path, 35))
-	if !strings.Contains(text, "component.jsx") || !strings.Contains(text, "jsx") {
-		t.Fatalf("file or language lost before ancestors: %s", text)
+	if !strings.Contains(text, "component.jsx") {
+		t.Fatalf("file lost before ancestors: %s", text)
 	}
 }

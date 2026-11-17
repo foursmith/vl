@@ -299,6 +299,27 @@ func (m *Model) tabLabel(index int) string {
 	return safe(label)
 }
 
+// Tab decorations use the same status and colors as Explorer.
+func (m *Model) tabDecoration(index int) item {
+	t := m.tabs[index]
+	if t.diff != nil || m.editorOnly {
+		return item{}
+	}
+	path, err := filepath.Rel(m.repo.Root, t.path())
+	if err != nil {
+		return item{}
+	}
+	path = filepath.ToSlash(path)
+	for i := range m.snapshot.Changes {
+		c := &m.snapshot.Changes[i]
+		if c.Path == path {
+			staged := c.Worktree == ' '
+			return item{status: changeStatus(c, staged), staged: staged, change: c}
+		}
+	}
+	return item{}
+}
+
 func (m *Model) tabLayout() []tabSlot {
 	var all []tabSlot
 	for index := range m.tabs {
@@ -311,7 +332,7 @@ func (m *Model) tabLayout() []tabSlot {
 	total := 0
 	for i := range all {
 		extra := 0
-		if m.tabs[all[i].index].dirty() {
+		if m.tabs[all[i].index].dirty() || m.tabDecoration(all[i].index).status != 0 {
 			extra = 2
 		}
 		maxWidth := 28
@@ -424,7 +445,14 @@ func (m *Model) tabBar() string {
 			icon := fileicon.For(t.path(), m.nerd)
 			glyph, color, preview := icon.Glyph, icon.Color, t.preview
 			label := slot.label
+			decoration := m.tabDecoration(slot.index)
+			if decoration.status != 0 {
+				fg = m.gitDecorationColor(decoration)
+			}
 			suffix := ""
+			if decoration.status != 0 {
+				suffix = " " + string(decoration.status)
+			}
 			if t.dirty() {
 				suffix = " " + m.symbol(symbolDot)
 			}
@@ -432,13 +460,17 @@ func (m *Model) tabBar() string {
 			label += strings.Repeat(" ", max(0, slot.width-7-ansi.StringWidth(label)))
 			closeColor := m.colors.Muted
 			if active {
-				closeColor = fg
+				closeColor = m.colors.TabActiveForeground
 			}
 			divider := row(" ", 1, fg, bg)
 			if m.colors.TabBorder != "" {
 				divider = theme.Style(m.colors.TabBorder, bg).Render("│")
 			}
-			content := " " + row(glyph, 2, color, bg) + theme.Style(fg, bg).Italic(preview).Underline(m.monochrome && active).Render(label) + theme.Style(closeColor, bg).Render(" "+m.symbol(symbolClose)+" ") + divider
+			indicator := " "
+			if active {
+				indicator = theme.Style(m.colors.TabActiveBorderTop, bg).Render("▎")
+			}
+			content := indicator + row(glyph, 2, color, bg) + theme.Style(fg, bg).Italic(preview).Underline(m.monochrome && active).Render(label) + theme.Style(closeColor, bg).Render(" "+m.symbol(symbolClose)+" ") + divider
 			text += row(content, slot.width, fg, bg)
 		}
 		x = slot.x + slot.width
