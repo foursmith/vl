@@ -9,8 +9,8 @@ import (
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
-	gitservice "github.com/ourongxing/elegit/internal/git"
-	"github.com/ourongxing/elegit/internal/theme"
+	gitservice "github.com/ourongxing/vl/internal/git"
+	"github.com/ourongxing/vl/internal/theme"
 )
 
 func newHoverRenderModel(t testing.TB) *Model {
@@ -60,7 +60,7 @@ func TestAllSidebarTreesShareHoverRendering(t *testing.T) {
 				assertFreshHoverFrame(t, m)
 				cells := uv.NewStyledString(m.sidebarLines()[y]).Lines(ansi.GraphemeWidth)[0]
 				for _, cell := range cells {
-					if !sameColor(cell.Style.Bg, lipgloss.Color(theme.Dark().Hover)) {
+					if !sameColor(cell.Style.Bg, lipgloss.Color(theme.Builtin("dark_modern").Palette().Hover)) {
 						t.Fatal("tree row did not use the shared hover background")
 					}
 				}

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	patchdiff "github.com/ourongxing/elegit/internal/diff"
+	patchdiff "github.com/ourongxing/vl/internal/diff"
 )
 
 func repository(t *testing.T) *Repository {
@@ -22,7 +22,7 @@ func repository(t *testing.T) *Repository {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, args := range [][]string{{"config", "user.name", "Elegit Test"}, {"config", "user.email", "elegit@example.test"}, {"config", "commit.gpgsign", "false"}, {"config", "core.autocrlf", "false"}} {
+	for _, args := range [][]string{{"config", "user.name", "vl Test"}, {"config", "user.email", "vl@example.test"}, {"config", "commit.gpgsign", "false"}, {"config", "core.autocrlf", "false"}} {
 		run(t, r, args...)
 	}
 	return r

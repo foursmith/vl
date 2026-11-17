@@ -12,8 +12,8 @@ import (
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/charmbracelet/x/ansi/kitty"
-	gitservice "github.com/ourongxing/elegit/internal/git"
-	"github.com/ourongxing/elegit/internal/imagepreview"
+	gitservice "github.com/ourongxing/vl/internal/git"
+	"github.com/ourongxing/vl/internal/imagepreview"
 )
 
 func TestImageProtocolDetectionAndCellSize(t *testing.T) {

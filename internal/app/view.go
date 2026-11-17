@@ -12,8 +12,8 @@ import (
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/clipperhouse/uax29/v2/graphemes"
-	"github.com/ourongxing/elegit/internal/diff"
-	"github.com/ourongxing/elegit/internal/theme"
+	"github.com/ourongxing/vl/internal/diff"
+	"github.com/ourongxing/vl/internal/theme"
 )
 
 func safe(text string) string {

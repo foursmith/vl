@@ -2,14 +2,14 @@
 
 ## Product boundary
 
-elegit owns a complete Git/diff workflow and basic text editing. ttt is a UI
+vl owns a complete Git/diff workflow and basic text editing. ttt is a UI
 and interaction reference, not a copied runtime. Features such as language-server
 hosting, Lua extensions, and embedded terminals are outside the initial scope.
 
 ## Ownership
 
 ```text
-cmd/elegit                 flags, process lifetime, concrete composition
+cmd/vl                     flags, process lifetime, concrete composition
   └── internal/app         Bubble Tea model/update/view, commands, task delivery
         ├── internal/git        system Git adapter, status and repository results
         ├── internal/diff       patch parsing, line pairing, single-hunk extraction

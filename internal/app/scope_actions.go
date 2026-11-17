@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	gitservice "github.com/ourongxing/elegit/internal/git"
-	"github.com/ourongxing/elegit/internal/i18n"
+	gitservice "github.com/ourongxing/vl/internal/git"
+	"github.com/ourongxing/vl/internal/i18n"
 )
 
 // Scope membership comes from the full snapshot, including collapsed descendants.

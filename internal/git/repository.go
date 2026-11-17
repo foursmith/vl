@@ -12,13 +12,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ourongxing/elegit/internal/files"
+	"github.com/ourongxing/vl/internal/files"
 )
 
 type Repository struct{ Root string }
 
 // HasRepository checks the workspace itself, including initialization performed
-// outside Elegit after an ordinary folder was opened.
+// outside vl after an ordinary folder was opened.
 func (r *Repository) HasRepository() bool {
 	_, err := os.Lstat(filepath.Join(r.Root, ".git"))
 	return !os.IsNotExist(err)

@@ -8,8 +8,8 @@ import (
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/elegit/internal/fileicon"
-	"github.com/ourongxing/elegit/internal/theme"
+	"github.com/ourongxing/vl/internal/fileicon"
+	"github.com/ourongxing/vl/internal/theme"
 )
 
 func decorationTheme(t *testing.T) *theme.Theme {

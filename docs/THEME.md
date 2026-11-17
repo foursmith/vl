@@ -17,8 +17,8 @@ is the installed VS Code build `08d4889f9ec4a1685d257b9b95de036c8e1ce1e5`.
 
 ## Switching
 
-Elegit remembers one dark and one light theme (Dark Modern and Light Modern by
-default). There is no Auto entry. On an external light/dark transition, Elegit
+vl remembers one dark and one light theme (Dark Modern and Light Modern by
+default). There is no Auto entry. On an external light/dark transition, vl
 switches to the remembered counterpart only if the committed theme matched the
 previous external appearance. A deliberately mismatched selection survives the
 transition. Once it matches the environment again, the next transition follows.
@@ -51,7 +51,7 @@ selection. Builtin themes are Dark Modern, Dark+, Dark (Visual Studio), Light Mo
 Light+, and Light (Visual Studio). CLI identifiers are `dark_modern`, `dark_plus`,
 `dark_vs`, `light_modern`, `light_plus`, and `light_vs`.
 
-Place local VS Code themes in `~/.config/elegit/themes/` on every platform,
+Place local VS Code themes in `~/.config/vl/themes/` on every platform,
 including macOS. JSON, JSONC, and XML `.tmTheme` files appear in
 **F1 → Preferences: Color Theme**, labelled Local and Light/Dark. Subdirectories
 are scanned, so relative include files or a full extension directory can stay
@@ -67,10 +67,10 @@ file has the same name. You can also select a local ID or an external file at
 startup:
 
 ```sh
-elegit -theme local:my-theme.json
-elegit -theme /path/to/theme.json
+vl -theme local:my-theme.json
+vl -theme /path/to/theme.json
 # If a detached theme has no type declaration:
-elegit -theme local:day.json -theme-type vs
+vl -theme local:day.json -theme-type vs
 ```
 
 JSON/JSONC comments, trailing commas, relative recursive `include`, and
@@ -136,7 +136,7 @@ background. File icon artwork/color remains independent of the color theme.
 High-contrast types are resolved with their own defaults, but terminal cells do
 not reproduce every VS Code high-contrast outline or native window effect.
 Unsupported UI IDs, font families/sizes, CSS layouts, and extension code are not
-rendered. The resolver covers Elegit's surfaces, not the complete VS Code UI.
+rendered. The resolver covers vl's surfaces, not the complete VS Code UI.
 
 ## File tree decorations
 

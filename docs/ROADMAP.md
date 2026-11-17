@@ -52,7 +52,7 @@ the acceptance scope; unchecked capabilities are not implied by the first build.
 - [ ] Tags, remotes, upstream/ahead/behind state, push options and authentication UX.
 - [ ] Worktrees, submodule lifecycle management, ignored files, sparse checkouts and LFS behavior.
 - [ ] Per-file history, blame, reflog, bisect.
-- [ ] In-progress operation discovery and recovery after restarting elegit.
+- [ ] In-progress operation discovery and recovery after restarting vl.
 
 ## Basic editor completion and polish
 

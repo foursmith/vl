@@ -18,7 +18,7 @@ func LocalDir() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".config", "elegit", "themes"), nil
+	return filepath.Join(home, ".config", "vl", "themes"), nil
 }
 
 func loadLocal(dir, id, uiTheme string) (*Theme, error) {

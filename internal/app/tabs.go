@@ -8,10 +8,10 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/elegit/internal/editor"
-	"github.com/ourongxing/elegit/internal/fileicon"
-	"github.com/ourongxing/elegit/internal/imagepreview"
-	"github.com/ourongxing/elegit/internal/theme"
+	"github.com/ourongxing/vl/internal/editor"
+	"github.com/ourongxing/vl/internal/fileicon"
+	"github.com/ourongxing/vl/internal/imagepreview"
+	"github.com/ourongxing/vl/internal/theme"
 )
 
 func (m *Model) keepEditedTabs() {

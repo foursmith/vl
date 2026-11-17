@@ -1,7 +1,7 @@
 package app
 
 import (
-	"github.com/ourongxing/elegit/internal/editor"
+	"github.com/ourongxing/vl/internal/editor"
 	"os"
 	"testing"
 )

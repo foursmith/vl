@@ -13,16 +13,16 @@ import (
 	"github.com/charmbracelet/colorprofile"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/elegit/internal/config"
-	"github.com/ourongxing/elegit/internal/editor"
-	"github.com/ourongxing/elegit/internal/files"
-	gitservice "github.com/ourongxing/elegit/internal/git"
-	"github.com/ourongxing/elegit/internal/highlight"
-	"github.com/ourongxing/elegit/internal/i18n"
-	"github.com/ourongxing/elegit/internal/imagepreview"
-	"github.com/ourongxing/elegit/internal/platform"
-	"github.com/ourongxing/elegit/internal/theme"
-	"github.com/ourongxing/elegit/internal/watcher"
+	"github.com/ourongxing/vl/internal/config"
+	"github.com/ourongxing/vl/internal/editor"
+	"github.com/ourongxing/vl/internal/files"
+	gitservice "github.com/ourongxing/vl/internal/git"
+	"github.com/ourongxing/vl/internal/highlight"
+	"github.com/ourongxing/vl/internal/i18n"
+	"github.com/ourongxing/vl/internal/imagepreview"
+	"github.com/ourongxing/vl/internal/platform"
+	"github.com/ourongxing/vl/internal/theme"
+	"github.com/ourongxing/vl/internal/watcher"
 )
 
 type section int
@@ -207,7 +207,8 @@ func newModel(ctx context.Context, repo *gitservice.Repository, nerd, editorOnly
 	ctx, cancel := context.WithCancel(ctx)
 	input := textinput.New()
 	input.CharLimit = 2000
-	m := &Model{displayLanguage: i18n.English, cellWidth: 8, cellHeight: 16, colors: theme.Dark(), colorTheme: theme.Builtin("dark_modern"), darkTheme: theme.Builtin("dark_modern"), lightTheme: theme.Builtin("light_modern"), ctx: ctx, cancel: cancel, repo: repo, width: 120, height: 36, nerd: nerd, editorOnly: editorOnly, sidebar: !editorOnly, sidebarVisible: !editorOnly, split: true, diffState: newDiffState(), input: input, activeTab: -1, notice: "Loading repository…"}
+	dark, light := theme.Builtin("dark_modern"), theme.Builtin("light_modern")
+	m := &Model{displayLanguage: i18n.English, cellWidth: 8, cellHeight: 16, colors: dark.Palette(), colorTheme: dark, darkTheme: dark, lightTheme: light, ctx: ctx, cancel: cancel, repo: repo, width: 120, height: 36, nerd: nerd, editorOnly: editorOnly, sidebar: !editorOnly, sidebarVisible: !editorOnly, split: true, diffState: newDiffState(), input: input, activeTab: -1, notice: "Loading repository…"}
 	m.snapshot.NoRepository = editorOnly || !repo.HasRepository()
 	if editorOnly {
 		m.notice = ""

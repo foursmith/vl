@@ -11,8 +11,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/elegit/internal/files"
-	gitservice "github.com/ourongxing/elegit/internal/git"
+	"github.com/ourongxing/vl/internal/files"
+	gitservice "github.com/ourongxing/vl/internal/git"
 )
 
 func tabWorkspace(t *testing.T, count int) *Model {

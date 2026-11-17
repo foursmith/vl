@@ -3,7 +3,7 @@ package app
 import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/atotto/clipboard"
-	"github.com/ourongxing/elegit/internal/editor"
+	"github.com/ourongxing/vl/internal/editor"
 )
 
 func (m *Model) toggleVim() tea.Cmd {

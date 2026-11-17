@@ -5,9 +5,9 @@ Reference: the installed VS Code revision
 This audit follows consumers as well as the JSON theme format. Source links
 below use this revision, so defaults do not silently change with upstream main.
 
-| Layer / component | Upstream rule and evidence | Elegit implementation |
+| Layer / component | Upstream rule and evidence | vl implementation |
 | --- | --- | --- |
-| Theme category | Extension contribution `uiTheme` determines the base scheme; JSON includes merge colors/rules, not extension identity. [ColorThemeData](https://github.com/microsoft/vscode/blob/08d4889f9ec4a1685d257b9b95de036c8e1ce1e5/src/vs/workbench/services/themes/common/colorThemeData.ts) | Manifest category wins; `-theme-type` is an explicit detached-file override. A standalone JSON `type` is an Elegit import convenience. Included JSON does not change the root category. |
+| Theme category | Extension contribution `uiTheme` determines the base scheme; JSON includes merge colors/rules, not extension identity. [ColorThemeData](https://github.com/microsoft/vscode/blob/08d4889f9ec4a1685d257b9b95de036c8e1ce1e5/src/vs/workbench/services/themes/common/colorThemeData.ts) | Manifest category wins; `-theme-type` is an explicit detached-file override. A standalone JSON `type` is a vl import convenience. Included JSON does not change the root category. |
 | Registry defaults | `getColor` checks user color customizations, then the theme map, then `resolveDefaultColor`; registered defaults may reference another ID, transform its alpha, select a scheme variant, or be null. [Color utilities](https://github.com/microsoft/vscode/blob/08d4889f9ec4a1685d257b9b95de036c8e1ce1e5/src/vs/platform/theme/common/colorUtils.ts) | `defaults.json` contains the source-extracted dependency graph for supported roles. `Theme.Color` preserves references, RGBA, and undefined values. No fallback to a second theme's palette. |
 | Inherited text | `input.foreground` and `editorWidget.foreground` reference `foreground`; input placeholder and dark description defaults derive alpha from it. [Input](https://github.com/microsoft/vscode/blob/08d4889f9ec4a1685d257b9b95de036c8e1ce1e5/src/vs/platform/theme/common/colors/inputColors.ts), [base colors](https://github.com/microsoft/vscode/blob/08d4889f9ec4a1685d257b9b95de036c8e1ce1e5/src/vs/platform/theme/common/colors/baseColors.ts) | Derived defaults follow this theme's overridden foreground, including its existing alpha. |
 | Sidebar list states | Focus, selection, hover, and inactive selection are distinct; nullable foregrounds do not emit an overriding color. [Registrations](https://github.com/microsoft/vscode/blob/08d4889f9ec4a1685d257b9b95de036c8e1ce1e5/src/vs/platform/theme/common/colors/listColors.ts), [list renderer](https://github.com/microsoft/vscode/blob/08d4889f9ec4a1685d257b9b95de036c8e1ce1e5/src/vs/base/browser/ui/list/listWidget.ts) | Empty foregrounds remain empty; component inheritance and decoration precedence are resolved separately from the chosen background. |
@@ -27,7 +27,7 @@ widget/menu border is absent. This does not alter `Theme.Color`, the theme's
 focused-row background, or its editor background. VS Code user-settings overlays (`workbench.colorCustomizations` and token
 customizations), native window effects, font families/sizes, CSS layouts,
 high-contrast border decorations, and language-server semantic tokens remain
-outside this theme-file renderer. Elegit-specific workspace/history
+outside this theme-file renderer. vl-specific workspace/history
 controls still need local presentation choices; this is not a complete VS Code
 workbench implementation.
 

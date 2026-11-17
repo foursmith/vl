@@ -9,7 +9,7 @@ import (
 )
 
 func TestRecentFoldersPersistAndMoveToFront(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "elegit", "recent.json")
+	path := filepath.Join(t.TempDir(), "vl", "recent.json")
 	if folders, err := loadRecentFolders(path); err != nil || len(folders) != 0 {
 		t.Fatalf("missing history: %v %v", folders, err)
 	}

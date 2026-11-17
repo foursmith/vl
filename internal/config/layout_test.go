@@ -7,7 +7,7 @@ import (
 )
 
 func TestLayoutRoundTripAndInvalidFile(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "elegit", "layout.json")
+	path := filepath.Join(t.TempDir(), "vl", "layout.json")
 	got, err := LoadLayout(path)
 	if err != nil || got != (Layout{}) {
 		t.Fatalf("missing preferences: %+v, %v", got, err)

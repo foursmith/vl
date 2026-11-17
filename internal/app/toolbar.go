@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/elegit/internal/theme"
+	"github.com/ourongxing/vl/internal/theme"
 )
 
 type toolbarButton struct {

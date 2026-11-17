@@ -9,8 +9,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	gitservice "github.com/ourongxing/elegit/internal/git"
-	"github.com/ourongxing/elegit/internal/theme"
+	gitservice "github.com/ourongxing/vl/internal/git"
+	"github.com/ourongxing/vl/internal/theme"
 )
 
 func childWorkspace(t *testing.T) (*Model, *gitservice.Repository) {
@@ -110,7 +110,7 @@ func TestChangesGroupRepositoriesWithLocalPathsAndParentSummaries(t *testing.T) 
 			if e.repository != "" || e.change.Path != "child space" {
 				t.Fatal("parent summary moved into child group")
 			}
-			text, _ := m.explorerRow(e, 50, theme.Dark().Panel)
+			text, _ := m.explorerRow(e, 50, theme.Builtin("dark_modern").Palette().Panel)
 			if !strings.HasSuffix(plain(text), "S") {
 				t.Fatal("submodule summary lacks S marker")
 			}

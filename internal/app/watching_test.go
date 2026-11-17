@@ -1,7 +1,7 @@
 package app
 
 import (
-	"github.com/ourongxing/elegit/internal/watcher"
+	"github.com/ourongxing/vl/internal/watcher"
 	"os"
 	"path/filepath"
 	"strings"

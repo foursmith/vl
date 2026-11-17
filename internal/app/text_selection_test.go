@@ -8,7 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/elegit/internal/diff"
+	"github.com/ourongxing/vl/internal/diff"
 )
 
 func TestEditorMouseSelectionAndRelease(t *testing.T) {

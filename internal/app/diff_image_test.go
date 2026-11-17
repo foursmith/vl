@@ -11,7 +11,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
-	gitservice "github.com/ourongxing/elegit/internal/git"
+	gitservice "github.com/ourongxing/vl/internal/git"
 )
 
 func readImageDiff(m *Model, c gitservice.Change, staged bool, commit string) func(context.Context) (string, error) {

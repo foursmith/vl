@@ -64,9 +64,6 @@ type Palette struct {
 	Brand                       string
 }
 
-func Dark() Palette  { return Builtin("dark_modern").Palette() }
-func Light() Palette { return Builtin("light_modern").Palette() }
-
 func Style(fg, bg string) lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(lipgloss.Color(Composite(fg, bg))).Background(lipgloss.Color(bg))
 }

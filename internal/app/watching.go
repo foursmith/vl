@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/ourongxing/elegit/internal/editor"
-	"github.com/ourongxing/elegit/internal/imagepreview"
-	"github.com/ourongxing/elegit/internal/watcher"
+	"github.com/ourongxing/vl/internal/editor"
+	"github.com/ourongxing/vl/internal/imagepreview"
+	"github.com/ourongxing/vl/internal/watcher"
 )
 
 type watchReadyMsg struct {

@@ -12,26 +12,26 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/colorprofile"
-	"github.com/ourongxing/elegit/internal/app"
-	"github.com/ourongxing/elegit/internal/config"
-	"github.com/ourongxing/elegit/internal/git"
-	"github.com/ourongxing/elegit/internal/i18n"
-	"github.com/ourongxing/elegit/internal/theme"
+	"github.com/ourongxing/vl/internal/app"
+	"github.com/ourongxing/vl/internal/config"
+	"github.com/ourongxing/vl/internal/git"
+	"github.com/ourongxing/vl/internal/i18n"
+	"github.com/ourongxing/vl/internal/theme"
 )
 
 func main() {
 	displayLanguage := flag.String("lang", "", "display language: en or zh-CN (default: saved preference, or en)")
 	icons := flag.Bool("icons", true, "use Nerd Font glyphs adapted from Material Icon Theme; set -icons=false for plain text")
-	colorTheme := flag.String("theme", "", "color theme: builtin ID (dark_modern, dark_plus, dark_vs, light_modern, light_plus, light_vs), local:filename from ~/.config/elegit/themes, or a theme file")
+	colorTheme := flag.String("theme", "", "color theme: builtin ID (dark_modern, dark_plus, dark_vs, light_modern, light_plus, light_vs), local:filename from ~/.config/vl/themes, or a theme file")
 	themeType := flag.String("theme-type", "", "local theme uiTheme from its extension: vs, vs-dark, hc-light, hc-black (default: theme type, or vs-dark)")
 	version := flag.Bool("version", false, "print version")
 	flag.Usage = func() {
-		fmt.Fprintln(flag.CommandLine.Output(), "Usage: elegit [options] [folder|file]\n\nA Git workbench with diff review and basic text editing.\nA file opens in editor-only mode. Without a path, opens the most recent workspace.")
+		fmt.Fprintln(flag.CommandLine.Output(), "Usage: vl [options] [folder|file]\n\nA VSCode-like Git diff viewer with basic text editing.\nA file opens in editor-only mode. Without a path, opens the most recent workspace.")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
 	if *version {
-		fmt.Println("elegit 0.1.0-dev")
+		fmt.Println("vl 0.1.0-dev")
 		return
 	}
 	language, validLanguage := i18n.Parse(*displayLanguage)
@@ -153,7 +153,7 @@ func startupPath(args []string) (string, error) {
 			return "", fmt.Errorf("read recent workspaces: %w", err)
 		}
 		if len(folders) == 0 {
-			return "", errors.New("no recent workspace; open a folder with: elegit /path/to/folder")
+			return "", errors.New("no recent workspace; open a folder with: vl /path/to/folder")
 		}
 		path = folders[0]
 	}

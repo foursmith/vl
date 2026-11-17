@@ -10,10 +10,10 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/elegit/internal/diff"
-	"github.com/ourongxing/elegit/internal/editor"
-	"github.com/ourongxing/elegit/internal/files"
-	gitservice "github.com/ourongxing/elegit/internal/git"
+	"github.com/ourongxing/vl/internal/diff"
+	"github.com/ourongxing/vl/internal/editor"
+	"github.com/ourongxing/vl/internal/files"
+	gitservice "github.com/ourongxing/vl/internal/git"
 )
 
 func drain(t testing.TB, m *Model, cmd tea.Cmd) {

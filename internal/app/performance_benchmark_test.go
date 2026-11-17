@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ourongxing/elegit/internal/diff"
-	gitservice "github.com/ourongxing/elegit/internal/git"
+	"github.com/ourongxing/vl/internal/diff"
+	gitservice "github.com/ourongxing/vl/internal/git"
 )
 
 func benchmarkPatch() diff.Patch {

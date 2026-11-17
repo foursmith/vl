@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/elegit/internal/fileicon"
-	"github.com/ourongxing/elegit/internal/highlight"
-	"github.com/ourongxing/elegit/internal/theme"
+	"github.com/ourongxing/vl/internal/fileicon"
+	"github.com/ourongxing/vl/internal/highlight"
+	"github.com/ourongxing/vl/internal/theme"
 )
 
 func (m *Model) breadcrumb(path string, width int) string {

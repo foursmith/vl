@@ -1,4 +1,4 @@
-// Extract only Elegit's supported color/default graph from a pinned VS Code
+// Extract only vl's supported color/default graph from a pinned VS Code
 // source checkout. Requires TypeScript for development, never at runtime.
 // NODE_PATH=/path/to/node_modules bun internal/theme/tools/generate-defaults.cjs VSCODE_SOURCE GIT_PACKAGE_JSON
 const ts = require('typescript'), fs = require('fs'), path = require('path');

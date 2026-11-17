@@ -6,7 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/elegit/internal/editor"
+	"github.com/ourongxing/vl/internal/editor"
 )
 
 func TestEditorCursorModePositionAndVisibility(t *testing.T) {

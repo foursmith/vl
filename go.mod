@@ -1,4 +1,4 @@
-module github.com/ourongxing/elegit
+module github.com/ourongxing/vl
 
 go 1.27.3
 

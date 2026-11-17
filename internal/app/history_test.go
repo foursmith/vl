@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/x/ansi"
-	gitservice "github.com/ourongxing/elegit/internal/git"
+	gitservice "github.com/ourongxing/vl/internal/git"
 )
 
 func TestHistoryFileReviewAndReadOnlyActions(t *testing.T) {

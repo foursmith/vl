@@ -7,7 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	gitservice "github.com/ourongxing/elegit/internal/git"
+	gitservice "github.com/ourongxing/vl/internal/git"
 )
 
 func repositoryKey(path string) string { return "repository:" + path }

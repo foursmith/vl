@@ -9,8 +9,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	gitservice "github.com/ourongxing/elegit/internal/git"
-	"github.com/ourongxing/elegit/internal/theme"
+	gitservice "github.com/ourongxing/vl/internal/git"
+	"github.com/ourongxing/vl/internal/theme"
 )
 
 func selectHistoryCommit(t *testing.T, m *Model, repo, id string) item {
@@ -51,10 +51,10 @@ func TestHistoryGroupsSharedCommitsByRepository(t *testing.T) {
 	drain(t, m, m.selectSection(history))
 	root := selectHistoryCommit(t, m, "", shared)
 	drain(t, m, m.previewHistory(root))
-	rootText, _ := m.historyRow(root, 120, theme.Dark().Panel)
+	rootText, _ := m.historyRow(root, 120, theme.Builtin("dark_modern").Palette().Panel)
 	childEntry := selectHistoryCommit(t, m, "child space", shared)
 	drain(t, m, m.previewHistory(childEntry))
-	childText, _ := m.historyRow(childEntry, 120, theme.Dark().Panel)
+	childText, _ := m.historyRow(childEntry, 120, theme.Builtin("dark_modern").Palette().Panel)
 	if !strings.Contains(plain(rootText), "parent-only") || strings.Contains(plain(rootText), "child-only") {
 		t.Fatal("parent history uses child refs")
 	}

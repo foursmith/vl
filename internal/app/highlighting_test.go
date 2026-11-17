@@ -3,7 +3,7 @@ package app
 import (
 	"testing"
 
-	"github.com/ourongxing/elegit/internal/highlight"
+	"github.com/ourongxing/vl/internal/highlight"
 )
 
 func TestHighlightingRejectsCancelledAndStaleText(t *testing.T) {

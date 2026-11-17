@@ -32,7 +32,7 @@ func SessionPath(root string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".config", "elegit", "workspaces", fmt.Sprintf("%x.json", sha256.Sum256([]byte(filepath.Clean(root))))), nil
+	return filepath.Join(home, ".config", "vl", "workspaces", fmt.Sprintf("%x.json", sha256.Sum256([]byte(filepath.Clean(root))))), nil
 }
 
 func LoadSession(path string) (Session, error) {

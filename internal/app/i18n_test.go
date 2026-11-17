@@ -8,10 +8,10 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/elegit/internal/config"
-	"github.com/ourongxing/elegit/internal/editor"
-	gitservice "github.com/ourongxing/elegit/internal/git"
-	"github.com/ourongxing/elegit/internal/i18n"
+	"github.com/ourongxing/vl/internal/config"
+	"github.com/ourongxing/vl/internal/editor"
+	gitservice "github.com/ourongxing/vl/internal/git"
+	"github.com/ourongxing/vl/internal/i18n"
 )
 
 func TestDisplayLanguagePickerPersistsAndRestores(t *testing.T) {

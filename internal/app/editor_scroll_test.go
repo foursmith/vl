@@ -7,7 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/elegit/internal/files"
+	"github.com/ourongxing/vl/internal/files"
 )
 
 func TestEditorWheelStopsAtFileBoundariesWithoutMovingCursor(t *testing.T) {

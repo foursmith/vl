@@ -7,7 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/elegit/internal/config"
+	"github.com/ourongxing/vl/internal/config"
 )
 
 func TestSidebarDragBothSidesAndBounds(t *testing.T) {

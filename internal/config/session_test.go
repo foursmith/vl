@@ -15,7 +15,7 @@ func TestSessionStorage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := filepath.Dir(first), filepath.Join(home, ".config", "elegit", "workspaces"); got != want {
+	if got, want := filepath.Dir(first), filepath.Join(home, ".config", "vl", "workspaces"); got != want {
 		t.Fatalf("workspace directory = %q, want %q", got, want)
 	}
 	second, err := SessionPath("/work/second")

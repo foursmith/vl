@@ -7,8 +7,8 @@ import (
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/elegit/internal/fileicon"
-	"github.com/ourongxing/elegit/internal/theme"
+	"github.com/ourongxing/vl/internal/fileicon"
+	"github.com/ourongxing/vl/internal/theme"
 )
 
 func (m *Model) pickerRow(a action, index, width, hovered int) string {

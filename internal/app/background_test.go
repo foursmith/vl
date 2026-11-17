@@ -10,10 +10,10 @@ import (
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/elegit/internal/editor"
-	gitservice "github.com/ourongxing/elegit/internal/git"
-	"github.com/ourongxing/elegit/internal/highlight"
-	"github.com/ourongxing/elegit/internal/theme"
+	"github.com/ourongxing/vl/internal/editor"
+	gitservice "github.com/ourongxing/vl/internal/git"
+	"github.com/ourongxing/vl/internal/highlight"
+	"github.com/ourongxing/vl/internal/theme"
 )
 
 func sameColor(a, b color.Color) bool {
@@ -46,11 +46,11 @@ func TestTerminalPaddingFollowsThemeChrome(t *testing.T) {
 }
 
 func TestRowPaintsBackgroundAfterNestedStyleResets(t *testing.T) {
-	text := theme.Style("#CE9178", theme.Dark().Background).Render("word") + " gap " + theme.Style(theme.Dark().Muted, theme.Dark().Background).Render("end")
-	line := uv.NewStyledString(row(text, 30, theme.Dark().Foreground, theme.Dark().Background)).Lines(ansi.GraphemeWidth)[0]
+	text := theme.Style("#CE9178", theme.Builtin("dark_modern").Palette().Background).Render("word") + " gap " + theme.Style(theme.Builtin("dark_modern").Palette().Muted, theme.Builtin("dark_modern").Palette().Background).Render("end")
+	line := uv.NewStyledString(row(text, 30, theme.Builtin("dark_modern").Palette().Foreground, theme.Builtin("dark_modern").Palette().Background)).Lines(ansi.GraphemeWidth)[0]
 	for i, cell := range line {
-		if !sameColor(cell.Style.Bg, lipgloss.Color(theme.Dark().Background)) {
-			t.Fatalf("cell %d (%q) has background %v, want %s", i, cell.Content, cell.Style.Bg, theme.Dark().Background)
+		if !sameColor(cell.Style.Bg, lipgloss.Color(theme.Builtin("dark_modern").Palette().Background)) {
+			t.Fatalf("cell %d (%q) has background %v, want %s", i, cell.Content, cell.Style.Bg, theme.Builtin("dark_modern").Palette().Background)
 		}
 	}
 }
@@ -64,9 +64,9 @@ func TestEditorCanvasAndCurrentLineBackgrounds(t *testing.T) {
 	for y, rendered := range m.mainLines()[editorContentRow:] {
 		line := uv.NewStyledString(rendered).Lines(ansi.GraphemeWidth)[0]
 		for x, cell := range line {
-			want := theme.Dark().Background
+			want := theme.Builtin("dark_modern").Palette().Background
 			if y == 0 && x >= 7 {
-				want = theme.Dark().CurrentLine
+				want = theme.Builtin("dark_modern").Palette().CurrentLine
 			}
 			if !sameColor(cell.Style.Bg, lipgloss.Color(want)) {
 				t.Fatalf("row %d cell %d (%q) has background %v, want %s", y, x, cell.Content, cell.Style.Bg, want)
@@ -83,22 +83,22 @@ func TestSelectedFilePaintsIconTextAndPadding(t *testing.T) {
 	m.sidebar = true
 	line := uv.NewStyledString(m.sidebarLines()[m.sidebarHeaderRows()]).Lines(ansi.GraphemeWidth)[0]
 	for i, cell := range line {
-		if !sameColor(cell.Style.Bg, lipgloss.Color(theme.Dark().Selection)) {
+		if !sameColor(cell.Style.Bg, lipgloss.Color(theme.Builtin("dark_modern").Palette().Selection)) {
 			t.Fatalf("selected cell %d (%q) has background %v", i, cell.Content, cell.Style.Bg)
 		}
 	}
 }
 
 func TestRowPreservesExplicitHighlightBackgrounds(t *testing.T) {
-	text := theme.Style(theme.Dark().Foreground, theme.Dark().AddedBackground).Render("+added") + " normal " + theme.Style(theme.Dark().Foreground, theme.Dark().Selection).Render("selected")
-	line := uv.NewStyledString(row(text, 30, theme.Dark().Foreground, theme.Dark().Background)).Lines(ansi.GraphemeWidth)[0]
+	text := theme.Style(theme.Builtin("dark_modern").Palette().Foreground, theme.Builtin("dark_modern").Palette().AddedBackground).Render("+added") + " normal " + theme.Style(theme.Builtin("dark_modern").Palette().Foreground, theme.Builtin("dark_modern").Palette().Selection).Render("selected")
+	line := uv.NewStyledString(row(text, 30, theme.Builtin("dark_modern").Palette().Foreground, theme.Builtin("dark_modern").Palette().Background)).Lines(ansi.GraphemeWidth)[0]
 	for i, cell := range line {
-		want := theme.Dark().Background
+		want := theme.Builtin("dark_modern").Palette().Background
 		if i < 6 {
-			want = theme.Dark().AddedBackground
+			want = theme.Builtin("dark_modern").Palette().AddedBackground
 		}
 		if i >= 14 && i < 22 {
-			want = theme.Dark().Selection
+			want = theme.Builtin("dark_modern").Palette().Selection
 		}
 		if !sameColor(cell.Style.Bg, lipgloss.Color(want)) {
 			t.Fatalf("cell %d (%q) background %v, want %s", i, cell.Content, cell.Style.Bg, want)
@@ -114,13 +114,13 @@ func TestEditorRunsKeepSyntaxSelectionCursorAndFocus(t *testing.T) {
 	m.sidebar = false
 	m.ensureEditor()
 	m.tabs[0].highlightText = d.Text
-	m.tabs[0].spans = [][]highlight.Span{{{Start: 0, End: 2, Color: theme.Dark().GitAdded, Font: theme.Italic}}}
+	m.tabs[0].spans = [][]highlight.Span{{{Start: 0, End: 2, Color: theme.Builtin("dark_modern").Palette().GitAdded, Font: theme.Italic}}}
 	first := uv.NewStyledString(m.editorLines()[0]).Lines(ansi.GraphemeWidth)[0]
 	selected := false
 	for _, cell := range first {
 		if cell.Content == "a" {
 			selected = true
-			if !sameColor(cell.Style.Fg, lipgloss.Color(theme.Dark().GitAdded)) || !sameColor(cell.Style.Bg, lipgloss.Color(theme.Dark().EditorSelection)) {
+			if !sameColor(cell.Style.Fg, lipgloss.Color(theme.Builtin("dark_modern").Palette().GitAdded)) || !sameColor(cell.Style.Bg, lipgloss.Color(theme.Builtin("dark_modern").Palette().EditorSelection)) {
 				t.Fatal("run rendering lost syntax or selection color")
 			}
 			if cell.Style.Attrs&uv.AttrItalic == 0 {
@@ -139,7 +139,7 @@ func TestEditorRunsKeepSyntaxSelectionCursorAndFocus(t *testing.T) {
 	m.editorLines()
 	third := uv.NewStyledString(m.editorLines()[0]).Lines(ansi.GraphemeWidth)[0]
 	for _, cell := range third {
-		if cell.Content == "a" && sameColor(cell.Style.Bg, lipgloss.Color(theme.Dark().EditorSelection)) {
+		if cell.Content == "a" && sameColor(cell.Style.Bg, lipgloss.Color(theme.Builtin("dark_modern").Palette().EditorSelection)) {
 			t.Fatal("cache kept a cleared selection")
 		}
 	}

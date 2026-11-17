@@ -52,7 +52,7 @@ func TestLocalThemeDirectoryAndIDs(t *testing.T) {
 		t.Fatal(err)
 	}
 	dir, err := LocalDir()
-	if err != nil || dir != filepath.Join(home, ".config", "elegit", "themes") {
+	if err != nil || dir != filepath.Join(home, ".config", "vl", "themes") {
 		t.Fatalf("local directory: %q %v", dir, err)
 	}
 	themes, err := Discover(filepath.Join(t.TempDir(), "missing"))

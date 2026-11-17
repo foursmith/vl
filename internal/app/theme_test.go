@@ -10,9 +10,9 @@ import (
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/elegit/internal/config"
-	"github.com/ourongxing/elegit/internal/diff"
-	"github.com/ourongxing/elegit/internal/theme"
+	"github.com/ourongxing/vl/internal/config"
+	"github.com/ourongxing/vl/internal/diff"
+	"github.com/ourongxing/vl/internal/theme"
 )
 
 func TestThemeSwitchRejectsOldSyntaxAndPreservesEditing(t *testing.T) {
@@ -28,7 +28,7 @@ func TestThemeSwitchRejectsOldSyntaxAndPreservesEditing(t *testing.T) {
 	if m.document().Text != text || m.document().Cursor != cursor {
 		t.Fatal("theme switch changed document")
 	}
-	if !m.colorTheme.IsLight() || m.colors != theme.Light() {
+	if !m.colorTheme.IsLight() || m.colors != theme.Builtin("light_modern").Palette() {
 		t.Fatal("light palette not applied")
 	}
 	if len(m.tabs[0].spans) == 0 || m.tabs[0].spans[0][0].Color != "#0000FF" {
@@ -38,7 +38,7 @@ func TestThemeSwitchRejectsOldSyntaxAndPreservesEditing(t *testing.T) {
 		t.Fatal("theme switch did not update terminal padding")
 	}
 	drain(t, m, m.SetTheme("dark_modern", ""))
-	if m.colors != theme.Dark() || m.tabs[0].spans[0][0].Color != "#569CD6" {
+	if m.colors != theme.Builtin("dark_modern").Palette() || m.tabs[0].spans[0][0].Color != "#569CD6" {
 		t.Fatal("switching back lost dark theme")
 	}
 }

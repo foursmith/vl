@@ -9,7 +9,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/elegit/internal/config"
+	"github.com/ourongxing/vl/internal/config"
 )
 
 func TestSidebarWorkspaceSwitch(t *testing.T) {
@@ -82,11 +82,11 @@ func TestWorkspaceListScrollAndSectionCoordinates(t *testing.T) {
 
 func TestWorkspaceLabelsOmitPathsUnlessNamesCollide(t *testing.T) {
 	m := newHoverRenderModel(t)
-	m.workspaces = []string{"/projects/newsnext", "/work/elegit", "/personal/elegit"}
+	m.workspaces = []string{"/projects/newsnext", "/work/vl", "/personal/vl"}
 	for folder, want := range map[string]string{
 		"/projects/newsnext": "newsnext",
-		"/work/elegit":       "elegit · work",
-		"/personal/elegit":   "elegit · personal",
+		"/work/vl":           "vl · work",
+		"/personal/vl":       "vl · personal",
 	} {
 		if got := m.workspaceLabel(folder); got != want {
 			t.Fatalf("workspace label: got %q, want %q", got, want)

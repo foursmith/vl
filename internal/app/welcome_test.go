@@ -33,7 +33,7 @@ func TestWelcomeFitsTerminalAndSidebarLayouts(t *testing.T) {
 				}
 			}
 			_, _, _, logoRows := m.welcomeLayout()
-			if logoRows == 1 && !strings.Contains(content, "ELEGIT") {
+			if logoRows == 1 && !strings.Contains(content, "vl") {
 				t.Fatal("compact logo missing")
 			}
 		}

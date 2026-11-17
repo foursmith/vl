@@ -9,8 +9,8 @@ import (
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/elegit/internal/highlight"
-	"github.com/ourongxing/elegit/internal/theme"
+	"github.com/ourongxing/vl/internal/highlight"
+	"github.com/ourongxing/vl/internal/theme"
 )
 
 func TestComponentsDoNotBorrowEditorOrPickerColors(t *testing.T) {
@@ -63,7 +63,7 @@ func TestComponentsDoNotBorrowEditorOrPickerColors(t *testing.T) {
 }
 
 func TestTokenAlphaUsesActualDiffAndSelectionSurfaces(t *testing.T) {
-	colors := theme.Dark()
+	colors := theme.Builtin("dark_modern").Palette()
 	colors.Background = "#000000"
 	spans := []highlight.Span{{Start: 0, End: 1, Color: "#FFFFFF80", Background: "#00FF0080"}}
 	rendered := diffCode(colors, "x", spans, 1, 0, colors.Background, "", diffRange{}, diffRange{})

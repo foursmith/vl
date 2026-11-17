@@ -2,7 +2,7 @@ package app
 
 import (
 	tea "charm.land/bubbletea/v2"
-	"github.com/ourongxing/elegit/internal/editor"
+	"github.com/ourongxing/vl/internal/editor"
 	"strings"
 	"testing"
 )

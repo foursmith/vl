@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/ourongxing/elegit/internal/files"
+	"github.com/ourongxing/vl/internal/files"
 )
 
 type treeMsg struct {

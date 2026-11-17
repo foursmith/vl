@@ -5,18 +5,18 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/elegit/internal/theme"
+	"github.com/ourongxing/vl/internal/theme"
 )
 
 // Block lettering uses a shared cell grid so every row stays aligned.
 var welcomeLogo = []string{
-	"██████  ██      ██████   ████   ██████  ██████",
-	"██      ██      ██      ██  ██    ██      ██  ",
-	"██      ██      ██      ██        ██      ██  ",
-	"█████   ██      █████   ██ ███    ██      ██  ",
-	"██      ██      ██      ██  ██    ██      ██  ",
-	"██      ██      ██      ██  ██    ██      ██  ",
-	"██████  ██████  ██████   ████   ██████    ██  ",
+	"██      ██  ██    ",
+	"██      ██  ██    ",
+	"██      ██  ██    ",
+	"██      ██  ██    ",
+	" ██    ██   ██    ",
+	"  ██  ██    ██    ",
+	"   ████     ██████",
 }
 
 func welcomeLogoWidth() int {
@@ -65,7 +65,7 @@ func (m *Model) welcomeGap(logoRows int) int {
 func (m *Model) welcomeLines() []string {
 	x, y, width, logoRows := m.welcomeLayout()
 	lines := make([]string, m.contentHeight())
-	logo := []string{"ELEGIT"}
+	logo := []string{"vl"}
 	if logoRows > 1 {
 		logo = welcomeLogo
 	}

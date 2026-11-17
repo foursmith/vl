@@ -8,7 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/elegit/internal/editor"
+	"github.com/ourongxing/vl/internal/editor"
 )
 
 func TestSearchRanges(t *testing.T) {

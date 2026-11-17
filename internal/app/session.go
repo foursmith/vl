@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/ourongxing/elegit/internal/config"
-	gitservice "github.com/ourongxing/elegit/internal/git"
+	"github.com/ourongxing/vl/internal/config"
+	gitservice "github.com/ourongxing/vl/internal/git"
 )
 
 // SetSession defers restoration until repository discovery has completed.

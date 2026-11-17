@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ourongxing/elegit/internal/theme"
+	"github.com/ourongxing/vl/internal/theme"
 )
 
 func TestGoHighlightPreservesRuneOffsets(t *testing.T) {
@@ -17,7 +17,7 @@ func TestGoHighlightPreservesRuneOffsets(t *testing.T) {
 	if lines[1][0].Start != 1 {
 		t.Fatalf("tab offset changed: %+v", lines[1])
 	}
-	if result := Lines(context.Background(), "unknown.elegit-unknown", "plain text", theme.Builtin("dark_modern")); result != nil {
+	if result := Lines(context.Background(), "unknown.vl-unknown", "plain text", theme.Builtin("dark_modern")); result != nil {
 		t.Fatal("unknown files should remain plain text")
 	}
 }

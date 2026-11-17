@@ -10,8 +10,8 @@ import (
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
-	gitservice "github.com/ourongxing/elegit/internal/git"
-	"github.com/ourongxing/elegit/internal/theme"
+	gitservice "github.com/ourongxing/vl/internal/git"
+	"github.com/ourongxing/vl/internal/theme"
 )
 
 func TestControlSymbolsHaveNarrowGlyphsAndASCIIFallbacks(t *testing.T) {
@@ -91,7 +91,7 @@ func TestSymbolModesPreserveLayoutAcrossWidthsAndHoverTargets(t *testing.T) {
 
 func TestSidebarNavigationUsesActiveColorWithoutChangeDecoration(t *testing.T) {
 	m := tabWorkspace(t, 0)
-	for _, colors := range []theme.Palette{theme.Dark(), theme.Light()} {
+	for _, colors := range []theme.Palette{theme.Builtin("dark_modern").Palette(), theme.Builtin("light_modern").Palette()} {
 		m.colors = colors
 		for _, nerd := range []bool{false, true} {
 			m.nerd = nerd

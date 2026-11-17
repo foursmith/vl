@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	gitservice "github.com/ourongxing/elegit/internal/git"
+	gitservice "github.com/ourongxing/vl/internal/git"
 )
 
 type changeDirectory struct {

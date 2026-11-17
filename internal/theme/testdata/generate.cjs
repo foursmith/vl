@@ -44,7 +44,7 @@ for (const context of contexts)
             if (style.fontStyle !== -1)
                 font = style.fontStyle;
         }
-        // Upstream enum uses italic=1,bold=2; Elegit uses bold=1,italic=2.
+        // Upstream enum uses italic=1,bold=2; vl uses bold=1,italic=2.
         font = (font & 1 ? 2 : 0) | (font & 2 ? 1 : 0) | (font & 12);
         if (color.length === 4)
             color = "#" + [...color.slice(1)].map(c => c + c).join("");

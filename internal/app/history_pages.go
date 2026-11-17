@@ -4,7 +4,7 @@ import (
 	"context"
 
 	tea "charm.land/bubbletea/v2"
-	gitservice "github.com/ourongxing/elegit/internal/git"
+	gitservice "github.com/ourongxing/vl/internal/git"
 )
 
 type historyPageState struct {

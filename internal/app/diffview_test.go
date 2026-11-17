@@ -9,9 +9,9 @@ import (
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/elegit/internal/diff"
-	"github.com/ourongxing/elegit/internal/highlight"
-	"github.com/ourongxing/elegit/internal/theme"
+	"github.com/ourongxing/vl/internal/diff"
+	"github.com/ourongxing/vl/internal/highlight"
+	"github.com/ourongxing/vl/internal/theme"
 )
 
 func TestAddedAndDeletedFilesUseFullWidthDiff(t *testing.T) {
@@ -79,22 +79,22 @@ func TestDiffThemeGuttersSyntaxAndMissingLines(t *testing.T) {
 				t.Fatal("diff row width changed")
 			}
 			cells := uv.NewStyledString(rendered).Lines(ansi.GraphemeWidth)[0]
-			bg := theme.Dark().AddedBackground
+			bg := theme.Builtin("dark_modern").Palette().AddedBackground
 			if line.Kind == diff.Deleted {
-				bg = theme.Dark().DeletedBackground
+				bg = theme.Builtin("dark_modern").Palette().DeletedBackground
 			}
 			for x, cell := range cells {
 				want := bg
 				changed := m.diffEmphasis[line]
 				col := x - m.diffGutter
 				if col >= changed.start && (col < changed.end || changed.end > utf8.RuneCountInString(line.Text[1:])) {
-					want = theme.Dark().AddedText
+					want = theme.Builtin("dark_modern").Palette().AddedText
 					if line.Kind == diff.Deleted {
-						want = theme.Dark().DeletedText
+						want = theme.Builtin("dark_modern").Palette().DeletedText
 					}
 				}
 				if x < m.diffGutter {
-					want = theme.Dark().Background
+					want = theme.Builtin("dark_modern").Palette().Background
 				}
 				if !sameColor(cell.Style.Bg, lipgloss.Color(want)) {
 					t.Fatalf("background at %d: %v", x, cell.Style.Bg)
@@ -143,10 +143,10 @@ func TestDiffSyntaxResultsCannotReplaceNewPatch(t *testing.T) {
 }
 
 func TestDiffSyntaxFontsKeepDiffBackground(t *testing.T) {
-	line := diffCode(theme.Dark(), "bold", []highlight.Span{{Start: 0, End: 4, Color: "#569CD6", Font: theme.Bold}}, 12, 0, theme.Dark().AddedBackground, theme.Dark().AddedText, diffRange{0, 5}, diffRange{})
+	line := diffCode(theme.Builtin("dark_modern").Palette(), "bold", []highlight.Span{{Start: 0, End: 4, Color: "#569CD6", Font: theme.Bold}}, 12, 0, theme.Builtin("dark_modern").Palette().AddedBackground, theme.Builtin("dark_modern").Palette().AddedText, diffRange{0, 5}, diffRange{})
 	cells := uv.NewStyledString(line).Lines(ansi.GraphemeWidth)[0]
 	for i, cell := range cells {
-		if !sameColor(cell.Style.Bg, lipgloss.Color(theme.Dark().AddedText)) {
+		if !sameColor(cell.Style.Bg, lipgloss.Color(theme.Builtin("dark_modern").Palette().AddedText)) {
 			t.Fatal("TextMate font reset diff background")
 		}
 		if i < 4 && cell.Style.Attrs&uv.AttrBold == 0 {

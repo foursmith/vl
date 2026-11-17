@@ -6,9 +6,9 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/elegit/internal/diff"
-	"github.com/ourongxing/elegit/internal/highlight"
-	"github.com/ourongxing/elegit/internal/theme"
+	"github.com/ourongxing/vl/internal/diff"
+	"github.com/ourongxing/vl/internal/highlight"
+	"github.com/ourongxing/vl/internal/theme"
 )
 
 func TestFileHorizontalWheelPreservesCursorAndVerticalScroll(t *testing.T) {
@@ -82,7 +82,7 @@ func TestDiffHorizontalScrollKeepsGuttersAndSplitBoundary(t *testing.T) {
 }
 
 func TestDiffHorizontalClipUsesDisplayColumns(t *testing.T) {
-	colors := theme.Dark()
+	colors := theme.Builtin("dark_modern").Palette()
 	code := "\t你e\u0301TAIL"
 	spans := []highlight.Span{{Start: 1, End: 8, Color: "#569CD6", Font: theme.Bold}}
 	for _, left := range []int{0, 1, 4, 5, 6, 7, 8} {

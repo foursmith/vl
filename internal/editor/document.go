@@ -421,7 +421,7 @@ func (d *Document) Save() error {
 	if info.Mode().Perm()&0222 == 0 {
 		return errors.New("file is read-only")
 	}
-	tmp, err := os.CreateTemp(filepath.Dir(d.Path), ".elegit-*")
+	tmp, err := os.CreateTemp(filepath.Dir(d.Path), ".vl-*")
 	if err != nil {
 		return err
 	}

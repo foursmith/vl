@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	patchdiff "github.com/ourongxing/elegit/internal/diff"
+	patchdiff "github.com/ourongxing/vl/internal/diff"
 )
 
 func browsingWorkspace(t *testing.T) (*Repository, *Repository, *Repository) {

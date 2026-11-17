@@ -6,8 +6,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/ourongxing/elegit/internal/editor"
-	gitservice "github.com/ourongxing/elegit/internal/git"
+	"github.com/ourongxing/vl/internal/editor"
+	gitservice "github.com/ourongxing/vl/internal/git"
 )
 
 // NewEditor opens a single text file without repository discovery or workspace state.

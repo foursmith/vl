@@ -2,7 +2,7 @@ package app
 
 import (
 	tea "charm.land/bubbletea/v2"
-	"github.com/ourongxing/elegit/internal/config"
+	"github.com/ourongxing/vl/internal/config"
 )
 
 const (

@@ -1,6 +1,6 @@
-# elegit
+# vl
 
-A terminal Git workbench with diff review and basic text editing. It brings
+**VSCode-like.** A terminal Git diff viewer with basic text editing. It brings
 Explorer, Changes, History and editor tabs into one workspace, with VS Code
 Dark Modern / Light Modern colors and Material Icon Theme associations adapted
 to Nerd Font glyphs.
@@ -16,18 +16,18 @@ Git uses your existing credentials or SSH agent; terminal password prompts are d
 
 ```sh
 make build
-bin/elegit /path/to/folder
-bin/elegit /path/to/file.go  # editor-only mode
+bin/vl /path/to/folder
+bin/vl /path/to/file.go  # editor-only mode
 
 # Startup overrides; themes and language can also be changed through F1.
-bin/elegit -theme light_modern
-bin/elegit -theme local:my-theme.json /path/to/repository
-bin/elegit -lang zh-CN /path/to/repository
-bin/elegit -icons=false /path/to/repository
+bin/vl -theme light_modern
+bin/vl -theme local:my-theme.json /path/to/repository
+bin/vl -lang zh-CN /path/to/repository
+bin/vl -icons=false /path/to/repository
 ```
 
-With no path, elegit opens the most recent workspace, or asks for a path if none
-exists. Use `bin/elegit .` to open the current directory. Paths inside a Git
+With no path, vl opens the most recent workspace, or asks for a path if none
+exists. Use `bin/vl .` to open the current directory. Paths inside a Git
 repository resolve to its root. Ordinary folders support browsing and editing;
 Changes and History offer **Initialize Repository**.
 
@@ -99,12 +99,13 @@ Theme, language, Vim and layout preferences persist across restarts and workspac
 
 Dark/light terminal notifications select the remembered matching theme; macOS
 system appearance is the fallback. A manually selected mismatched theme stays selected.
-Local VS Code JSON/JSONC and TextMate themes belong in `~/.config/elegit/themes/`;
+Local VS Code JSON/JSONC and TextMate themes belong in `~/.config/vl/themes/`;
 see [theme compatibility](docs/THEME.md).
 
 Preferences and recent folders use `layout.json` and `recent.json` in the OS user
-configuration directory's `elegit` folder. Sessions use `~/.config/elegit/workspaces/`
-on all platforms. `-theme` and `-lang` override saved choices at startup.
+configuration directory's `vl` folder. Sessions use `~/.config/vl/workspaces/`
+on all platforms.
+`-theme` and `-lang` override saved choices at startup.
 
 ## Requirements and limits
 
@@ -128,7 +129,7 @@ on all platforms. `-theme` and `-lang` override saved choices at startup.
 ## Development
 
 ```sh
-make build  # updates bin/elegit
+make build  # updates bin/vl
 make test
 make check  # go vet + race-enabled tests
 ```

@@ -12,7 +12,7 @@ func configPath(name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, "elegit", name), nil
+	return filepath.Join(dir, "vl", name), nil
 }
 
 func loadJSON(path string, value any) error {

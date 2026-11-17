@@ -46,7 +46,7 @@ func TestParentWatchSurvivesAtomicReplacement(t *testing.T) {
 	w, root := newTestWatcher(t)
 	target := filepath.Join(root, "file.txt")
 	for i := 0; i < 2; i++ {
-		temp := filepath.Join(root, fmt.Sprintf(".elegit-save-%d", i))
+		temp := filepath.Join(root, fmt.Sprintf(".vl-save-%d", i))
 		if err := os.WriteFile(temp, []byte("updated"), 0644); err != nil {
 			t.Fatal(err)
 		}
@@ -64,7 +64,7 @@ func TestParentWatchSurvivesAtomicReplacement(t *testing.T) {
 		t.Fatal(err)
 	}
 	waitPath(t, w, target)
-	hidden := filepath.Join(root, ".elegit-notes")
+	hidden := filepath.Join(root, ".vl-notes")
 	if err := os.WriteFile(hidden, []byte("user file"), 0644); err != nil {
 		t.Fatal(err)
 	}
