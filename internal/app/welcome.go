@@ -32,10 +32,8 @@ type welcomeAction struct {
 }
 
 var welcomeActions = []welcomeAction{
-	{"Show All Commands", "F1", "commands"},
-	{"Go to File", "Ctrl+P", "files"},
-	{"Open Recent Folder", "Ctrl+R", "recent"},
-	{"Changes", "Ctrl+2", "changes"},
+	{"Show All Commands", workbenchKeys.Commands.Help().Key, "commands"},
+	{"Go to File", workbenchKeys.Files.Help().Key, "files"},
 }
 
 func (m *Model) welcomeVisible() bool {
@@ -44,7 +42,12 @@ func (m *Model) welcomeVisible() bool {
 
 // Rendering and clicks share the same centered block, including compact mode.
 func (m *Model) welcomeLayout() (x, y, width, logoRows int) {
-	width = min(max(42, welcomeLogoWidth()), max(1, m.mainWidth()-4))
+	minimumWidth := welcomeLogoWidth()
+	for _, a := range welcomeActions {
+		minimumWidth = max(minimumWidth, ansi.StringWidth(m.tr(a.label))+1+ansi.StringWidth(a.key))
+	}
+	width = min(max(42, minimumWidth), max(1, m.mainWidth()-4))
+	width = min(max(width, minimumWidth), max(1, m.mainWidth()))
 	logoRows = 1
 	if width >= welcomeLogoWidth() && m.contentHeight() >= len(welcomeLogo)+len(welcomeActions)+3 {
 		logoRows = len(welcomeLogo)
@@ -79,7 +82,7 @@ func (m *Model) welcomeLines() []string {
 	}
 	for i, a := range welcomeActions {
 		a.label = m.tr(a.label)
-		padding := max(2, width-ansi.StringWidth(a.label)-ansi.StringWidth(a.key))
+		padding := max(1, width-ansi.StringWidth(a.label)-ansi.StringWidth(a.key))
 		lines[y+logoRows+m.welcomeGap(logoRows)+i] = strings.Repeat(" ", x) +
 			theme.Style(m.colors.Muted, m.colors.Background).Render(a.label) + strings.Repeat(" ", padding) +
 			theme.Style(m.colors.Foreground, m.colors.Border).Render(a.key)
@@ -99,10 +102,6 @@ func (m *Model) clickWelcome(msg tea.MouseClickMsg) tea.Cmd {
 		return m.openPalette()
 	case "files":
 		return m.openQuickFiles()
-	case "recent":
-		return m.openRecentFolders()
-	case "changes":
-		return m.selectSection(changes)
 	}
 	return nil
 }

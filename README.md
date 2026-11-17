@@ -21,7 +21,7 @@ bin/vl /path/to/folder
 bin/vl /path/to/file.go  # editor-only mode
 bin/vl /path/to/file.go:30:5  # jump to line 30, column 5 (column is optional)
 
-# Startup overrides; themes and language can also be changed through F1.
+# Startup overrides; themes and language can also be changed through Ctrl+Shift+P.
 bin/vl -theme light_modern
 bin/vl -theme local:my-theme.json /path/to/repository
 bin/vl -lang zh-CN /path/to/repository
@@ -71,7 +71,7 @@ unsaved edits are retained and external modifications are reported.
 
 ## Using the workspace
 
-Open files with **Ctrl+P**, commands with **F1**, and recent folders with **Ctrl+R**.
+Open files with **Ctrl+P**, commands with **Ctrl+Shift+P**, and recent folders with **Ctrl+R**.
 The file/command picker accepts `>` for commands, `:line[:column]` for a position
 in the current file, or `filename:line[:column]` to open a file at that position.
 
@@ -96,12 +96,12 @@ cannot restore it.
 - [普通快捷键](docs/KEYBINDINGS.md): workspace, sidebar, editor, Diff, images and pickers.
 - [Vim 快捷键](docs/VIM.md): modes, operators, text objects, Visual, Flash and Surround.
 
-Enable Vim through **F1 → Preferences: Toggle Vim Mode** (search `vim`). It is off
+Enable Vim through **Ctrl+Shift+P → Preferences: Toggle Vim Mode** (search `vim`). It is off
 by default and applies only to editable text tabs. Workbench shortcuts remain available.
 
 ## Appearance and preferences
 
-Use **F1 → Preferences: Color Theme** to preview and select a theme, or
+Use **Ctrl+Shift+P → Preferences: Color Theme** to preview and select a theme, or
 **Preferences: Configure Display Language** to switch between English and 简体中文.
 Theme, language, Vim and layout preferences persist across restarts and workspace switches.
 

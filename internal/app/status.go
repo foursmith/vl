@@ -86,14 +86,14 @@ func (m *Model) statusLayout() []statusSegment {
 	dim := theme.WithOpacity(foreground, .6)
 	left := []statusSegment{{id: "init", text: m.tr("Initialize Repository"), color: dim}}
 	if m.editorOnly {
-		label := "Ctrl+S · Ctrl+W · F1"
+		label := "Ctrl+S · Ctrl+W · " + workbenchKeys.Commands.Help().Key
 		if d := m.document(); d != nil {
 			label = safe(filepath.Base(d.Path))
 			if d.Dirty() {
 				label += " *"
 			}
 			if m.width >= 100 {
-				label += " · Ctrl+S · Ctrl+W · F1"
+				label += " · Ctrl+S · Ctrl+W · " + workbenchKeys.Commands.Help().Key
 			}
 		}
 		left = []statusSegment{{id: "editor", text: label, color: dim}}

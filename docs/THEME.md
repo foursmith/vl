@@ -41,7 +41,7 @@ or the system appearance, rather than sampling this app-controlled background.
 On exit, errors and repository switches we disable only subscriptions we enabled,
 preserving modes already set by the caller.
 
-F1 contains one **Preferences: Color Theme** command. It opens a separate searchable
+Ctrl+Shift+P contains one **Preferences: Color Theme** command. It opens a separate searchable
 theme picker with the current selection marked and dark themes before light themes.
 Arrow keys preview the highlighted theme immediately. Enter confirms it and
 remembers it for that appearance; Escape or switching to another picker restores
@@ -53,7 +53,7 @@ Light+, and Light (Visual Studio). CLI identifiers are `dark_modern`, `dark_plus
 
 Place local VS Code themes in `~/.config/vl/themes/` on every platform,
 including macOS. JSON, JSONC, and XML `.tmTheme` files appear in
-**F1 → Preferences: Color Theme**, labelled Local and Light/Dark. Subdirectories
+**Ctrl+Shift+P → Preferences: Color Theme**, labelled Local and Light/Dark. Subdirectories
 are scanned, so relative include files or a full extension directory can stay
 together. Non-theme JSON files such as `package.json` are skipped. A bad theme
 reports an error without preventing valid themes from appearing. Reopen the

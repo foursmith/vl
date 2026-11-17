@@ -1,6 +1,6 @@
 # Vim 快捷键
 
-在 **F1 → Preferences: Toggle Vim Mode** 中切换，搜索 `vim` 即可找到。
+在 **Ctrl+Shift+P → Preferences: Toggle Vim Mode** 中切换，搜索 `vim` 即可找到。
 默认关闭，设置自动保存。仅可编辑的文本标签页使用 Vim 操作；侧栏、Diff、图片和弹窗仍使用[普通快捷键](KEYBINDINGS.md)。
 
 按键区分大小写；`Space w`、`cs([` 等表示依次按下，不是同时按下。
@@ -178,7 +178,7 @@ Flash 操作符支持剪贴板、撤销和 `.`；重复时重新查找相同的�
 | `Space Enter` | 清除搜索高亮 |
 | `cw` / `F6` | 切到侧栏 / 切换焦点 |
 | `Ctrl+S` / `Ctrl+W` | 保存 / 关闭标签 |
-| `Ctrl+P` / `Ctrl+R` / `F1` | 文件跳转 / 最近文件夹 / 命令 |
+| `Ctrl+P` / `Ctrl+R` / `Ctrl+Shift+P` | 文件跳转 / 最近文件夹 / 命令 |
 
 Space 是 Leader。普通工作区快捷键仍然可用，完整列表见[普通快捷键](KEYBINDINGS.md)。
 

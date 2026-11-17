@@ -10,7 +10,7 @@
 | `Ctrl+1` / `Ctrl+2` / `Ctrl+3` | Explorer / Changes / History |
 | `Ctrl+P` | 搜索并打开文件 |
 | `Ctrl+R` | 打开最近文件夹 |
-| `F1` / `Ctrl+Shift+P` | 命令面板 |
+| `Ctrl+Shift+P` / `F1` | 命令面板 |
 | `Ctrl+G` | 跳到指定行或 `行:列`，从 1 开始 |
 | `Ctrl+F` / `F3` | 搜索当前内容 / 下一个结果 |
 | `F6` | 切换编辑区与侧栏焦点 |
