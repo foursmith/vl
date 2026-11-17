@@ -160,9 +160,9 @@ func (m *Model) View() tea.View {
 	for y := 0; y < m.bodyHeight(); y++ {
 		line := main[y]
 		if m.sideShown() {
-			color := m.colors.SideBarBorder
+			color := m.colors.Panel
 			if m.resizingSidebar || m.sidebarDividerAt(m.hoverX, m.hoverY) {
-				color = m.colors.FocusBorder
+				color = m.colors.Accent
 			}
 			glyph := "│"
 			if color == "" {
