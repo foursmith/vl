@@ -63,6 +63,22 @@ func (m *Model) selectPickerIndex(index int) {
 	m.syncPicker()
 }
 
+func (m *Model) scrollPicker(msg tea.MouseWheelMsg) {
+	rows := m.filteredActions()
+	if m.pickerLayout(rows).indexAt(msg.X, msg.Y) < 0 {
+		return
+	}
+	delta := 1
+	switch msg.Button {
+	case tea.MouseWheelUp:
+		delta = -1
+	case tea.MouseWheelDown:
+	default:
+		return
+	}
+	m.pickerTop = min(max(0, m.pickerTop+delta), max(0, len(rows)-m.pickerHeight()))
+}
+
 func (m *Model) pickerKey(msg tea.KeyPressMsg) bool {
 	index := m.pickerIndex
 	switch {

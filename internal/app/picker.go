@@ -61,7 +61,6 @@ func (m *Model) pickerOverlay(base []string) []string {
 }
 
 func (m *Model) clickPicker(msg tea.MouseClickMsg) tea.Cmd {
-	m.syncPicker()
 	rows := m.filteredActions()
 	l := m.pickerLayout(rows)
 	if msg.Button == tea.MouseLeft && msg.X >= l.x && msg.X < l.x+l.width {

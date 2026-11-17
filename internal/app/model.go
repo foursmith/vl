@@ -679,14 +679,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 	case tea.MouseWheelMsg:
 		if m.modal != "" {
 			if m.isPicker() {
-				if msg.Button != tea.MouseWheelUp && msg.Button != tea.MouseWheelDown {
-					return m, nil
-				}
-				delta := 1
-				if msg.Button == tea.MouseWheelUp {
-					delta = -1
-				}
-				m.selectPickerIndex(m.pickerIndex + delta)
+				m.scrollPicker(msg)
 			}
 			return m, nil
 		}

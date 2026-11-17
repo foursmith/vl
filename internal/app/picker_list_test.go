@@ -52,14 +52,10 @@ func TestPickerListPagingResizeAndMouseTarget(t *testing.T) {
 	}
 }
 
-func TestPickerListSearchTypingPasteAndWheel(t *testing.T) {
+func TestPickerListSearchTypingAndPaste(t *testing.T) {
 	m := tabWorkspace(t, 0)
 	m.workspaces = []string{"/work/alpha", "/work/jk", "/work/zulu"}
 	m.openRecentFolders()
-	m.Update(tea.MouseWheelMsg{Button: tea.MouseWheelDown})
-	if m.pickerIndex != 1 {
-		t.Fatal("wheel did not select next folder")
-	}
 	press(m, "j")
 	press(m, "k")
 	if m.input.Value() != "jk" || m.pickerIndex != 0 || len(m.filteredActions()) != 1 {
@@ -158,10 +154,6 @@ func TestPickerContinuousScrolling(t *testing.T) {
 	check(17, 17)
 	press(m, "pgdown")
 	check(22, 18)
-	m.Update(tea.MouseWheelMsg{Button: tea.MouseWheelDown})
-	check(22, 18)
-	m.Update(tea.MouseWheelMsg{Button: tea.MouseWheelLeft})
-	check(22, 18)
 	press(m, "home")
 	check(0, 0)
 	press(m, "up")
@@ -175,5 +167,70 @@ func TestPickerContinuousScrolling(t *testing.T) {
 	m.Update(tea.MouseClickMsg{X: layout.x + 2, Y: layout.y + 3, Button: tea.MouseLeft})
 	if picked != 18 {
 		t.Fatalf("bottom viewport click selected %d, want 18", picked)
+	}
+}
+
+func TestPickerWheelScrollsOnlyList(t *testing.T) {
+	for _, mode := range []string{"quick", "refs", "remotes", "recent"} {
+		t.Run(mode, func(t *testing.T) {
+			m := tabWorkspace(t, 0)
+			defer m.Close()
+			m.Update(tea.WindowSizeMsg{Width: 48, Height: 12})
+			picked := -1
+			for i := range 23 {
+				m.palette = append(m.palette, action{id: fmt.Sprint(i), label: fmt.Sprintf("item%02d", i), run: func() tea.Cmd { picked = i; return nil }})
+			}
+			query, title := "", "Choose"
+			if mode == "quick" {
+				query, title = ">", "Commands"
+			}
+			m.prompt(mode, title, query)
+			l := m.pickerLayout(m.filteredActions())
+			before := strings.Split(m.View().Content, "\n")
+			wheel := func(x, y int, button tea.MouseButton) {
+				m.Update(tea.MouseWheelMsg{X: x, Y: y, Button: button})
+			}
+			for _, point := range [][2]int{{l.x, l.y}, {l.x + 2, l.y + 1}, {l.x - 1, l.y + 3}, {l.x + l.width, l.y + 3}, {l.x, l.y + 3 + l.count}} {
+				wheel(point[0], point[1], tea.MouseWheelDown)
+			}
+			if m.pickerTop != 0 || m.pickerIndex != 0 {
+				t.Fatal("wheel outside list moved viewport or selection")
+			}
+			for range 7 {
+				wheel(l.x+2, l.y+3, tea.MouseWheelDown)
+			}
+			after := strings.Split(m.View().Content, "\n")
+			if m.pickerTop != 7 || m.pickerIndex != 0 || m.input.Value() != query || !strings.Contains(plain(after[l.y+3]), "item07") {
+				t.Fatal("wheel did not scroll viewport independently of selection")
+			}
+			for i := range before {
+				if (i < l.y+3 || i >= l.y+3+l.count) && before[i] != after[i] {
+					t.Fatalf("wheel changed frame outside list at row %d", i)
+				}
+			}
+			wheel(l.x+2, l.y+3, tea.MouseWheelLeft)
+			if m.pickerTop != 7 {
+				t.Fatal("horizontal wheel changed viewport")
+			}
+			for range 30 {
+				wheel(l.x+2, l.y+3, tea.MouseWheelDown)
+			}
+			if m.pickerTop != 18 {
+				t.Fatal("wheel did not clamp at bottom")
+			}
+			wheel(l.x+2, l.y+3, tea.MouseWheelUp)
+			if m.pickerTop != 17 {
+				t.Fatal("wheel up did not scroll list")
+			}
+			press(m, "down")
+			if m.pickerIndex != 1 || m.pickerTop != 1 {
+				t.Fatal("keyboard did not reveal selection after wheel scrolling")
+			}
+			wheel(l.x+2, l.y+3, tea.MouseWheelDown)
+			m.Update(tea.MouseClickMsg{X: l.x + 2, Y: l.y + 3, Button: tea.MouseLeft})
+			if picked != 2 || m.modal != "" {
+				t.Fatalf("click after wheel selected %d, want visible item 2", picked)
+			}
+		})
 	}
 }

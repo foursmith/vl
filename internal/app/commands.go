@@ -195,9 +195,6 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 			return m.chooseConfirmation()
 		}
 	}
-	if m.isPicker() {
-		m.syncPicker()
-	}
 	if m.confirmationDialog() {
 		l := m.dialogLayout()
 		top := l.top

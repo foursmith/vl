@@ -121,8 +121,7 @@ func TestImageProtocolSurvivesRendererAndCleansOwnedIDs(t *testing.T) {
 		t.Fatal("unchanged frame retransmitted image")
 	}
 	// A modal must replace the same cells that carry image placeholders.
-	m.modal = "palette"
-	m.input.SetValue(">")
+	m.openPalette()
 	modal := m.View().Content
 	if count := strings.Count(modal, string(kitty.Placeholder)); count == 0 || count >= placeholderCount {
 		t.Fatal("modal did not clip image placeholders")
