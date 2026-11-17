@@ -1,6 +1,14 @@
-# 构建
+# Build
 
-- 构建可执行文件时使用 `make build`，输出到 `bin/vl`。
-- 用户通过 `~/.local/bin/vl` 的符号链接运行此仓库的 `bin/vl`，因此交付需要运行验证的修改时，必须更新这个构建产物。
-- 不要用 `go build ./cmd/vl` 代替交付构建；它会在仓库根目录生成 `vl`，不会更新用户实际运行的文件。
-- 已运行的 vl 进程需要退出后重新打开，才会使用新的构建。
+- Use `make build` to build the executable at `bin/vl`.
+- The user runs this repository's `bin/vl` through the `~/.local/bin/vl` symlink. Update this build artifact when delivering changes that require runtime verification.
+- Do not substitute `go build ./cmd/vl` for the delivery build. It creates `vl` in the repository root and does not update the executable the user runs.
+- Running vl processes must be closed and reopened to use the new build.
+
+# Commit Messages
+
+- Write commit messages in English using Conventional Commits: `<type>[optional scope]: <description>`.
+- Use a suitable type, such as `feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`, `ci`, or `chore`.
+- Keep the description concise, in the imperative mood, and without a trailing period.
+- Add a body when needed to explain the reason for the change and any important behavior or compatibility implications.
+- Example: `fix: preserve terminal when switching workspaces`.
