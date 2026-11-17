@@ -121,6 +121,7 @@ func (m *Model) View() tea.View {
 	if m.width < 30 || m.height < 8 {
 		v := tea.NewView(row("Resize terminal to at least 30 × 8", m.width, m.colors.Foreground, m.colors.Background))
 		v.AltScreen = true
+		v.BackgroundColor = lipgloss.Color(m.colors.Panel)
 		return v
 	}
 	hoveredRow := m.hoveredSidebarRow()
@@ -180,8 +181,8 @@ func (m *Model) View() tea.View {
 	}
 	v := tea.NewView(strings.Join(lines, "\n"))
 	v.AltScreen = true
-	// Cells paint their own backgrounds. Leave the terminal default untouched
-	// so our rendering cannot change the appearance source we follow.
+	// Terminal padding sits outside painted cells and should match the chrome.
+	v.BackgroundColor = lipgloss.Color(m.colors.Panel)
 	v.MouseMode = tea.MouseModeAllMotion
 	v.ReportFocus = true
 	m.hoverRender = hoverRenderCache{main: main, view: v, key: key}

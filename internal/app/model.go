@@ -108,9 +108,8 @@ type Model struct {
 	localThemesSeq          uint64
 	darkTheme               *theme.Theme
 	lightTheme              *theme.Theme
-	colorScheme             string
-	themeChosen             bool
-	terminalReported        bool
+	appearance              appearanceState
+	layoutStore             *config.LayoutStore
 	themeNotifications      bool
 	themeNotificationsOwned bool
 	ctx                     context.Context
@@ -439,6 +438,10 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		return m, cmd
 	}
 	switch msg := msg.(type) {
+	case layoutSavedMsg:
+		if msg.err != nil {
+			m.notice = "Save theme preferences: " + msg.err.Error()
+		}
 	case localThemesMsg:
 		m.applyLocalThemes(msg)
 	case historyPageMsg:
@@ -470,14 +473,14 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		return m, m.themeNotificationMode(msg)
 	case systemAppearanceMsg:
 		var change tea.Cmd
-		if !m.terminalReported && msg.known {
-			change = m.externalColorScheme(msg.light)
+		if msg.known {
+			change = m.externalColorScheme(msg.light, "system")
 		}
 		return m, tea.Batch(change, m.pollSystemAppearance(true))
 	case uv.DarkColorSchemeEvent:
-		return m, m.terminalColorScheme(false)
+		return m, m.externalColorScheme(false, "terminal")
 	case uv.LightColorSchemeEvent:
-		return m, m.terminalColorScheme(true)
+		return m, m.externalColorScheme(true, "terminal")
 	case workspacesMsg:
 		if msg.seq != m.workspaceSeq {
 			break

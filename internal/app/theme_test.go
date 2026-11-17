@@ -10,6 +10,7 @@ import (
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/ourongxing/elegit/internal/config"
 	"github.com/ourongxing/elegit/internal/diff"
 	"github.com/ourongxing/elegit/internal/theme"
 )
@@ -33,8 +34,8 @@ func TestThemeSwitchRejectsOldSyntaxAndPreservesEditing(t *testing.T) {
 	if len(m.tabs[0].spans) == 0 || m.tabs[0].spans[0][0].Color != "#0000FF" {
 		t.Fatal("editor retained dark syntax")
 	}
-	if m.View().BackgroundColor != nil {
-		t.Fatal("theme switch changed terminal default background")
+	if !sameColor(m.View().BackgroundColor, lipgloss.Color(m.colors.Panel)) {
+		t.Fatal("theme switch did not update terminal padding")
 	}
 	drain(t, m, m.SetTheme("dark_modern", ""))
 	if m.colors != theme.Dark() || m.tabs[0].spans[0][0].Color != "#569CD6" {
@@ -93,8 +94,8 @@ func TestLightThemePickerAndDiffSurfaces(t *testing.T) {
 func TestThemeFollowsOnlyWhenPreviouslyAligned(t *testing.T) {
 	m := tabWorkspace(t, 0)
 	m.Update(uv.LightColorSchemeEvent{})
-	if !m.colorTheme.IsLight() {
-		t.Fatal("initial appearance was not applied")
+	if m.colorTheme.IsLight() {
+		t.Fatal("first report must only establish the appearance baseline")
 	}
 	m.SetTheme("light_plus", "")
 	m.Update(uv.DarkColorSchemeEvent{})
@@ -129,26 +130,36 @@ func TestThemePairAndAlignmentSurviveRestart(t *testing.T) {
 	m.SetTheme("dark_plus", "")
 	next := tabWorkspace(t, 0)
 	next.SetLayout(m.Layout())
-	next.Update(uv.LightColorSchemeEvent{}) // environment changed while closed
-	if next.committedTheme().ID != "light_plus" {
-		t.Fatal("aligned theme did not follow on restart")
+	next.Update(uv.LightColorSchemeEvent{})
+	if next.committedTheme().ID != "dark_plus" {
+		t.Fatal("first report replaced saved theme")
 	}
 	next.Update(uv.DarkColorSchemeEvent{})
 	if next.committedTheme().ID != "dark_plus" {
-		t.Fatal("remembered dark theme not restored")
+		t.Fatal("mismatched saved theme was replaced")
 	}
-	// Save a deliberate mismatch, then change the external appearance while closed.
 	next.Update(uv.LightColorSchemeEvent{})
-	next.SetTheme("dark_vs", "")
-	other := tabWorkspace(t, 0)
-	other.SetLayout(next.Layout())
-	other.Update(uv.DarkColorSchemeEvent{})
-	if other.committedTheme().ID != "dark_vs" {
-		t.Fatal("restart replaced mismatched theme")
+	if next.committedTheme().ID != "light_plus" {
+		t.Fatal("remembered light theme did not follow subsequent change")
 	}
-	other.Update(uv.LightColorSchemeEvent{})
-	if other.committedTheme().ID != "light_plus" {
-		t.Fatal("restored pair did not resume following")
+	next.Update(uv.DarkColorSchemeEvent{})
+	if next.committedTheme().ID != "dark_plus" {
+		t.Fatal("remembered dark theme was lost")
+	}
+}
+
+func TestFirstTerminalReportDoesNotTreatSystemHandoffAsAppearanceChange(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	m.SetTheme("dark_plus", "")
+	m.Update(systemAppearanceMsg{light: false, known: true})
+	m.Update(uv.LightColorSchemeEvent{})
+	if m.committedTheme().ID != "dark_plus" {
+		t.Fatal("terminal's first report overrode saved theme after system fallback")
+	}
+	m.Update(uv.DarkColorSchemeEvent{})
+	m.Update(uv.LightColorSchemeEvent{})
+	if m.committedTheme().ID != "light_modern" {
+		t.Fatal("subsequent aligned terminal changes did not follow")
 	}
 }
 
@@ -160,12 +171,12 @@ func TestFirstAppearancePreservesExplicitSelection(t *testing.T) {
 		t.Fatal("first report replaced manual theme")
 	}
 	m.Update(systemAppearanceMsg{light: false, known: true})
-	if m.colorScheme != "light" {
+	if !m.appearance.light {
 		t.Fatal("system fallback overrode terminal report")
 	}
 	m.width, m.height = 20, 5
-	if m.View().BackgroundColor != nil {
-		t.Fatal("small view changed terminal default background")
+	if !sameColor(m.View().BackgroundColor, lipgloss.Color(m.colors.Panel)) {
+		t.Fatal("small view did not update terminal padding")
 	}
 }
 
@@ -412,8 +423,8 @@ func TestPickerHasContinuousFrame(t *testing.T) {
 func TestSystemAppearanceFallbackAndTerminalPriority(t *testing.T) {
 	m := tabWorkspace(t, 0)
 	m.Update(systemAppearanceMsg{light: true, known: true})
-	if !m.colorTheme.IsLight() || m.colorScheme != "light" {
-		t.Fatal("initial system appearance ignored")
+	if m.colorTheme.IsLight() || !m.appearance.light {
+		t.Fatal("first system report must only establish the appearance baseline")
 	}
 	m.SetTheme("light_vs", "")
 	m.Update(systemAppearanceMsg{light: false, known: true})
@@ -421,15 +432,20 @@ func TestSystemAppearanceFallbackAndTerminalPriority(t *testing.T) {
 		t.Fatal("aligned theme did not follow system change")
 	}
 	m.Update(systemAppearanceMsg{light: true, known: false})
-	if m.colorTheme.IsLight() || m.colorScheme != "dark" {
+	if m.colorTheme.IsLight() || m.appearance.light {
 		t.Fatal("unknown system appearance changed theme")
 	}
+	m.Update(uv.LightColorSchemeEvent{})
+	if m.committedTheme().ID != "dark_modern" {
+		t.Fatal("first terminal report replaced saved selection")
+	}
+	m.Update(uv.DarkColorSchemeEvent{})
 	m.Update(uv.LightColorSchemeEvent{})
 	if m.committedTheme().ID != "light_vs" {
 		t.Fatal("terminal appearance did not use saved counterpart")
 	}
 	m.Update(systemAppearanceMsg{light: false, known: true})
-	if !m.colorTheme.IsLight() || m.colorScheme != "light" {
+	if !m.colorTheme.IsLight() || !m.appearance.light {
 		t.Fatal("system overrode terminal appearance")
 	}
 	if m.pollSystemAppearance(true) != nil {
@@ -452,6 +468,7 @@ func TestRememberedLocalThemeOverrideAndMissingFile(t *testing.T) {
 	m.SetTheme("dark_plus", "")
 	next := tabWorkspace(t, 0)
 	next.SetLayout(m.Layout())
+	next.Update(uv.DarkColorSchemeEvent{})
 	next.Update(uv.LightColorSchemeEvent{})
 	if !next.colorTheme.IsLight() || next.colorTheme.UIThemeOverride != "vs" || next.colors.Background != "#F0E0D0" {
 		t.Fatal("remembered local override not restored")
@@ -461,8 +478,54 @@ func TestRememberedLocalThemeOverrideAndMissingFile(t *testing.T) {
 	}
 	missing := tabWorkspace(t, 0)
 	missing.SetLayout(m.Layout())
+	missing.Update(uv.DarkColorSchemeEvent{})
 	missing.Update(uv.LightColorSchemeEvent{})
 	if missing.committedTheme().ID != "light_modern" || !strings.Contains(missing.notice, "Load remembered theme") {
 		t.Fatal("missing counterpart did not fall back with notice")
+	}
+}
+
+func TestUnsupportedTerminalSavesConfirmedThemeBeforeExit(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "layout.json")
+	m := tabWorkspace(t, 0)
+	m.SetLayoutStore(config.NewLayoutStore(path))
+	m.Update(tea.ModeReportMsg{Mode: ansi.ModeLightDark, Value: ansi.ModeNotRecognized})
+	m.openThemePicker()
+	m.input.SetValue("Light+")
+	m.syncPicker()
+	drain(t, m, m.previewSelectedTheme())
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatal("preview wrote preferences")
+	}
+	drain(t, m, m.selectPickerChoice())
+	saved, err := config.LoadLayout(path)
+	if err != nil || saved.Theme != "light_plus" || saved.LightTheme != "light_plus" {
+		t.Fatalf("confirmation not saved before exit: %+v, %v", saved, err)
+	}
+	// No quit, terminal appearance event, or exit-time save is involved.
+	next := tabWorkspace(t, 0)
+	next.SetLayout(saved)
+	next.Update(tea.ModeReportMsg{Mode: ansi.ModeLightDark, Value: ansi.ModePermanentlyReset})
+	if next.committedTheme().ID != "light_plus" {
+		t.Fatal("unsupported terminal lost saved choice")
+	}
+	next.SetLayoutStore(config.NewLayoutStore(path))
+	drain(t, next, next.SetTheme("dark_plus", ""))
+	saved, err = config.LoadLayout(path)
+	if err != nil || saved.DarkTheme != "dark_plus" || saved.LightTheme != "light_plus" {
+		t.Fatalf("remembered pair not saved: %+v %v", saved, err)
+	}
+}
+
+func TestThemeSaveFailureRemainsVisible(t *testing.T) {
+	parent := filepath.Join(t.TempDir(), "not-a-directory")
+	if err := os.WriteFile(parent, []byte("occupied"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	m := tabWorkspace(t, 0)
+	m.SetLayoutStore(config.NewLayoutStore(filepath.Join(parent, "layout.json")))
+	drain(t, m, m.SetTheme("light_plus", ""))
+	if m.committedTheme().ID != "light_plus" || !strings.Contains(m.notice, "Save theme preferences:") {
+		t.Fatal("save failure was silent or discarded selection")
 	}
 }

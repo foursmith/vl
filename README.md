@@ -152,13 +152,15 @@ no Git repository; initialization keeps open editor tabs and unsaved edits.
   are checked before replacing a file.
 - Remember separate dark and light themes. When the current theme matches the
   terminal appearance, its next light/dark change selects the remembered counterpart.
+  First reports after startup preserve the saved theme.
   A mismatched manual choice stays selected. Terminal notifications (DEC 2031)
   take precedence; macOS system appearance is the fallback.
   Open **F1 → Preferences: Color Theme** for the searchable picker: arrows preview,
   Enter confirms, Esc cancels. Put VS Code JSON/JSONC or TextMate themes in
   `~/.config/elegit/themes/`; see [theme compatibility](docs/THEME.md).
-  Current selection, dark/light choices, and last appearance are saved on exit
-  in `layout.json` and retained across repository switches.
+  Confirmed themes are saved immediately in `layout.json`, even without terminal
+  appearance notifications. Previews are not saved. Other layout preferences are
+  saved on exit; all preferences are retained across repository switches.
   `-theme light_modern` / `-theme dark_modern` or any builtin/local ID selects a theme at startup.
 - TextMate syntax highlighting with VS Code Dark Modern / Light Modern token rules, including font styles, for recognized languages up to 256 KiB.
 - Drag the sidebar divider to resize it. Use **View: Move Sidebar Right/Left**

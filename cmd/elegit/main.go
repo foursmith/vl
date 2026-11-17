@@ -67,16 +67,17 @@ func main() {
 		layout, layoutErr = config.LoadLayout(layoutPath)
 	}
 	if layoutErr == nil {
-		// An explicit startup selection establishes its own appearance baseline.
-		if selectedTheme != nil {
-			layout.ColorScheme = ""
-		}
 		m.SetLayout(layout)
 	}
 	if selectedTheme != nil {
 		m.SetColorTheme(selectedTheme)
 	}
 
+	var layoutStore *config.LayoutStore
+	if layoutErr == nil {
+		layoutStore = config.NewLayoutStore(layoutPath)
+		m.SetLayoutStore(layoutStore)
+	}
 	for {
 		sessionPath, sessionErr := config.SessionPath(repo.Root)
 		if sessionErr == nil {
@@ -107,13 +108,14 @@ func main() {
 		repo = next
 		m = app.New(ctx, repo, *icons)
 		m.SetLayout(preferences)
+		m.SetLayoutStore(layoutStore)
 	}
 	if layoutErr != nil {
 		fmt.Fprintln(os.Stderr, "Load layout preferences:", layoutErr)
 	} else {
 		updated := m.Layout()
 		if updated != layout {
-			if saveErr := config.SaveLayout(layoutPath, updated); saveErr != nil {
+			if saveErr := layoutStore.Prepare(updated)(); saveErr != nil {
 				fmt.Fprintln(os.Stderr, "Save layout preferences:", saveErr)
 			}
 		}

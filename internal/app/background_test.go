@@ -25,20 +25,23 @@ func sameColor(a, b color.Color) bool {
 	return ar == br && ag == bg && ab == bb && aa == ba
 }
 
-func TestThemePreservesTerminalDefaultBackground(t *testing.T) {
+func TestTerminalPaddingFollowsThemeChrome(t *testing.T) {
 	m := tabWorkspace(t, 1)
-	m.SetTheme("dark_modern", "")
-	for _, open := range []bool{false, true} {
-		if open {
-			m.openFile("file0.go")
+	for _, id := range []string{"dark_modern", "light_modern", "dark_vs"} {
+		m.SetTheme(id, "")
+		m.width, m.height = 120, 36
+		for _, open := range []bool{false, true} {
+			if open {
+				m.openFile("file0.go")
+			}
+			if !sameColor(m.View().BackgroundColor, lipgloss.Color(m.colors.Panel)) {
+				t.Fatalf("%s, open file %v: terminal padding differs from chrome", id, open)
+			}
 		}
-		if m.View().BackgroundColor != nil {
-			t.Fatalf("open file %v: terminal default background was changed", open)
+		m.width, m.height = 20, 5
+		if !sameColor(m.View().BackgroundColor, lipgloss.Color(m.colors.Panel)) {
+			t.Fatalf("%s: small terminal padding differs from chrome", id)
 		}
-	}
-	m.width, m.height = 20, 5
-	if m.View().BackgroundColor != nil {
-		t.Fatal("small view changed terminal default background")
 	}
 }
 

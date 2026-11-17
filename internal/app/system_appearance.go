@@ -12,7 +12,7 @@ type systemAppearanceMsg struct{ light, known bool }
 // Terminal reports take precedence over the system fallback. Run platform I/O
 // outside Update, and stop waiting when the workspace closes.
 func (m *Model) pollSystemAppearance(wait bool) tea.Cmd {
-	if m.terminalReported || !platform.HasSystemAppearance() {
+	if m.appearance.source == "terminal" || !platform.HasSystemAppearance() {
 		return nil
 	}
 	ctx := m.ctx

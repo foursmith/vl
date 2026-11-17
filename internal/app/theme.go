@@ -23,13 +23,12 @@ func (m *Model) SetTheme(name, uiTheme string) tea.Cmd {
 
 // SetColorTheme commits a selection. Preview changes never call this method.
 func (m *Model) SetColorTheme(selected *theme.Theme) tea.Cmd {
-	m.themeChosen = true
 	if selected.IsLight() {
 		m.lightTheme = selected
 	} else {
 		m.darkTheme = selected
 	}
-	return m.applyTheme(selected)
+	return tea.Batch(m.applyTheme(selected), m.saveThemePreferences())
 }
 
 func (m *Model) committedTheme() *theme.Theme {
@@ -39,23 +38,20 @@ func (m *Model) committedTheme() *theme.Theme {
 	return m.colorTheme
 }
 
-// Compare against the previous external appearance, before recording the new
-// one. A deliberately mismatched theme stays selected through this transition.
-func (m *Model) externalColorScheme(light bool) tea.Cmd {
-	previous := m.colorScheme
-	m.colorScheme = "dark"
-	if light {
-		m.colorScheme = "light"
-	}
-	if previous == m.colorScheme {
+// Appearance is session state. The first report establishes a baseline; only
+// later changes from the same source can switch an aligned theme.
+type appearanceState struct {
+	source string
+	light  bool
+}
+
+func (m *Model) externalColorScheme(light bool, source string) tea.Cmd {
+	previous := m.appearance
+	if previous.source == "terminal" && source == "system" {
 		return nil
 	}
-	current := m.committedTheme()
-	if previous == "" {
-		if m.themeChosen {
-			return nil
-		}
-	} else if current.IsLight() != (previous == "light") {
+	m.appearance = appearanceState{source: source, light: light}
+	if previous.source != source || previous.light == light || m.committedTheme().IsLight() != previous.light {
 		return nil
 	}
 	selected := m.darkTheme
@@ -70,9 +66,9 @@ func (m *Model) externalColorScheme(light bool) tea.Cmd {
 				m.palette[i].key = "Current"
 			}
 		}
-		return nil
+		return m.saveThemePreferences()
 	}
-	return m.applyTheme(selected)
+	return tea.Batch(m.applyTheme(selected), m.saveThemePreferences())
 }
 
 func (m *Model) applyTheme(selected *theme.Theme) tea.Cmd {
@@ -127,11 +123,6 @@ func (m *Model) themeNotificationMode(msg tea.ModeReportMsg) tea.Cmd {
 	default:
 		return nil // unsupported or permanently disabled; system fallback remains available
 	}
-}
-
-func (m *Model) terminalColorScheme(light bool) tea.Cmd {
-	m.terminalReported = true
-	return m.externalColorScheme(light)
 }
 
 // ThemeNotificationRestoreSequence is written after Bubble Tea releases the
