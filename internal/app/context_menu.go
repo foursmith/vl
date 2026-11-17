@@ -223,6 +223,9 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 		if m.section == explorer {
 			if entry != nil {
 				add(m.tr("Open"), "Enter", bind(m.openSelected))
+				if entry.folder != "" && strings.Contains(entry.label, "/") {
+					add(m.tr("Split Folders"), "", bind(m.splitFolderChain))
+				}
 				add(m.tr("Copy"), "yy", bind(m.yankEntry))
 			}
 			add(m.tr("Paste"), "p", bind(m.pasteEntryPrompt))

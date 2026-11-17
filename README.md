@@ -59,6 +59,8 @@ colons take precedence over location suffixes.
   repository; committing a submodule does not commit its parent's pointer.
 - **Explorer and tabs:** compact folder trees, file search, preview/kept tabs,
   context menus, recent workspaces and per-folder session restoration.
+  Right-click a compact folder chain and choose **Split Folders** to show each
+  directory separately until the next tree refresh.
 - **Workspace search:** second sidebar tab, grouped file results with line numbers and match highlights;
   case, whole-word, regex and ignored-file options, including unsaved open text buffers.
   Use Replace below the search field or Ctrl+Shift+H for selected-match/file or workspace replacement,

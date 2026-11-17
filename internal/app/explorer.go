@@ -38,11 +38,15 @@ func (m *Model) revealDocument(path string) tea.Cmd {
 }
 
 func (m *Model) refreshTree() tea.Cmd {
+	return m.readTree(nil)
+}
+
+func (m *Model) readTree(uncompressed map[string]bool) tea.Cmd {
 	m.treeSeq++
 	seq := m.treeSeq
 	expanded := maps.Clone(m.expanded)
 	return func() tea.Msg {
-		entries, err := files.ReadTree(m.ctx, m.repo.Root, expanded)
+		entries, err := files.ReadTree(m.ctx, m.repo.Root, expanded, uncompressed)
 		if err != nil {
 			return treeMsg{seq: seq, err: err}
 		}
@@ -97,6 +101,24 @@ func (m *Model) explorerItems() []item {
 func (m *Model) collapseFolders() tea.Cmd {
 	m.expanded = map[string]bool{}
 	return m.refreshTree()
+}
+
+func (m *Model) splitFolderChain() tea.Cmd {
+	entry := m.current()
+	if m.section != explorer || entry == nil || entry.folder == "" || !strings.Contains(entry.label, "/") {
+		return nil
+	}
+	// Keep the final directory's open state; reveal each previously hidden parent.
+	path := strings.TrimSuffix(entry.folder, entry.label)
+	parts := strings.Split(entry.label, "/")
+	uncompressed := make(map[string]bool, len(parts)-1)
+	for _, part := range parts[:len(parts)-1] {
+		path += part
+		uncompressed[path] = true
+		m.expanded[path] = true
+		path += "/"
+	}
+	return m.readTree(uncompressed)
 }
 
 func (m *Model) newEntry(directory bool) tea.Cmd {

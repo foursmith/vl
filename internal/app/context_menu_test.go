@@ -1,12 +1,82 @@
 package app
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 )
+
+func TestContextMenuSplitsCompactFolders(t *testing.T) {
+	for _, open := range []bool{false, true} {
+		t.Run(map[bool]string{false: "collapsed", true: "expanded"}[open], func(t *testing.T) {
+			m := explorerWorkspace(t)
+			for _, path := range []string{"parent/chain/leaf", "other/chain"} {
+				if err := os.MkdirAll(filepath.Join(m.repo.Root, path), 0755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := os.WriteFile(filepath.Join(m.repo.Root, "parent/chain/leaf/file.go"), nil, 0644); err != nil {
+				t.Fatal(err)
+			}
+			m.expanded["parent/chain/leaf"] = open
+			drain(t, m, m.refreshTree())
+			for i, entry := range m.items {
+				if entry.folder == "parent/chain/leaf" {
+					m.Update(tea.MouseClickMsg{X: m.sideX() + 4, Y: headerHeight + i, Button: tea.MouseRight})
+					break
+				}
+			}
+			drain(t, m, chooseContextAction(t, m, "Split Folders"))
+			assertSplit := func() {
+				t.Helper()
+				for path, depth := range map[string]int{"parent": 0, "parent/chain": 1, "parent/chain/leaf": 2} {
+					found := false
+					for _, entry := range m.items {
+						if entry.folder == path && entry.label == filepath.Base(path) && entry.depth == depth {
+							found = true
+						}
+					}
+					if !found {
+						t.Fatalf("missing split directory %s: %+v", path, m.items)
+					}
+				}
+				fileVisible, otherCompact := false, false
+				for _, entry := range m.items {
+					fileVisible = fileVisible || entry.file == "parent/chain/leaf/file.go"
+					otherCompact = otherCompact || entry.label == "other/chain"
+				}
+				if fileVisible != open || !otherCompact || m.current().folder != "parent/chain/leaf" {
+					t.Fatal("split changed the leaf state, selection, or unrelated chain")
+				}
+			}
+			assertSplit()
+			press(m, "shift+f10")
+			for _, a := range m.contextMenu.actions {
+				if a.label == "Split Folders" {
+					t.Fatal("split action offered for an ordinary folder")
+				}
+			}
+			press(m, "esc")
+			drain(t, m, m.refreshTree())
+			if m.current() == nil || m.current().label != "parent/chain/leaf" || m.current().depth != 0 {
+				t.Fatal("tree refresh did not restore compact folders")
+			}
+			if m.folderExpanded(*m.current()) != open {
+				t.Fatal("tree refresh changed the leaf's open state")
+			}
+			drain(t, m, m.collapseFolders())
+			for _, entry := range m.items {
+				if entry.depth != 0 {
+					t.Fatal("collapse all exposed children")
+				}
+			}
+		})
+	}
+}
 
 func chooseContextAction(t *testing.T, m *Model, label string) tea.Cmd {
 	t.Helper()

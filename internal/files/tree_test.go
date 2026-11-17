@@ -17,14 +17,14 @@ func TestTreeIsLazyIncludesIgnoredCandidatesAndSkipsGitMetadata(t *testing.T) {
 	}
 	os.WriteFile(filepath.Join(root, "cmd", "main.go"), []byte("package main\n"), 0644)
 	os.WriteFile(filepath.Join(root, "README.md"), nil, 0644)
-	entries, err := ReadTree(context.Background(), root, nil)
+	entries, err := ReadTree(context.Background(), root, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(entries) != 4 || entries[0].Path != "bin" || entries[1].Path != "cmd" || entries[2].Path != "examples/nested" {
 		t.Fatalf("unexpected root tree: %+v", entries)
 	}
-	entries, err = ReadTree(context.Background(), root, map[string]bool{"cmd": true})
+	entries, err = ReadTree(context.Background(), root, map[string]bool{"cmd": true}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestTreeCompactsOnlySingleDirectoryChains(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	entries, err := ReadTree(context.Background(), root, map[string]bool{"apps/web/src": true, "apps/web/src/hooks": true})
+	entries, err := ReadTree(context.Background(), root, map[string]bool{"apps/web/src": true, "apps/web/src/hooks": true}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestTreeCompactsOnlySingleDirectoryChains(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, err := ReadTree(ctx, root, nil); err != context.Canceled {
+	if _, err := ReadTree(ctx, root, nil, nil); err != context.Canceled {
 		t.Fatalf("cancellation: %v", err)
 	}
 }

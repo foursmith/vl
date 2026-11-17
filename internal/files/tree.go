@@ -17,7 +17,7 @@ type Entry struct {
 	Depth              int
 }
 
-func ReadTree(ctx context.Context, root string, expanded map[string]bool) ([]Entry, error) {
+func ReadTree(ctx context.Context, root string, expanded, uncompressed map[string]bool) ([]Entry, error) {
 	var result []Entry
 	readDirectory := func(path string) ([]os.DirEntry, error) {
 		if err := ctx.Err(); err != nil {
@@ -46,7 +46,7 @@ func ReadTree(ctx context.Context, root string, expanded map[string]bool) ([]Ent
 				// Inspect only the single-directory chain, even while collapsed.
 				for {
 					children, readErr = readDirectory(path)
-					if readErr != nil || len(children) != 1 || !children[0].IsDir() {
+					if uncompressed[path] || readErr != nil || len(children) != 1 || !children[0].IsDir() {
 						break
 					}
 					path += "/" + children[0].Name()
