@@ -22,7 +22,7 @@ func TestMonochromeSelectionRemainsVisibleWithoutColor(t *testing.T) {
 	}
 	// The marker occupies existing padding; result hit testing stays aligned.
 	l := m.pickerLayout(m.filteredActions())
-	if !strings.HasPrefix(strings.Split(after, "\n")[l.y+4][l.x:], ">") {
+	if !strings.HasPrefix(strings.Split(after, "\n")[l.y+4][l.x:], "│>") {
 		t.Fatal("marker did not follow the selected command")
 	}
 	press(m, "esc")

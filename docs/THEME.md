@@ -1,6 +1,6 @@
-# Modern color sources
+# VS Code color themes
 
-Colors follow VS Code's **Dark Modern** and **Light Modern**. The reference
+Builtin themes use unmodified VS Code theme files. The reference
 is the installed VS Code build `08d4889f9ec4a1685d257b9b95de036c8e1ce1e5`.
 
 ## Source files
@@ -17,27 +17,133 @@ is the installed VS Code build `08d4889f9ec4a1685d257b9b95de036c8e1ce1e5`.
 
 ## Switching
 
-The default is **Auto (Follow Terminal)**, using
+Elegit remembers one dark and one light theme (Dark Modern and Light Modern by
+default). There is no Auto entry. On an external light/dark transition, Elegit
+switches to the remembered counterpart only if the committed theme matched the
+previous external appearance. A deliberately mismatched selection survives the
+transition. Once it matches the environment again, the next transition follows.
+
+Terminal appearance uses
 [DEC mode 2031 color scheme notifications](https://contour-terminal.org/vt-extensions/color-palette-update-notifications/).
 At startup we probe mode 2031, enable it if supported and currently disabled,
 and request the current light/dark scheme with `CSI ? 996 n`. Notifications
-(`CSI ? 997 ; 1 n` / `CSI ? 997 ; 2 n`) select Dark Modern / Light Modern
-immediately. There is no polling or OSC 11 background-color detection.
-Unsupported terminals keep the dark default; manual selection remains available.
+(`CSI ? 997 ; 1 n` / `CSI ? 997 ; 2 n`) update the appearance immediately.
+Until a terminal report arrives, macOS falls back to its system appearance,
+checked every two seconds with `defaults read -g AppleInterfaceStyle` outside
+the UI loop. Other platforms require terminal reports for automatic changes.
+Without either source, the saved theme remains selected.
 
-Auto leaves the terminal's default background unchanged; cells still receive
-explicit palette colors. On exit, errors and repository switches we disable
-only subscriptions we enabled, preserving modes already set by the caller.
+All themes leave the terminal's default background unchanged; cells receive
+explicit palette colors. This avoids changing the source of appearance reports.
+On exit, errors and repository switches we disable only subscriptions we enabled,
+preserving modes already set by the caller.
 
-Use **F1 → Preferences: Color Theme — Auto / Light Modern / Dark Modern**, or
-launch with `-theme auto` / `-theme light` / `-theme dark`. Explicit light/dark
-choices ignore color scheme notifications. The preference is saved on exit as `theme`
-in `layout.json` alongside sidebar preferences; detected colors are not saved
-as a fixed choice.
+F1 contains one **Preferences: Color Theme** command. It opens a separate searchable
+theme picker with the current selection marked and dark themes before light themes.
+Arrow keys preview the highlighted theme immediately. Enter confirms it and
+remembers it for that appearance; Escape or switching to another picker restores
+the committed theme. Preview does not change either saved theme. External changes
+can update the committed theme while previewing; cancellation restores that latest
+selection. Builtin themes are Dark Modern, Dark+, Dark (Visual Studio), Light Modern,
+Light+, and Light (Visual Studio). CLI identifiers are `dark_modern`, `dark_plus`,
+`dark_vs`, `light_modern`, `light_plus`, and `light_vs`.
 
-Palettes belong to each model. Switching cancels pending syntax jobs, drops
+Place local VS Code themes in `~/.config/elegit/themes/` on every platform,
+including macOS. JSON, JSONC, and XML `.tmTheme` files appear in
+**F1 → Preferences: Color Theme**, labelled Local and Light/Dark. Subdirectories
+are scanned, so relative include files or a full extension directory can stay
+together. Non-theme JSON files such as `package.json` are skipped. A bad theme
+reports an error without preventing valid themes from appearing. Reopen the
+theme picker after adding or updating a theme; discovery runs in the
+background, outside rendering.
+
+Selections from this directory are saved as stable relative identifiers such as
+`local:my-theme.json` or `local:my-pack/themes/day.json`. Display names may change
+without losing the saved selection. Builtin IDs remain separate even if a local
+file has the same name. You can also select a local ID or an external file at
+startup:
+
+```sh
+elegit -theme local:my-theme.json
+elegit -theme /path/to/theme.json
+# If a detached theme has no type declaration:
+elegit -theme local:day.json -theme-type vs
+```
+
+JSON/JSONC comments, trailing commas, relative recursive `include`, and
+`tokenColors` arrays are supported. `tokenColors` may also reference a relative
+XML `.tmTheme` file. Legacy JSON `settings` and standalone XML `.tmTheme` files
+are converted to the same internal theme representation. Includes apply first;
+the child overrides color keys and appends token rules. A color value `default`
+removes an inherited override. Invalid files and missing includes return errors;
+cyclic includes and excessive nesting are rejected.
+
+The loader checks ancestor extension `package.json` manifests for a matching
+`contributes.themes[].path`, label, and `uiTheme`. The extension contribution
+owns the name/category; a standalone root JSON `type` declaration (`light`,
+`dark`, `hc`, `hcLight`) is an import convenience only when no contribution or
+explicit override exists. Includes do not change category. Without either source
+the fallback is `vs-dark`. `-theme-type` supplies an explicit extension type
+(`vs`, `vs-dark`, `hc-light`, `hc-black`) for a detached file. There is no automatic
+scan of installed extensions or Marketplace download.
+
+The committed selection (`theme`, `themeType`), remembered pair (`darkTheme`,
+`lightTheme`, with optional `darkThemeType` / `lightThemeType` overrides), and last
+external appearance (`colorScheme`) are saved in `layout.json` alongside sidebar
+preferences. Remembering the previous appearance preserves the same alignment
+rule across restarts. Only explicit type overrides are stored. Missing remembered
+files report an error and fall back to Modern for that appearance.
+
+Each model owns one immutable theme containing its UI palette and compiled token
+rules. Switching, including between two dark themes, cancels pending syntax jobs, drops
 colored row caches, and requests new editor/diff syntax with the selected theme.
 Old asynchronous results are rejected by cancellation guards.
+
+## Workbench color resolution and mapping
+
+The [source audit](THEME_AUDIT.md) traces registrations through the components
+that consume them. `internal/theme/defaults.json` is extracted from the pinned
+VS Code source: it contains only supported registrations and their dependency
+graph, including light/dark/high-contrast variants, references, alpha transforms,
+and null defaults. `Theme.Color(id)` first checks this theme's overrides, then
+resolves the registration against the same theme. Null stays undefined, rather
+than becoming an editor foreground or another theme's color.
+
+The terminal adapter then maps component roles: sidebar lists, input boxes,
+Quick Input, menus, tab/group headers, status bar, output panel, Git decorations,
+and editor/diff surfaces. Text colors retain RGBA until actual painting. This
+matters when the same text appears on a selection, a token background, or a diff
+line. Inactive tab/placeholder/description defaults follow overridden source
+colors rather than hardcoded RGB approximations.
+
+Quick Input uses its own focus colors even when keyboard focus is in its input;
+menus use `menu.*`; active tabs use `tab.activeForeground`, not generic strong
+text. The single editor group's active state does not change merely because
+sidebar keyboard focus changes. A folder without Git is still an open folder
+for status bar styling.
+
+The TUI cannot paint browser shadows. Picker/menu frames therefore remain a
+separate terminal adaptation when the registered border is absent or too faint.
+This does not rewrite registered colors or brighten the theme's selected-row
+background. File icon artwork/color remains independent of the color theme.
+High-contrast types are resolved with their own defaults, but terminal cells do
+not reproduce every VS Code high-contrast outline or native window effect.
+Unsupported UI IDs, font families/sizes, CSS layouts, and extension code are not
+rendered. The resolver covers Elegit's surfaces, not the complete VS Code UI.
+
+## File tree decorations
+
+Explorer's Git label color is explicit; Changes uses normal inherited label
+text and independently colored status decorations (`fileDecorations.colors` is
+false in VS Code's SCM renderer). Added, untracked, modified, renamed/copied,
+deleted, conflicting, staged modified/deleted, and submodule IDs remain separate.
+Ignored labels are muted; file/folder icons retain their icon-theme colors.
+
+Hover and inactive selection do not erase an explicit Explorer Git color.
+Only focused selection clears label/badge colors to inherit the selected row's
+foreground, following `iconlabel.css`. Text badges have opacity .75 and
+propagated folder bubbles .4, composited against the actual row background.
+Changes status icons keep their own color independently of label selection.
 
 ## Terminal diff colors
 
@@ -66,10 +172,28 @@ their text and line ending; paired replacements emphasize the changed range.
 
 The editor and diff share `internal/highlight`, backed by `textmate-go v0.3.0`.
 The six unmodified theme JSON files above are embedded under
-`internal/highlight/themes`; their `include` chain is resolved in order.
-TextMate scope stacks match the inherited `tokenColors` rules, including
-ancestor selectors, specificity, foreground inheritance and font-style resets.
+`internal/theme/themes`; their `include` chain is resolved in order.
+TextMate scope stacks match inherited `tokenColors` using a dot-scope trie
+following [vscode-textmate's theme resolver](https://github.com/microsoft/vscode-textmate/blob/main/src/theme.ts):
+scope strings/arrays, comma groups, ordered ancestors, direct-child `>` matching,
+scope depth and ancestor specificity, later identical-rule overrides, inherited
+foreground/background and explicit font-style resets. VS Code ignores unscoped
+`tokenColors` defaults; editor defaults come from `colors` (legacy TextMate
+settings are converted first). Scope exclusion/boolean expressions are not
+implemented by this upstream theme resolver either.
+
+Token RGBA survives scope resolution and highlighting. Painting composites token
+backgrounds on the current editor/context surface, then selection overlays and
+foreground alpha. Diff line/emphasis overlays take precedence over token
+backgrounds. An unmatched token uses the enclosing
+scope style or editor foreground, without category-based fallback colors.
 Colors and bold, italic, underline and strikethrough styles reach both renderers.
+`internal/theme/testdata/generate.cjs` generates reference scope/style cases with
+the official `vscode-textmate@9.3.2` package; normal Go tests read the checked-in
+fixture without requiring Node or Bun. The resolver's MIT notice is preserved
+in `third_party/vscode-textmate-LICENSE`. ttt's centralized style mapping and
+VS Code parity tests informed this design; no ttt terminal/style-slot runtime
+is required.
 There is no Chroma token-category mapping or Go keyword color special case.
 
 The bundled grammar catalog supplies language detection and lazy grammar loading.

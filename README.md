@@ -25,8 +25,11 @@ terminal password prompts are disabled.
 make build
 bin/elegit /path/to/folder
 
-# Override automatic theme detection (also available via F1 → Preferences: Color Theme):
-bin/elegit -theme light /path/to/repository
+# Select a theme (also available via F1 → Preferences: Color Theme):
+bin/elegit -theme light_modern
+# Use another builtin or a theme from ~/.config/elegit/themes/:
+bin/elegit -theme dark_plus
+bin/elegit -theme local:my-theme.json /path/to/repository
 
 # Plain-text icons when the terminal font lacks Nerd Font glyphs:
 bin/elegit -icons=false /path/to/repository
@@ -147,11 +150,16 @@ no Git repository; initialization keeps open editor tabs and unsaved edits.
   copy/cut/paste, undo/redo, find, and save. Existing BOM, uniform CRLF/LF, final
   newline presence, and file permissions survive saves. External modifications
   are checked before replacing a file.
-- Automatically follow terminal color scheme notifications (DEC 2031), with immediate
-  updates while running. Terminals without this protocol keep the dark default.
-  Choose Auto, Light Modern or Dark Modern from **F1 → Preferences: Color Theme**.
-  The choice is saved on exit in `layout.json` and retained when opening another repository.
-  `-theme auto` / `-theme light` / `-theme dark` overrides the saved choice at startup.
+- Remember separate dark and light themes. When the current theme matches the
+  terminal appearance, its next light/dark change selects the remembered counterpart.
+  A mismatched manual choice stays selected. Terminal notifications (DEC 2031)
+  take precedence; macOS system appearance is the fallback.
+  Open **F1 → Preferences: Color Theme** for the searchable picker: arrows preview,
+  Enter confirms, Esc cancels. Put VS Code JSON/JSONC or TextMate themes in
+  `~/.config/elegit/themes/`; see [theme compatibility](docs/THEME.md).
+  Current selection, dark/light choices, and last appearance are saved on exit
+  in `layout.json` and retained across repository switches.
+  `-theme light_modern` / `-theme dark_modern` or any builtin/local ID selects a theme at startup.
 - TextMate syntax highlighting with VS Code Dark Modern / Light Modern token rules, including font styles, for recognized languages up to 256 KiB.
 - Drag the sidebar divider to resize it. Use **View: Move Sidebar Right/Left**
   in the command palette (**F1**) to change its position, or **View: Reset Sidebar Width**

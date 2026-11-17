@@ -78,10 +78,10 @@ func (m *Model) changeRowActions(entry item, w int) []rowAction {
 	return actions
 }
 
-func (m *Model) changeActionRow(entry item, w int, fg, bg string) string {
+func (m *Model) changeActionRow(entry item, w int, fg, bg string, state treeRowState) string {
 	actions := m.changeRowActions(entry, w)
 	if len(actions) == 0 {
-		text, _ := m.explorerRow(entry, w, bg)
+		text, _ := m.treeRow(entry, w, bg, state)
 		return text
 	}
 	start := actions[0].x
@@ -91,7 +91,7 @@ func (m *Model) changeActionRow(entry item, w int, fg, bg string) string {
 		labelWidth = start
 		labelEntry.branch = ""
 	}
-	label, _ := m.explorerRow(labelEntry, labelWidth, bg)
+	label, _ := m.treeRow(labelEntry, labelWidth, bg, state)
 	text := row(ansi.Cut(label, 0, start), start, fg, bg)
 	hoverX := m.hoverX - m.sideX()
 	for _, action := range actions {
@@ -109,7 +109,7 @@ func (m *Model) changeActionRow(entry item, w int, fg, bg string) string {
 	}
 	full := row("", w, fg, bg)
 	if !entry.header {
-		full, _ = m.explorerRow(entry, w, bg)
+		full, _ = m.treeRow(entry, w, bg, state)
 	}
 	text += row(ansi.Cut(full, w-3, w), 3, fg, bg)
 	return text

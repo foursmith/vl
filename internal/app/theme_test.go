@@ -1,6 +1,8 @@
 package app
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -18,23 +20,23 @@ func TestThemeSwitchRejectsOldSyntaxAndPreservesEditing(t *testing.T) {
 	old := m.scheduleHighlight()().(highlightStartMsg).request
 	m.editorLines() // populate colored row cache
 	text, cursor := m.document().Text, m.document().Cursor
-	drain(t, m, m.SetThemeMode("light"))
+	drain(t, m, m.SetTheme("light_modern", ""))
 	if old.ctx.Err() == nil || m.startHighlight(old) != nil {
 		t.Fatal("old-theme syntax was accepted")
 	}
 	if m.document().Text != text || m.document().Cursor != cursor {
 		t.Fatal("theme switch changed document")
 	}
-	if !m.light || m.colors != theme.Light() {
+	if !m.colorTheme.IsLight() || m.colors != theme.Light() {
 		t.Fatal("light palette not applied")
 	}
 	if len(m.tabs[0].spans) == 0 || m.tabs[0].spans[0][0].Color != "#0000FF" {
 		t.Fatal("editor retained dark syntax")
 	}
-	if !sameColor(m.View().BackgroundColor, lipgloss.Color(m.colors.Panel)) {
-		t.Fatal("terminal background retained dark theme")
+	if m.View().BackgroundColor != nil {
+		t.Fatal("theme switch changed terminal default background")
 	}
-	drain(t, m, m.SetThemeMode("dark"))
+	drain(t, m, m.SetTheme("dark_modern", ""))
 	if m.colors != theme.Dark() || m.tabs[0].spans[0][0].Color != "#569CD6" {
 		t.Fatal("switching back lost dark theme")
 	}
@@ -42,12 +44,12 @@ func TestThemeSwitchRejectsOldSyntaxAndPreservesEditing(t *testing.T) {
 
 func TestLightThemePickerAndDiffSurfaces(t *testing.T) {
 	m := tabWorkspace(t, 0)
-	m.SetThemeMode("light")
+	m.SetTheme("light_modern", "")
 	m.openPalette()
 	m.input.SetValue(">Color Theme")
 	rows := m.filteredActions()
-	if len(rows) != 3 {
-		t.Fatal("theme choices are not discoverable")
+	if len(rows) != 1 || rows[0].id != "theme.select" {
+		t.Fatal("theme command is not discoverable")
 	}
 	base := make([]string, m.height)
 	for i := range base {
@@ -56,14 +58,14 @@ func TestLightThemePickerAndDiffSurfaces(t *testing.T) {
 	layout := m.pickerLayout(rows)
 	painted := m.pickerOverlay(base)
 	cells := uv.NewStyledString(painted[layout.y+3]).Lines(ansi.GraphemeWidth)[0]
-	if !sameColor(cells[layout.x+2].Style.Fg, lipgloss.Color(m.colors.SelectionForeground)) || !sameColor(cells[layout.x+2].Style.Bg, lipgloss.Color(m.colors.Selection)) {
+	if !sameColor(cells[layout.x+2].Style.Fg, lipgloss.Color(m.colors.PopupSelectionForeground)) || !sameColor(cells[layout.x+2].Style.Bg, lipgloss.Color(m.colors.PopupSelection)) {
 		t.Fatal("picker selection is not light-themed")
 	}
 	m.diffPath = "file.go"
 	m.patch = diff.Parse("--- a/file.go\n+++ b/file.go\n@@ -1 +1 @@\n-var old = 1\n+var value = 2\n")
 	m.renderDiff()
 	oldSyntax := m.highlightDiff()()
-	drain(t, m, m.SetThemeMode("dark"))
+	drain(t, m, m.SetTheme("dark_modern", ""))
 	m.Update(oldSyntax)
 	for _, spans := range m.diffSyntax {
 		for _, span := range spans {
@@ -72,7 +74,7 @@ func TestLightThemePickerAndDiffSurfaces(t *testing.T) {
 			}
 		}
 	}
-	drain(t, m, m.SetThemeMode("light"))
+	drain(t, m, m.SetTheme("light_modern", ""))
 	for i := range m.patch.Lines {
 		line := &m.patch.Lines[i]
 		if line.Kind != diff.Added {
@@ -88,45 +90,82 @@ func TestLightThemePickerAndDiffSurfaces(t *testing.T) {
 	}
 }
 
-func TestAutomaticThemeTracksTerminalAndHonorsOverride(t *testing.T) {
+func TestThemeFollowsOnlyWhenPreviouslyAligned(t *testing.T) {
 	m := tabWorkspace(t, 0)
-	if m.ThemeMode() != "auto" {
-		t.Fatal("default theme is not automatic")
-	}
-	if m.View().BackgroundColor != nil {
-		t.Fatal("auto mode overrides the terminal background")
-	}
 	m.Update(uv.LightColorSchemeEvent{})
-	if !m.light || m.ThemeMode() != "auto" {
-		t.Fatal("light terminal did not select light palette automatically")
+	if !m.colorTheme.IsLight() {
+		t.Fatal("initial appearance was not applied")
 	}
+	m.SetTheme("light_plus", "")
 	m.Update(uv.DarkColorSchemeEvent{})
-	if m.light {
-		t.Fatal("terminal change did not select dark palette")
+	if m.committedTheme().ID != "dark_modern" {
+		t.Fatal("aligned theme did not follow dark appearance")
 	}
-	m.SetThemeMode("light")
-	m.Update(uv.DarkColorSchemeEvent{})
-	if !m.light || m.ThemeMode() != "light" {
-		t.Fatal("automatic report replaced explicit preference")
-	}
-	m.SetThemeMode("auto")
-	m.Update(uv.DarkColorSchemeEvent{})
-	if m.light || m.ThemeMode() != "auto" {
-		t.Fatal("returning to auto did not restore tracking")
-	}
-	// Remember notifications even while an explicit palette is selected.
-	m.SetThemeMode("dark")
+	m.SetTheme("dark_vs", "")
 	m.Update(uv.LightColorSchemeEvent{})
-	if m.light {
-		t.Fatal("notification replaced explicit dark palette")
+	if m.committedTheme().ID != "light_plus" {
+		t.Fatal("remembered light theme was lost")
 	}
-	m.SetThemeMode("auto")
-	if !m.light {
-		t.Fatal("auto did not apply the latest terminal notification")
+	m.Update(uv.DarkColorSchemeEvent{})
+	if m.committedTheme().ID != "dark_vs" {
+		t.Fatal("remembered dark theme was lost")
+	}
+	m.SetTheme("light_vs", "") // deliberately differs from dark terminal
+	m.Update(uv.DarkColorSchemeEvent{})
+	m.Update(uv.LightColorSchemeEvent{})
+	if m.committedTheme().ID != "light_vs" {
+		t.Fatal("mismatched manual choice was replaced")
+	}
+	m.Update(uv.DarkColorSchemeEvent{}) // now aligned again, so follow
+	if m.committedTheme().ID != "dark_vs" {
+		t.Fatal("alignment did not resume implicit following")
+	}
+}
+
+func TestThemePairAndAlignmentSurviveRestart(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	m.Update(uv.DarkColorSchemeEvent{})
+	m.SetTheme("light_plus", "")
+	m.SetTheme("dark_plus", "")
+	next := tabWorkspace(t, 0)
+	next.SetLayout(m.Layout())
+	next.Update(uv.LightColorSchemeEvent{}) // environment changed while closed
+	if next.committedTheme().ID != "light_plus" {
+		t.Fatal("aligned theme did not follow on restart")
+	}
+	next.Update(uv.DarkColorSchemeEvent{})
+	if next.committedTheme().ID != "dark_plus" {
+		t.Fatal("remembered dark theme not restored")
+	}
+	// Save a deliberate mismatch, then change the external appearance while closed.
+	next.Update(uv.LightColorSchemeEvent{})
+	next.SetTheme("dark_vs", "")
+	other := tabWorkspace(t, 0)
+	other.SetLayout(next.Layout())
+	other.Update(uv.DarkColorSchemeEvent{})
+	if other.committedTheme().ID != "dark_vs" {
+		t.Fatal("restart replaced mismatched theme")
+	}
+	other.Update(uv.LightColorSchemeEvent{})
+	if other.committedTheme().ID != "light_plus" {
+		t.Fatal("restored pair did not resume following")
+	}
+}
+
+func TestFirstAppearancePreservesExplicitSelection(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	m.SetTheme("dark_plus", "")
+	m.Update(uv.LightColorSchemeEvent{})
+	if m.committedTheme().ID != "dark_plus" {
+		t.Fatal("first report replaced manual theme")
+	}
+	m.Update(systemAppearanceMsg{light: false, known: true})
+	if m.colorScheme != "light" {
+		t.Fatal("system fallback overrode terminal report")
 	}
 	m.width, m.height = 20, 5
 	if m.View().BackgroundColor != nil {
-		t.Fatal("small auto view overrides terminal background")
+		t.Fatal("small view changed terminal default background")
 	}
 }
 
@@ -165,5 +204,265 @@ func TestThemeNotificationSubscriptionAndRestore(t *testing.T) {
 	_, cmd := m.Update(tea.ModeReportMsg{Mode: ansi.ModeFocusEvent, Value: ansi.ModeReset})
 	if cmd != nil || m.ThemeNotificationRestoreSequence() != "" {
 		t.Fatal("unrelated mode enabled theme notifications")
+	}
+}
+
+func TestSameBrightnessSwitchInvalidatesSyntax(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	m.openFile("file0.go")
+	old := m.scheduleHighlight()().(highlightStartMsg).request
+	text, cursor := m.document().Text, m.document().Cursor
+	drain(t, m, m.SetTheme("dark_vs", ""))
+	if m.colorTheme.IsLight() || m.colors.Background != "#1E1E1E" || m.committedTheme().ID != "dark_vs" {
+		t.Fatal("same-brightness theme was not installed")
+	}
+	if old.ctx.Err() == nil || m.startHighlight(old) != nil {
+		t.Fatal("old syntax survived same-brightness switch")
+	}
+	if m.document().Text != text || m.document().Cursor != cursor {
+		t.Fatal("theme changed editor state")
+	}
+	drain(t, m, m.SetTheme("dark_plus", ""))
+	if m.colorTheme != theme.Builtin("dark_plus") {
+		t.Fatal("Dark+ not selected")
+	}
+	m.Update(uv.LightColorSchemeEvent{})
+	if m.colorTheme.IsLight() {
+		t.Fatal("terminal notification replaced explicit theme")
+	}
+}
+
+func TestLocalThemeRestoresTypeAndPalette(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "day.json")
+	if err := os.WriteFile(path, []byte(`{"colors":{"editor.background":"#F0E0D0","editor.foreground":"#123456","editor.selectionBackground":"#12345680","input.foreground":"#654321"},"tokenColors":[{"scope":"keyword", "settings":{"foreground":"#AABBCC","fontStyle":"bold"}}]}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	selected, err := theme.Load(path, "vs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := tabWorkspace(t, 1)
+	m.openFile("file0.go")
+	drain(t, m, m.SetColorTheme(selected))
+	if !m.colorTheme.IsLight() || m.colors.Background != "#F0E0D0" || m.colors.InputForeground != "#654321" {
+		t.Fatal("local workbench colors not applied")
+	}
+	if len(m.tabs[0].spans) == 0 || m.tabs[0].spans[0][0].Color != "#AABBCC" || m.tabs[0].spans[0][0].Font != theme.Bold {
+		t.Fatal("local syntax not applied")
+	}
+	next := tabWorkspace(t, 0)
+	next.SetLayout(m.Layout())
+	if !next.colorTheme.IsLight() || next.committedTheme().ID != path || next.colors != m.colors {
+		t.Fatal("local theme or extension type lost on restore")
+	}
+	before := m.colorTheme
+	m.SetTheme(filepath.Join(dir, "missing.json"), "")
+	if m.colorTheme != before || m.committedTheme().ID != path || !strings.Contains(m.notice, "Load theme") {
+		t.Fatal("invalid local theme replaced working theme")
+	}
+}
+
+func TestLocalThemeCatalogAppearsAndSelects(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "personal.json"), []byte(`{"name":"Personal","type":"light","colors":{"editor.background":"#FFEEDD"}}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	local, err := theme.Discover(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := tabWorkspace(t, 0)
+	m.openThemePicker()
+	m.input.SetValue("Personal")
+	m.applyLocalThemes(localThemesMsg{seq: m.localThemesSeq, themes: local})
+	rows := m.filteredActions()
+	if len(rows) != 1 || !strings.Contains(rows[0].label, "Light · Personal · Local") {
+		t.Fatalf("local menu: %+v", rows)
+	}
+	drain(t, m, m.selectPickerChoice())
+	if m.committedTheme().ID != "local:personal.json" || !m.colorTheme.IsLight() || m.colors.Background != "#FFEEDD" || m.Layout().Theme != "local:personal.json" {
+		t.Fatal("local selection or stable preference lost")
+	}
+	m.applyLocalThemes(localThemesMsg{seq: m.localThemesSeq - 1})
+	if len(m.localThemes) != 1 {
+		t.Fatal("stale scan replaced current theme catalog")
+	}
+}
+
+func TestColorThemeHasOneCommandAndSeparatePicker(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	m.SetTheme("dark_plus", "")
+	original := m.colorTheme
+	m.openPalette()
+	m.input.SetValue(">Color Theme")
+	rows := m.filteredActions()
+	if len(rows) != 1 || rows[0].id != "theme.select" {
+		t.Fatalf("theme entries leaked into commands: %+v", rows)
+	}
+	m.selectPickerChoice()
+	if m.modal != "themes" || m.input.Value() != "" || m.lastCommand != "theme.select" {
+		t.Fatal("theme command did not open its own searchable picker")
+	}
+	rows = m.filteredActions()
+	if len(rows) != 6 || rows[m.pickerIndex].id != "dark_plus" || rows[m.pickerIndex].key != "Current" {
+		t.Fatal("theme picker did not select the current theme")
+	}
+	m.input.SetValue("Light Modern")
+	m.syncPicker()
+	if len(m.filteredActions()) != 1 {
+		t.Fatal("theme search did not filter choices")
+	}
+	if m.colorTheme != original {
+		t.Fatal("search changed the theme before confirmation")
+	}
+	m.updateModal(tea.KeyPressMsg{Code: tea.KeyEscape})
+	if m.modal != "" || m.colorTheme != original {
+		t.Fatal("cancel changed the theme")
+	}
+	m.openThemePicker()
+	m.input.SetValue("Light Modern")
+	m.syncPicker()
+	drain(t, m, m.selectPickerChoice())
+	if m.modal != "" || !m.colorTheme.IsLight() || m.colorTheme.ID != "light_modern" || m.lastCommand != "theme.select" {
+		t.Fatal("confirmed theme was not applied independently of command history")
+	}
+}
+
+func TestThemeArrowPreviewCancelsAndConfirms(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	m.SetTheme("dark_plus", "")
+	m.openFile("file0.go")
+	old := m.scheduleHighlight()().(highlightStartMsg).request
+	original, preference := m.colorTheme, m.Layout()
+	text, cursor := m.document().Text, m.document().Cursor
+	m.openThemePicker()
+	drain(t, m, m.updateModal(tea.KeyPressMsg{Code: tea.KeyDown}))
+	if !m.colorTheme.IsLight() || m.colorTheme == original || m.modal != "themes" {
+		t.Fatal("arrow did not preview the highlighted theme")
+	}
+	if m.Layout() != preference || m.committedTheme().ID != "dark_plus" {
+		t.Fatal("preview changed the saved preference")
+	}
+	if old.ctx.Err() == nil || m.startHighlight(old) != nil {
+		t.Fatal("preview accepted stale original syntax")
+	}
+	if m.document().Text != text || m.document().Cursor != cursor {
+		t.Fatal("preview changed document state")
+	}
+	preview := m.colorTheme
+	drain(t, m, m.updateModal(tea.KeyPressMsg{Code: tea.KeyEscape}))
+	if m.colorTheme != original || m.Layout() != preference || m.themeBeforePreview != nil {
+		t.Fatal("Escape did not restore the original theme")
+	}
+	m.openThemePicker()
+	drain(t, m, m.updateModal(tea.KeyPressMsg{Code: tea.KeyDown}))
+	drain(t, m, m.updateModal(tea.KeyPressMsg{Code: tea.KeyEnter}))
+	if m.themeBeforePreview != nil || m.modal != "" || m.colorTheme != preview || m.committedTheme().ID != preview.ID || m.Layout().Theme != preview.ID {
+		t.Fatal("Enter did not commit the preview")
+	}
+}
+
+func TestThemePreviewKeepsSlotsAndTracksCommittedAppearance(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	m.Update(uv.DarkColorSchemeEvent{})
+	m.SetTheme("light_plus", "")
+	m.SetTheme("dark_plus", "")
+	m.openThemePicker()
+	drain(t, m, m.updateModal(tea.KeyPressMsg{Code: tea.KeyHome}))
+	preview := m.colorTheme
+	m.Update(uv.LightColorSchemeEvent{})
+	if m.colorTheme != preview || m.committedTheme().ID != "light_plus" || m.Layout().LightTheme != "light_plus" {
+		t.Fatal("appearance change replaced preview or corrupted committed preference")
+	}
+	drain(t, m, m.openPalette())
+	if m.colorTheme.ID != "light_plus" || m.themeBeforePreview != nil || !m.commandPicker() {
+		t.Fatal("leaving picker did not restore latest committed appearance")
+	}
+	m.openThemePicker()
+	drain(t, m, m.updateModal(tea.KeyPressMsg{Code: tea.KeyHome}))
+	drain(t, m, m.updateModal(tea.KeyPressMsg{Code: tea.KeyEnter}))
+	if m.Layout().DarkTheme != m.committedTheme().ID || m.Layout().LightTheme != "light_plus" {
+		t.Fatal("Enter did not remember only the chosen appearance")
+	}
+}
+
+func TestPickerHasContinuousFrame(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	m.snapshot.Files = []string{"file0.go"}
+	m.openQuickFiles()
+	layout := m.pickerLayout(m.filteredActions())
+	lines := strings.Split(m.View().Content, "\n")
+	// Every result keeps its side edges, including the selected row, so the
+	// terminal does not rely on a background shadow to distinguish the popup.
+	for i := 0; i < layout.count; i++ {
+		cells := uv.NewStyledString(lines[layout.y+3+i]).Lines(ansi.GraphemeWidth)[0]
+		for _, x := range []int{layout.x, layout.x + layout.width - 1} {
+			if cells[x].Content != "│" || !sameColor(cells[x].Style.Fg, lipgloss.Color(m.colors.PopupBorder)) || !sameColor(cells[x].Style.Bg, lipgloss.Color(m.colors.Popup)) {
+				t.Fatal("picker edge vanished on result row")
+			}
+		}
+	}
+	bottom := uv.NewStyledString(lines[layout.y+3+max(1, layout.count)]).Lines(ansi.GraphemeWidth)[0]
+	if bottom[layout.x].Content != "╰" || bottom[layout.x+layout.width-1].Content != "╯" {
+		t.Fatal("picker has no bottom frame")
+	}
+}
+
+func TestSystemAppearanceFallbackAndTerminalPriority(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	m.Update(systemAppearanceMsg{light: true, known: true})
+	if !m.colorTheme.IsLight() || m.colorScheme != "light" {
+		t.Fatal("initial system appearance ignored")
+	}
+	m.SetTheme("light_vs", "")
+	m.Update(systemAppearanceMsg{light: false, known: true})
+	if m.colorTheme.IsLight() {
+		t.Fatal("aligned theme did not follow system change")
+	}
+	m.Update(systemAppearanceMsg{light: true, known: false})
+	if m.colorTheme.IsLight() || m.colorScheme != "dark" {
+		t.Fatal("unknown system appearance changed theme")
+	}
+	m.Update(uv.LightColorSchemeEvent{})
+	if m.committedTheme().ID != "light_vs" {
+		t.Fatal("terminal appearance did not use saved counterpart")
+	}
+	m.Update(systemAppearanceMsg{light: false, known: true})
+	if !m.colorTheme.IsLight() || m.colorScheme != "light" {
+		t.Fatal("system overrode terminal appearance")
+	}
+	if m.pollSystemAppearance(true) != nil {
+		t.Fatal("system polling continued after terminal report")
+	}
+}
+
+func TestRememberedLocalThemeOverrideAndMissingFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "day.json")
+	if err := os.WriteFile(path, []byte(`{"colors":{"editor.background":"#F0E0D0"}}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	selected, err := theme.Load(path, "vs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := tabWorkspace(t, 0)
+	m.Update(uv.DarkColorSchemeEvent{})
+	m.SetColorTheme(selected)
+	m.SetTheme("dark_plus", "")
+	next := tabWorkspace(t, 0)
+	next.SetLayout(m.Layout())
+	next.Update(uv.LightColorSchemeEvent{})
+	if !next.colorTheme.IsLight() || next.colorTheme.UIThemeOverride != "vs" || next.colors.Background != "#F0E0D0" {
+		t.Fatal("remembered local override not restored")
+	}
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	missing := tabWorkspace(t, 0)
+	missing.SetLayout(m.Layout())
+	missing.Update(uv.LightColorSchemeEvent{})
+	if missing.committedTheme().ID != "light_modern" || !strings.Contains(missing.notice, "Load remembered theme") {
+		t.Fatal("missing counterpart did not fall back with notice")
 	}
 }

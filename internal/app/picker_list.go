@@ -12,15 +12,23 @@ import (
 )
 
 func (m *Model) pickerRow(a action, index, width, hovered int) string {
-	fg, bg := m.colors.Foreground, m.colors.Popup
+	fg, bg := m.colors.PopupForeground, m.colors.Popup
 	selected := index == m.pickerIndex
 	if selected {
-		fg, bg = m.colors.SelectionForeground, m.colors.Selection
+		fg, bg = m.colors.PopupSelectionForeground, m.colors.PopupSelection
 	} else if index == hovered {
 		bg = m.colors.Hover
 	}
 	if a.disabled != "" {
-		fg = m.colors.Muted
+		fg = m.colors.Brand
+	}
+	opacity := .7
+	if m.colorTheme.IsLight() {
+		opacity = .95
+	}
+	secondary := theme.WithOpacity(fg, opacity)
+	if selected {
+		secondary = fg
 	}
 	w := width - 2
 	label := " " + safe(a.label)
@@ -29,14 +37,14 @@ func (m *Model) pickerRow(a action, index, width, hovered int) string {
 		label = ansi.Truncate(" "+row(icon.Glyph, 2, icon.Color, bg)+safe(filepath.Base(a.id)), w-2, "…")
 		if dir := filepath.Dir(a.id); dir != "." {
 			if remaining := w - 2 - ansi.StringWidth(label); remaining > 1 {
-				label += theme.Style(m.colors.Muted, bg).Render(ansi.Truncate(" "+safe(dir), remaining, "…"))
+				label += theme.Style(secondary, bg).Render(ansi.Truncate(" "+safe(dir), remaining, "…"))
 			}
 		}
 	}
 	if a.key != "" {
 		hint := " " + a.key + " "
 		label = ansi.Truncate(label, max(1, w-ansi.StringWidth(hint)-2), "…")
-		label += strings.Repeat(" ", max(1, w-ansi.StringWidth(label)-ansi.StringWidth(hint)-1)) + theme.Style(m.colors.Muted, bg).Render(hint)
+		label += strings.Repeat(" ", max(1, w-ansi.StringWidth(label)-ansi.StringWidth(hint)-1)) + theme.Style(secondary, bg).Render(hint)
 	}
 	marker := " "
 	if m.monochrome && selected {

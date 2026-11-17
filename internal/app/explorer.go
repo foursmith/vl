@@ -58,23 +58,28 @@ func (m *Model) explorerItems() []item {
 	// Index statuses once instead of scanning every change for every visible entry.
 	statuses := make(map[string]byte, len(m.snapshot.Changes))
 	directories := make(map[string]byte)
+	staged := make(map[string]bool)
+	directoryStaged := make(map[string]bool)
 	for i := range m.snapshot.Changes {
 		change := &m.snapshot.Changes[i]
 		status := changeStatus(change, change.Worktree == ' ')
 		statuses[change.Path] = status
+		staged[change.Path] = change.Worktree == ' '
 		for parent := filepath.ToSlash(filepath.Dir(change.Path)); parent != "."; parent = filepath.ToSlash(filepath.Dir(parent)) {
 			if statusPriority(status) > statusPriority(directories[parent]) {
 				directories[parent] = status
+				directoryStaged[parent] = staged[change.Path]
 			}
 		}
 	}
 	result := make([]item, 0, len(m.treeEntries))
 	for _, entry := range m.treeEntries {
-		row := item{label: entry.Label, key: entry.Path, depth: entry.Depth, ignored: entry.Ignored, status: statuses[entry.Path]}
+		row := item{label: entry.Label, key: entry.Path, depth: entry.Depth, ignored: entry.Ignored, status: statuses[entry.Path], staged: staged[entry.Path]}
 		if entry.Directory {
 			row.folder = entry.Path
 			if statusPriority(directories[entry.Path]) > statusPriority(row.status) {
 				row.status = directories[entry.Path]
+				row.staged = directoryStaged[entry.Path]
 			}
 		} else {
 			row.file = entry.Path

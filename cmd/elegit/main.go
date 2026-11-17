@@ -14,11 +14,13 @@ import (
 	"github.com/ourongxing/elegit/internal/app"
 	"github.com/ourongxing/elegit/internal/config"
 	"github.com/ourongxing/elegit/internal/git"
+	"github.com/ourongxing/elegit/internal/theme"
 )
 
 func main() {
 	icons := flag.Bool("icons", true, "use Nerd Font glyphs adapted from Material Icon Theme; set -icons=false for plain text")
-	colorTheme := flag.String("theme", "", "color theme: auto, light or dark (default: follow terminal, or saved preference)")
+	colorTheme := flag.String("theme", "", "color theme: builtin ID (dark_modern, dark_plus, dark_vs, light_modern, light_plus, light_vs), local:filename from ~/.config/elegit/themes, or a theme file")
+	themeType := flag.String("theme-type", "", "local theme uiTheme from its extension: vs, vs-dark, hc-light, hc-black (default: theme type, or vs-dark)")
 	version := flag.Bool("version", false, "print version")
 	flag.Usage = func() {
 		fmt.Fprintln(flag.CommandLine.Output(), "Usage: elegit [options] [folder]\n\nA Git workbench with diff review and basic text editing.\nWithout a folder, opens the most recent workspace.")
@@ -29,9 +31,18 @@ func main() {
 		fmt.Println("elegit 0.1.0-dev")
 		return
 	}
-	if *colorTheme != "" && *colorTheme != "auto" && *colorTheme != "light" && *colorTheme != "dark" {
-		fmt.Fprintln(os.Stderr, "Invalid -theme: use auto, light or dark")
+	var selectedTheme *theme.Theme
+	if *themeType != "" && *colorTheme == "" {
+		fmt.Fprintln(os.Stderr, "-theme-type requires a theme file")
 		os.Exit(2)
+	}
+	if *colorTheme != "" {
+		var err error
+		selectedTheme, err = theme.Load(*colorTheme, *themeType)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Load theme:", err)
+			os.Exit(2)
+		}
 	}
 	if flag.NArg() > 1 {
 		flag.Usage()
@@ -56,11 +67,16 @@ func main() {
 		layout, layoutErr = config.LoadLayout(layoutPath)
 	}
 	if layoutErr == nil {
+		// An explicit startup selection establishes its own appearance baseline.
+		if selectedTheme != nil {
+			layout.ColorScheme = ""
+		}
 		m.SetLayout(layout)
 	}
-	if *colorTheme != "" {
-		m.SetThemeMode(*colorTheme)
+	if selectedTheme != nil {
+		m.SetColorTheme(selectedTheme)
 	}
+
 	for {
 		sessionPath, sessionErr := config.SessionPath(repo.Root)
 		if sessionErr == nil {

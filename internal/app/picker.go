@@ -39,15 +39,15 @@ func (m *Model) pickerOverlay(base []string) []string {
 	bg := m.colors.Popup
 	inputBG := m.colors.Input
 	w := l.width - 2
-	border := theme.Style(m.colors.Accent, bg)
+	border := theme.Style(m.colors.PopupBorder, bg)
 	box := []string{
 		border.Render("╭" + strings.Repeat("─", w) + "╮"),
-		border.Render("│") + row(" "+m.input.View(), w, m.colors.Foreground, inputBG) + border.Render("│"),
-		border.Render("╰" + strings.Repeat("─", w) + "╯"),
+		border.Render("│") + row(" "+m.input.View(), w, m.colors.InputForeground, inputBG) + border.Render("│"),
+		border.Render("├" + strings.Repeat("─", w) + "┤"),
 	}
 	hovered := l.indexAt(m.hoverX, m.hoverY)
 	for index := l.start; index < l.start+l.count; index++ {
-		box = append(box, m.pickerRow(rows[index], index, l.width, hovered))
+		box = append(box, border.Render("│")+m.pickerRow(rows[index], index, l.width-2, hovered)+border.Render("│"))
 	}
 
 	if len(rows) == 0 {
@@ -55,8 +55,9 @@ func (m *Model) pickerOverlay(base []string) []string {
 		if m.modal == "recent" && m.input.Value() == "" {
 			message = "没有最近打开的文件夹"
 		}
-		box = append(box, row("  "+message, l.width, m.colors.Muted, bg))
+		box = append(box, border.Render("│")+row("  "+message, w, m.colors.Muted, bg)+border.Render("│"))
 	}
+	box = append(box, border.Render("╰"+strings.Repeat("─", w)+"╯"))
 	return m.composeOverlay(base, box, l.x, l.y)
 }
 
@@ -76,7 +77,7 @@ func (m *Model) clickPicker(msg tea.MouseClickMsg) tea.Cmd {
 }
 
 func (m *Model) isPicker() bool {
-	return m.modal == "quick" || m.modal == "remotes" || m.modal == "refs" || m.modal == "recent"
+	return m.modal == "quick" || m.modal == "remotes" || m.modal == "refs" || m.modal == "recent" || m.modal == "themes"
 }
 
 func (m *Model) selectPickerChoice() tea.Cmd {
@@ -93,6 +94,9 @@ func (m *Model) selectPickerChoice() tea.Cmd {
 	if m.commandPicker() {
 		m.lastCommand = a.id
 	}
+	if m.modal == "themes" {
+		m.themeBeforePreview = nil
+	}
 	m.modal = ""
 	m.input.Blur()
 	return a.run()
@@ -105,11 +109,12 @@ func (m *Model) commandPicker() bool {
 }
 
 func (m *Model) openQuickPicker(value string) tea.Cmd {
+	restore := m.cancelThemePreview()
 	m.palette = nil
 	cmd := m.prompt("quick", "", value)
 	m.syncQuickPicker()
 	m.syncPicker()
-	return cmd
+	return tea.Batch(restore, cmd)
 }
 
 func (m *Model) syncQuickPicker() {

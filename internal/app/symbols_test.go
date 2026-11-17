@@ -104,13 +104,13 @@ func TestSidebarNavigationUsesActiveColorWithoutChangeDecoration(t *testing.T) {
 					m.section = active
 					nav := m.sidebarLinesWidth(40)[0]
 					for _, item := range m.navigation() {
-						want := colors.Muted
+						want := colors.NavigationInactiveForeground
 						if item.section == active {
-							want = colors.Accent
+							want = colors.NavigationForeground
 						}
 						cells := uv.NewStyledString(ansi.Cut(nav, item.x, item.x+item.width)).Lines(ansi.GraphemeWidth)[0]
 						for _, cell := range cells {
-							if !sameColor(cell.Style.Fg, lipgloss.Color(want)) || cell.Style.Underline != 0 {
+							if !sameColor(cell.Style.Fg, lipgloss.Color(theme.Composite(want, colors.Panel))) || cell.Style.Underline != 0 {
 								t.Fatalf("theme=%s icons=%v dirty=%v active=%d tab=%d: wrong navigation style", colors.Panel, nerd, dirty, active, item.section)
 							}
 						}

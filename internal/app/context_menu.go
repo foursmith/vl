@@ -124,26 +124,26 @@ func (m *Model) runContextMenu() tea.Cmd {
 func (m *Model) contextMenuOverlay(base []string) []string {
 	l := m.contextMenuLayout()
 	menu := m.contextMenu
-	box := []string{row("┌"+strings.Repeat("─", max(0, l.width-2))+"┐", l.width, m.colors.Border, m.colors.Popup)}
+	box := []string{row("┌"+strings.Repeat("─", max(0, l.width-2))+"┐", l.width, m.colors.MenuBorder, m.colors.MenuBackground)}
 	for i := 0; i < l.count; i++ {
 		index := menu.top + i
 		a := menu.actions[index]
-		fg, bg := m.colors.Foreground, m.colors.Popup
+		fg, bg := m.colors.MenuForeground, m.colors.MenuBackground
 		prefix := " "
 		if index == menu.selected {
-			fg, bg = m.colors.SelectionForeground, m.colors.Selection
+			fg, bg = m.colors.MenuSelectionForeground, m.colors.MenuSelection
 			if m.monochrome {
 				prefix = ">"
 			}
 		}
 		if a.disabled != "" {
-			fg = m.colors.Muted
+			fg = m.colors.Brand
 		}
 		text := prefix + ansi.Truncate(a.label, max(0, l.width-6-ansi.StringWidth(a.key)), "…")
 		text += strings.Repeat(" ", max(1, l.width-3-ansi.StringWidth(text)-ansi.StringWidth(a.key))) + a.key + " "
-		box = append(box, row("│", 1, m.colors.Border, m.colors.Popup)+row(text, l.width-2, fg, bg)+row("│", 1, m.colors.Border, m.colors.Popup))
+		box = append(box, row("│", 1, m.colors.MenuBorder, m.colors.MenuBackground)+row(text, l.width-2, fg, bg)+row("│", 1, m.colors.MenuBorder, m.colors.MenuBackground))
 	}
-	box = append(box, row("└"+strings.Repeat("─", max(0, l.width-2))+"┘", l.width, m.colors.Border, m.colors.Popup))
+	box = append(box, row("└"+strings.Repeat("─", max(0, l.width-2))+"┘", l.width, m.colors.MenuBorder, m.colors.MenuBackground))
 	return m.composeOverlay(base, box, l.x, l.y)
 }
 

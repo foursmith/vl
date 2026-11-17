@@ -69,11 +69,19 @@ func (m *Model) SetSidebarLayout(width int, right bool) {
 
 // Layout captures user preferences independently of the current terminal size.
 func (m *Model) Layout() config.Layout {
+	selected := m.committedTheme()
+	dark, light := m.darkTheme, m.lightTheme
 	return config.Layout{
 		SidebarWidth:       m.sidebarWidth,
 		SidebarRight:       m.sidebarRight,
 		WorkspaceCollapsed: m.workspaceCollapsed,
-		Theme:              m.themeMode,
+		Theme:              selected.ID,
+		DarkTheme:          dark.ID,
+		LightTheme:         light.ID,
+		DarkThemeType:      dark.UIThemeOverride,
+		LightThemeType:     light.UIThemeOverride,
+		ColorScheme:        m.colorScheme,
+		ThemeType:          selected.UIThemeOverride,
 		LastCommand:        m.lastCommand,
 	}
 }
@@ -81,7 +89,14 @@ func (m *Model) Layout() config.Layout {
 func (m *Model) SetLayout(layout config.Layout) {
 	m.workspaceCollapsed, m.lastCommand = layout.WorkspaceCollapsed, layout.LastCommand
 	m.SetSidebarLayout(layout.SidebarWidth, layout.SidebarRight)
-	m.SetThemeMode(layout.Theme)
+	m.restoreThemeSlot(layout.DarkTheme, layout.DarkThemeType, false)
+	m.restoreThemeSlot(layout.LightTheme, layout.LightThemeType, true)
+	if layout.ColorScheme == "dark" || layout.ColorScheme == "light" {
+		m.colorScheme = layout.ColorScheme
+	}
+	if layout.Theme != "" {
+		m.SetTheme(layout.Theme, layout.ThemeType)
+	}
 }
 
 func (m *Model) dragSidebar(x int) {

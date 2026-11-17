@@ -4,6 +4,12 @@ package config
 type Layout struct {
 	WorkspaceCollapsed bool   `json:"workspaceCollapsed,omitempty"`
 	LastCommand        string `json:"lastCommand,omitempty"`
+	DarkTheme          string `json:"darkTheme,omitempty"`
+	LightTheme         string `json:"lightTheme,omitempty"`
+	DarkThemeType      string `json:"darkThemeType,omitempty"`
+	LightThemeType     string `json:"lightThemeType,omitempty"`
+	ColorScheme        string `json:"colorScheme,omitempty"`
+	ThemeType          string `json:"themeType,omitempty"`
 	Theme              string `json:"theme,omitempty"`
 	SidebarWidth       int    `json:"sidebarWidth"`
 	SidebarRight       bool   `json:"sidebarRight"`

@@ -93,7 +93,7 @@ func (m *Model) workspaceLines(w int) []string {
 	lines := []string{row(header, w, m.colors.Muted, m.colors.Panel)}
 	for i := m.workspaceTop; i < m.workspaceTop+n-1; i++ {
 		folder := m.workspaces[i]
-		fg, bg := m.colors.Foreground, m.colors.Panel
+		fg, bg := m.colors.SideForeground, m.colors.Panel
 		marker := ""
 		if folder == m.repo.Root {
 			marker, fg = m.symbol(symbolDot), m.colors.Accent

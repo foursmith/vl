@@ -1,0 +1,1033 @@
+{
+  "revision": "08d4889f9ec4a1685d257b9b95de036c8e1ce1e5",
+  "sources": {
+    "activityBar.foreground": "src/vs/workbench/common/theme.ts",
+    "activityBar.inactiveForeground": "src/vs/workbench/common/theme.ts",
+    "contrastActiveBorder": "src/vs/platform/theme/common/colors/baseColors.ts",
+    "contrastBorder": "src/vs/platform/theme/common/colors/baseColors.ts",
+    "descriptionForeground": "src/vs/platform/theme/common/colors/baseColors.ts",
+    "diffEditor.diagonalFill": "src/vs/platform/theme/common/colors/editorColors.ts",
+    "diffEditor.insertedLineBackground": "src/vs/platform/theme/common/colors/editorColors.ts",
+    "diffEditor.insertedTextBackground": "src/vs/platform/theme/common/colors/editorColors.ts",
+    "diffEditor.removedLineBackground": "src/vs/platform/theme/common/colors/editorColors.ts",
+    "diffEditor.removedTextBackground": "src/vs/platform/theme/common/colors/editorColors.ts",
+    "disabledForeground": "src/vs/platform/theme/common/colors/baseColors.ts",
+    "dropdown.background": "src/vs/platform/theme/common/colors/inputColors.ts",
+    "dropdown.foreground": "src/vs/platform/theme/common/colors/inputColors.ts",
+    "editor.background": "src/vs/platform/theme/common/colors/editorColors.ts",
+    "editor.foreground": "src/vs/platform/theme/common/colors/editorColors.ts",
+    "editor.lineHighlightBackground": "src/vs/editor/common/core/editorColorRegistry.ts",
+    "editor.selectionBackground": "src/vs/platform/theme/common/colors/editorColors.ts",
+    "editor.selectionForeground": "src/vs/platform/theme/common/colors/editorColors.ts",
+    "editorActiveLineNumber.foreground": "src/vs/editor/common/core/editorColorRegistry.ts",
+    "editorGroupHeader.tabsBackground": "src/vs/workbench/common/theme.ts",
+    "editorLineNumber.activeForeground": "src/vs/editor/common/core/editorColorRegistry.ts",
+    "editorLineNumber.foreground": "src/vs/editor/common/core/editorColorRegistry.ts",
+    "editorWidget.background": "src/vs/platform/theme/common/colors/editorColors.ts",
+    "editorWidget.foreground": "src/vs/platform/theme/common/colors/editorColors.ts",
+    "errorForeground": "src/vs/platform/theme/common/colors/baseColors.ts",
+    "focusBorder": "src/vs/platform/theme/common/colors/baseColors.ts",
+    "foreground": "src/vs/platform/theme/common/colors/baseColors.ts",
+    "gitDecoration.addedResourceForeground": "extensions/git/package.json",
+    "gitDecoration.conflictingResourceForeground": "extensions/git/package.json",
+    "gitDecoration.deletedResourceForeground": "extensions/git/package.json",
+    "gitDecoration.ignoredResourceForeground": "extensions/git/package.json",
+    "gitDecoration.modifiedResourceForeground": "extensions/git/package.json",
+    "gitDecoration.renamedResourceForeground": "extensions/git/package.json",
+    "gitDecoration.stageDeletedResourceForeground": "extensions/git/package.json",
+    "gitDecoration.stageModifiedResourceForeground": "extensions/git/package.json",
+    "gitDecoration.submoduleResourceForeground": "extensions/git/package.json",
+    "gitDecoration.untrackedResourceForeground": "extensions/git/package.json",
+    "input.background": "src/vs/platform/theme/common/colors/inputColors.ts",
+    "input.foreground": "src/vs/platform/theme/common/colors/inputColors.ts",
+    "input.placeholderForeground": "src/vs/platform/theme/common/colors/inputColors.ts",
+    "list.activeSelectionBackground": "src/vs/platform/theme/common/colors/listColors.ts",
+    "list.activeSelectionForeground": "src/vs/platform/theme/common/colors/listColors.ts",
+    "list.hoverBackground": "src/vs/platform/theme/common/colors/listColors.ts",
+    "list.hoverForeground": "src/vs/platform/theme/common/colors/listColors.ts",
+    "list.inactiveSelectionBackground": "src/vs/platform/theme/common/colors/listColors.ts",
+    "list.inactiveSelectionForeground": "src/vs/platform/theme/common/colors/listColors.ts",
+    "menu.background": "src/vs/platform/theme/common/colors/menuColors.ts",
+    "menu.border": "src/vs/platform/theme/common/colors/menuColors.ts",
+    "menu.foreground": "src/vs/platform/theme/common/colors/menuColors.ts",
+    "menu.selectionBackground": "src/vs/platform/theme/common/colors/menuColors.ts",
+    "menu.selectionForeground": "src/vs/platform/theme/common/colors/menuColors.ts",
+    "panel.background": "src/vs/workbench/common/theme.ts",
+    "panel.border": "src/vs/workbench/common/theme.ts",
+    "quickInput.background": "src/vs/platform/theme/common/colors/quickpickColors.ts",
+    "quickInput.foreground": "src/vs/platform/theme/common/colors/quickpickColors.ts",
+    "quickInput.list.focusBackground": "src/vs/platform/theme/common/colors/quickpickColors.ts",
+    "quickInputList.focusBackground": "src/vs/platform/theme/common/colors/quickpickColors.ts",
+    "quickInputList.focusForeground": "src/vs/platform/theme/common/colors/quickpickColors.ts",
+    "sideBar.background": "src/vs/workbench/common/theme.ts",
+    "sideBar.border": "src/vs/workbench/common/theme.ts",
+    "sideBar.foreground": "src/vs/workbench/common/theme.ts",
+    "statusBar.background": "src/vs/workbench/common/theme.ts",
+    "statusBar.foreground": "src/vs/workbench/common/theme.ts",
+    "strongForeground": "src/vs/platform/theme/common/colors/baseColors.ts",
+    "tab.activeBackground": "src/vs/workbench/common/theme.ts",
+    "tab.activeForeground": "src/vs/workbench/common/theme.ts",
+    "tab.border": "src/vs/workbench/common/theme.ts",
+    "tab.inactiveBackground": "src/vs/workbench/common/theme.ts",
+    "tab.inactiveForeground": "src/vs/workbench/common/theme.ts",
+    "textLink.foreground": "src/vs/platform/theme/common/colors/baseColors.ts",
+    "widget.border": "src/vs/platform/theme/common/colors/editorColors.ts"
+  },
+  "colors": {
+    "activityBar.foreground": {
+      "variants": {
+        "dark": {
+          "hex": "#FFFFFF"
+        },
+        "light": {
+          "hex": "#FFFFFF"
+        },
+        "hcDark": {
+          "hex": "#FFFFFF"
+        },
+        "hcLight": {
+          "ref": "editor.foreground"
+        }
+      }
+    },
+    "activityBar.inactiveForeground": {
+      "variants": {
+        "dark": {
+          "op": "transparent",
+          "args": [
+            {
+              "ref": "activityBar.foreground"
+            },
+            0.4
+          ]
+        },
+        "light": {
+          "op": "transparent",
+          "args": [
+            {
+              "ref": "activityBar.foreground"
+            },
+            0.4
+          ]
+        },
+        "hcDark": {
+          "hex": "#FFFFFF"
+        },
+        "hcLight": {
+          "ref": "editor.foreground"
+        }
+      }
+    },
+    "contrastActiveBorder": {
+      "variants": {
+        "light": null,
+        "dark": null,
+        "hcDark": {
+          "ref": "focusBorder"
+        },
+        "hcLight": {
+          "ref": "focusBorder"
+        }
+      }
+    },
+    "contrastBorder": {
+      "variants": {
+        "light": null,
+        "dark": null,
+        "hcDark": {
+          "hex": "#6FC3DF"
+        },
+        "hcLight": {
+          "hex": "#0F4A85"
+        }
+      }
+    },
+    "descriptionForeground": {
+      "variants": {
+        "light": {
+          "hex": "#717171"
+        },
+        "dark": {
+          "op": "transparent",
+          "args": [
+            {
+              "ref": "foreground"
+            },
+            0.7
+          ]
+        },
+        "hcDark": {
+          "op": "transparent",
+          "args": [
+            {
+              "ref": "foreground"
+            },
+            0.7
+          ]
+        },
+        "hcLight": {
+          "op": "transparent",
+          "args": [
+            {
+              "ref": "foreground"
+            },
+            0.7
+          ]
+        }
+      }
+    },
+    "diffEditor.diagonalFill": {
+      "variants": {
+        "dark": {
+          "hex": "#CCCCCC33"
+        },
+        "light": {
+          "hex": "#22222233"
+        },
+        "hcDark": null,
+        "hcLight": null
+      }
+    },
+    "diffEditor.insertedLineBackground": {
+      "variants": {
+        "dark": {
+          "hex": "#9BB95533"
+        },
+        "light": {
+          "hex": "#9BB95533"
+        },
+        "hcDark": null,
+        "hcLight": null
+      }
+    },
+    "diffEditor.insertedTextBackground": {
+      "variants": {
+        "dark": {
+          "hex": "#9CCC2C33"
+        },
+        "light": {
+          "hex": "#9CCC2C40"
+        },
+        "hcDark": null,
+        "hcLight": null
+      }
+    },
+    "diffEditor.removedLineBackground": {
+      "variants": {
+        "dark": {
+          "hex": "#FF000033"
+        },
+        "light": {
+          "hex": "#FF000033"
+        },
+        "hcDark": null,
+        "hcLight": null
+      }
+    },
+    "diffEditor.removedTextBackground": {
+      "variants": {
+        "dark": {
+          "hex": "#FF000033"
+        },
+        "light": {
+          "hex": "#FF000033"
+        },
+        "hcDark": null,
+        "hcLight": null
+      }
+    },
+    "disabledForeground": {
+      "variants": {
+        "dark": {
+          "hex": "#CCCCCC80"
+        },
+        "light": {
+          "hex": "#61616180"
+        },
+        "hcDark": {
+          "hex": "#A5A5A5"
+        },
+        "hcLight": {
+          "hex": "#7F7F7F"
+        }
+      }
+    },
+    "dropdown.background": {
+      "variants": {
+        "dark": {
+          "hex": "#3C3C3C"
+        },
+        "light": {
+          "hex": "#FFFFFF"
+        },
+        "hcDark": {
+          "hex": "#000000"
+        },
+        "hcLight": {
+          "hex": "#FFFFFF"
+        }
+      }
+    },
+    "dropdown.foreground": {
+      "variants": {
+        "dark": {
+          "hex": "#F0F0F0"
+        },
+        "light": {
+          "ref": "foreground"
+        },
+        "hcDark": {
+          "hex": "#FFFFFF"
+        },
+        "hcLight": {
+          "ref": "foreground"
+        }
+      }
+    },
+    "editor.background": {
+      "variants": {
+        "light": {
+          "hex": "#FFFFFF"
+        },
+        "dark": {
+          "hex": "#1E1E1E"
+        },
+        "hcDark": {
+          "hex": "#000000"
+        },
+        "hcLight": {
+          "hex": "#FFFFFF"
+        }
+      }
+    },
+    "editor.foreground": {
+      "variants": {
+        "light": {
+          "hex": "#333333"
+        },
+        "dark": {
+          "hex": "#BBBBBB"
+        },
+        "hcDark": {
+          "hex": "#FFFFFF"
+        },
+        "hcLight": {
+          "ref": "foreground"
+        }
+      }
+    },
+    "editor.lineHighlightBackground": null,
+    "editor.selectionBackground": {
+      "variants": {
+        "light": {
+          "hex": "#ADD6FF"
+        },
+        "dark": {
+          "hex": "#264F78"
+        },
+        "hcDark": {
+          "hex": "#F3F518"
+        },
+        "hcLight": {
+          "hex": "#0F4A85"
+        }
+      }
+    },
+    "editor.selectionForeground": {
+      "variants": {
+        "light": null,
+        "dark": null,
+        "hcDark": {
+          "hex": "#000000"
+        },
+        "hcLight": {
+          "hex": "#FFFFFF"
+        }
+      }
+    },
+    "editorActiveLineNumber.foreground": {
+      "variants": {
+        "dark": {
+          "hex": "#C6C6C6"
+        },
+        "light": {
+          "hex": "#0B216F"
+        },
+        "hcDark": {
+          "ref": "contrastActiveBorder"
+        },
+        "hcLight": {
+          "ref": "contrastActiveBorder"
+        }
+      }
+    },
+    "editorGroupHeader.tabsBackground": {
+      "variants": {
+        "dark": {
+          "hex": "#252526"
+        },
+        "light": {
+          "hex": "#F3F3F3"
+        },
+        "hcDark": null,
+        "hcLight": null
+      }
+    },
+    "editorLineNumber.activeForeground": {
+      "ref": "editorActiveLineNumber.foreground"
+    },
+    "editorLineNumber.foreground": {
+      "variants": {
+        "dark": {
+          "hex": "#858585"
+        },
+        "light": {
+          "hex": "#237893"
+        },
+        "hcDark": {
+          "hex": "#FFFFFF"
+        },
+        "hcLight": {
+          "hex": "#292929"
+        }
+      }
+    },
+    "editorWidget.background": {
+      "variants": {
+        "dark": {
+          "hex": "#252526"
+        },
+        "light": {
+          "hex": "#F3F3F3"
+        },
+        "hcDark": {
+          "hex": "#0C141F"
+        },
+        "hcLight": {
+          "hex": "#FFFFFF"
+        }
+      }
+    },
+    "editorWidget.foreground": {
+      "ref": "foreground"
+    },
+    "errorForeground": {
+      "variants": {
+        "dark": {
+          "hex": "#F48771"
+        },
+        "light": {
+          "hex": "#A1260D"
+        },
+        "hcDark": {
+          "hex": "#F48771"
+        },
+        "hcLight": {
+          "hex": "#B5200D"
+        }
+      }
+    },
+    "focusBorder": {
+      "variants": {
+        "dark": {
+          "hex": "#007FD4"
+        },
+        "light": {
+          "hex": "#0090F1"
+        },
+        "hcDark": {
+          "hex": "#F38518"
+        },
+        "hcLight": {
+          "hex": "#006BBD"
+        }
+      }
+    },
+    "foreground": {
+      "variants": {
+        "dark": {
+          "hex": "#CCCCCC"
+        },
+        "light": {
+          "hex": "#616161"
+        },
+        "hcDark": {
+          "hex": "#FFFFFF"
+        },
+        "hcLight": {
+          "hex": "#292929"
+        }
+      }
+    },
+    "gitDecoration.addedResourceForeground": {
+      "variants": {
+        "dark": {
+          "hex": "#81b88b"
+        },
+        "light": {
+          "hex": "#587c0c"
+        },
+        "hcDark": {
+          "hex": "#a1e3ad"
+        },
+        "hcLight": {
+          "hex": "#374e06"
+        }
+      }
+    },
+    "gitDecoration.conflictingResourceForeground": {
+      "variants": {
+        "dark": {
+          "hex": "#e4676b"
+        },
+        "light": {
+          "hex": "#ad0707"
+        },
+        "hcDark": {
+          "hex": "#c74e39"
+        },
+        "hcLight": {
+          "hex": "#ad0707"
+        }
+      }
+    },
+    "gitDecoration.deletedResourceForeground": {
+      "variants": {
+        "dark": {
+          "hex": "#c74e39"
+        },
+        "light": {
+          "hex": "#ad0707"
+        },
+        "hcDark": {
+          "hex": "#c74e39"
+        },
+        "hcLight": {
+          "hex": "#ad0707"
+        }
+      }
+    },
+    "gitDecoration.ignoredResourceForeground": {
+      "variants": {
+        "dark": {
+          "hex": "#8C8C8C"
+        },
+        "light": {
+          "hex": "#8E8E90"
+        },
+        "hcDark": {
+          "hex": "#A7A8A9"
+        },
+        "hcLight": {
+          "hex": "#8e8e90"
+        }
+      }
+    },
+    "gitDecoration.modifiedResourceForeground": {
+      "variants": {
+        "dark": {
+          "hex": "#E2C08D"
+        },
+        "light": {
+          "hex": "#895503"
+        },
+        "hcDark": {
+          "hex": "#E2C08D"
+        },
+        "hcLight": {
+          "hex": "#895503"
+        }
+      }
+    },
+    "gitDecoration.renamedResourceForeground": {
+      "variants": {
+        "dark": {
+          "hex": "#73C991"
+        },
+        "light": {
+          "hex": "#007100"
+        },
+        "hcDark": {
+          "hex": "#73C991"
+        },
+        "hcLight": {
+          "hex": "#007100"
+        }
+      }
+    },
+    "gitDecoration.stageDeletedResourceForeground": {
+      "variants": {
+        "dark": {
+          "hex": "#c74e39"
+        },
+        "light": {
+          "hex": "#ad0707"
+        },
+        "hcDark": {
+          "hex": "#c74e39"
+        },
+        "hcLight": {
+          "hex": "#ad0707"
+        }
+      }
+    },
+    "gitDecoration.stageModifiedResourceForeground": {
+      "variants": {
+        "dark": {
+          "hex": "#E2C08D"
+        },
+        "light": {
+          "hex": "#895503"
+        },
+        "hcDark": {
+          "hex": "#E2C08D"
+        },
+        "hcLight": {
+          "hex": "#895503"
+        }
+      }
+    },
+    "gitDecoration.submoduleResourceForeground": {
+      "variants": {
+        "dark": {
+          "hex": "#8db9e2"
+        },
+        "light": {
+          "hex": "#1258a7"
+        },
+        "hcDark": {
+          "hex": "#8db9e2"
+        },
+        "hcLight": {
+          "hex": "#1258a7"
+        }
+      }
+    },
+    "gitDecoration.untrackedResourceForeground": {
+      "variants": {
+        "dark": {
+          "hex": "#73C991"
+        },
+        "light": {
+          "hex": "#007100"
+        },
+        "hcDark": {
+          "hex": "#73C991"
+        },
+        "hcLight": {
+          "hex": "#007100"
+        }
+      }
+    },
+    "input.background": {
+      "variants": {
+        "dark": {
+          "hex": "#3C3C3C"
+        },
+        "light": {
+          "hex": "#FFFFFF"
+        },
+        "hcDark": {
+          "hex": "#000000"
+        },
+        "hcLight": {
+          "hex": "#FFFFFF"
+        }
+      }
+    },
+    "input.foreground": {
+      "ref": "foreground"
+    },
+    "input.placeholderForeground": {
+      "variants": {
+        "light": {
+          "op": "transparent",
+          "args": [
+            {
+              "ref": "foreground"
+            },
+            0.5
+          ]
+        },
+        "dark": {
+          "op": "transparent",
+          "args": [
+            {
+              "ref": "foreground"
+            },
+            0.5
+          ]
+        },
+        "hcDark": {
+          "op": "transparent",
+          "args": [
+            {
+              "ref": "foreground"
+            },
+            0.7
+          ]
+        },
+        "hcLight": {
+          "op": "transparent",
+          "args": [
+            {
+              "ref": "foreground"
+            },
+            0.7
+          ]
+        }
+      }
+    },
+    "list.activeSelectionBackground": {
+      "variants": {
+        "dark": {
+          "hex": "#04395E"
+        },
+        "light": {
+          "hex": "#0060C0"
+        },
+        "hcDark": null,
+        "hcLight": {
+          "op": "transparent",
+          "args": [
+            {
+              "hex": "#0F4A85"
+            },
+            0.1
+          ]
+        }
+      }
+    },
+    "list.activeSelectionForeground": {
+      "variants": {
+        "dark": {
+          "hex": "#FFFFFF"
+        },
+        "light": {
+          "hex": "#FFFFFF"
+        },
+        "hcDark": null,
+        "hcLight": null
+      }
+    },
+    "list.hoverBackground": {
+      "variants": {
+        "dark": {
+          "hex": "#2A2D2E"
+        },
+        "light": {
+          "hex": "#F0F0F0"
+        },
+        "hcDark": {
+          "op": "transparent",
+          "args": [
+            {
+              "hex": "#FFFFFF"
+            },
+            0.1
+          ]
+        },
+        "hcLight": {
+          "op": "transparent",
+          "args": [
+            {
+              "hex": "#0F4A85"
+            },
+            0.1
+          ]
+        }
+      }
+    },
+    "list.hoverForeground": null,
+    "list.inactiveSelectionBackground": {
+      "variants": {
+        "dark": {
+          "hex": "#37373D"
+        },
+        "light": {
+          "hex": "#E4E6F1"
+        },
+        "hcDark": null,
+        "hcLight": {
+          "op": "transparent",
+          "args": [
+            {
+              "hex": "#0F4A85"
+            },
+            0.1
+          ]
+        }
+      }
+    },
+    "list.inactiveSelectionForeground": null,
+    "menu.background": {
+      "ref": "dropdown.background"
+    },
+    "menu.border": {
+      "variants": {
+        "dark": null,
+        "light": null,
+        "hcDark": {
+          "ref": "contrastBorder"
+        },
+        "hcLight": {
+          "ref": "contrastBorder"
+        }
+      }
+    },
+    "menu.foreground": {
+      "ref": "dropdown.foreground"
+    },
+    "menu.selectionBackground": {
+      "ref": "list.activeSelectionBackground"
+    },
+    "menu.selectionForeground": {
+      "ref": "list.activeSelectionForeground"
+    },
+    "panel.background": {
+      "ref": "editor.background"
+    },
+    "panel.border": {
+      "variants": {
+        "dark": {
+          "op": "transparent",
+          "args": [
+            {
+              "hex": "#808080"
+            },
+            0.35
+          ]
+        },
+        "light": {
+          "op": "transparent",
+          "args": [
+            {
+              "hex": "#808080"
+            },
+            0.35
+          ]
+        },
+        "hcDark": {
+          "ref": "contrastBorder"
+        },
+        "hcLight": {
+          "ref": "contrastBorder"
+        }
+      }
+    },
+    "quickInput.background": {
+      "ref": "editorWidget.background"
+    },
+    "quickInput.foreground": {
+      "ref": "editorWidget.foreground"
+    },
+    "quickInput.list.focusBackground": null,
+    "quickInputList.focusBackground": {
+      "variants": {
+        "dark": {
+          "op": "oneOf",
+          "args": [
+            {
+              "ref": "quickInput.list.focusBackground"
+            },
+            {
+              "ref": "list.activeSelectionBackground"
+            }
+          ]
+        },
+        "light": {
+          "op": "oneOf",
+          "args": [
+            {
+              "ref": "quickInput.list.focusBackground"
+            },
+            {
+              "ref": "list.activeSelectionBackground"
+            }
+          ]
+        },
+        "hcDark": null,
+        "hcLight": null
+      }
+    },
+    "quickInputList.focusForeground": {
+      "ref": "list.activeSelectionForeground"
+    },
+    "sideBar.background": {
+      "variants": {
+        "dark": {
+          "hex": "#252526"
+        },
+        "light": {
+          "hex": "#F3F3F3"
+        },
+        "hcDark": {
+          "hex": "#000000"
+        },
+        "hcLight": {
+          "hex": "#FFFFFF"
+        }
+      }
+    },
+    "sideBar.border": {
+      "variants": {
+        "dark": null,
+        "light": null,
+        "hcDark": {
+          "ref": "contrastBorder"
+        },
+        "hcLight": {
+          "ref": "contrastBorder"
+        }
+      }
+    },
+    "sideBar.foreground": null,
+    "statusBar.background": {
+      "variants": {
+        "dark": {
+          "hex": "#007ACC"
+        },
+        "light": {
+          "hex": "#007ACC"
+        },
+        "hcDark": null,
+        "hcLight": null
+      }
+    },
+    "statusBar.foreground": {
+      "variants": {
+        "dark": {
+          "hex": "#FFFFFF"
+        },
+        "light": {
+          "hex": "#FFFFFF"
+        },
+        "hcDark": {
+          "hex": "#FFFFFF"
+        },
+        "hcLight": {
+          "ref": "editor.foreground"
+        }
+      }
+    },
+    "strongForeground": {
+      "variants": {
+        "dark": {
+          "hex": "#FFFFFF"
+        },
+        "light": {
+          "hex": "#000000"
+        },
+        "hcDark": {
+          "hex": "#FFFFFF"
+        },
+        "hcLight": {
+          "hex": "#000000"
+        }
+      }
+    },
+    "tab.activeBackground": {
+      "ref": "editor.background"
+    },
+    "tab.activeForeground": {
+      "variants": {
+        "dark": {
+          "hex": "#FFFFFF"
+        },
+        "light": {
+          "hex": "#333333"
+        },
+        "hcDark": {
+          "hex": "#FFFFFF"
+        },
+        "hcLight": {
+          "hex": "#292929"
+        }
+      }
+    },
+    "tab.border": {
+      "variants": {
+        "dark": {
+          "hex": "#252526"
+        },
+        "light": {
+          "hex": "#F3F3F3"
+        },
+        "hcDark": {
+          "ref": "contrastBorder"
+        },
+        "hcLight": {
+          "ref": "contrastBorder"
+        }
+      }
+    },
+    "tab.inactiveBackground": {
+      "variants": {
+        "dark": {
+          "hex": "#2D2D2D"
+        },
+        "light": {
+          "hex": "#ECECEC"
+        },
+        "hcDark": null,
+        "hcLight": null
+      }
+    },
+    "tab.inactiveForeground": {
+      "variants": {
+        "dark": {
+          "op": "transparent",
+          "args": [
+            {
+              "ref": "tab.activeForeground"
+            },
+            0.5
+          ]
+        },
+        "light": {
+          "op": "transparent",
+          "args": [
+            {
+              "ref": "tab.activeForeground"
+            },
+            0.7
+          ]
+        },
+        "hcDark": {
+          "hex": "#FFFFFF"
+        },
+        "hcLight": {
+          "hex": "#292929"
+        }
+      }
+    },
+    "textLink.foreground": {
+      "variants": {
+        "light": {
+          "hex": "#006AB1"
+        },
+        "dark": {
+          "hex": "#3794FF"
+        },
+        "hcDark": {
+          "hex": "#21A6FF"
+        },
+        "hcLight": {
+          "hex": "#0F4A85"
+        }
+      }
+    },
+    "widget.border": {
+      "variants": {
+        "dark": null,
+        "light": null,
+        "hcDark": {
+          "ref": "contrastBorder"
+        },
+        "hcLight": {
+          "ref": "contrastBorder"
+        }
+      }
+    }
+  }
+}

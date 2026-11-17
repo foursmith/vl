@@ -12,7 +12,6 @@ import (
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/ourongxing/elegit/internal/diff"
-	"github.com/ourongxing/elegit/internal/highlight"
 	"github.com/ourongxing/elegit/internal/theme"
 )
 
@@ -39,6 +38,7 @@ func safe(text string) string {
 }
 func plain(s string) string { return ansi.Strip(s) }
 func row(text string, width int, fg, bg string) string {
+	fg = theme.Composite(fg, bg)
 	width = max(0, width)
 	text = ansi.Truncate(text, width, "")
 	if !strings.ContainsRune(text, '\x1b') {
@@ -121,9 +121,6 @@ func (m *Model) View() tea.View {
 	if m.width < 30 || m.height < 8 {
 		v := tea.NewView(row("Resize terminal to at least 30 × 8", m.width, m.colors.Foreground, m.colors.Background))
 		v.AltScreen = true
-		if m.ThemeMode() != "auto" {
-			v.BackgroundColor = lipgloss.Color(m.colors.Panel)
-		}
 		return v
 	}
 	hoveredRow := m.hoveredSidebarRow()
@@ -145,11 +142,15 @@ func (m *Model) View() tea.View {
 	for y := 0; y < m.bodyHeight(); y++ {
 		line := main[y]
 		if m.sideShown() {
-			color := m.colors.Border
+			color := m.colors.SideBarBorder
 			if m.resizingSidebar || m.sidebarDividerAt(m.hoverX, m.hoverY) {
-				color = m.colors.Accent
+				color = m.colors.FocusBorder
 			}
-			divider := row("│", 1, color, m.colors.Panel)
+			glyph := "│"
+			if color == "" {
+				glyph = " "
+			}
+			divider := row(glyph, 1, color, m.colors.Panel)
 			if m.sidebarRight {
 				line += divider + side[y]
 			} else {
@@ -159,7 +160,7 @@ func (m *Model) View() tea.View {
 		lines = append(lines, line)
 	}
 	if h := m.outputHeight(); h > 0 {
-		lines = append(lines, row("  OUTPUT   ·   Git", m.width, m.colors.Foreground, m.colors.Panel))
+		lines = append(lines, row("  OUTPUT   ·   Git", m.width, m.colors.OutputForeground, m.colors.OutputBackground))
 		output := m.output
 		start := max(0, len(output)-(h-1))
 		for i := 0; i < h-1; i++ {
@@ -167,7 +168,7 @@ func (m *Model) View() tea.View {
 			if start+i < len(output) {
 				text = "  " + safe(output[start+i])
 			}
-			lines = append(lines, row(text, m.width, m.colors.Muted, m.colors.Panel))
+			lines = append(lines, row(text, m.width, m.colors.OutputForeground, m.colors.OutputBackground))
 		}
 	}
 	lines = append(lines, m.statusLine())
@@ -179,11 +180,8 @@ func (m *Model) View() tea.View {
 	}
 	v := tea.NewView(strings.Join(lines, "\n"))
 	v.AltScreen = true
-	// Uncovered terminal padding should blend with the surrounding chrome.
-	// Editor and diff cells paint their own backgrounds.
-	if m.ThemeMode() != "auto" {
-		v.BackgroundColor = lipgloss.Color(m.colors.Panel)
-	}
+	// Cells paint their own backgrounds. Leave the terminal default untouched
+	// so our rendering cannot change the appearance source we follow.
 	v.MouseMode = tea.MouseModeAllMotion
 	v.ReportFocus = true
 	m.hoverRender = hoverRenderCache{main: main, view: v, key: key}
@@ -451,7 +449,7 @@ func (m *Model) editorLines() []string {
 		}
 		var text, run strings.Builder
 		runFG, runBG, runReverse := "", "", false
-		var runFont highlight.FontStyle
+		var runFont theme.FontStyle
 		flush := func() {
 			if run.Len() == 0 {
 				return
@@ -460,7 +458,7 @@ func (m *Model) editorLines() []string {
 			text.WriteString(style.Render(run.String()))
 			run.Reset()
 		}
-		appendRun := func(s, fg, bg string, reverse bool, font highlight.FontStyle) {
+		appendRun := func(s, fg, bg string, reverse bool, font theme.FontStyle) {
 			if fg != runFG || bg != runBG || reverse != runReverse || font != runFont {
 				flush()
 				runFG, runBG, runReverse, runFont = fg, bg, reverse, font
@@ -493,7 +491,8 @@ func (m *Model) editorLines() []string {
 				s = strings.Repeat(" ", visual-t.left)
 			}
 			fg := m.colors.Foreground
-			var font highlight.FontStyle
+			cellBG := bg
+			var font theme.FontStyle
 			if t.highlightText == d.Text && i < len(t.spans) {
 				spans := t.spans[i]
 				for spanIndex < len(spans) && j >= spans[spanIndex].End {
@@ -502,11 +501,18 @@ func (m *Model) editorLines() []string {
 				if spanIndex < len(spans) && j >= spans[spanIndex].Start {
 					fg = spans[spanIndex].Color
 					font = spans[spanIndex].Font
+					if spans[spanIndex].Background != "" {
+						cellBG = theme.Composite(spans[spanIndex].Background, bg)
+					}
 				}
 			}
-			cellBG := bg
 			if offset+j >= a && offset+j < b {
-				cellBG = m.colors.Selection
+				if m.colors.EditorSelection != "" {
+					cellBG = theme.Composite(m.colors.EditorSelection, cellBG)
+				}
+				if m.colors.EditorSelectionForeground != "" {
+					fg = m.colors.EditorSelectionForeground
+				}
 			}
 			appendRun(s, fg, cellBG, !m.sidebar && i == line && j == col, font)
 		}
@@ -516,7 +522,7 @@ func (m *Model) editorLines() []string {
 		flush()
 		numberColor := m.colors.LineNumber
 		if i == line {
-			numberColor = m.colors.Foreground
+			numberColor = m.colors.LineNumberActive
 		}
 		gutter := theme.Style(numberColor, m.colors.Background).Render(fmt.Sprintf("%5d  ", i+1))
 		rendered := row(gutter+row(text.String(), max(1, m.mainWidth()-7), m.colors.Foreground, bg), m.mainWidth(), m.colors.Foreground, m.colors.Background)
@@ -587,6 +593,6 @@ func (m *Model) click(msg tea.MouseClickMsg) tea.Cmd {
 	return nil
 }
 
-func syntaxStyle(fg, bg string, font highlight.FontStyle) lipgloss.Style {
-	return theme.Style(fg, bg).Bold(font&highlight.Bold != 0).Italic(font&highlight.Italic != 0).Underline(font&highlight.Underline != 0).Strikethrough(font&highlight.Strikethrough != 0)
+func syntaxStyle(fg, bg string, font theme.FontStyle) lipgloss.Style {
+	return theme.Style(fg, bg).Bold(font&theme.Bold != 0).Italic(font&theme.Italic != 0).Underline(font&theme.Underline != 0).Strikethrough(font&theme.Strikethrough != 0)
 }

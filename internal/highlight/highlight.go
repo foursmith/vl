@@ -8,12 +8,15 @@ import (
 
 	textmate "github.com/eugenioenko/textmate-go"
 	"github.com/eugenioenko/textmate-go/grammars"
+
+	"github.com/ourongxing/elegit/internal/theme"
 )
 
 type Span struct {
 	Start, End int
 	Color      string
-	Font       FontStyle
+	Background string
+	Font       theme.FontStyle
 }
 
 // Highlighting is optional presentation data; it never rewrites source text.
@@ -22,11 +25,7 @@ const MaxBytes = 256 << 10
 var registry = textmate.NewRegistry(textmate.RegistryOptions{LoadGrammar: grammars.Load})
 var tokenizeOptions = textmate.TokenizeOptions{TimeLimit: 100 * time.Millisecond, MaxLineRunes: 20_000, MaxLineBytes: 80_000}
 
-func Lines(ctx context.Context, path, text string, light bool) [][]Span {
-	colors := darkModernTheme
-	if light {
-		colors = lightModernTheme
-	}
+func Lines(ctx context.Context, path, text string, colors *theme.Theme) [][]Span {
 	if len(text) > MaxBytes || ctx.Err() != nil {
 		return nil
 	}
@@ -41,7 +40,7 @@ func Lines(ctx context.Context, path, text string, light bool) [][]Span {
 	source := strings.Split(text, "\n")
 	lines := make([][]Span, len(source))
 	var state *textmate.StateStack
-	styles := make(map[*textmate.ScopeStack]tokenStyle)
+	styles := make(map[*textmate.ScopeStack]theme.TokenStyle)
 	for i, line := range source {
 		if ctx.Err() != nil {
 			return nil
@@ -65,18 +64,18 @@ func Lines(ctx context.Context, path, text string, light bool) [][]Span {
 		for _, token := range result.Tokens {
 			style, ok := styles[token.ScopeStack]
 			if !ok {
-				style = colors.resolve(token.Scopes)
+				style = colors.Resolve(token.Scopes)
 				styles[token.ScopeStack] = style
 			}
 			start, end := min(token.Start, length), min(token.End, length)
-			if start >= end || style.color == colors.foreground && style.font == 0 {
+			if start >= end || style.Color == colors.Palette().Foreground && style.Font == 0 && style.Background == "" {
 				continue
 			}
 			spans := lines[i]
-			if n := len(spans); n > 0 && spans[n-1].End == start && spans[n-1].Color == style.color && spans[n-1].Font == style.font {
+			if n := len(spans); n > 0 && spans[n-1].End == start && spans[n-1].Color == style.Color && spans[n-1].Font == style.Font && spans[n-1].Background == style.Background {
 				spans[n-1].End = end
 			} else {
-				spans = append(spans, Span{Start: start, End: end, Color: style.color, Font: style.font})
+				spans = append(spans, Span{Start: start, End: end, Color: style.Color, Font: style.Font, Background: style.Background})
 			}
 			lines[i] = spans
 		}

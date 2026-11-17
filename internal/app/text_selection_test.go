@@ -80,7 +80,7 @@ func TestDiffMouseSelectionCopyAndPainting(t *testing.T) {
 			found := false
 			for _, rendered := range m.diffView() {
 				for _, cell := range uv.NewStyledString(rendered).Lines(ansi.GraphemeWidth)[0] {
-					if sameColor(cell.Style.Bg, lipgloss.Color(m.colors.Selection)) {
+					if sameColor(cell.Style.Bg, lipgloss.Color(m.colors.EditorSelection)) {
 						found = true
 					}
 				}

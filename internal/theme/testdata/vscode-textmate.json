@@ -1,0 +1,670 @@
+{
+  "reference": "vscode-textmate@9.3.2",
+  "tokenColors": [
+    {
+      "scope": "variable",
+      "settings": {
+        "foreground": "#123456",
+        "fontStyle": "italic"
+      }
+    },
+    {
+      "scope": "variable.other",
+      "settings": {
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "scope": "source.go variable",
+      "settings": {
+        "foreground": "#abcdef"
+      }
+    },
+    {
+      "scope": "source.go variable.other",
+      "settings": {
+        "fontStyle": ""
+      }
+    },
+    {
+      "scope": "source.go meta.block variable.other",
+      "settings": {
+        "foreground": "#334455",
+        "fontStyle": "underline"
+      }
+    },
+    {
+      "scope": "source.go > variable.other",
+      "settings": {
+        "foreground": "#556677"
+      }
+    },
+    {
+      "scope": "meta.block variable.other",
+      "settings": {
+        "foreground": "#778899"
+      }
+    },
+    {
+      "scope": "meta.block variable.other",
+      "settings": {
+        "fontStyle": "strikethrough"
+      }
+    },
+    {
+      "scope": "variable.other.member",
+      "settings": {
+        "foreground": "#987654"
+      }
+    },
+    {
+      "scope": "comment, string",
+      "settings": {
+        "foreground": "#369",
+        "fontStyle": "italic bold"
+      }
+    },
+    {
+      "scope": [
+        "keyword",
+        "storage"
+      ],
+      "settings": {
+        "foreground": "#dddddd"
+      }
+    },
+    {
+      "scope": "keyword.control",
+      "settings": {
+        "fontStyle": "italic"
+      }
+    },
+    {
+      "scope": "source.go keyword.control",
+      "settings": {
+        "foreground": "#fedcba"
+      }
+    },
+    {
+      "scope": "source.go > meta.block > keyword.control",
+      "settings": {
+        "fontStyle": ""
+      }
+    },
+    {
+      "scope": "source.go meta.block keyword",
+      "settings": {
+        "foreground": "#555555"
+      }
+    },
+    {
+      "scope": "source.go meta.block keyword.control",
+      "settings": {
+        "foreground": "#666666"
+      }
+    },
+    {
+      "scope": "keyword.control",
+      "settings": {
+        "foreground": "#777777"
+      }
+    },
+    {
+      "settings": {
+        "foreground": "#ff0000",
+        "fontStyle": "bold"
+      }
+    }
+  ],
+  "cases": [
+    {
+      "scopes": [
+        "variable"
+      ],
+      "color": "#123456",
+      "font": 2
+    },
+    {
+      "scopes": [
+        "variable.other"
+      ],
+      "color": "#123456",
+      "font": 1
+    },
+    {
+      "scopes": [
+        "variable.other.member.go"
+      ],
+      "color": "#987654",
+      "font": 1
+    },
+    {
+      "scopes": [
+        "keyword"
+      ],
+      "color": "#DDDDDD",
+      "font": 0
+    },
+    {
+      "scopes": [
+        "keyword.control.go"
+      ],
+      "color": "#777777",
+      "font": 2
+    },
+    {
+      "scopes": [
+        "comment.line"
+      ],
+      "color": "#336699",
+      "font": 3
+    },
+    {
+      "scopes": [
+        "string.quoted"
+      ],
+      "color": "#336699",
+      "font": 3
+    },
+    {
+      "scopes": [
+        "storage.type"
+      ],
+      "color": "#DDDDDD",
+      "font": 0
+    },
+    {
+      "scopes": [
+        "unknown"
+      ],
+      "color": "#BBBBBB",
+      "font": 0
+    },
+    {
+      "scopes": [
+        "source.go",
+        "variable"
+      ],
+      "color": "#ABCDEF",
+      "font": 2
+    },
+    {
+      "scopes": [
+        "source.go",
+        "variable.other"
+      ],
+      "color": "#556677",
+      "font": 1
+    },
+    {
+      "scopes": [
+        "source.go",
+        "variable.other.member.go"
+      ],
+      "color": "#987654",
+      "font": 1
+    },
+    {
+      "scopes": [
+        "source.go",
+        "keyword"
+      ],
+      "color": "#DDDDDD",
+      "font": 0
+    },
+    {
+      "scopes": [
+        "source.go",
+        "keyword.control.go"
+      ],
+      "color": "#FEDCBA",
+      "font": 2
+    },
+    {
+      "scopes": [
+        "source.go",
+        "comment.line"
+      ],
+      "color": "#336699",
+      "font": 3
+    },
+    {
+      "scopes": [
+        "source.go",
+        "string.quoted"
+      ],
+      "color": "#336699",
+      "font": 3
+    },
+    {
+      "scopes": [
+        "source.go",
+        "storage.type"
+      ],
+      "color": "#DDDDDD",
+      "font": 0
+    },
+    {
+      "scopes": [
+        "source.go",
+        "unknown"
+      ],
+      "color": "#BBBBBB",
+      "font": 0
+    },
+    {
+      "scopes": [
+        "source.go",
+        "meta.block",
+        "variable"
+      ],
+      "color": "#ABCDEF",
+      "font": 2
+    },
+    {
+      "scopes": [
+        "source.go",
+        "meta.block",
+        "variable.other"
+      ],
+      "color": "#334455",
+      "font": 4
+    },
+    {
+      "scopes": [
+        "source.go",
+        "meta.block",
+        "variable.other.member.go"
+      ],
+      "color": "#987654",
+      "font": 1
+    },
+    {
+      "scopes": [
+        "source.go",
+        "meta.block",
+        "keyword"
+      ],
+      "color": "#555555",
+      "font": 0
+    },
+    {
+      "scopes": [
+        "source.go",
+        "meta.block",
+        "keyword.control.go"
+      ],
+      "color": "#777777",
+      "font": 0
+    },
+    {
+      "scopes": [
+        "source.go",
+        "meta.block",
+        "comment.line"
+      ],
+      "color": "#336699",
+      "font": 3
+    },
+    {
+      "scopes": [
+        "source.go",
+        "meta.block",
+        "string.quoted"
+      ],
+      "color": "#336699",
+      "font": 3
+    },
+    {
+      "scopes": [
+        "source.go",
+        "meta.block",
+        "storage.type"
+      ],
+      "color": "#DDDDDD",
+      "font": 0
+    },
+    {
+      "scopes": [
+        "source.go",
+        "meta.block",
+        "unknown"
+      ],
+      "color": "#BBBBBB",
+      "font": 0
+    },
+    {
+      "scopes": [
+        "source.go",
+        "meta.block",
+        "meta.inner",
+        "variable"
+      ],
+      "color": "#ABCDEF",
+      "font": 2
+    },
+    {
+      "scopes": [
+        "source.go",
+        "meta.block",
+        "meta.inner",
+        "variable.other"
+      ],
+      "color": "#334455",
+      "font": 4
+    },
+    {
+      "scopes": [
+        "source.go",
+        "meta.block",
+        "meta.inner",
+        "variable.other.member.go"
+      ],
+      "color": "#987654",
+      "font": 1
+    },
+    {
+      "scopes": [
+        "source.go",
+        "meta.block",
+        "meta.inner",
+        "keyword"
+      ],
+      "color": "#555555",
+      "font": 0
+    },
+    {
+      "scopes": [
+        "source.go",
+        "meta.block",
+        "meta.inner",
+        "keyword.control.go"
+      ],
+      "color": "#666666",
+      "font": 0
+    },
+    {
+      "scopes": [
+        "source.go",
+        "meta.block",
+        "meta.inner",
+        "comment.line"
+      ],
+      "color": "#336699",
+      "font": 3
+    },
+    {
+      "scopes": [
+        "source.go",
+        "meta.block",
+        "meta.inner",
+        "string.quoted"
+      ],
+      "color": "#336699",
+      "font": 3
+    },
+    {
+      "scopes": [
+        "source.go",
+        "meta.block",
+        "meta.inner",
+        "storage.type"
+      ],
+      "color": "#DDDDDD",
+      "font": 0
+    },
+    {
+      "scopes": [
+        "source.go",
+        "meta.block",
+        "meta.inner",
+        "unknown"
+      ],
+      "color": "#BBBBBB",
+      "font": 0
+    },
+    {
+      "scopes": [
+        "source.js",
+        "variable"
+      ],
+      "color": "#123456",
+      "font": 2
+    },
+    {
+      "scopes": [
+        "source.js",
+        "variable.other"
+      ],
+      "color": "#123456",
+      "font": 1
+    },
+    {
+      "scopes": [
+        "source.js",
+        "variable.other.member.go"
+      ],
+      "color": "#987654",
+      "font": 1
+    },
+    {
+      "scopes": [
+        "source.js",
+        "keyword"
+      ],
+      "color": "#DDDDDD",
+      "font": 0
+    },
+    {
+      "scopes": [
+        "source.js",
+        "keyword.control.go"
+      ],
+      "color": "#777777",
+      "font": 2
+    },
+    {
+      "scopes": [
+        "source.js",
+        "comment.line"
+      ],
+      "color": "#336699",
+      "font": 3
+    },
+    {
+      "scopes": [
+        "source.js",
+        "string.quoted"
+      ],
+      "color": "#336699",
+      "font": 3
+    },
+    {
+      "scopes": [
+        "source.js",
+        "storage.type"
+      ],
+      "color": "#DDDDDD",
+      "font": 0
+    },
+    {
+      "scopes": [
+        "source.js",
+        "unknown"
+      ],
+      "color": "#BBBBBB",
+      "font": 0
+    },
+    {
+      "scopes": [
+        "source.js",
+        "meta.block",
+        "variable"
+      ],
+      "color": "#123456",
+      "font": 2
+    },
+    {
+      "scopes": [
+        "source.js",
+        "meta.block",
+        "variable.other"
+      ],
+      "color": "#778899",
+      "font": 8
+    },
+    {
+      "scopes": [
+        "source.js",
+        "meta.block",
+        "variable.other.member.go"
+      ],
+      "color": "#987654",
+      "font": 1
+    },
+    {
+      "scopes": [
+        "source.js",
+        "meta.block",
+        "keyword"
+      ],
+      "color": "#DDDDDD",
+      "font": 0
+    },
+    {
+      "scopes": [
+        "source.js",
+        "meta.block",
+        "keyword.control.go"
+      ],
+      "color": "#777777",
+      "font": 2
+    },
+    {
+      "scopes": [
+        "source.js",
+        "meta.block",
+        "comment.line"
+      ],
+      "color": "#336699",
+      "font": 3
+    },
+    {
+      "scopes": [
+        "source.js",
+        "meta.block",
+        "string.quoted"
+      ],
+      "color": "#336699",
+      "font": 3
+    },
+    {
+      "scopes": [
+        "source.js",
+        "meta.block",
+        "storage.type"
+      ],
+      "color": "#DDDDDD",
+      "font": 0
+    },
+    {
+      "scopes": [
+        "source.js",
+        "meta.block",
+        "unknown"
+      ],
+      "color": "#BBBBBB",
+      "font": 0
+    },
+    {
+      "scopes": [
+        "source.go",
+        "meta.block",
+        "source.js",
+        "variable"
+      ],
+      "color": "#ABCDEF",
+      "font": 2
+    },
+    {
+      "scopes": [
+        "source.go",
+        "meta.block",
+        "source.js",
+        "variable.other"
+      ],
+      "color": "#334455",
+      "font": 4
+    },
+    {
+      "scopes": [
+        "source.go",
+        "meta.block",
+        "source.js",
+        "variable.other.member.go"
+      ],
+      "color": "#987654",
+      "font": 1
+    },
+    {
+      "scopes": [
+        "source.go",
+        "meta.block",
+        "source.js",
+        "keyword"
+      ],
+      "color": "#555555",
+      "font": 0
+    },
+    {
+      "scopes": [
+        "source.go",
+        "meta.block",
+        "source.js",
+        "keyword.control.go"
+      ],
+      "color": "#666666",
+      "font": 0
+    },
+    {
+      "scopes": [
+        "source.go",
+        "meta.block",
+        "source.js",
+        "comment.line"
+      ],
+      "color": "#336699",
+      "font": 3
+    },
+    {
+      "scopes": [
+        "source.go",
+        "meta.block",
+        "source.js",
+        "string.quoted"
+      ],
+      "color": "#336699",
+      "font": 3
+    },
+    {
+      "scopes": [
+        "source.go",
+        "meta.block",
+        "source.js",
+        "storage.type"
+      ],
+      "color": "#DDDDDD",
+      "font": 0
+    },
+    {
+      "scopes": [
+        "source.go",
+        "meta.block",
+        "source.js",
+        "unknown"
+      ],
+      "color": "#BBBBBB",
+      "font": 0
+    }
+  ]
+}

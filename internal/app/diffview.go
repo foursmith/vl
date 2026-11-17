@@ -271,15 +271,15 @@ func (m *Model) highlightDiff() tea.Cmd {
 	m.diffSyntaxCancel = cancel
 	target := m.diffState
 	patch, path, seq := m.patch, m.diffPath, m.diffSeq
-	light := m.light
+	colors := m.colorTheme
 	return func() tea.Msg {
-		return diffSyntaxMsg{target: target, seq: seq, raw: patch.Raw, ctx: ctx, spans: diffSpans(ctx, patch, path, light)}
+		return diffSyntaxMsg{target: target, seq: seq, raw: patch.Raw, ctx: ctx, spans: diffSpans(ctx, patch, path, colors)}
 	}
 }
 
 // Tokenize each side separately so removed code cannot change the new side's
 // string/comment state. Bound all syntax work by the editor's byte budget.
-func diffSpans(ctx context.Context, patch diff.Patch, path string, light bool) map[*diff.Line][]highlight.Span {
+func diffSpans(ctx context.Context, patch diff.Patch, path string, colors *theme.Theme) map[*diff.Line][]highlight.Span {
 	if len(patch.Raw) > highlight.MaxBytes || ctx.Err() != nil {
 		return nil
 	}
@@ -295,7 +295,7 @@ func diffSpans(ctx context.Context, patch diff.Patch, path string, light bool) m
 				source.WriteString(line.Text[1:])
 				source.WriteByte('\n')
 			}
-			spans := highlight.Lines(ctx, path, source.String(), light)
+			spans := highlight.Lines(ctx, path, source.String(), colors)
 			for i, line := range side {
 				if i < len(spans) {
 					result[line] = spans[i]
@@ -413,7 +413,7 @@ func diffCode(colors theme.Palette, code string, spans []highlight.Span, width, 
 	}
 	var out, run strings.Builder
 	color := colors.Foreground
-	var font highlight.FontStyle
+	var font theme.FontStyle
 	runBG := bg
 	spanIndex, column, visual := 0, 0, 0
 	flush := func() {
@@ -440,17 +440,25 @@ func diffCode(colors theme.Palette, code string, spans []highlight.Span, width, 
 			spanIndex++
 		}
 		next := colors.Foreground
-		var nextFont highlight.FontStyle
+		nextBG := bg
+		var nextFont theme.FontStyle
 		if spanIndex < len(spans) && runeColumn >= spans[spanIndex].Start {
 			next = spans[spanIndex].Color
 			nextFont = spans[spanIndex].Font
+			if bg == colors.Background && spans[spanIndex].Background != "" {
+				nextBG = theme.Composite(spans[spanIndex].Background, bg)
+			}
 		}
-		nextBG := bg
 		if emphasis != "" && runeColumn >= changed.start && runeColumn < changed.end {
 			nextBG = emphasis
 		}
 		if runeColumn >= selected.start && runeColumn < selected.end {
-			nextBG = colors.Selection
+			if colors.EditorSelection != "" {
+				nextBG = theme.Composite(colors.EditorSelection, nextBG)
+			}
+			if colors.EditorSelectionForeground != "" {
+				next = colors.EditorSelectionForeground
+			}
 		}
 		if next != color || nextBG != runBG || nextFont != font {
 			flush()

@@ -101,10 +101,16 @@ type Model struct {
 	imagePan                       *imagePan
 
 	colors                  theme.Palette
-	light                   bool
 	monochrome              bool
-	themeMode               string
-	terminalLight           bool
+	colorTheme              *theme.Theme
+	themeBeforePreview      *theme.Theme
+	localThemes             []*theme.Theme
+	localThemesSeq          uint64
+	darkTheme               *theme.Theme
+	lightTheme              *theme.Theme
+	colorScheme             string
+	themeChosen             bool
+	terminalReported        bool
 	themeNotifications      bool
 	themeNotificationsOwned bool
 	ctx                     context.Context
@@ -186,7 +192,7 @@ func New(ctx context.Context, repo *gitservice.Repository, nerd bool) *Model {
 	ctx, cancel := context.WithCancel(ctx)
 	input := textinput.New()
 	input.CharLimit = 2000
-	m := &Model{cellWidth: 8, cellHeight: 16, colors: theme.Dark(), themeMode: "auto", ctx: ctx, cancel: cancel, repo: repo, width: 120, height: 36, nerd: nerd, sidebar: true, sidebarVisible: true, split: true, diffState: newDiffState(), input: input, activeTab: -1, notice: "Loading repository…"}
+	m := &Model{cellWidth: 8, cellHeight: 16, colors: theme.Dark(), colorTheme: theme.Builtin("dark_modern"), darkTheme: theme.Builtin("dark_modern"), lightTheme: theme.Builtin("light_modern"), ctx: ctx, cancel: cancel, repo: repo, width: 120, height: 36, nerd: nerd, sidebar: true, sidebarVisible: true, split: true, diffState: newDiffState(), input: input, activeTab: -1, notice: "Loading repository…"}
 	m.snapshot.NoRepository = !repo.HasRepository()
 	m.emptyDiff = m.diffState
 	m.styleInput()
@@ -205,7 +211,7 @@ func New(ctx context.Context, repo *gitservice.Repository, nerd bool) *Model {
 }
 
 func (m *Model) Init() tea.Cmd {
-	return tea.Batch(m.loadWorkspaces(), m.refresh(), m.tick(), m.startWatcher(), m.probeImages(), tea.Raw(ansi.RequestModeLightDark))
+	return tea.Batch(m.loadWorkspaces(), m.refresh(), m.tick(), m.startWatcher(), m.probeImages(), m.pollSystemAppearance(false), tea.Raw(ansi.RequestModeLightDark))
 }
 func (m *Model) tick() tea.Cmd {
 	delay := 3 * time.Second
@@ -433,6 +439,8 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		return m, cmd
 	}
 	switch msg := msg.(type) {
+	case localThemesMsg:
+		m.applyLocalThemes(msg)
 	case historyPageMsg:
 		m.applyHistoryPage(msg)
 	case tea.ColorProfileMsg:
@@ -460,6 +468,12 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}
 	case tea.ModeReportMsg:
 		return m, m.themeNotificationMode(msg)
+	case systemAppearanceMsg:
+		var change tea.Cmd
+		if !m.terminalReported && msg.known {
+			change = m.externalColorScheme(msg.light)
+		}
+		return m, tea.Batch(change, m.pollSystemAppearance(true))
 	case uv.DarkColorSchemeEvent:
 		return m, m.terminalColorScheme(false)
 	case uv.LightColorSchemeEvent:

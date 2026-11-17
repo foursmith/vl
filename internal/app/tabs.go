@@ -404,18 +404,18 @@ func (m *Model) tabBar() string {
 	text := ""
 	x := 0
 	for _, slot := range m.tabLayout() {
-		text += row("", slot.x-x, m.colors.Foreground, m.colors.Panel)
+		text += row("", slot.x-x, m.colors.Foreground, m.colors.TabBarBackground)
 		if slot.control != 0 {
 			glyph := " " + m.symbol(symbolLeft) + " "
 			if slot.control > 0 {
 				glyph = " " + m.symbol(symbolRight) + " "
 			}
-			text += row(glyph, slot.width, m.colors.Muted, m.colors.Panel)
+			text += row(glyph, slot.width, m.colors.Muted, m.colors.TabBarBackground)
 		} else {
 			active := slot.index == m.activeTab
-			fg, bg := m.colors.Muted, m.colors.Panel
+			fg, bg := m.colors.TabInactiveForeground, m.colors.TabInactiveBackground
 			if active {
-				fg, bg = m.colors.Strong, m.colors.Background
+				fg, bg = m.colors.TabActiveForeground, m.colors.TabActiveBackground
 			}
 			t := m.tabs[slot.index]
 			icon := fileicon.For(t.path(), m.nerd)
@@ -431,12 +431,16 @@ func (m *Model) tabBar() string {
 			if active {
 				closeColor = fg
 			}
-			content := " " + row(glyph, 2, color, bg) + theme.Style(fg, bg).Italic(preview).Underline(m.monochrome && active).Render(label) + theme.Style(closeColor, bg).Render(" "+m.symbol(symbolClose)+" ") + theme.Style(m.colors.Border, bg).Render("│")
+			divider := row(" ", 1, fg, bg)
+			if m.colors.TabBorder != "" {
+				divider = theme.Style(m.colors.TabBorder, bg).Render("│")
+			}
+			content := " " + row(glyph, 2, color, bg) + theme.Style(fg, bg).Italic(preview).Underline(m.monochrome && active).Render(label) + theme.Style(closeColor, bg).Render(" "+m.symbol(symbolClose)+" ") + divider
 			text += row(content, slot.width, fg, bg)
 		}
 		x = slot.x + slot.width
 	}
-	return row(text, w, m.colors.Foreground, m.colors.Panel)
+	return row(text, w, m.colors.Foreground, m.colors.TabBarBackground)
 }
 
 func (m *Model) clickModal(msg tea.MouseClickMsg) tea.Cmd {

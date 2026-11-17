@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/ourongxing/elegit/internal/theme"
 )
 
 type statusSegment struct {
@@ -13,6 +14,8 @@ type statusSegment struct {
 }
 
 func (m *Model) gitStatusSegments() []statusSegment {
+	foreground := m.colors.StatusForeground
+	dim := theme.WithOpacity(foreground, .6)
 	target := m.statusRepository()
 	state := m.repositoryState(target)
 	branch := state.Branch
@@ -65,11 +68,11 @@ func (m *Model) gitStatusSegments() []statusSegment {
 	} else if state.Upstream != "" {
 		sync += " " + m.symbol(symbolWarning)
 	}
-	githubColor := m.colors.Foreground
+	githubColor := foreground
 	if state.GitHubURL == "" {
-		githubColor = m.colors.Muted
+		githubColor = dim
 	}
-	left := []statusSegment{{id: "branch", text: branchIcon + " " + branch, color: m.colors.Foreground}, {id: "sync", text: sync, color: m.colors.Foreground}, {id: "github", text: githubIcon, color: githubColor}, {id: "changes", text: fmt.Sprintf("%s %d", m.symbol(symbolDiff), repositoryChanges), color: m.colors.Muted}}
+	left := []statusSegment{{id: "branch", text: branchIcon + " " + branch, color: foreground}, {id: "sync", text: sync, color: foreground}, {id: "github", text: githubIcon, color: githubColor}, {id: "changes", text: fmt.Sprintf("%s %d", m.symbol(symbolDiff), repositoryChanges), color: dim}}
 	if conflicts > 0 {
 		left[3].text = fmt.Sprintf("%s %d", m.symbol(symbolWarning), conflicts)
 		left[3].color = m.colors.Deleted
@@ -78,7 +81,9 @@ func (m *Model) gitStatusSegments() []statusSegment {
 }
 
 func (m *Model) statusLayout() []statusSegment {
-	left := []statusSegment{{id: "init", text: "初始化 Git 仓库", color: m.colors.Muted}}
+	foreground := m.colors.StatusForeground
+	dim := theme.WithOpacity(foreground, .6)
+	left := []statusSegment{{id: "init", text: "初始化 Git 仓库", color: dim}}
 	if !m.snapshot.NoRepository {
 		left = m.gitStatusSegments()
 	}
@@ -112,7 +117,7 @@ func (m *Model) statusLayout() []statusSegment {
 	rightWidth := 0
 	for _, segment := range candidates {
 		segment.width = ansi.StringWidth(segment.text) + 2
-		segment.color = m.colors.Foreground
+		segment.color = foreground
 		if x+rightWidth+segment.width+1 <= m.width {
 			right = append(right, segment)
 			rightWidth += segment.width
@@ -125,7 +130,7 @@ func (m *Model) statusLayout() []statusSegment {
 	}
 	if gap := rightX - x; gap > 10 && notice != "" {
 		text := ansi.Truncate(safe(notice), gap-2, "…")
-		result = append(result, statusSegment{id: "notice", x: x, width: gap, text: text, color: m.colors.Muted})
+		result = append(result, statusSegment{id: "notice", x: x, width: gap, text: text, color: dim})
 	}
 	for _, segment := range right {
 		segment.x = rightX
@@ -136,13 +141,14 @@ func (m *Model) statusLayout() []statusSegment {
 }
 
 func (m *Model) statusLine() string {
+	foreground := m.colors.StatusForeground
 	text := ""
 	x := 0
 	for _, segment := range m.statusLayout() {
-		text += row("", segment.x-x, m.colors.Foreground, m.colors.Panel) + row(" "+segment.text+" ", segment.width, segment.color, m.colors.Panel)
+		text += row("", segment.x-x, foreground, m.colors.StatusBackground) + row(" "+segment.text+" ", segment.width, segment.color, m.colors.StatusBackground)
 		x = segment.x + segment.width
 	}
-	return row(text, m.width, m.colors.Foreground, m.colors.Panel)
+	return row(text, m.width, foreground, m.colors.StatusBackground)
 }
 
 func (m *Model) clickStatus(x int) tea.Cmd {

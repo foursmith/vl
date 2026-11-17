@@ -25,20 +25,20 @@ func sameColor(a, b color.Color) bool {
 	return ar == br && ag == bg && ab == bb && aa == ba
 }
 
-func TestTerminalBackgroundMatchesChromeWithAndWithoutFile(t *testing.T) {
+func TestThemePreservesTerminalDefaultBackground(t *testing.T) {
 	m := tabWorkspace(t, 1)
-	m.SetThemeMode("dark")
+	m.SetTheme("dark_modern", "")
 	for _, open := range []bool{false, true} {
 		if open {
 			m.openFile("file0.go")
 		}
-		if !sameColor(m.View().BackgroundColor, lipgloss.Color(theme.Dark().Panel)) {
-			t.Fatalf("open file %v: uncovered terminal background differs from chrome", open)
+		if m.View().BackgroundColor != nil {
+			t.Fatalf("open file %v: terminal default background was changed", open)
 		}
 	}
 	m.width, m.height = 20, 5
-	if !sameColor(m.View().BackgroundColor, lipgloss.Color(theme.Dark().Panel)) {
-		t.Fatal("small terminal background differs from chrome")
+	if m.View().BackgroundColor != nil {
+		t.Fatal("small view changed terminal default background")
 	}
 }
 
@@ -63,7 +63,7 @@ func TestEditorCanvasAndCurrentLineBackgrounds(t *testing.T) {
 		for x, cell := range line {
 			want := theme.Dark().Background
 			if y == 0 && x >= 7 {
-				want = "#252526"
+				want = theme.Dark().CurrentLine
 			}
 			if !sameColor(cell.Style.Bg, lipgloss.Color(want)) {
 				t.Fatalf("row %d cell %d (%q) has background %v, want %s", y, x, cell.Content, cell.Style.Bg, want)
@@ -111,13 +111,13 @@ func TestEditorRunsKeepSyntaxSelectionCursorAndFocus(t *testing.T) {
 	m.sidebar = false
 	m.ensureEditor()
 	m.tabs[0].highlightText = d.Text
-	m.tabs[0].spans = [][]highlight.Span{{{Start: 0, End: 2, Color: theme.Dark().GitAdded, Font: highlight.Italic}}}
+	m.tabs[0].spans = [][]highlight.Span{{{Start: 0, End: 2, Color: theme.Dark().GitAdded, Font: theme.Italic}}}
 	first := uv.NewStyledString(m.editorLines()[0]).Lines(ansi.GraphemeWidth)[0]
 	selected, cursor := false, false
 	for _, cell := range first {
 		if cell.Content == "a" {
 			selected = true
-			if !sameColor(cell.Style.Fg, lipgloss.Color(theme.Dark().GitAdded)) || !sameColor(cell.Style.Bg, lipgloss.Color(theme.Dark().Selection)) {
+			if !sameColor(cell.Style.Fg, lipgloss.Color(theme.Dark().GitAdded)) || !sameColor(cell.Style.Bg, lipgloss.Color(theme.Dark().EditorSelection)) {
 				t.Fatal("run rendering lost syntax or selection color")
 			}
 			if cell.Style.Attrs&uv.AttrItalic == 0 {
@@ -140,7 +140,7 @@ func TestEditorRunsKeepSyntaxSelectionCursorAndFocus(t *testing.T) {
 	m.editorLines()
 	third := uv.NewStyledString(m.editorLines()[0]).Lines(ansi.GraphemeWidth)[0]
 	for _, cell := range third {
-		if cell.Content == "a" && sameColor(cell.Style.Bg, lipgloss.Color(theme.Dark().Selection)) {
+		if cell.Content == "a" && sameColor(cell.Style.Bg, lipgloss.Color(theme.Dark().EditorSelection)) {
 			t.Fatal("cache kept a cleared selection")
 		}
 	}

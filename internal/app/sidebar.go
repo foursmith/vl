@@ -51,11 +51,11 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 	var nav strings.Builder
 	x := 0
 	for _, item := range m.navigation() {
-		nav.WriteString(row("", item.x-x, m.colors.Foreground, m.colors.Panel))
+		nav.WriteString(row("", item.x-x, m.colors.SideForeground, m.colors.Panel))
 		active := item.section == m.section
-		fg := m.colors.Muted
+		fg := m.colors.NavigationInactiveForeground
 		if active {
-			fg = m.colors.Accent
+			fg = m.colors.NavigationForeground
 		}
 		label := item.glyph + " "
 		label = ansi.Truncate(label, item.width, "")
@@ -64,13 +64,13 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 		x = item.x + item.width
 	}
 	lines := m.workspaceLines(w)
-	lines = append(lines, row(nav.String(), w, m.colors.Foreground, m.colors.Panel))
+	lines = append(lines, row(nav.String(), w, m.colors.SideForeground, m.colors.Panel))
 	if m.snapshot.NoRepository && (m.section == changes || m.section == history) {
 		for _, text := range []string{"", " 此文件夹尚未初始化 Git 仓库", "", " [初始化 Git 仓库]", " Enter: 初始化"} {
 			lines = append(lines, row(text, w, m.colors.Muted, m.colors.Panel))
 		}
 		for len(lines) < h {
-			lines = append(lines, row("", w, m.colors.Foreground, m.colors.Panel))
+			lines = append(lines, row("", w, m.colors.SideForeground, m.colors.Panel))
 		}
 		return lines[:h]
 	}
@@ -78,7 +78,7 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 	for y := m.sidebarHeaderRows(); y < h; y++ {
 		i := m.sideTop + y - m.sidebarHeaderRows()
 		text := ""
-		fg, bg := m.colors.Foreground, m.colors.Panel
+		fg, bg := m.colors.SideForeground, m.colors.Panel
 		if i < len(m.items) {
 			entry := m.items[i]
 			if i == hovered {
@@ -87,13 +87,13 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 			if i == m.selected {
 				bg = m.colors.Selection
 				if !m.sidebar {
-					bg = m.colors.Border
+					bg = m.colors.InactiveSelection
 				}
 			}
 			if m.section == explorer || m.section == changes {
-				text, fg = m.explorerRow(entry, w, bg)
+				text, fg = m.treeRow(entry, w, bg, treeRowState{selected: i == m.selected, hovered: i == hovered})
 				if m.section == changes && (i == hovered || entry.repoHeader) {
-					text = m.changeActionRow(entry, w, fg, bg)
+					text = m.changeActionRow(entry, w, fg, bg, treeRowState{selected: i == m.selected, hovered: i == hovered})
 				}
 			} else {
 				text, fg = m.historyRow(entry, w, bg)
@@ -107,29 +107,45 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 	return lines[:h]
 }
 
+type treeRowState struct{ selected, hovered bool }
+
 func (m *Model) explorerRow(entry item, w int, bg string) (string, string) {
+	return m.treeRow(entry, w, bg, treeRowState{})
+}
+
+func (m *Model) treeRow(entry item, w int, bg string, state treeRowState) (string, string) {
 	if entry.repoHeader {
 		prefix := m.repositoryHeaderPrefix(entry)
 		branch := m.repositoryBranchText(entry, w, 0)
 		nameWidth := max(0, w-ansi.StringWidth(prefix)-ansi.StringWidth(branch))
-		text := prefix + row(safe(entry.label), nameWidth, m.colors.Foreground, bg) + branch
-		return row(theme.Style(m.colors.Foreground, bg).Bold(true).Render(text), w, m.colors.Foreground, bg), m.colors.Foreground
+		text := prefix + row(safe(entry.label), nameWidth, m.colors.SideForeground, bg) + branch
+		return row(theme.Style(m.colors.SideForeground, bg).Bold(true).Render(text), w, m.colors.SideForeground, bg), m.colors.SideForeground
 	}
 	if entry.header {
 		return row(" "+strings.Repeat("  ", entry.depth)+m.treeChevron(m.folderExpanded(entry))+" "+entry.label, w, m.colors.Muted, bg), m.colors.Muted
 	}
-	fg := m.colors.Foreground
-	switch entry.status {
-	case 'U', 'A':
-		fg = m.colors.GitAdded
-	case 'M', 'R', 'C', 'T':
-		fg = m.colors.GitModified
-	case 'D', '!':
-		fg = m.colors.Deleted
+	decoration := m.gitDecorationColor(entry)
+	fg := m.colors.SideForeground
+	if state.hovered && !state.selected && m.colors.HoverForeground != "" {
+		fg = m.colors.HoverForeground
 	}
-	if entry.ignored {
-		fg = m.colors.Ignored
+	if state.selected {
+		if m.sidebar {
+			if m.colors.SelectionForeground != "" {
+				fg = m.colors.SelectionForeground
+			}
+		} else if m.colors.InactiveSelectionForeground != "" {
+			fg = m.colors.InactiveSelectionForeground
+		}
 	}
+	rowForeground := fg
+	// iconlabel.css clears decorations only for a focused selected list. An
+	// inactive selection/hover changes the row's inherited color, not its label's
+	// explicitly declared Git decoration.
+	if m.section == explorer && (entry.status != 0 || entry.ignored) && !(state.selected && m.sidebar) {
+		fg = decoration
+	}
+
 	padding := "  "
 	if m.section == explorer {
 		padding = " "
@@ -144,13 +160,11 @@ func (m *Model) explorerRow(entry item, w int, bg string) (string, string) {
 	icon := fileicon.For(path, m.nerd)
 	chevron := "  "
 	if entry.folder != "" {
-		chevron = row(m.treeChevron(m.folderExpanded(entry)), 2, fg, bg)
+		chevronColor := rowForeground
+		chevron = row(m.treeChevron(m.folderExpanded(entry)), 2, chevronColor, bg)
 		icon = fileicon.Folder(entry.folder, m.folderExpanded(entry), m.nerd)
 	}
 	iconColor := icon.Color
-	if entry.ignored {
-		iconColor = m.colors.Ignored
-	}
 	text := indent + chevron + row(icon.Glyph, 2, iconColor, bg) + safe(entry.label)
 	marker := ""
 	if entry.status != 0 && !entry.ignored {
@@ -164,7 +178,16 @@ func (m *Model) explorerRow(entry item, w int, bg string) (string, string) {
 	}
 	text = ansi.Truncate(text, max(0, w-3), "…")
 	if marker != "" {
-		text += strings.Repeat(" ", max(1, w-2-ansi.StringWidth(text))) + marker
+		markerColor := decoration
+		if state.selected && m.sidebar && m.section == explorer {
+			markerColor = fg
+		}
+		if entry.folder != "" {
+			markerColor = theme.DecorationBubble(markerColor, bg)
+		} else if m.section == explorer {
+			markerColor = theme.DecorationBadge(markerColor, bg)
+		}
+		text += strings.Repeat(" ", max(1, w-2-ansi.StringWidth(text))) + theme.Style(markerColor, bg).Render(marker)
 	}
 	return text, fg
 }
@@ -248,4 +271,35 @@ func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 		return m.openSelected()
 	}
 	return m.preview()
+}
+
+func (m *Model) gitDecorationColor(entry item) string {
+	if entry.ignored {
+		return m.colors.Ignored
+	}
+	if entry.status == '!' {
+		return m.colors.GitConflicting
+	}
+	if entry.change != nil && entry.change.Gitlink {
+		return m.colors.GitSubmodule
+	}
+	switch entry.status {
+	case 'U':
+		return m.colors.GitUntracked
+	case 'A':
+		return m.colors.GitAdded
+	case 'R', 'C':
+		return m.colors.GitRenamed
+	case 'M', 'T':
+		if entry.staged {
+			return m.colors.GitStageModified
+		}
+		return m.colors.GitModified
+	case 'D':
+		if entry.staged {
+			return m.colors.GitStageDeleted
+		}
+		return m.colors.GitDeleted
+	}
+	return m.colors.SideForeground
 }

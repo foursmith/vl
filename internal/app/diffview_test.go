@@ -22,7 +22,7 @@ func TestDiffThemeGuttersSyntaxAndMissingLines(t *testing.T) {
 	m.diffPath = "file.go"
 	m.patch = diff.Parse("--- a/file.go\n+++ b/file.go\n@@ -9999,2 +9999,3 @@\n-var old = 1\n+var value = 2\n+// added\n same\n")
 	m.renderDiff()
-	m.diffSyntax = diffSpans(m.ctx, m.patch, m.diffPath, m.light)
+	m.diffSyntax = diffSpans(m.ctx, m.patch, m.diffPath, m.colorTheme)
 	foundSyntax, foundPlaceholder := false, false
 	for _, pair := range m.diffRows {
 		if pair.Right == nil || pair.Left == nil {
@@ -98,13 +98,13 @@ func TestDiffSyntaxResultsCannotReplaceNewPatch(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if diffSpans(ctx, m.patch, "file.go", false) != nil {
+	if diffSpans(ctx, m.patch, "file.go", theme.Builtin("dark_modern")) != nil {
 		t.Fatal("cancelled work continued")
 	}
 }
 
 func TestDiffSyntaxFontsKeepDiffBackground(t *testing.T) {
-	line := diffCode(theme.Dark(), "bold", []highlight.Span{{Start: 0, End: 4, Color: "#569CD6", Font: highlight.Bold}}, 12, 0, theme.Dark().AddedBackground, theme.Dark().AddedText, diffRange{0, 5}, diffRange{})
+	line := diffCode(theme.Dark(), "bold", []highlight.Span{{Start: 0, End: 4, Color: "#569CD6", Font: theme.Bold}}, 12, 0, theme.Dark().AddedBackground, theme.Dark().AddedText, diffRange{0, 5}, diffRange{})
 	cells := uv.NewStyledString(line).Lines(ansi.GraphemeWidth)[0]
 	for i, cell := range cells {
 		if !sameColor(cell.Style.Bg, lipgloss.Color(theme.Dark().AddedText)) {

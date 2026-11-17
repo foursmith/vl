@@ -41,9 +41,8 @@ func (m *Model) actions() []action {
 	}
 	actions := []action{
 		{"folder.openRecent", "File: Open Recent Folder", workbenchKeys.Recent.Help().Key, "", m.openRecentFolders},
-		{"theme.auto", "Preferences: Color Theme — Auto (Follow Terminal)", "", "", func() tea.Cmd { return m.SetThemeMode("auto") }},
-		{"theme.light", "Preferences: Color Theme — Light Modern", "", "", func() tea.Cmd { return m.SetThemeMode("light") }},
-		{"theme.dark", "Preferences: Color Theme — Dark Modern", "", "", func() tea.Cmd { return m.SetThemeMode("dark") }},
+		{"theme.select", "Preferences: Color Theme", "", "", m.openThemePicker},
+
 		{"view.explorer", "View: Explorer", workbenchKeys.Explorer.Help().Key, "", func() tea.Cmd { return m.selectSection(explorer) }},
 		{"explorer.newFile", "Explorer: New File", "", "", func() tea.Cmd { return m.newEntry(false) }},
 		{"explorer.newFolder", "Explorer: New Folder", "", "", func() tea.Cmd { return m.newEntry(true) }},
@@ -237,18 +236,19 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 		return nil
 	}
 	if key.Matches(msg, workbenchKeys.Escape) {
+		restore := m.cancelThemePreview()
 		m.rememberCommitDraft()
 		m.modal = ""
 		m.confirm = nil
 		m.input.Blur()
-		return nil
+		return restore
 	}
 	if m.isPicker() {
 		if key.Matches(msg, pickerKeys.Accept) {
 			return m.selectPickerChoice()
 		}
 		if m.pickerKey(msg) {
-			return nil
+			return m.previewSelectedTheme()
 		}
 	}
 

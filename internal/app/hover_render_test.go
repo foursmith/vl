@@ -170,10 +170,10 @@ func BenchmarkHoverFrame(b *testing.B) {
 }
 
 func TestPickerHoverUsesVisibleRowsWithoutChangingSelection(t *testing.T) {
-	for _, mode := range []string{"dark", "light"} {
+	for _, mode := range []string{"dark_modern", "light_modern"} {
 		t.Run(mode, func(t *testing.T) {
 			m := newHoverRenderModel(t)
-			m.SetThemeMode(mode)
+			m.SetTheme(mode, "")
 			m.Update(tea.WindowSizeMsg{Width: 80, Height: 12})
 			m.workspaces = nil
 			for i := range 23 {
@@ -192,10 +192,10 @@ func TestPickerHoverUsesVisibleRowsWithoutChangingSelection(t *testing.T) {
 				}
 				bg := m.colors.Hover
 				if layout.start+i == 22 {
-					bg = m.colors.Selection
+					bg = m.colors.PopupSelection
 				}
 				cells := uv.NewStyledString(m.View().Content).Lines(ansi.GraphemeWidth)[y]
-				for _, cell := range cells[layout.x : layout.x+layout.width] {
+				for _, cell := range cells[layout.x+1 : layout.x+layout.width-1] {
 					if !sameColor(cell.Style.Bg, lipgloss.Color(bg)) {
 						t.Fatal("picker row has incorrect hover or selection background")
 					}
