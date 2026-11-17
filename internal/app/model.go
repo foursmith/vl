@@ -70,6 +70,7 @@ type tab struct {
 	highlightText   string
 	spans           [][]highlight.Span
 	highlightJob    highlightJob
+	highlighter     *highlight.Session
 	renderKey       editorRenderKey
 	renderedRows    map[int]string
 }

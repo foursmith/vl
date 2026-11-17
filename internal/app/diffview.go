@@ -288,6 +288,9 @@ func diffSpans(ctx context.Context, patch diff.Patch, path string, colors *theme
 		return nil
 	}
 	result := make(map[*diff.Line][]highlight.Span)
+	// One session shares exact line/start-state tokens across the two sides.
+	// Each call still starts lexical state at the beginning of its own text.
+	var syntax highlight.Session
 	var old, added []*diff.Line
 	flush := func() {
 		for _, side := range [][]*diff.Line{old, added} {
@@ -299,7 +302,7 @@ func diffSpans(ctx context.Context, patch diff.Patch, path string, colors *theme
 				source.WriteString(line.Text[1:])
 				source.WriteByte('\n')
 			}
-			spans := highlight.Lines(ctx, path, source.String(), colors)
+			spans := syntax.Lines(ctx, path, source.String(), colors)
 			for i, line := range side {
 				if i < len(spans) {
 					result[line] = spans[i]

@@ -41,14 +41,42 @@ work, not a foreground frame or cold startup. The original Chroma measurement
 above was about 68 ms / 91 MB; this is a recorded baseline, not a claim of a
 speedup for every grammar or input.
 
-Theme resolution is cached by interned scope stack per pass. Multiline state
-is carried between lines, and tokens with the same color/font are merged.
-Tokenization remains in the existing debounced background task, with stale
-result rejection and cancellation between lines. Per-line soft time and size
-limits bound problematic inputs; cold compilation timeouts get at most two
-retries. The engine supports incremental documents, but this integration still
-recomputes each requested immutable text snapshot rather than retaining mutable
-TextMate document state across edits.
+Each editor tab now retains a serialized TextMate `Document` across immutable
+text snapshots. The background task finds the common line prefix/suffix and
+applies `ReplaceLines`; tokenizer state and unchanged tail results are reused
+when lexical state converges. Token-to-span and scope-to-theme mappings are
+cached, bounded to 20,000 entries and reset when their grammar/theme changes.
+The existing debounce, cancellation, stale-result rejection, 256 KiB input cap,
+and per-line limits remain. This still splits and compares the snapshot's lines;
+it does not add an editor change log or change text storage and undo.
+
+Diff highlighting uses one task-local session for both sides and subsequent
+hunks. TextMate caches results by line text and canonical start state; each
+snapshot starts its own lexical state, so removed code cannot contaminate the
+new side, nor can state cross omitted hunk ranges.
+
+On Apple M4 / Go 1.27.4, two 500 ms runs measured:
+
+| Highlighter workload | Time | Allocation |
+| --- | ---: | ---: |
+| Fresh full pass, 5,000 Go lines (`BenchmarkSyntaxHighlight`) | 49.5–50.0 ms | 24.2 MB |
+| Warm session, one changing line in 5,000 Go lines (`BenchmarkSessionEdit`) | 0.244–0.247 ms | 0.365 MB |
+| Old/new 2,000-line diff, separate fresh passes | 38.6–39.4 ms | 15.5 MB |
+| Same diff, shared task-local session including initial pass | 21.1–22.8 ms | 9.08 MB |
+
+The edit benchmark includes new snapshot construction, line comparison, and span
+lookup; each iteration uses a different replacement. The diff changes one line
+and uses unique source lines. These measure warmed-grammar highlighter work,
+not opening latency, debounce time, terminal rendering or process footprint.
+Edits changing multiline lexical state can require retokenizing the entire tail.
+The uncached reference tokenizer is compiled only into tests; production uses
+the incremental session exclusively. Run:
+
+```sh
+go test ./internal/highlight -run '^$' \
+  -bench 'Benchmark(SyntaxHighlight|SessionEdit|DiffHighlightShared)$' \
+  -benchmem -benchtime=500ms -count=2
+```
 
 ## Standalone editor memory
 

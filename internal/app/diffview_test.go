@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"reflect"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -13,6 +14,27 @@ import (
 	"github.com/ourongxing/vl/internal/highlight"
 	"github.com/ourongxing/vl/internal/theme"
 )
+
+func TestSharedDiffSyntaxKeepsSideAndHunkStatesSeparate(t *testing.T) {
+	patch := diff.Parse("--- a/file.go\n+++ b/file.go\n@@ -1,3 +1,3 @@\n-/*\n+// opening\n var n = 1\n-*/\n+// closing\n@@ -20 +20 @@\n-var later = 1\n+var later = 2\n")
+	colors := theme.Builtin("dark_modern")
+	ctx := context.Background()
+	got := diffSpans(ctx, patch, "file.go", colors)
+	oldSide := new(highlight.Session).Lines(ctx, "file.go", "/*\nvar n = 1\n*/\n", colors)
+	for i := range patch.Lines {
+		line := &patch.Lines[i]
+		if line.Kind != diff.Context && line.Kind != diff.Added && line.Kind != diff.Deleted {
+			continue
+		}
+		want := new(highlight.Session).Lines(ctx, "file.go", line.Text[1:]+"\n", colors)[0]
+		if line.Kind == diff.Deleted && line.Text == "-*/" {
+			want = oldSide[2]
+		}
+		if !reflect.DeepEqual(got[line], want) {
+			t.Fatalf("lexical state leaked into %q: %#v, want %#v", line.Text, got[line], want)
+		}
+	}
+}
 
 func TestAddedAndDeletedFilesUseFullWidthDiff(t *testing.T) {
 	for _, tc := range []struct {

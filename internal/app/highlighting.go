@@ -26,6 +26,7 @@ func (j *highlightJob) stop() {
 }
 
 type highlightRequest struct {
+	session    *highlight.Session
 	theme      *theme.Theme
 	doc        *editor.Document
 	text, path string
@@ -51,6 +52,7 @@ func (m *Model) scheduleHighlight() tea.Cmd {
 	if len(text) > highlight.MaxBytes || text == "" {
 		t.highlightJob.stop()
 		t.highlightText, t.spans = text, nil
+		t.highlighter = nil
 		return nil
 	}
 	if t.highlightJob.pending && t.highlightJob.text == text {
@@ -60,8 +62,11 @@ func (m *Model) scheduleHighlight() tea.Cmd {
 	ctx, cancel := context.WithCancel(m.ctx)
 	t.highlightJob.seq++
 	t.highlightJob.text, t.highlightJob.pending, t.highlightJob.cancel = text, true, cancel
-	request := highlightRequest{m.colorTheme, t.doc, text, t.doc.Path, t.highlightJob.seq, ctx}
-	// Quiet typing bursts before spending CPU on a whole-file tokenizer.
+	if t.highlighter == nil {
+		t.highlighter = &highlight.Session{}
+	}
+	request := highlightRequest{session: t.highlighter, theme: m.colorTheme, doc: t.doc, text: text, path: t.doc.Path, seq: t.highlightJob.seq, ctx: ctx}
+	// Coalesce typing bursts before updating the incremental tokenizer.
 	delay := 30 * time.Millisecond
 	if len(text) > 32<<10 {
 		delay = 200 * time.Millisecond
@@ -87,7 +92,7 @@ func (m *Model) startHighlight(request highlightRequest) tea.Cmd {
 		return nil
 	}
 	return func() tea.Msg {
-		return highlightResultMsg{request, highlight.Lines(request.ctx, request.path, request.text, request.theme)}
+		return highlightResultMsg{request, request.session.Lines(request.ctx, request.path, request.text, request.theme)}
 	}
 }
 

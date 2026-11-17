@@ -1,10 +1,34 @@
 package app
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/ourongxing/vl/internal/highlight"
 )
+
+func TestHighlightSessionSurvivesEditsAndUndo(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	m.openFile("file0.go")
+	complete := func() {
+		t.Helper()
+		request := m.scheduleHighlight()().(highlightStartMsg).request
+		m.finishHighlight(m.startHighlight(request)().(highlightResultMsg))
+		want := new(highlight.Session).Lines(m.ctx, request.path, request.text, request.theme)
+		if !reflect.DeepEqual(m.tabs[0].spans, want) {
+			t.Fatal("incremental app result differs from fresh highlight")
+		}
+	}
+	complete()
+	session := m.tabs[0].highlighter
+	m.document().Insert("/*\n")
+	complete()
+	m.document().Undo()
+	complete()
+	if m.tabs[0].highlighter != session {
+		t.Fatal("editing replaced the incremental session")
+	}
+}
 
 func TestHighlightingRejectsCancelledAndStaleText(t *testing.T) {
 	m := tabWorkspace(t, 1)
