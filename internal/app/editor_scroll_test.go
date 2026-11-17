@@ -79,7 +79,7 @@ func TestSidebarWheelScrollsWithoutSelectionOrPreview(t *testing.T) {
 				t.Fatal("scroll scheduled a preview or Git request")
 			}
 		}
-		want := len(m.items) - (m.bodyHeight() - m.sidebarHeaderRows())
+		want := len(m.items) - (m.bodyHeight() - headerHeight)
 		if m.sideTop != want || m.selected != 3 || m.diffSeq != 0 {
 			t.Fatalf("section %d changed selection/diff or exceeded bottom: top=%d", section, m.sideTop)
 		}

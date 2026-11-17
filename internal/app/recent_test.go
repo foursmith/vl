@@ -2,105 +2,40 @@ package app
 
 import (
 	"errors"
-	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/x/ansi"
 	"github.com/ourongxing/vl/internal/config"
 )
 
-func TestSidebarWorkspaceSwitch(t *testing.T) {
-	for _, width := range []int{30, 60, 120} {
-		for _, right := range []bool{false, true} {
-			for _, section := range []section{explorer, changes, history} {
-				t.Run(fmt.Sprintf("width%d/right%v/section%d", width, right, section), func(t *testing.T) {
-					m := newHoverRenderModel(t)
-					m.section, m.sidebar = section, true
-					m.SetSidebarLayout(minSidebarWidth, right)
-					m.Update(tea.WindowSizeMsg{Width: width, Height: 30})
-					w := m.sideWidth()
-					if !m.sideShown() {
-						w = m.width
-					}
-					target := explorerWorkspace(t)
-					m.Update(workspacesMsg{folders: []string{m.repo.Root, target.repo.Root}})
-					lines := m.sidebarLinesWidth(w)
-					if !strings.Contains(ansi.Strip(lines[0]), "WORKSPACES") || !strings.Contains(ansi.Strip(lines[2]), filepath.Base(target.repo.Root)) {
-						t.Fatal("recent workspaces are not listed above the section")
-					}
-					for _, line := range lines {
-						if ansi.StringWidth(line) != w {
-							t.Fatal("workspace sidebar overflow")
-						}
-					}
-					x := m.sideX() + 3
-					m.View()
-					m.Update(tea.MouseMotionMsg{X: x, Y: 2})
-					assertFreshHoverFrame(t, m)
-					if !strings.Contains(m.hoverHint(), target.repo.Root) {
-						t.Fatal("workspace path hint missing")
-					}
-					drain(t, m, m.click(tea.MouseClickMsg{X: x, Y: 2, Button: tea.MouseLeft}))
-					if m.modal != "" || m.nextRepository == nil || m.nextRepository.Root != target.repo.Root {
-						t.Fatal("click did not switch directly to the workspace")
-					}
-				})
-			}
+func TestRecentWorkspacesDoNotDisplaceSidebarNavigation(t *testing.T) {
+	for _, right := range []bool{false, true} {
+		m := newHoverRenderModel(t)
+		m.SetSidebarLayout(38, right)
+		m.Update(tea.WindowSizeMsg{Width: 120, Height: 24})
+		before := m.sidebarLines()[0]
+		m.Update(workspacesMsg{seq: m.workspaceSeq, folders: []string{m.repo.Root, "/projects/other"}})
+		if m.sidebarLines()[0] != before {
+			t.Fatal("recent workspaces displaced the sidebar navigation")
 		}
-	}
-}
-
-func TestWorkspaceListScrollAndSectionCoordinates(t *testing.T) {
-	m := newHoverRenderModel(t)
-	m.Update(tea.WindowSizeMsg{Width: 120, Height: 15})
-	var folders []string
-	for i := 0; i < 20; i++ {
-		folders = append(folders, filepath.Join(t.TempDir(), fmt.Sprintf("workspace%d", i)))
-	}
-	m.Update(workspacesMsg{folders: folders})
-	for range 30 {
-		m.Update(tea.MouseWheelMsg{X: m.sideX() + 3, Y: 2, Button: tea.MouseWheelDown})
-	}
-	if m.workspaceTop+m.workspaceRows()-1 != len(folders) {
-		t.Fatal("last recent workspace cannot be reached")
-	}
-	if lines := m.sidebarLines(); !strings.Contains(ansi.Strip(lines[m.workspaceRows()-1]), "workspace19") {
-		t.Fatal("last workspace not rendered after scrolling")
-	}
-	m.click(tea.MouseClickMsg{X: m.sideX() + 10, Y: m.workspaceRows(), Button: tea.MouseLeft})
-	if m.section != history {
-		t.Fatal("navigation tabs are not clickable below workspaces")
-	}
-	m.Update(tea.WindowSizeMsg{Width: 120, Height: 50})
-	if m.workspaceTop != 0 {
-		t.Fatal("resizing did not restore the complete workspace list")
-	}
-}
-
-func TestWorkspaceLabelsOmitPathsUnlessNamesCollide(t *testing.T) {
-	m := newHoverRenderModel(t)
-	m.workspaces = []string{"/projects/newsnext", "/work/vl", "/personal/vl"}
-	for folder, want := range map[string]string{
-		"/projects/newsnext": "newsnext",
-		"/work/vl":           "vl · work",
-		"/personal/vl":       "vl · personal",
-	} {
-		if got := m.workspaceLabel(folder); got != want {
-			t.Fatalf("workspace label: got %q, want %q", got, want)
+		m.click(tea.MouseClickMsg{X: m.sideX() + 10, Y: 0, Button: tea.MouseLeft})
+		if m.section != history {
+			t.Fatal("navigation is not clickable at the top of the sidebar")
 		}
+		m.Close()
 	}
 }
 
-func TestRecentFoldersPickerSearchAndOpen(t *testing.T) {
+func TestRecentWorkspacesPickerSearchAndOpen(t *testing.T) {
 	m := explorerWorkspace(t)
 	target := explorerWorkspace(t)
 	old := m.repo
-	press(m, "ctrl+r")
+	press(m, "ctrl+h")
 	if m.modal != "recent" || !m.isPicker() {
-		t.Fatal("Ctrl+R did not open recent folder picker")
+		t.Fatal("Ctrl+H did not open recent workspace picker")
 	}
 	m.Update(workspacesMsg{seq: m.workspaceSeq, folders: []string{m.repo.Root, target.repo.Root}})
 	m.input.SetValue(target.repo.Root)
@@ -116,16 +51,35 @@ func TestRecentFoldersPickerSearchAndOpen(t *testing.T) {
 	}
 }
 
-func TestRecentFolderResultsRespectDismissalAndNewRequests(t *testing.T) {
+func TestRecentWorkspacesSearchNameAndPath(t *testing.T) {
 	m := explorerWorkspace(t)
-	m.openRecentFolders()
+	defer m.Close()
+	m.workspaces = []string{"/Projects/Client/alpha", "/Projects/Personal/beta"}
+	press(m, "ctrl+h")
+	for query, want := range map[string]string{
+		"alpha":                   "/Projects/Client/alpha",
+		"client":                  "/Projects/Client/alpha",
+		"/projects/personal/":     "/Projects/Personal/beta",
+		"/Projects/Personal/beta": "/Projects/Personal/beta",
+	} {
+		m.input.SetValue(query)
+		rows := m.filteredActions()
+		if len(rows) != 1 || rows[0].id != want {
+			t.Fatalf("search %q: got %+v, want %q", query, rows, want)
+		}
+	}
+}
+
+func TestRecentWorkspaceResultsRespectDismissalAndNewRequests(t *testing.T) {
+	m := explorerWorkspace(t)
+	m.openRecentWorkspaces()
 	stale := workspacesMsg{seq: m.workspaceSeq, folders: []string{m.repo.Root}}
 	m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	m.Update(stale)
 	if m.modal != "" || len(m.palette) != 0 {
 		t.Fatal("dismissed picker was reopened")
 	}
-	m.openRecentFolders()
+	m.openRecentWorkspaces()
 	if len(m.palette) != 1 || m.palette[0].id != m.repo.Root {
 		t.Fatal("new picker did not reuse the workspace list")
 	}
@@ -179,74 +133,42 @@ func TestFailedAndCurrentFolderKeepRepository(t *testing.T) {
 	}
 }
 
-func TestWorkspaceContextMenuRemovesCapturedFolder(t *testing.T) {
-	for _, right := range []bool{false, true} {
-		t.Run(fmt.Sprintf("right%v", right), func(t *testing.T) {
-			t.Setenv("HOME", t.TempDir())
-			t.Setenv("XDG_STATE_HOME", "")
-			m := explorerWorkspace(t)
-			m.SetSidebarLayout(38, right)
-			m.Update(tea.WindowSizeMsg{Width: 120, Height: 15})
-			folder := m.repo.Root
-			other := t.TempDir()
-			for _, path := range []string{other, folder} {
-				if err := config.RememberFolder(path); err != nil {
-					t.Fatal(err)
-				}
-			}
-			drain(t, m, m.loadWorkspaces())
-			m.section = history
-			m.Update(tea.MouseClickMsg{X: m.sideX() + 3, Y: 1, Button: tea.MouseRight})
-			if m.contextMenu == nil {
-				t.Fatal("workspace menu missing in history section")
-			}
-			// The action must remain bound to the clicked folder if the list changes.
-			m.workspaces[0], m.workspaces[1] = m.workspaces[1], m.workspaces[0]
-			drain(t, m, chooseContextAction(t, m, "Remove from workspace list"))
-			if len(m.workspaces) != 1 || m.workspaces[0] != other {
-				t.Fatalf("remaining: %v", m.workspaces)
-			}
-			if m.repo.Root != folder || m.nextRepository != nil {
-				t.Fatal("removal closed the active workspace")
-			}
-			folders, err := config.RecentFolders()
-			if err != nil || len(folders) != 1 || folders[0] != other {
-				t.Fatalf("persisted: %v %v", folders, err)
-			}
-		})
+func TestRecentPickerContextMenuRemovesFilteredWorkspace(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	m := explorerWorkspace(t)
+	defer m.Close()
+	m.Update(tea.WindowSizeMsg{Width: 120, Height: 24})
+	other := t.TempDir()
+	folder := filepath.Join(t.TempDir(), "target")
+	if err := os.Mkdir(folder, 0700); err != nil {
+		t.Fatal(err)
 	}
-}
-
-func TestWorkspaceCollapseKeepsScrollAndNavigation(t *testing.T) {
-	for _, right := range []bool{false, true} {
-		t.Run(fmt.Sprintf("right%v", right), func(t *testing.T) {
-			m := newHoverRenderModel(t)
-			m.SetSidebarLayout(38, right)
-			m.Update(tea.WindowSizeMsg{Width: 120, Height: 15})
-			for i := 0; i < 20; i++ {
-				m.workspaces = append(m.workspaces, fmt.Sprintf("/workspace/project%d", i))
-			}
-			m.workspaceTop = 4
-			m.Update(tea.MouseClickMsg{X: m.sideX() + 3, Y: 0, Button: tea.MouseLeft})
-			if !m.workspaceCollapsed || m.workspaceRows() != 1 || len(m.workspaceLines(38)) != 1 {
-				t.Fatal("workspace header did not collapse its list")
-			}
-			m.Update(tea.MouseWheelMsg{X: m.sideX() + 3, Y: 0, Button: tea.MouseWheelDown})
-			if m.workspaceTop != 4 {
-				t.Fatal("collapsed header changed list scroll")
-			}
-			m.Update(tea.MouseMotionMsg{X: m.sideX() + 3, Y: 1})
-			if m.hoveredWorkspace() != -1 {
-				t.Fatal("hidden workspace retained a hover target")
-			}
-			m.click(tea.MouseClickMsg{X: m.sideX() + 10, Y: 1, Button: tea.MouseLeft})
-			if m.section != history {
-				t.Fatal("collapsed workspace displaced navigation")
-			}
-			m.Update(tea.MouseClickMsg{X: m.sideX() + 3, Y: 0, Button: tea.MouseLeft})
-			if m.workspaceCollapsed || m.workspaceRows() != 6 || m.workspaceTop != 4 {
-				t.Fatal("expansion did not restore list height and scroll")
-			}
-		})
+	for _, path := range []string{folder, other} {
+		if err := config.RememberFolder(path); err != nil {
+			t.Fatal(err)
+		}
+	}
+	drain(t, m, m.openRecentWorkspaces())
+	m.input.SetValue("target")
+	m.syncPicker()
+	l := m.pickerLayout(m.filteredActions())
+	m.Update(tea.MouseClickMsg{X: l.x + 3, Y: l.y + 3, Button: tea.MouseRight})
+	if m.contextMenu == nil || m.modal != "recent" {
+		t.Fatal("right click did not open a menu above the recent picker")
+	}
+	m.View()
+	drain(t, m, chooseContextAction(t, m, "Remove from workspace list"))
+	if m.contextMenu != nil || m.modal != "recent" || m.input.Value() != "target" || len(m.filteredActions()) != 0 {
+		t.Fatal("removal did not refresh the picker while preserving its search")
+	}
+	folders, err := config.RecentFolders()
+	if err != nil || len(folders) != 1 || folders[0] != other {
+		t.Fatalf("persisted workspaces: %v, %v", folders, err)
+	}
+	if _, err := os.Stat(folder); err != nil {
+		t.Fatalf("workspace directory changed: %v", err)
+	}
+	if m.nextRepository != nil {
+		t.Fatal("right click switched workspace")
 	}
 }

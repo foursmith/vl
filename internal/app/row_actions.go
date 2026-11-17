@@ -116,9 +116,6 @@ func (m *Model) changeActionRow(entry item, w int, fg, bg string, state treeRowS
 }
 
 func (m *Model) hoverHint() string {
-	if index := m.hoveredWorkspace(); index >= 0 {
-		return m.tr("Switch workspace · %s", safe(m.workspaces[index]))
-	}
 	if m.resizingSidebar || m.sidebarDividerAt(m.hoverX, m.hoverY) {
 		return m.tr("Drag to resize sidebar")
 	}

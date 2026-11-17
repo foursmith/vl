@@ -72,23 +72,22 @@ func (m *Model) Layout() config.Layout {
 	selected := m.committedTheme()
 	dark, light := m.darkTheme, m.lightTheme
 	return config.Layout{
-		SidebarWidth:       m.sidebarWidth,
-		SidebarRight:       m.sidebarRight,
-		WorkspaceCollapsed: m.workspaceCollapsed,
-		Theme:              selected.ID,
-		DarkTheme:          dark.ID,
-		LightTheme:         light.ID,
-		DarkThemeType:      dark.UIThemeOverride,
-		LightThemeType:     light.UIThemeOverride,
-		ThemeType:          selected.UIThemeOverride,
-		LastCommand:        m.lastCommand,
-		Language:           string(m.displayLanguage),
+		SidebarWidth:   m.sidebarWidth,
+		SidebarRight:   m.sidebarRight,
+		Theme:          selected.ID,
+		DarkTheme:      dark.ID,
+		LightTheme:     light.ID,
+		DarkThemeType:  dark.UIThemeOverride,
+		LightThemeType: light.UIThemeOverride,
+		ThemeType:      selected.UIThemeOverride,
+		LastCommand:    m.lastCommand,
+		Language:       string(m.displayLanguage),
 	}
 }
 
 func (m *Model) SetLayout(layout config.Layout) {
 	m.SetDisplayLanguage(layout.Language)
-	m.workspaceCollapsed, m.lastCommand = layout.WorkspaceCollapsed, layout.LastCommand
+	m.lastCommand = layout.LastCommand
 	m.SetSidebarLayout(layout.SidebarWidth, layout.SidebarRight)
 	m.restoreThemeSlot(layout.DarkTheme, layout.DarkThemeType, false)
 	m.restoreThemeSlot(layout.LightTheme, layout.LightThemeType, true)

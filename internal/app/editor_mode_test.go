@@ -24,7 +24,7 @@ func TestEditorModeIsolatedAndFullWidth(t *testing.T) {
 	defer m.Close()
 	for _, width := range []int{120, 50, 30} {
 		m.Update(tea.WindowSizeMsg{Width: width, Height: 24})
-		for _, k := range []string{"esc", "ctrl+1", "ctrl+2", "ctrl+3", "ctrl+l", "ctrl+j", "ctrl+r"} {
+		for _, k := range []string{"esc", "ctrl+1", "ctrl+2", "ctrl+3", "ctrl+l", "ctrl+j", "ctrl+h"} {
 			press(m, k)
 		}
 		if m.sidebar || m.sidebarVisible || m.sideShown() || m.mainWidth() != width || m.modal != "" {
@@ -45,7 +45,7 @@ func TestEditorModeIsolatedAndFullWidth(t *testing.T) {
 		}
 	}
 	for _, a := range m.actions() {
-		if strings.HasPrefix(a.id, "git.") || a.id == "folder.openRecent" || strings.HasPrefix(a.id, "view.sidebar") {
+		if strings.HasPrefix(a.id, "git.") || a.id == "workspace.openRecent" || strings.HasPrefix(a.id, "view.sidebar") {
 			t.Fatalf("workspace action exposed: %s", a.id)
 		}
 	}

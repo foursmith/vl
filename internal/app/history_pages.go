@@ -56,7 +56,7 @@ func (m *Model) loadVisibleHistory() tea.Cmd {
 		return nil
 	}
 	var cmds []tea.Cmd
-	end := min(len(m.items), m.sideTop+max(1, m.bodyHeight()-m.sidebarHeaderRows()))
+	end := min(len(m.items), m.sideTop+max(1, m.bodyHeight()-headerHeight))
 	for i := m.sideTop; i < end; i++ {
 		entry := m.items[i]
 		if entry.historyPage != nil && entry.historyPage.err == "" {

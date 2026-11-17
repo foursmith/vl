@@ -56,6 +56,10 @@ func TestWelcomeClicksUseRenderedCoordinates(t *testing.T) {
 				if m.modal != "quick" || m.commandPicker() {
 					t.Fatal("file search link missed")
 				}
+			case "recent":
+				if m.modal != "recent" {
+					t.Fatal("recent workspace link missed")
+				}
 			}
 		}
 	}

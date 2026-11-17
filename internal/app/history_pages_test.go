@@ -47,7 +47,7 @@ func TestHistoryScrollLoadsOlderCommitsAndRefreshResetsPages(t *testing.T) {
 	m.selected = len(m.items) - 1
 	m.ensureSidebar()
 	for range 40 {
-		_, cmd := m.Update(tea.MouseWheelMsg{X: m.sideX() + 3, Y: m.sidebarHeaderRows() + 1, Button: tea.MouseWheelDown})
+		_, cmd := m.Update(tea.MouseWheelMsg{X: m.sideX() + 3, Y: headerHeight + 1, Button: tea.MouseWheelDown})
 		drain(t, m, cmd)
 	}
 	if !page.done || len(page.commits) != 105 || page.commits[104].ID != oldest || page.commits[0].ID != head {

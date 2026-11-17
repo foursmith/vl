@@ -32,6 +32,13 @@ func (m *Model) pickerRow(a action, index, width, hovered int) string {
 	}
 	w := width - 2
 	label := " " + safe(a.label)
+	if m.modal == "recent" && a.id != "" {
+		label = ansi.Truncate(label, w, "…")
+		if remaining := w - ansi.StringWidth(label); remaining > 2 {
+			pathColor := theme.WithOpacity(fg, .7)
+			label += theme.Style(pathColor, bg).Render(ansi.Truncate("  "+safe(a.id), remaining, "…"))
+		}
+	}
 	if m.modal == "quick" && !m.commandPicker() && a.id != "" {
 		icon := fileicon.For(a.id, m.nerd)
 		label = ansi.Truncate(" "+row(icon.Glyph, 2, icon.Color, bg)+safe(filepath.Base(a.id)), w-2, "…")

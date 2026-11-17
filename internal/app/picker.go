@@ -53,7 +53,7 @@ func (m *Model) pickerOverlay(base []string) []string {
 	if len(rows) == 0 {
 		message := m.tr("No matches")
 		if m.modal == "recent" && m.input.Value() == "" {
-			message = m.tr("No recent folders")
+			message = m.tr("No recent workspaces")
 		}
 		box = append(box, border.Render("│")+row("  "+message, w, m.colors.Muted, bg)+border.Render("│"))
 	}
@@ -64,6 +64,16 @@ func (m *Model) pickerOverlay(base []string) []string {
 func (m *Model) clickPicker(msg tea.MouseClickMsg) tea.Cmd {
 	rows := m.filteredActions()
 	l := m.pickerLayout(rows)
+	if msg.Button == tea.MouseRight && m.modal == "recent" {
+		if index := l.indexAt(msg.X, msg.Y); index >= 0 {
+			m.selectPickerIndex(index)
+			folder := rows[index].id
+			m.contextMenu = &contextMenu{x: msg.X, y: msg.Y, modal: m.modal, actions: []action{
+				{label: m.tr("Remove from workspace list"), run: func() tea.Cmd { return m.removeWorkspace(folder) }},
+			}}
+		}
+		return nil
+	}
 	if msg.Button == tea.MouseLeft && msg.X >= l.x && msg.X < l.x+l.width {
 		if msg.Y >= l.y && msg.Y < l.y+3 {
 			return nil

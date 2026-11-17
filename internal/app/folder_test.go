@@ -86,7 +86,7 @@ func TestFolderWatcherAndRecentOpen(t *testing.T) {
 func TestFolderExternalInitializationAndMouseEntry(t *testing.T) {
 	m := folderWorkspace(t)
 	drain(t, m, m.selectSection(history))
-	drain(t, m, m.clickSidebar(tea.MouseClickMsg{X: m.sideX() + 3, Y: m.sidebarHeaderRows() + 3, Button: tea.MouseLeft}))
+	drain(t, m, m.clickSidebar(tea.MouseClickMsg{X: m.sideX() + 3, Y: headerHeight + 3, Button: tea.MouseLeft}))
 	if m.snapshot.NoRepository {
 		t.Fatal("mouse initialization failed")
 	}

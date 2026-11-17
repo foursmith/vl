@@ -200,8 +200,6 @@ type Model struct {
 	hoverRender             hoverRenderCache
 	workspaceSeq            int
 	workspaces              []string
-	workspaceCollapsed      bool
-	workspaceTop            int
 	openingRepository       bool
 	nextRepository          *gitservice.Repository
 }
@@ -241,7 +239,7 @@ func newModel(ctx context.Context, repo *gitservice.Repository, nerd, editorOnly
 func (m *Model) Init() tea.Cmd {
 	commands := []tea.Cmd{m.tick(), m.startWatcher(), m.probeImages(), m.pollSystemAppearance(false), tea.Raw(ansi.RequestModeLightDark)}
 	if !m.editorOnly {
-		commands = append(commands, m.loadWorkspaces(), m.refresh())
+		commands = append(commands, m.refresh())
 	}
 	return tea.Batch(commands...)
 }
@@ -334,7 +332,7 @@ func (m *Model) current() *item {
 }
 
 func (m *Model) ensureSidebar() {
-	h := max(1, m.bodyHeight()-m.sidebarHeaderRows())
+	h := max(1, m.bodyHeight()-headerHeight)
 	if m.selected < m.sideTop {
 		m.sideTop = m.selected
 	}
@@ -349,7 +347,7 @@ func (m *Model) ensureSidebar() {
 }
 
 func (m *Model) clampSidebarScroll() {
-	height := max(1, m.bodyHeight()-m.sidebarHeaderRows())
+	height := max(1, m.bodyHeight()-headerHeight)
 	m.sideTop = min(max(0, m.sideTop), max(0, len(m.items)-height))
 }
 
@@ -530,9 +528,8 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			m.log(m.tr("Failed to update workspace list: %s", m.tr(msg.err.Error())))
 		} else {
 			m.workspaces = msg.folders
-			m.resize()
 			if m.modal == "recent" {
-				m.populateRecentFolders()
+				m.populateRecentWorkspaces()
 			}
 		}
 	case repositoryOpenedMsg:
@@ -747,18 +744,6 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			}
 			return m, nil
 		}
-		if m.sidebarAt(msg.X) && msg.Y >= 0 && msg.Y < m.workspaceRows() {
-			if m.workspaceCollapsed {
-				return m, nil
-			}
-			if msg.Button == tea.MouseWheelUp {
-				m.workspaceTop--
-			} else if msg.Button == tea.MouseWheelDown {
-				m.workspaceTop++
-			}
-			m.clampWorkspaces()
-			return m, nil
-		}
 		if m.currentImage() != nil && m.imageContentAt(msg.X, msg.Y) {
 			if msg.Button == tea.MouseWheelUp {
 				m.zoomImage(1.2, msg.X, msg.Y)
@@ -865,7 +850,7 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	if key.Matches(msg, workbenchKeys.ContextMenu) {
 		if m.sidebar {
 			m.ensureSidebar()
-			return m.openContextMenu(m.sideX()+2, m.sidebarHeaderRows()+max(0, m.selected-m.sideTop))
+			return m.openContextMenu(m.sideX()+2, headerHeight+max(0, m.selected-m.sideTop))
 		}
 		if cursor := m.editorCursor(); cursor != nil {
 			return m.openContextMenu(cursor.X, cursor.Y)
@@ -881,7 +866,7 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	case key.Matches(msg, workbenchKeys.Files):
 		return m.openQuickFiles()
 	case key.Matches(msg, workbenchKeys.Recent):
-		return m.openRecentFolders()
+		return m.openRecentWorkspaces()
 	case key.Matches(msg, workbenchKeys.Commands):
 		return m.openPalette()
 	case key.Matches(msg, workbenchKeys.Position):

@@ -18,7 +18,7 @@ func clickScopeAction(t *testing.T, m *Model, folder string, header, staged bool
 		}
 		m.selected = i
 		m.ensureSidebar()
-		y := m.sidebarHeaderRows() + i - m.sideTop
+		y := headerHeight + i - m.sideTop
 		for _, a := range m.changeRowActions(entry, m.sideWidth()) {
 			if a.id != id {
 				continue

@@ -71,7 +71,7 @@ unsaved edits are retained and external modifications are reported.
 
 ## Using the workspace
 
-Open files with **Ctrl+P**, commands with **Ctrl+Shift+P**, and recent folders with **Ctrl+R**.
+Open files with **Ctrl+P**, commands with **Ctrl+Shift+P**, and recent workspaces with **Ctrl+H**.
 The file/command picker accepts `>` for commands, `:line[:column]` for a position
 in the current file, or `filename:line[:column]` to open a file at that position.
 

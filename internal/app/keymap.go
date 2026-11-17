@@ -15,7 +15,7 @@ var workbenchKeys = struct {
 	Quit:        binding("Ctrl+Q", "Quit", "ctrl+q"),
 	Copy:        binding("Ctrl+C", "Copy", "ctrl+c"),
 	Files:       binding("Ctrl+P", "Go to File", "ctrl+p"),
-	Recent:      binding("Ctrl+R", "Open Recent", "ctrl+r"),
+	Recent:      binding("Ctrl+H", "Open Recent Workspace", "ctrl+h"),
 	Commands:    binding("Ctrl+Shift+P", "Commands", "ctrl+shift+p", "f1"),
 	Position:    binding("Ctrl+G", "Go to Line", "ctrl+g"),
 	Explorer:    binding("Ctrl+1", "Explorer", "ctrl+1"),

@@ -12,7 +12,7 @@ func TestLayoutRoundTripAndInvalidFile(t *testing.T) {
 	if err != nil || got != (Layout{}) {
 		t.Fatalf("missing preferences: %+v, %v", got, err)
 	}
-	want := Layout{WorkspaceCollapsed: true, SidebarWidth: 52, SidebarRight: true, Theme: "dark_plus", DarkTheme: "dark_plus", LightTheme: "light_plus", LastCommand: "view.sidebar"}
+	want := Layout{SidebarWidth: 52, SidebarRight: true, Theme: "dark_plus", DarkTheme: "dark_plus", LightTheme: "light_plus", LastCommand: "view.sidebar"}
 	if err := SaveLayout(path, want); err != nil {
 		t.Fatal(err)
 	}

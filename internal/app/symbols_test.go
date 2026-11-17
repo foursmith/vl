@@ -67,7 +67,7 @@ func TestSymbolModesPreserveLayoutAcrossWidthsAndHoverTargets(t *testing.T) {
 			}
 			for i := range m.items {
 				m.hoverX = 7
-				m.hoverY = m.sidebarHeaderRows() + i - m.sideTop
+				m.hoverY = headerHeight + i - m.sideTop
 				for _, line := range m.sidebarLinesWidth(w) {
 					check(line, w)
 				}

@@ -16,7 +16,7 @@ func TestPickerListPagingResizeAndMouseTarget(t *testing.T) {
 	for i := 0; i < 20; i++ {
 		m.workspaces = append(m.workspaces, fmt.Sprintf("/workspace/目录%d", i))
 	}
-	m.openRecentFolders()
+	m.openRecentWorkspaces()
 	press(m, "pgdown")
 	if m.pickerIndex != 5 {
 		t.Fatalf("page down selected %d", m.pickerIndex)
@@ -55,7 +55,7 @@ func TestPickerListPagingResizeAndMouseTarget(t *testing.T) {
 func TestPickerListSearchTypingAndPaste(t *testing.T) {
 	m := tabWorkspace(t, 0)
 	m.workspaces = []string{"/work/alpha", "/work/jk", "/work/zulu"}
-	m.openRecentFolders()
+	m.openRecentWorkspaces()
 	press(m, "j")
 	press(m, "k")
 	if m.input.Value() != "jk" || m.pickerIndex != 0 || len(m.filteredActions()) != 1 {
@@ -125,7 +125,7 @@ func TestPickerContinuousScrolling(t *testing.T) {
 	for i := range 23 {
 		m.workspaces = append(m.workspaces, fmt.Sprintf("/workspace/folder%02d", i))
 	}
-	m.openRecentFolders()
+	m.openRecentWorkspaces()
 	check := func(selected, top int) {
 		t.Helper()
 		layout := m.pickerLayout(m.filteredActions())

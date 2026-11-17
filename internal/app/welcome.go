@@ -34,6 +34,7 @@ type welcomeAction struct {
 var welcomeActions = []welcomeAction{
 	{"Show All Commands", workbenchKeys.Commands.Help().Key, "commands"},
 	{"Go to File", workbenchKeys.Files.Help().Key, "files"},
+	{"Open Recent Workspace", workbenchKeys.Recent.Help().Key, "recent"},
 }
 
 func (m *Model) welcomeVisible() bool {
@@ -102,6 +103,8 @@ func (m *Model) clickWelcome(msg tea.MouseClickMsg) tea.Cmd {
 		return m.openPalette()
 	case "files":
 		return m.openQuickFiles()
+	case "recent":
+		return m.openRecentWorkspaces()
 	}
 	return nil
 }

@@ -33,7 +33,7 @@ func (m *Model) navigation() []navigationItem {
 func (m *Model) sidebarLines() []string { return m.sidebarLinesWidth(m.sideWidth()) }
 
 func (m *Model) hoveredSidebarRow() int {
-	if m.resizingSidebar || m.modal != "" || m.hoverX < 0 || !m.sidebarAt(m.hoverX) || m.hoverY < m.sidebarHeaderRows() || m.hoverY >= m.bodyHeight() {
+	if m.resizingSidebar || m.modal != "" || m.hoverX < 0 || !m.sidebarAt(m.hoverX) || m.hoverY < headerHeight || m.hoverY >= m.bodyHeight() {
 		return -1
 	}
 	i := m.sidebarRowAt(m.hoverY)
@@ -63,8 +63,7 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 		nav.WriteString(theme.Style(fg, m.colors.Panel).Underline(m.monochrome && active).Render(label))
 		x = item.x + item.width
 	}
-	lines := m.workspaceLines(w)
-	lines = append(lines, row(nav.String(), w, m.colors.SideForeground, m.colors.Panel))
+	lines := []string{row(nav.String(), w, m.colors.SideForeground, m.colors.Panel)}
 	if m.snapshot.NoRepository && (m.section == changes || m.section == history) {
 		for _, text := range []string{"", m.tr(" Not a Git repository"), "", m.tr(" [Initialize Repository]"), m.tr(" Enter: Initialize")} {
 			lines = append(lines, row(text, w, m.colors.Muted, m.colors.Panel))
@@ -76,9 +75,9 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 	}
 	hovered := m.hoveredSidebarRow()
 	sticky := m.sidebarStickyRows()
-	for y := m.sidebarHeaderRows(); y < h; y++ {
-		i := m.sideTop + y - m.sidebarHeaderRows()
-		if offset := y - m.sidebarHeaderRows(); offset < len(sticky) {
+	for y := headerHeight; y < h; y++ {
+		i := m.sideTop + y - headerHeight
+		if offset := y - headerHeight; offset < len(sticky) {
 			i = sticky[offset]
 		}
 		text := ""
@@ -199,7 +198,7 @@ func (m *Model) treeRow(entry item, w int, bg string, state treeRowState) (strin
 func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 	msg.X -= m.sideX()
 	y := msg.Y
-	if y >= m.workspaceRows() && y < m.workspaceRows()+headerHeight {
+	if y >= 0 && y < headerHeight {
 		for _, item := range m.navigation() {
 			if msg.X >= item.x && msg.X < item.x+item.width {
 				return m.selectSection(item.section)
@@ -207,19 +206,8 @@ func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 		}
 		return nil
 	}
-	if y >= 0 && y < m.workspaceRows() {
-		if y == 0 && msg.Button == tea.MouseLeft {
-			m.workspaceCollapsed = !m.workspaceCollapsed
-			m.resize()
-			return nil
-		}
-		if index := m.workspaceTop + y - 1; y > 0 && index < len(m.workspaces) && msg.Button == tea.MouseLeft {
-			return m.openRepository(m.workspaces[index])
-		}
-		return nil
-	}
 	if m.snapshot.NoRepository && (m.section == changes || m.section == history) {
-		if y == m.sidebarHeaderRows()+3 && msg.X >= 1 && msg.X < ansi.StringWidth(m.tr(" [Initialize Repository]")) {
+		if y == headerHeight+3 && msg.X >= 1 && msg.X < ansi.StringWidth(m.tr(" [Initialize Repository]")) {
 			return m.initializeRepository()
 		}
 		return nil
@@ -229,7 +217,7 @@ func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 		w = m.width
 	}
 	i := m.sidebarRowAt(y)
-	if y < m.sidebarHeaderRows() || i < 0 || i >= len(m.items) {
+	if y < headerHeight || i < 0 || i >= len(m.items) {
 		return nil
 	}
 	if m.repositoryBranchAt(m.items[i], msg.X, w) {

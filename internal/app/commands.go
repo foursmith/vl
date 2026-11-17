@@ -40,7 +40,7 @@ func (m *Model) actions() []action {
 		githubReason = m.tr("No GitHub remote found")
 	}
 	actions := []action{
-		{"folder.openRecent", m.tr("File: Open Recent Folder"), workbenchKeys.Recent.Help().Key, "", m.openRecentFolders},
+		{"workspace.openRecent", m.tr("File: Open Recent Workspace"), workbenchKeys.Recent.Help().Key, "", m.openRecentWorkspaces},
 
 		{"view.explorer", m.tr("View: Show Explorer"), workbenchKeys.Explorer.Help().Key, "", func() tea.Cmd { return m.selectSection(explorer) }},
 		{"explorer.newFile", m.tr("Explorer: New File"), "", "", func() tea.Cmd { return m.newEntry(false) }},

@@ -28,7 +28,7 @@ vl 统一使用 Vim 交互，没有普通编辑模式或 Vim 开关。文件打�
 | --- | --- |
 | `Ctrl+1` / `Ctrl+2` / `Ctrl+3` | Explorer / Changes / History |
 | `Ctrl+P` | 搜索并打开文件 |
-| `Ctrl+R` | 打开最近文件夹 |
+| `Ctrl+H` | 打开最近工作区 |
 | `Ctrl+Shift+P` / `F1` | 命令面板 |
 | `Ctrl+G` | 跳到指定行或 `行:列`，从 1 开始 |
 | `Ctrl+F` / `F3` | 搜索当前内容 / 下一个结果 |

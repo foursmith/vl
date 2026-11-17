@@ -323,7 +323,7 @@ func TestRepositoryHeaderMouseCommitAndFrameWidths(t *testing.T) {
 	}
 	// Repository header buttons are visible, so a prior hover is unnecessary.
 	m.hoverX, m.hoverY = -1, -1
-	drain(t, m, m.clickSidebar(tea.MouseClickMsg{X: m.sideX() + commit.x + 1, Y: m.sidebarHeaderRows() + m.selected - m.sideTop, Button: tea.MouseLeft}))
+	drain(t, m, m.clickSidebar(tea.MouseClickMsg{X: m.sideX() + commit.x + 1, Y: headerHeight + m.selected - m.sideTop, Button: tea.MouseLeft}))
 	if m.modal != "commit" || m.commitRepository != "child space" {
 		t.Fatal("header commit targeted wrong repository")
 	}

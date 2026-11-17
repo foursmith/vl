@@ -119,7 +119,7 @@ func (m *Model) navigationKey(k string) (bool, tea.Cmd) {
 		}
 		return true, nil
 	}
-	page := max(1, m.bodyHeight()-m.sidebarHeaderRows())
+	page := max(1, m.bodyHeight()-headerHeight)
 	delta := count
 	if action == "pageUp" || action == "pageDown" {
 		delta *= page

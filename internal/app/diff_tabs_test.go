@@ -216,7 +216,7 @@ func TestDiffSidebarSingleDoubleClickAndEnter(t *testing.T) {
 				m.items = append(m.items, entry)
 			}
 			click := func(index int) {
-				m.click(tea.MouseClickMsg{X: 5, Y: m.sidebarHeaderRows() + index, Button: tea.MouseLeft})
+				m.click(tea.MouseClickMsg{X: 5, Y: headerHeight + index, Button: tea.MouseLeft})
 			}
 			click(0)
 			first := m.diffState

@@ -94,7 +94,7 @@ func stickyTreeModel(t *testing.T) *Model {
 func TestStickyTreePaintingHoverClickAndSiblingBoundary(t *testing.T) {
 	m := stickyTreeModel(t)
 	m.sideTop = 8
-	header := m.sidebarHeaderRows()
+	header := headerHeight
 	if got := m.sidebarStickyRows(); !slices.Equal(got, []int{0, 1}) {
 		t.Fatal(got)
 	}
@@ -126,7 +126,7 @@ func TestStickyRowsKeepKeyboardTargetsVisibleAndRespectSmallWindows(t *testing.T
 	m.sideTop = 8
 	m.selected = 9
 	m.ensureSidebar()
-	if m.sidebarRowAt(m.sidebarHeaderRows()+m.selected-m.sideTop) != m.selected {
+	if m.sidebarRowAt(headerHeight+m.selected-m.sideTop) != m.selected {
 		t.Fatal("selection hidden behind sticky parents")
 	}
 	m = tabWorkspace(t, 1)
@@ -175,7 +175,7 @@ func TestStickyChangesGroupsRetainRepositoryAndStageIdentity(t *testing.T) {
 		t.Fatal("staged context leaked into worktree group", got)
 	}
 	m.sideTop = 5
-	m.openContextMenu(m.sideX()+5, m.sidebarHeaderRows()+2)
+	m.openContextMenu(m.sideX()+5, headerHeight+2)
 	if m.selected != 2 || !m.current().staged || m.current().folder != "src" {
 		t.Fatal("context menu lost pinned folder identity")
 	}

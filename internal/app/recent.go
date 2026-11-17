@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/ourongxing/vl/internal/config"
 	gitservice "github.com/ourongxing/vl/internal/git"
 )
 
@@ -12,18 +13,18 @@ type repositoryOpenedMsg struct {
 	err  error
 }
 
-func (m *Model) openRecentFolders() tea.Cmd {
-	prompt := m.prompt("recent", m.tr("Open Recent"), "")
-	m.input.Placeholder = m.tr("Search recent folders")
-	m.populateRecentFolders()
+func (m *Model) openRecentWorkspaces() tea.Cmd {
+	prompt := m.prompt("recent", m.tr("Open Recent Workspace"), "")
+	m.input.Placeholder = m.tr("Search recent workspaces")
+	m.populateRecentWorkspaces()
 	return tea.Batch(prompt, m.loadWorkspaces())
 }
 
-func (m *Model) populateRecentFolders() {
+func (m *Model) populateRecentWorkspaces() {
 	m.palette = []action{}
 	for _, folder := range m.workspaces {
 		m.palette = append(m.palette, action{
-			id: folder, label: filepath.Base(folder) + "  " + folder,
+			id: folder, label: filepath.Base(folder),
 			run: func() tea.Cmd { return m.openRepository(folder) },
 		})
 	}
@@ -70,4 +71,34 @@ func (m *Model) finishOpenRepository(msg repositoryOpenedMsg) tea.Cmd {
 	}
 	m.nextRepository = msg.repo
 	return nil
+}
+
+type workspacesMsg struct {
+	seq     int
+	folders []string
+	err     error
+}
+
+func (m *Model) loadWorkspaces() tea.Cmd {
+	m.workspaceSeq++
+	seq, ctx := m.workspaceSeq, m.ctx
+	return func() tea.Msg {
+		folders, err := config.RecentFolders()
+		if ctx.Err() != nil {
+			return nil
+		}
+		return workspacesMsg{seq: seq, folders: folders, err: err}
+	}
+}
+
+func (m *Model) removeWorkspace(folder string) tea.Cmd {
+	m.workspaceSeq++
+	seq, ctx := m.workspaceSeq, m.ctx
+	return func() tea.Msg {
+		folders, err := config.ForgetFolder(folder)
+		if ctx.Err() != nil {
+			return nil
+		}
+		return workspacesMsg{seq: seq, folders: folders, err: err}
+	}
 }

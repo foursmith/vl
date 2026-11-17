@@ -102,7 +102,6 @@ func (m *Model) resize() {
 		t := &m.tabs[m.activeTab]
 		unchangedPosition = t.positionBaseline != nil && t.positionBaseline.Equal(documentPosition(*t))
 	}
-	m.clampWorkspaces()
 	m.hoverOnly = false
 	m.hoverRender = hoverRenderCache{}
 	m.viewport.SetWidth(m.mainWidth())

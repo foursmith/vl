@@ -11,6 +11,7 @@ import (
 )
 
 type contextMenu struct {
+	modal               string
 	x, y, selected, top int
 	actions             []action
 	navigation          navigationState
@@ -35,7 +36,7 @@ func (m *Model) contextMenuInput(msg tea.Msg) (tea.Cmd, bool) {
 	if menu == nil {
 		return nil, false
 	}
-	if m.modal != "" {
+	if m.modal != menu.modal {
 		m.contextMenu = nil
 		return nil, false
 	}
@@ -191,18 +192,11 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 	add := func(label, key string, run func() tea.Cmd) {
 		actions = append(actions, action{label: label, key: key, run: run})
 	}
-	if m.sidebarAt(x) && y > 0 && y < m.workspaceRows() {
-		index := m.workspaceTop + y - 1
-		if index >= 0 && index < len(m.workspaces) {
-			folder := m.workspaces[index]
-			add(m.tr("Open"), "", func() tea.Cmd { return m.openRepository(folder) })
-			add(m.tr("Remove from workspace list"), "", func() tea.Cmd { return m.removeWorkspace(folder) })
-		}
-	} else if m.sidebarAt(x) && y >= m.workspaceRows()+headerHeight && y < m.bodyHeight() {
+	if m.sidebarAt(x) && y >= headerHeight && y < m.bodyHeight() {
 		m.sidebar = true
 		index := m.sidebarRowAt(y)
 		var entry *item
-		if y >= m.sidebarHeaderRows() && index >= 0 && index < len(m.items) {
+		if y >= headerHeight && index >= 0 && index < len(m.items) {
 			m.selected = index
 			copy := m.items[index]
 			entry = &copy

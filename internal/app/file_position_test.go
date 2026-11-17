@@ -124,7 +124,7 @@ func TestExplorerClickRestoresFilePositions(t *testing.T) {
 	m.rebuildItems()
 	click := func(index int) {
 		t.Helper()
-		m.click(tea.MouseClickMsg{X: m.sideX() + 5, Y: m.sidebarHeaderRows() + index, Button: tea.MouseLeft})
+		m.click(tea.MouseClickMsg{X: m.sideX() + 5, Y: headerHeight + index, Button: tea.MouseLeft})
 		if m.sidebar || m.editorCursor() == nil {
 			t.Fatal("explorer click did not focus the restored cursor")
 		}
@@ -167,7 +167,7 @@ func TestExplorerClickBeforeDiscoveryRestoresFilePosition(t *testing.T) {
 	m.SetSession(config.Session{})
 	m.treeEntries = []files.Entry{{Path: "file0.go", Label: "file0.go"}}
 	m.rebuildItems()
-	m.click(tea.MouseClickMsg{X: m.sideX() + 5, Y: m.sidebarHeaderRows(), Button: tea.MouseLeft})
+	m.click(tea.MouseClickMsg{X: m.sideX() + 5, Y: headerHeight, Button: tea.MouseLeft})
 	if line, col := m.document().Position(); line != 70 || col != 8 {
 		t.Fatalf("early explorer click position = %d:%d", line, col)
 	}

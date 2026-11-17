@@ -31,7 +31,7 @@ func TestQuickFileRevealsTreeAndKeepsEditorFocus(t *testing.T) {
 	if entry := m.current(); entry == nil || entry.file != path {
 		t.Fatalf("tree selection: %+v", entry)
 	}
-	if m.selected < m.sideTop || m.selected >= m.sideTop+m.bodyHeight()-m.sidebarHeaderRows() {
+	if m.selected < m.sideTop || m.selected >= m.sideTop+m.bodyHeight()-headerHeight {
 		t.Fatal("revealed file is outside the sidebar viewport")
 	}
 	// A later navigation must win over an in-flight reveal.
