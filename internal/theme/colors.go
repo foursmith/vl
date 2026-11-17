@@ -106,6 +106,8 @@ func (t *Theme) makePalette() Palette {
 	p.TabActiveForeground = t.Color("tab.activeForeground")
 	p.TabInactiveForeground = t.Color("tab.inactiveForeground")
 	p.TabBorder = t.Color("tab.border")
+	p.FindMatch = get("editor.findMatchBackground", p.PopupSelection)
+	p.FindMatchHighlight = get("editor.findMatchHighlightBackground", p.PopupSelection)
 	p.CurrentLine = get("editor.lineHighlightBackground", p.Background)
 	p.Strong = t.Color("strongForeground")
 	p.Brand = t.Color("disabledForeground")

@@ -57,6 +57,7 @@ type tab struct {
 	scopes     []codeScope
 	image      *imageState
 
+	vim             editor.Vim
 	doc             *editor.Document
 	diff            *diffState
 	reloadSeq       uint64
@@ -97,6 +98,9 @@ type clipboardMsg struct {
 }
 
 type Model struct {
+	vimEnabled                     bool
+	flash                          *flashState
+	flashRevision                  uint64
 	displayLanguage                i18n.Language
 	kittySupported, kittyProbeDone bool
 	cellWidth, cellHeight          int
@@ -168,6 +172,7 @@ type Model struct {
 	confirmationButton      int
 	dialogTop               int
 	find                    string
+	findHidden              bool
 	expanded                map[string]bool
 	treeEntries             []files.Entry
 	treeSeq                 int
@@ -438,6 +443,9 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 				next = tea.Batch(next, cmd)
 			}
 		}
+		if m.flash != nil && !m.flashValid() {
+			m.cancelFlash()
+		}
 		// Maintenance can change visible state even during a mouse message.
 		if next != nil {
 			m.hoverOnly = false
@@ -671,6 +679,8 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			m.reloadCleanTabs()
 		}
 		return m, m.refresh()
+	case vimClipboardMsg:
+		return m, m.applyVimClipboard(msg)
 	case clipboardMsg:
 		if msg.err != nil {
 			m.log(m.tr(msg.err.Error()))
@@ -685,6 +695,10 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			m.ensureEditor()
 		}
 	case tea.MouseClickMsg:
+		m.cancelFlash()
+		if m.vimEnabled && m.editing() {
+			m.tabs[m.activeTab].vim.CancelPending()
+		}
 		m.imagePan = nil
 		m.stopTextDrag()
 		if m.modal != "" {
@@ -704,6 +718,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}
 		return m, m.click(msg)
 	case tea.MouseWheelMsg:
+		m.cancelFlash()
 		if m.modal != "" {
 			if m.isPicker() {
 				m.scrollPicker(msg)
@@ -765,11 +780,17 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			return m, cmd
 		}
 	case tea.KeyPressMsg:
+		if m.flash != nil {
+			return m, m.flashKey(msg)
+		}
 		if m.modal != "" {
 			return m, m.updateModal(msg)
 		}
 		return m, m.key(msg)
 	case tea.PasteMsg:
+		if m.flash != nil {
+			return m, m.flashText(msg.Content)
+		}
 		if m.modal != "" {
 			var cmd tea.Cmd
 			m.input, cmd = m.input.Update(msg)
@@ -777,7 +798,11 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			m.selectPickerIndex(0)
 			return m, cmd
 		}
-		if !m.sidebar && m.editing() {
+		if !m.sidebar && m.editing() && m.vimEnabled && m.tabs[m.activeTab].vim.PasteSurround(m.document(), msg.Content) {
+			m.ensureEditor()
+			return m, nil
+		}
+		if !m.sidebar && m.editing() && (!m.vimEnabled || m.tabs[m.activeTab].vim.InsertMode) {
 			m.document().Insert(msg.Content)
 			m.ensureEditor()
 		}
@@ -788,6 +813,14 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	m.stopTextDrag()
 	k := msg.String()
+	if m.vimEnabled && m.editing() && m.sidebar {
+		m.tabs[m.activeTab].vim.CancelPending()
+	}
+	if !m.sidebar && m.editing() && m.vimEnabled {
+		if handled, cmd := m.vimKey(k); handled {
+			return cmd
+		}
+	}
 	if key.Matches(msg, workbenchKeys.ContextMenu) {
 		if m.sidebar {
 			m.ensureSidebar()
@@ -932,6 +965,9 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	}
 	if m.editing() {
 		d := m.document()
+		if m.vimEnabled && m.tabs[m.activeTab].vim.InsertMode {
+			d.BeginEditGroup()
+		}
 		switch k {
 		case "ctrl+z":
 			d.Undo()
@@ -969,6 +1005,9 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 					d.Insert(msg.Text)
 				}
 			}
+		}
+		if m.vimEnabled && m.tabs[m.activeTab].vim.VisualMode {
+			m.tabs[m.activeTab].vim.SyncVisual(d)
 		}
 		m.ensureEditor()
 		return nil
@@ -1012,7 +1051,9 @@ func (m *Model) document() *editor.Document {
 	return m.tabs[m.activeTab].doc
 }
 
-func (m *Model) save() tea.Cmd {
+func (m *Model) save() tea.Cmd { return m.saveEditor(false) }
+
+func (m *Model) saveEditor(closeAfter bool) tea.Cmd {
 	if m.busy {
 		m.notice = m.tr("Wait for the current Git operation before saving")
 		return nil
@@ -1027,7 +1068,11 @@ func (m *Model) save() tea.Cmd {
 		return nil
 	}
 	m.notice = m.tr("Saved %s", filepath.Base(d.Path))
-	return m.refresh()
+	refresh := m.refresh()
+	if closeAfter {
+		return tea.Batch(refresh, m.closeTab())
+	}
+	return refresh
 }
 
 func (m *Model) reloadCleanTabs() {

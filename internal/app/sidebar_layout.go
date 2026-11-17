@@ -72,6 +72,7 @@ func (m *Model) Layout() config.Layout {
 	selected := m.committedTheme()
 	dark, light := m.darkTheme, m.lightTheme
 	return config.Layout{
+		VimMode:            m.vimEnabled,
 		SidebarWidth:       m.sidebarWidth,
 		SidebarRight:       m.sidebarRight,
 		WorkspaceCollapsed: m.workspaceCollapsed,
@@ -88,6 +89,7 @@ func (m *Model) Layout() config.Layout {
 
 func (m *Model) SetLayout(layout config.Layout) {
 	m.SetDisplayLanguage(layout.Language)
+	m.vimEnabled = layout.VimMode
 	m.workspaceCollapsed, m.lastCommand = layout.WorkspaceCollapsed, layout.LastCommand
 	m.SetSidebarLayout(layout.SidebarWidth, layout.SidebarRight)
 	m.restoreThemeSlot(layout.DarkTheme, layout.DarkThemeType, false)

@@ -30,12 +30,17 @@ type Document struct {
 	runeCount           int
 	CRLF, BOM           bool
 	Cursor, Anchor      int
+	selectionKind       uint8
 	undo, redo          []editState
+	editGroup           bool
+	groupRecorded       bool
+	groupStart          editState
 }
 
 type editState struct {
 	text           string
 	cursor, anchor int
+	selectionKind  uint8
 }
 
 func Open(path string) (*Document, error) {
@@ -150,7 +155,14 @@ func (d *Document) Edit(text string) {
 	if text == d.Text {
 		return
 	}
-	d.undo = append(d.undo, d.state())
+	if !d.editGroup || !d.groupRecorded {
+		snapshot := d.state()
+		if d.editGroup {
+			snapshot = d.groupStart
+		}
+		d.undo = append(d.undo, snapshot)
+		d.groupRecorded = true
+	}
 	budget := 0
 	for i := len(d.undo) - 1; i >= 0; i-- {
 		budget += len(d.undo[i].text)
@@ -164,10 +176,27 @@ func (d *Document) Edit(text string) {
 	d.Text = text
 }
 
-func (d *Document) state() editState    { return editState{d.Text, d.Cursor, d.Anchor} }
-func (d *Document) restore(s editState) { d.Text, d.Cursor, d.Anchor = s.text, s.cursor, s.anchor }
+func (d *Document) state() editState { return editState{d.Text, d.Cursor, d.Anchor, d.selectionKind} }
+func (d *Document) restore(s editState) {
+	d.Text, d.Cursor, d.Anchor, d.selectionKind = s.text, s.cursor, s.anchor, s.selectionKind
+}
+
+// BeginEditGroup combines a modal edit and its typed text into one undo step.
+func (d *Document) BeginEditGroup() {
+	if !d.editGroup {
+		d.editGroup = true
+		d.groupRecorded = false
+		d.groupStart = d.state()
+	}
+}
+func (d *Document) EndEditGroup() {
+	d.editGroup = false
+	d.groupRecorded = false
+	d.groupStart = editState{}
+}
 
 func (d *Document) Undo() {
+	d.EndEditGroup()
 	if len(d.undo) == 0 {
 		return
 	}
@@ -179,6 +208,7 @@ func (d *Document) Undo() {
 }
 
 func (d *Document) Redo() {
+	d.EndEditGroup()
 	if len(d.redo) == 0 {
 		return
 	}
@@ -190,11 +220,24 @@ func (d *Document) Redo() {
 }
 
 func (d *Document) Selection() (int, int) {
-	if d.Anchor < 0 || d.Anchor == d.Cursor {
+	if d.Anchor < 0 || d.Anchor == d.Cursor && d.selectionKind == 0 {
 		pos := d.snap(d.Cursor, false)
 		return pos, pos
 	}
-	return d.snap(min(d.Cursor, d.Anchor), false), d.snap(max(d.Cursor, d.Anchor), true)
+	start, end := d.snap(min(d.Cursor, d.Anchor), false), d.snap(max(d.Cursor, d.Anchor), true)
+	if d.selectionKind == 1 {
+		end = d.next(end)
+	}
+	if d.selectionKind == 2 {
+		first := sort.Search(len(d.lineOffsets), func(i int) bool { return d.lineOffsets[i] > start }) - 1
+		last := sort.Search(len(d.lineOffsets), func(i int) bool { return d.lineOffsets[i] > end }) - 1
+		start = d.LineOffset(first)
+		end = d.runeCount
+		if last+1 < len(d.Lines()) {
+			end = d.LineOffset(last + 1)
+		}
+	}
+	return start, end
 }
 
 // ByteOffset translates the editor's rune cursor using only its containing line.
@@ -220,7 +263,18 @@ func (d *Document) SelectedText() string {
 	a, b := d.Selection()
 	return d.Text[d.ByteOffset(a):d.ByteOffset(b)]
 }
-func (d *Document) SelectAll() { d.Lines(); d.Anchor = 0; d.Cursor = d.runeCount }
+func (d *Document) SelectAll() { d.Lines(); d.selectionKind = 0; d.Anchor = 0; d.Cursor = d.runeCount }
+
+// SelectVisual keeps the cursor on a character while including both endpoints.
+func (d *Document) SelectVisual(anchor, cursor int, linewise bool) {
+	d.Anchor = d.snap(anchor, false)
+	d.Cursor = d.snap(cursor, false)
+	d.selectionKind = 1
+	if linewise {
+		d.selectionKind = 2
+	}
+}
+func (d *Document) ClearSelection() { d.Anchor = -1; d.selectionKind = 0 }
 
 func (d *Document) Insert(text string) {
 	a, b := d.Selection()
@@ -261,6 +315,7 @@ func (d *Document) Position() (int, int) {
 }
 
 func (d *Document) Move(key string, selectText bool) {
+	d.selectionKind = 0
 	d.Cursor = d.snap(d.Cursor, false)
 	if !selectText && d.Anchor >= 0 && d.Anchor != d.Cursor && (key == "left" || key == "right") {
 		a, b := d.Selection()
@@ -344,6 +399,7 @@ func (d *Document) Move(key string, selectText bool) {
 }
 
 func (d *Document) SetPosition(row, col int) {
+	d.selectionKind = 0
 	lines := d.Lines()
 	row = min(max(0, row), len(lines)-1)
 	d.Cursor = d.snap(d.LineOffset(row)+min(max(0, col), d.LineRuneCount(row)), false)

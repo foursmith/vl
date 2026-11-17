@@ -42,6 +42,7 @@ func (m *Model) actions() []action {
 	actions := []action{
 		{"folder.openRecent", m.tr("File: Open Recent Folder"), workbenchKeys.Recent.Help().Key, "", m.openRecentFolders},
 		{"theme.select", m.tr("Preferences: Color Theme"), "", "", m.openThemePicker},
+		{"vim.toggle", m.tr("Preferences: Toggle Vim Mode"), "", "", m.toggleVim},
 		{"language.select", m.tr("Preferences: Configure Display Language"), "", "", m.openLanguagePicker},
 
 		{"view.explorer", m.tr("View: Show Explorer"), workbenchKeys.Explorer.Help().Key, "", func() tea.Cmd { return m.selectSection(explorer) }},
@@ -561,6 +562,7 @@ func (m *Model) switchTab(delta int) tea.Cmd {
 }
 
 func (m *Model) findNext() tea.Cmd {
+	m.findHidden = false
 	if m.find == "" {
 		return nil
 	}

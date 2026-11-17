@@ -413,11 +413,13 @@ func expandTabs(text string) string {
 // Cached rows are bounded to the current viewport; edits, selection, focus and
 // horizontal layout changes invalidate them together.
 type editorRenderKey struct {
-	text                        string
-	cursor, anchor, width, left int
-	focused                     bool
-	sticky                      [maxStickyRows]int
-	stickyCount                 int
+	flashRevision                                     uint64
+	find                                              string
+	text                                              string
+	cursor, selectionStart, selectionEnd, width, left int
+	focused                                           bool
+	sticky                                            [maxStickyRows]int
+	stickyCount                                       int
 }
 
 func (m *Model) editorLines() []string {
@@ -427,7 +429,11 @@ func (m *Model) editorLines() []string {
 	line, col := d.Position()
 	a, b := d.Selection()
 	sticky := m.editorStickyRows()
-	key := editorRenderKey{stickyCount: len(sticky), text: d.Text, cursor: d.Cursor, anchor: d.Anchor, width: m.mainWidth(), left: t.left, focused: !m.sidebar}
+	find := m.find
+	if m.findHidden {
+		find = ""
+	}
+	key := editorRenderKey{find: find, flashRevision: m.flashRevision, stickyCount: len(sticky), text: d.Text, cursor: d.Cursor, selectionStart: a, selectionEnd: b, width: m.mainWidth(), left: t.left, focused: !m.sidebar}
 	copy(key.sticky[:], sticky)
 	if t.renderedRows == nil || t.renderKey != key {
 		t.renderKey = key
@@ -437,6 +443,10 @@ func (m *Model) editorLines() []string {
 		if !slices.Contains(sticky, i) && (i < t.top+len(sticky) || i >= t.top+m.contentHeight()) {
 			delete(t.renderedRows, i)
 		}
+	}
+	flash := m.flash
+	if !m.flashValid() {
+		flash = nil
 	}
 	var lines []string
 	for y := 0; y < m.contentHeight(); y++ {
@@ -479,6 +489,8 @@ func (m *Model) editorLines() []string {
 			}
 			run.WriteString(s)
 		}
+		matches := searchRanges(source[i], find)
+		matchIndex := 0
 		spanIndex := 0
 		visual, runeIndex := 0, 0
 		input := source[i]
@@ -520,6 +532,13 @@ func (m *Model) editorLines() []string {
 					}
 				}
 			}
+			for matchIndex < len(matches) && matches[matchIndex][1] <= j {
+				matchIndex++
+			}
+			searchMatch := matchIndex < len(matches) && matches[matchIndex][0] < runeIndex
+			if searchMatch {
+				cellBG = m.colors.FindMatchHighlight
+			}
 			if offset+j >= a && offset+j < b {
 				if m.colors.EditorSelection != "" {
 					cellBG = theme.Composite(m.colors.EditorSelection, cellBG)
@@ -528,9 +547,33 @@ func (m *Model) editorLines() []string {
 					fg = m.colors.EditorSelectionForeground
 				}
 			}
+			if searchMatch && offset+j >= a && offset+j < b {
+				cellBG = m.colors.FindMatch
+			}
+			if flash != nil && flash.matches[offset+j] {
+				cellBG = m.colors.PopupSelection
+				if label := flash.marks[offset+j]; label != "" {
+					s = label + strings.Repeat(" ", max(0, ansi.StringWidth(s)-1))
+					fg = m.colors.Background
+					cellBG = m.colors.Accent
+					font = theme.Bold
+				}
+			}
 			appendRun(s, fg, cellBG, !m.sidebar && i == line && j == col, font)
 		}
-		if !m.sidebar && i == line && col == d.LineRuneCount(i) && visual >= t.left && visual < t.left+max(1, m.mainWidth()-7) {
+		selectedEOL := offset+d.LineRuneCount(i) >= a && offset+d.LineRuneCount(i) < b
+		if selectedEOL && visual >= t.left && visual < t.left+max(1, m.mainWidth()-7) {
+			selectionBG := bg
+			if m.colors.EditorSelection != "" {
+				selectionBG = theme.Composite(m.colors.EditorSelection, bg)
+			}
+			fg := m.colors.Foreground
+			if m.colors.EditorSelectionForeground != "" {
+				fg = m.colors.EditorSelectionForeground
+			}
+			appendRun(" ", fg, selectionBG, !m.sidebar && i == line && col == d.LineRuneCount(i), 0)
+		}
+		if !selectedEOL && !m.sidebar && i == line && col == d.LineRuneCount(i) && visual >= t.left && visual < t.left+max(1, m.mainWidth()-7) {
 			appendRun(" ", m.colors.Foreground, bg, true, 0)
 		}
 		flush()

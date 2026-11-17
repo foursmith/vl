@@ -108,6 +108,13 @@ func (m *Model) statusLayout() []statusSegment {
 		language := m.tr(m.language(d.Path).Name)
 		candidates = []statusSegment{{id: "position", text: m.tr("Ln %d, Col %d", line+1, col+1)}, {id: "encoding", text: "UTF-8"}, {id: "eol", text: eol}, {id: "language", text: language}}
 	}
+	if m.vimEnabled && m.editing() {
+		label := m.tabs[m.activeTab].vim.Label()
+		if flash := m.flashLabel(); flash != "" {
+			label = flash
+		}
+		candidates = append([]statusSegment{{id: "vim", text: label}}, candidates...)
+	}
 	if im := m.currentImage(); im != nil {
 		b := im.Bounds()
 		zoom := m.imageRegion().Scale
@@ -127,6 +134,9 @@ func (m *Model) statusLayout() []statusSegment {
 	notice := m.notice
 	if hint := m.hoverHint(); hint != "" {
 		notice = hint
+	}
+	if m.flashValid() {
+		notice = m.tr("Type to search · label to jump · Tab next · Esc cancel")
 	}
 	if gap := rightX - x; gap > 10 && notice != "" {
 		text := ansi.Truncate(safe(notice), gap-2, "…")

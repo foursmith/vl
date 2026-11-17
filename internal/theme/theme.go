@@ -13,6 +13,8 @@ type Palette struct {
 	OutputBackground, OutputForeground                                                 string
 	StatusBackground, StatusForeground                                                 string
 
+	FindMatch                   string
+	FindMatchHighlight          string
 	EditorSelection             string
 	EditorSelectionForeground   string
 	InputForeground             string

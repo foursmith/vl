@@ -79,6 +79,7 @@ func knownBoundary(text string, offset int) bool {
 
 // SelectRange expands a rune range so selection never cuts a grapheme in half.
 func (d *Document) SelectRange(start, end int) {
+	d.selectionKind = 0
 	if start == end {
 		d.Cursor = d.snap(start, false)
 		d.Anchor = -1

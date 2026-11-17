@@ -30,6 +30,9 @@ func textColumn(text string, goal int) int {
 func (m *Model) positionEditor(x, y int, extend bool) {
 	t := &m.tabs[m.activeTab]
 	d := t.doc
+	if m.vimEnabled && t.vim.VisualMode {
+		t.vim.Reset(d)
+	}
 	line := min(len(d.Lines())-1, max(0, m.editorRowAt(y-editorContentRow)))
 	col := textColumn(d.Lines()[line], x-m.mainX()-7+t.left)
 	anchor := d.Anchor
