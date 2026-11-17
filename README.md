@@ -263,6 +263,7 @@ the active navigation section and editor tab use underlining.
 
 Printable keys remain text input while an editor has focus. Below 70 columns,
 the sidebar and content share one surface; use Enter and Esc/F6 to switch.
+Added and deleted files always use a full-width unified text diff.
 Side-by-side diffs fall back to unified when the content is too narrow.
 
 ## Current limits

@@ -18,11 +18,11 @@ func (m *Model) diffModeButton() toolbarButton {
 	if m.images != nil {
 		return toolbarButton{}
 	}
-	label := "统一"
-	if m.split && m.mainWidth() >= 68 {
-		label = "并排"
+	label := m.symbol(symbolDiffUnified)
+	if m.splitDiff() {
+		label = m.symbol(symbolDiffSplit)
 	}
-	w := min(8, m.mainWidth())
+	w := min(ansi.StringWidth(label)+2, m.mainWidth())
 	return toolbarButton{x: m.mainWidth() - w, width: w, label: label}
 }
 

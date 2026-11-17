@@ -28,10 +28,11 @@ type Hunk struct {
 	Lines  []string
 }
 type Patch struct {
-	Raw            string
-	Lines          []Line
-	Hunks          []Hunk
-	Added, Deleted int
+	Raw                  string
+	Lines                []Line
+	Hunks                []Hunk
+	Added, Deleted       int
+	NewFile, DeletedFile bool
 }
 
 var hunkPattern = regexp.MustCompile(`^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@`)
@@ -75,6 +76,8 @@ func Parse(raw string) Patch {
 		} else {
 			hunk = -1
 			header += text + "\n"
+			p.NewFile = p.NewFile || strings.HasPrefix(text, "new file mode ")
+			p.DeletedFile = p.DeletedFile || strings.HasPrefix(text, "deleted file mode ")
 		}
 		p.Lines = append(p.Lines, line)
 	}

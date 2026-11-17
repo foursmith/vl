@@ -14,6 +14,45 @@ import (
 	"github.com/ourongxing/elegit/internal/theme"
 )
 
+func TestAddedAndDeletedFilesUseFullWidthDiff(t *testing.T) {
+	for _, tc := range []struct {
+		name, header, hunk, prefix string
+	}{
+		{"added", "new file mode 100644\n--- /dev/null\n+++ b/file.txt\n", "@@ -0,0 +1 @@\n", "+"},
+		{"deleted", "deleted file mode 100644\n--- a/file.txt\n+++ /dev/null\n", "@@ -1 +0,0 @@\n", "-"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := tabWorkspace(t, 0)
+			m.width, m.height = 180, 30
+			showDiffFixture(m)
+			m.split = true
+			m.diffPath = "file.txt"
+			text := strings.Repeat("x", 90)
+			m.patch = diff.Parse("diff --git a/file.txt b/file.txt\n" + tc.header + tc.hunk + tc.prefix + text + "\n")
+			for _, commit := range []string{"", "abc123"} {
+				m.diffCommit = commit
+				m.renderDiff()
+				if m.diffLayout.split || m.diffModeButton().label != m.symbol(symbolDiffUnified) || !m.split {
+					t.Fatal("single-sided file did not override the split preference")
+				}
+				lines := m.diffView()
+				if len(lines) != 1 || !strings.Contains(plain(lines[0]), text) || ansi.StringWidth(lines[0]) != m.mainWidth() {
+					t.Fatalf("expected one full-width content row: %q", lines)
+				}
+				m.positionDiff(m.mainX()+m.diffGutter+75, editorContentRow, false)
+				if m.diffSelection.right || m.diffSelection.cursor.col != 75 {
+					t.Fatalf("selection still uses split geometry: %+v", m.diffSelection)
+				}
+			}
+			m.patch = diff.Parse("--- a/file.txt\n+++ b/file.txt\n@@ -1 +1,2 @@\n same\n+extra\n")
+			m.renderDiff()
+			if !m.diffLayout.split || m.diffModeButton().label != m.symbol(symbolDiffSplit) {
+				t.Fatal("modified file lost the split preference")
+			}
+		})
+	}
+}
+
 func TestDiffThemeGuttersSyntaxAndMissingLines(t *testing.T) {
 	m := tabWorkspace(t, 0)
 	m.width, m.height = 180, 30

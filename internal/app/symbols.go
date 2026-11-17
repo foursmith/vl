@@ -30,6 +30,8 @@ const (
 	symbolWarning
 	symbolDot
 	symbolRepository
+	symbolDiffSplit
+	symbolDiffUnified
 )
 
 var uiSymbols = [...]struct{ plain, nerd string }{
@@ -58,7 +60,9 @@ var uiSymbols = [...]struct{ plain, nerd string }{
 	symbolWarning:   {"!", "\uea6c"},
 	symbolDot:       {"*", "\uea71"},
 
-	symbolRepository: {"R", "\uea62"},
+	symbolRepository:  {"R", "\uea62"},
+	symbolDiffSplit:   {"[|]", "\ueb56"},
+	symbolDiffUnified: {"[=]", "\ueb57"},
 }
 
 func (m *Model) symbol(name uiSymbol) string {

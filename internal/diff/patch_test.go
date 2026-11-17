@@ -38,3 +38,21 @@ func TestAddedFilesRequireWholeFileStaging(t *testing.T) {
 		t.Fatal("empty patch has content")
 	}
 }
+
+func TestFileCreationAndDeletionMetadata(t *testing.T) {
+	for _, tc := range []struct {
+		name, raw      string
+		added, deleted bool
+	}{
+		{"new", "diff --git a/a b/a\nnew file mode 100644\n", true, false},
+		{"deleted", "diff --git a/a b/a\ndeleted file mode 100644\n", false, true},
+		{"content", "--- a/a\n+++ b/a\n@@ -1,2 +1,2 @@\n-new file mode 100644\n-deleted file mode 100644\n+new file mode 100755\n+deleted file mode 100755\n", false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := Parse(tc.raw)
+			if p.NewFile != tc.added || p.DeletedFile != tc.deleted {
+				t.Fatalf("new=%v deleted=%v", p.NewFile, p.DeletedFile)
+			}
+		})
+	}
+}

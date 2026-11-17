@@ -48,6 +48,10 @@ func newDiffState() *diffState {
 	return &diffState{viewport: viewport.New(), diffHunk: -1}
 }
 
+func (m *Model) splitDiff() bool {
+	return m.split && m.mainWidth() >= 68 && !m.patch.NewFile && !m.patch.DeletedFile
+}
+
 func (d *diffState) clearContent() {
 	if d.diffSyntaxCancel != nil {
 		d.diffSyntaxCancel()

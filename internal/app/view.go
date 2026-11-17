@@ -250,7 +250,7 @@ func (m *Model) renderDiff() {
 		return
 	}
 	w := m.mainWidth()
-	key := diffLayoutKey{m.patch.Raw, m.diffPath, w, m.split && w >= 68}
+	key := diffLayoutKey{m.patch.Raw, m.diffPath, w, m.splitDiff()}
 	if m.diffRows != nil && m.diffLayout == key {
 		return
 	}
@@ -277,7 +277,7 @@ func (m *Model) renderDiff() {
 		if m.diffPath == "" || line == nil {
 			return false
 		}
-		if line.Kind == diff.HunkHeader && len(m.patch.Hunks) == 1 && (strings.Contains(m.patch.Raw, "\nnew file mode ") || strings.Contains(m.patch.Raw, "\ndeleted file mode ")) {
+		if line.Kind == diff.HunkHeader && len(m.patch.Hunks) == 1 && (m.patch.NewFile || m.patch.DeletedFile) {
 			return true
 		}
 		if line.Kind != diff.Header {
