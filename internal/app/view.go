@@ -97,6 +97,11 @@ func (m *Model) bodyHeight() int    { return max(1, m.height-1-m.outputHeight())
 func (m *Model) contentHeight() int { return max(1, m.bodyHeight()-m.contentRow()) }
 
 func (m *Model) resize() {
+	unchangedPosition := false
+	if m.document() != nil {
+		t := &m.tabs[m.activeTab]
+		unchangedPosition = t.positionBaseline != nil && *t.positionBaseline == documentPosition(*t)
+	}
 	m.clampWorkspaces()
 	m.hoverOnly = false
 	m.hoverRender = hoverRenderCache{}
@@ -107,6 +112,10 @@ func (m *Model) resize() {
 	m.renderDiff()
 	m.ensureSidebar()
 	m.ensureEditor()
+	// Layout adjustments alone do not make an untouched position worth saving.
+	if unchangedPosition {
+		m.tabs[m.activeTab].capturePosition()
+	}
 	m.ensureTabVisible()
 }
 

@@ -10,20 +10,25 @@ import (
 	gitservice "github.com/ourongxing/vl/internal/git"
 )
 
-// SetSession defers restoration until repository discovery has completed.
-func (m *Model) SetSession(session config.Session) { m.pendingSession = &session }
+// SetSession defers tab restoration until repository discovery completes.
+func (m *Model) SetSession(session config.Session) {
+	if m.editorOnly {
+		return
+	}
+	m.pendingSession = &session
+}
 
 func (m *Model) Session() config.Session {
+	if m.editorOnly {
+		return config.Session{Active: -1}
+	}
 	// Preserve the saved session if startup was interrupted before discovery.
 	if m.pendingSession != nil {
 		return *m.pendingSession
 	}
 	session := config.Session{Active: m.activeTab}
 	for _, t := range m.tabs {
-		saved := config.SessionTab{Kind: "file", Path: t.path(), Preview: t.preview, Top: t.top, Left: t.left}
-		if t.doc != nil {
-			saved.Line, saved.Column = t.doc.Position()
-		}
+		saved := config.SessionTab{Kind: "file", Path: t.path(), Preview: t.preview}
 		if t.image != nil {
 			saved.Kind = "image"
 		}
@@ -57,11 +62,6 @@ func (m *Model) restoreSession() tea.Cmd {
 		case "file", "image":
 			if !m.openDocument(saved.Path, false) {
 				continue
-			}
-			t := &m.tabs[m.activeTab]
-			if t.doc != nil {
-				t.doc.SetPosition(saved.Line, saved.Column)
-				t.top, t.left = max(0, saved.Top), max(0, saved.Left)
 			}
 		case "diff":
 			// Deleted files still have valid diffs; only the owning repository must exist.

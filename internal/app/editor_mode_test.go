@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/ourongxing/vl/internal/config"
 )
 
 func TestEditorModeIsolatedAndFullWidth(t *testing.T) {
@@ -146,5 +147,53 @@ func TestEditorInsideRepositoryNeedsNoGitState(t *testing.T) {
 	}
 	if !strings.Contains(plain(m.View().Content), "no git needed") {
 		t.Fatal("editor render failed without Git")
+	}
+}
+
+func TestEditorModePersistsOnlyFilePosition(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_STATE_HOME", "")
+	path := filepath.Join(t.TempDir(), "file.txt")
+	if err := os.WriteFile(path, []byte("first\nsecond line\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	m, err := NewEditor(context.Background(), path, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer m.Close()
+	store, err := config.NewFilePositionStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.SetFilePositionStore(store)
+	// Editor-only models do not accept or expose workspace sessions.
+	m.SetSession(config.Session{Tabs: []config.SessionTab{{Kind: "file", Path: "/other/file"}}, Active: 0})
+	if m.pendingSession != nil || m.restoreSession() != nil {
+		t.Fatal("editor accepted workspace restoration")
+	}
+	if session := m.Session(); len(session.Tabs) != 0 || session.Active != -1 {
+		t.Fatalf("editor exposed a workspace session: %#v", session)
+	}
+	m.document().SetPosition(1, 4)
+	if err := m.SaveFilePositions(); err != nil {
+		t.Fatal(err)
+	}
+	position, exists, err := store.Load(path)
+	if err != nil || !exists || position.Line != 1 || position.Column != 4 {
+		t.Fatalf("file position = %#v, %v, %v", position, exists, err)
+	}
+	entries, err := os.ReadDir(filepath.Join(home, ".local", "state", "vl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || entries[0].Name() != "files" {
+		t.Fatalf("editor created workspace state: %v", entries)
+	}
+	m.closeTab()
+	entries, err = os.ReadDir(filepath.Join(home, ".local", "state", "vl"))
+	if err != nil || len(entries) != 1 || entries[0].Name() != "files" {
+		t.Fatalf("editor close created workspace state: %v, %v", entries, err)
 	}
 }

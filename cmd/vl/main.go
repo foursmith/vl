@@ -91,8 +91,19 @@ func main() {
 		layoutStore = config.NewLayoutStore(layoutPath)
 		m.SetLayoutStore(layoutStore)
 	}
+	positionStore, positionErr := config.NewFilePositionStore()
+	if positionErr != nil {
+		fmt.Fprintln(os.Stderr, "Load file positions:", positionErr)
+	}
+	m.SetFilePositionStore(positionStore)
 	if editorOnly {
+		if _, line, column, locationErr := startupLocation(path); locationErr == nil && line > 0 {
+			m.SetEditorPosition(line, column)
+		}
 		err = runProgram(ctx, m)
+		if saveErr := m.SaveFilePositions(); saveErr != nil {
+			fmt.Fprintln(os.Stderr, "Save file positions:", saveErr)
+		}
 		m.Close()
 	} else {
 		for {
@@ -111,6 +122,9 @@ func main() {
 				fmt.Fprintln(os.Stderr, "Save recent folders:", recentErr)
 			}
 			err = runProgram(ctx, m)
+			if saveErr := m.SaveFilePositions(); saveErr != nil {
+				fmt.Fprintln(os.Stderr, "Save file positions:", saveErr)
+			}
 			if sessionErr == nil {
 				if saveErr := config.SaveSession(sessionPath, m.Session()); saveErr != nil {
 					fmt.Fprintln(os.Stderr, "Save workspace tabs:", saveErr)
@@ -124,6 +138,7 @@ func main() {
 			preferences := m.Layout()
 			repo = next
 			m = app.New(ctx, repo, *icons)
+			m.SetFilePositionStore(positionStore)
 			m.SetLayout(preferences)
 			m.SetLayoutStore(layoutStore)
 		}

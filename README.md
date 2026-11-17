@@ -75,7 +75,8 @@ Open files with **Ctrl+P**, commands with **Ctrl+Shift+P**, and recent folders w
 The file/command picker accepts `>` for commands, `:line[:column]` for a position
 in the current file, or `filename:line[:column]` to open a file at that position.
 
-A single click opens a reusable preview tab. Double-click or Enter keeps it open;
+A single click opens a reusable preview tab and focuses the editor at its remembered
+cursor position. Double-click or Enter keeps it open;
 editing also keeps a text tab. The active tab has a thin accent marker; file tabs
 share Explorer's Git colors and status letters. An unsaved dot takes precedence
 over the Git status letter. Tabs and text cursor/scroll positions are restored
@@ -110,9 +111,16 @@ system appearance is the fallback. A manually selected mismatched theme stays se
 Local VS Code JSON/JSONC and TextMate themes belong in `~/.config/vl/themes/`;
 see [theme compatibility](docs/THEME.md).
 
-Preferences and recent folders use `layout.json` and `recent.json` in the OS user
-configuration directory's `vl` folder. Sessions use `~/.config/vl/workspaces/`
-on all platforms.
+Preferences use `layout.json` in the OS user configuration directory's `vl` folder.
+Runtime state uses `$XDG_STATE_HOME/vl/`, defaulting to `~/.local/state/vl/` when
+the variable is unset, empty or relative. It contains: `recent.json` for recent
+folders, `workspaces/` for tab sessions, and `files/` for cursor and scroll positions.
+Each file has its own `files/<SHA-256 of the real absolute file path>.json` record.
+File-tree opens, direct file invocations and different workspaces share the same record, including
+symlink aliases. Changed positions are saved when switching tabs, replacing previews,
+closing files and exiting vl; opening a file without moving its cursor or scrolling
+does not create or rewrite its position record. Workspace sessions only save the tab list and active tab.
+State is read only from the configured state directory.
 `-theme` and `-lang` override saved choices at startup.
 
 ## Requirements and limits

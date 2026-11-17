@@ -3,7 +3,6 @@ package config
 import (
 	"crypto/sha256"
 	"fmt"
-	"os"
 	"path/filepath"
 )
 
@@ -21,18 +20,14 @@ type SessionTab struct {
 	Commit     string `json:"commit,omitempty"`
 	Staged     bool   `json:"staged,omitempty"`
 	Original   string `json:"original,omitempty"`
-	Line       int    `json:"line,omitempty"`
-	Column     int    `json:"column,omitempty"`
-	Top        int    `json:"top,omitempty"`
-	Left       int    `json:"left,omitempty"`
 }
 
 func SessionPath(root string) (string, error) {
-	home, err := os.UserHomeDir()
+	dir, err := statePath("workspaces")
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".config", "vl", "workspaces", fmt.Sprintf("%x.json", sha256.Sum256([]byte(filepath.Clean(root))))), nil
+	return filepath.Join(dir, fmt.Sprintf("%x.json", sha256.Sum256([]byte(filepath.Clean(root))))), nil
 }
 
 func LoadSession(path string) (Session, error) {

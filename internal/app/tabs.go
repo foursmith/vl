@@ -70,10 +70,12 @@ func (m *Model) openDocument(path string, preview bool) bool {
 
 func (m *Model) insertTab(next tab) int {
 	defer m.syncWatch()
+	m.restoreFilePosition(&next)
 	m.keepEditedTabs()
 	if next.preview {
 		for i := range m.tabs {
 			if m.tabs[i].preview && !m.tabs[i].dirty() {
+				m.rememberFilePosition(&m.tabs[i])
 				m.retireImage(&m.tabs[i])
 				m.tabs[i].close()
 				m.tabs[i] = next
@@ -110,6 +112,9 @@ func (t tab) path() string {
 func (m *Model) editing() bool { return m.document() != nil }
 
 func (m *Model) activateTab(index int) {
+	if m.activeTab >= 0 && m.activeTab < len(m.tabs) && m.activeTab != index {
+		m.rememberFilePosition(&m.tabs[m.activeTab])
+	}
 	m.stopTextDrag()
 	m.imagePan = nil
 	m.activeTab = index
@@ -126,6 +131,9 @@ func (m *Model) activateTab(index int) {
 	}
 	m.sidebar = false
 	m.ensureEditor()
+	if t := &m.tabs[index]; t.doc != nil && t.positionBaseline == nil {
+		t.capturePosition()
+	}
 	m.ensureTabVisible()
 }
 
@@ -242,6 +250,7 @@ func (m *Model) removeTab(doc *editor.Document) {
 
 func (m *Model) removeTabAt(index int) {
 	t := &m.tabs[index]
+	m.rememberFilePosition(t)
 	m.retireImage(t)
 	t.close()
 	wasActive := index == m.activeTab

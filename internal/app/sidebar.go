@@ -254,9 +254,7 @@ func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 		if m.doubleClick("file:" + entry.file) {
 			return m.openFile(entry.file)
 		}
-		cmd := m.openPreviewFile(entry.file)
-		m.sidebar = m.sideShown()
-		return cmd
+		return m.openPreviewFile(entry.file)
 	}
 	if entry.change != nil || entry.historyChange != nil {
 		double := m.doubleClick("diff:" + entry.key)

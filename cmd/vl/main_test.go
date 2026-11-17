@@ -12,7 +12,7 @@ import (
 
 func TestStartupPathUsesExplicitPathOrMostRecentWorkspace(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("XDG_STATE_HOME", "")
 	if _, err := startupPath(nil); err == nil {
 		t.Fatal("startup without history must require a path")
 	}
@@ -38,11 +38,11 @@ func TestStartupPathUsesExplicitPathOrMostRecentWorkspace(t *testing.T) {
 		t.Fatal("empty path must not open the current directory")
 	}
 	// Explicit paths must remain usable when recent-history storage is invalid.
-	dir, err := os.UserConfigDir()
+	home, err := os.UserHomeDir()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "vl", "recent.json"), []byte("invalid"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(home, ".local", "state", "vl", "recent.json"), []byte("invalid"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := startupPath(nil); err == nil {

@@ -5,7 +5,7 @@ import "slices"
 const maxRecentFolders = 20
 
 func RecentFolders() ([]string, error) {
-	path, err := configPath("recent.json")
+	path, err := statePath("recent.json")
 	if err != nil {
 		return nil, err
 	}
@@ -20,7 +20,7 @@ func loadRecentFolders(path string) ([]string, error) {
 
 // RememberFolder moves a successfully opened folder to the front of the list.
 func RememberFolder(folder string) error {
-	path, err := configPath("recent.json")
+	path, err := statePath("recent.json")
 	if err != nil {
 		return err
 	}
@@ -48,7 +48,7 @@ func rememberFolder(path, folder string) error {
 
 // ForgetFolder removes a recent entry without changing its directory or session.
 func ForgetFolder(folder string) ([]string, error) {
-	path, err := configPath("recent.json")
+	path, err := statePath("recent.json")
 	if err != nil {
 		return nil, err
 	}

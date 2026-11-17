@@ -246,8 +246,8 @@ func TestExplorerSingleAndDoubleClick(t *testing.T) {
 	}
 	click(0)
 	click(1)
-	if len(m.tabs) != 1 || filepath.Base(m.document().Path) != "file1.go" || !m.tabs[0].preview || !m.sidebar {
-		t.Fatal("single-click browsing did not reuse preview and preserve explorer focus")
+	if len(m.tabs) != 1 || filepath.Base(m.document().Path) != "file1.go" || !m.tabs[0].preview || m.sidebar {
+		t.Fatal("single-click browsing did not reuse preview and focus the editor")
 	}
 	click(1)
 	if m.tabs[0].preview || m.sidebar {

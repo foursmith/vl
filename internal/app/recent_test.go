@@ -183,7 +183,7 @@ func TestWorkspaceContextMenuRemovesCapturedFolder(t *testing.T) {
 	for _, right := range []bool{false, true} {
 		t.Run(fmt.Sprintf("right%v", right), func(t *testing.T) {
 			t.Setenv("HOME", t.TempDir())
-			t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+			t.Setenv("XDG_STATE_HOME", "")
 			m := explorerWorkspace(t)
 			m.SetSidebarLayout(38, right)
 			m.Update(tea.WindowSizeMsg{Width: 120, Height: 15})

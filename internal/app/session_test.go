@@ -17,6 +17,8 @@ import (
 func TestSessionRoundTripMixedTabs(t *testing.T) {
 	m := tabWorkspace(t, 2)
 	defer m.Close()
+	store := &config.FilePositionStore{Dir: filepath.Join(t.TempDir(), "files")}
+	m.SetFilePositionStore(store)
 	run := func(args ...string) string {
 		t.Helper()
 		out, err := m.repo.Run(context.Background(), args...)
@@ -59,6 +61,7 @@ func TestSessionRoundTripMixedTabs(t *testing.T) {
 	}
 	m.openPreviewFile("file1.go")
 	m.activateTab(0)
+	m.SaveFilePositions()
 	saved := m.Session()
 	sessionPath := filepath.Join(t.TempDir(), "sessions", "workspace.json")
 	if err := config.SaveSession(sessionPath, saved); err != nil {
@@ -70,6 +73,7 @@ func TestSessionRoundTripMixedTabs(t *testing.T) {
 	}
 	restored := New(context.Background(), m.repo, false)
 	defer restored.Close()
+	restored.SetFilePositionStore(store)
 	restored.SetSession(loaded)
 	snapshot, err := m.repo.Snapshot(context.Background())
 	if err != nil {
@@ -97,9 +101,14 @@ func TestSessionRoundTripMixedTabs(t *testing.T) {
 func TestSessionSkipsMissingTabsAndRetainsEmptySession(t *testing.T) {
 	m := tabWorkspace(t, 2)
 	defer m.Close()
+	store := &config.FilePositionStore{Dir: filepath.Join(t.TempDir(), "files")}
+	m.SetFilePositionStore(store)
+	if err := store.Save(filepath.Join(m.repo.Root, "file0.go"), config.FilePosition{Line: 999, Column: 999}); err != nil {
+		t.Fatal(err)
+	}
 	session := config.Session{Active: 1, Tabs: []config.SessionTab{
 		{Kind: "file", Path: "missing.go"},
-		{Kind: "file", Path: "file0.go", Preview: true, Line: 999, Column: 999},
+		{Kind: "file", Path: "file0.go", Preview: true},
 		{Kind: "diff", Path: "child/deleted.go", Repository: "missing-child"},
 		{Kind: "file", Path: "file1.go"},
 	}}

@@ -287,6 +287,8 @@
   "File watcher unavailable: %s": "文件监视不可用：%s",
   "Failed to open browser: %s": "无法打开浏览器：%s",
   "Image unavailable on disk: %s": "图片在磁盘上不可用：%s",
+  "Save file position: %s": "无法保存文件位置：%s",
+  "Load file position: %s": "无法加载文件位置：%s",
   "Save preferences: %s": "无法保存偏好设置：%s",
   "Load theme: %s": "无法加载主题：%s",
   "Load remembered theme: %s": "无法加载已保存的主题：%s",

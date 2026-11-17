@@ -57,22 +57,23 @@ type tab struct {
 	scopes     []codeScope
 	image      *imageState
 
-	vim             editor.Vim
-	doc             *editor.Document
-	diff            *diffState
-	reloadSeq       uint64
-	diskNotice      string
-	reloadWhenClean bool
-	preview         bool
-	top, left       int
-	scrollText      string
-	scrollWidth     int
-	highlightText   string
-	spans           [][]highlight.Span
-	highlightJob    highlightJob
-	highlighter     *highlight.Session
-	renderKey       editorRenderKey
-	renderedRows    map[int]string
+	vim              editor.Vim
+	doc              *editor.Document
+	diff             *diffState
+	reloadSeq        uint64
+	diskNotice       string
+	reloadWhenClean  bool
+	preview          bool
+	positionBaseline *config.FilePosition
+	top, left        int
+	scrollText       string
+	scrollWidth      int
+	highlightText    string
+	spans            [][]highlight.Span
+	highlightJob     highlightJob
+	highlighter      *highlight.Session
+	renderKey        editorRenderKey
+	renderedRows     map[int]string
 }
 type snapshotMsg struct {
 	seq      int
@@ -154,6 +155,7 @@ type Model struct {
 	historyPages            map[string]*historyPageState
 	historySeq              int
 	pendingSession          *config.Session
+	filePositionStore       *config.FilePositionStore
 	tabs                    []tab
 	activeTab               int
 	languagePath            string
