@@ -9,8 +9,8 @@ import (
 )
 
 type statusSegment struct {
-	id, text, color string
-	x, width        int
+	id, text, color, background string
+	x, width                    int
 }
 
 func (m *Model) gitStatusSegments() []statusSegment {
@@ -87,6 +87,19 @@ func (m *Model) statusLayout() []statusSegment {
 	if !m.snapshot.NoRepository {
 		left = m.gitStatusSegments()
 	}
+	if m.vimEnabled && m.editing() {
+		v := &m.tabs[m.activeTab].vim
+		label, color := v.Label(), m.colors.Accent
+		if v.InsertMode {
+			color = m.colors.GitAdded
+		} else if v.VisualMode || v.CommandPending() {
+			color = m.colors.GitModified
+		}
+		if flash := m.flashLabel(); flash != "" {
+			label, color = flash, m.colors.GitModified
+		}
+		left = append([]statusSegment{{id: "vim", text: label, color: m.colors.Background, background: color}}, left...)
+	}
 	var result []statusSegment
 	x := 0
 	for _, segment := range left {
@@ -107,13 +120,6 @@ func (m *Model) statusLayout() []statusSegment {
 		}
 		language := m.tr(m.language(d.Path).Name)
 		candidates = []statusSegment{{id: "position", text: m.tr("Ln %d, Col %d", line+1, col+1)}, {id: "encoding", text: "UTF-8"}, {id: "eol", text: eol}, {id: "language", text: language}}
-	}
-	if m.vimEnabled && m.editing() {
-		label := m.tabs[m.activeTab].vim.Label()
-		if flash := m.flashLabel(); flash != "" {
-			label = flash
-		}
-		candidates = append([]statusSegment{{id: "vim", text: label}}, candidates...)
 	}
 	if im := m.currentImage(); im != nil {
 		b := im.Bounds()
@@ -155,7 +161,11 @@ func (m *Model) statusLine() string {
 	text := ""
 	x := 0
 	for _, segment := range m.statusLayout() {
-		text += row("", segment.x-x, foreground, m.colors.StatusBackground) + row(" "+segment.text+" ", segment.width, segment.color, m.colors.StatusBackground)
+		background := segment.background
+		if background == "" {
+			background = m.colors.StatusBackground
+		}
+		text += row("", segment.x-x, foreground, m.colors.StatusBackground) + row(" "+segment.text+" ", segment.width, segment.color, background)
 		x = segment.x + segment.width
 	}
 	return row(text, m.width, foreground, m.colors.StatusBackground)

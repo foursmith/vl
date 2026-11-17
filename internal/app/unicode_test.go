@@ -23,13 +23,13 @@ func TestUnicodePaintingMouseAndHorizontalScrollShareBoundaries(t *testing.T) {
 	for _, cell := range uv.NewStyledString(rendered).Lines(ansi.GraphemeWidth)[0] {
 		if cell.Content == family {
 			found = true
-			if cell.Style.Attrs&uv.AttrReverse == 0 {
-				t.Fatal("cursor did not cover complete emoji")
-			}
 		}
 	}
 	if !found {
 		t.Fatal("renderer split the family grapheme")
+	}
+	if c := m.editorCursor(); c == nil || c.Shape != tea.CursorBar || c.X != m.mainX()+8 {
+		t.Fatalf("cursor did not align with emoji boundary: %+v", c)
 	}
 	for _, click := range []struct{ cell, col int }{{1, 1}, {2, 1}, {3, 1 + utf8.RuneCountInString(family)}, {4, 3 + utf8.RuneCountInString(family)}} {
 		m.click(tea.MouseClickMsg{X: m.mainX() + 7 + click.cell, Y: editorContentRow, Button: tea.MouseLeft})

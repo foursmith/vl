@@ -186,8 +186,35 @@ func (m *Model) View() tea.View {
 	v.BackgroundColor = lipgloss.Color(m.colors.Panel)
 	v.MouseMode = tea.MouseModeAllMotion
 	v.ReportFocus = true
+	v.Cursor = m.editorCursor()
 	m.hoverRender = hoverRenderCache{main: main, view: v, key: key}
 	return v
+}
+
+func (m *Model) editorCursor() *tea.Cursor {
+	if !m.editing() || m.sidebar || m.modal != "" || m.contextMenu != nil {
+		return nil
+	}
+	t := &m.tabs[m.activeTab]
+	line, _ := t.doc.Position()
+	y := line - t.top
+	sticky := m.editorStickyRows()
+	if index := slices.Index(sticky, line); index >= 0 {
+		y = index
+	} else if y < len(sticky) {
+		return nil
+	}
+	start := t.doc.ByteOffset(t.doc.LineOffset(line))
+	end := t.doc.ByteOffset(t.doc.Cursor)
+	x := 7 + ansi.StringWidth(expandTabs(t.doc.Text[start:end])) - t.left
+	if x < 7 || x >= m.mainWidth() || y < 0 || y >= m.contentHeight() {
+		return nil
+	}
+	shape, blink := tea.CursorBar, true
+	if m.vimEnabled && !t.vim.InsertMode {
+		shape, blink = tea.CursorBlock, false
+	}
+	return &tea.Cursor{Position: tea.Position{X: m.mainX() + x, Y: editorContentRow + y}, Shape: shape, Blink: blink, Color: lipgloss.Color(m.colors.Foreground)}
 }
 
 func (m *Model) mainLines() []string {
@@ -410,30 +437,29 @@ func expandTabs(text string) string {
 	return b.String()
 }
 
-// Cached rows are bounded to the current viewport; edits, selection, focus and
-// horizontal layout changes invalidate them together.
+// Cached rows are bounded to the current viewport; edits, selection, current
+// line and horizontal layout changes invalidate them together.
 type editorRenderKey struct {
-	flashRevision                                     uint64
-	find                                              string
-	text                                              string
-	cursor, selectionStart, selectionEnd, width, left int
-	focused                                           bool
-	sticky                                            [maxStickyRows]int
-	stickyCount                                       int
+	flashRevision                                   uint64
+	find                                            string
+	text                                            string
+	line, selectionStart, selectionEnd, width, left int
+	sticky                                          [maxStickyRows]int
+	stickyCount                                     int
 }
 
 func (m *Model) editorLines() []string {
 	t := &m.tabs[m.activeTab]
 	d := t.doc
 	source := d.Lines()
-	line, col := d.Position()
+	line, _ := d.Position()
 	a, b := d.Selection()
 	sticky := m.editorStickyRows()
 	find := m.find
 	if m.findHidden {
 		find = ""
 	}
-	key := editorRenderKey{find: find, flashRevision: m.flashRevision, stickyCount: len(sticky), text: d.Text, cursor: d.Cursor, selectionStart: a, selectionEnd: b, width: m.mainWidth(), left: t.left, focused: !m.sidebar}
+	key := editorRenderKey{find: find, flashRevision: m.flashRevision, stickyCount: len(sticky), text: d.Text, line: line, selectionStart: a, selectionEnd: b, width: m.mainWidth(), left: t.left}
 	copy(key.sticky[:], sticky)
 	if t.renderedRows == nil || t.renderKey != key {
 		t.renderKey = key
@@ -472,20 +498,20 @@ func (m *Model) editorLines() []string {
 			bg = m.colors.CurrentLine
 		}
 		var text, run strings.Builder
-		runFG, runBG, runReverse := "", "", false
+		runFG, runBG := "", ""
 		var runFont theme.FontStyle
 		flush := func() {
 			if run.Len() == 0 {
 				return
 			}
-			style := syntaxStyle(runFG, runBG, runFont).Reverse(runReverse)
+			style := syntaxStyle(runFG, runBG, runFont)
 			text.WriteString(style.Render(run.String()))
 			run.Reset()
 		}
-		appendRun := func(s, fg, bg string, reverse bool, font theme.FontStyle) {
-			if fg != runFG || bg != runBG || reverse != runReverse || font != runFont {
+		appendRun := func(s, fg, bg string, font theme.FontStyle) {
+			if fg != runFG || bg != runBG || font != runFont {
 				flush()
-				runFG, runBG, runReverse, runFont = fg, bg, reverse, font
+				runFG, runBG, runFont = fg, bg, font
 			}
 			run.WriteString(s)
 		}
@@ -559,7 +585,7 @@ func (m *Model) editorLines() []string {
 					font = theme.Bold
 				}
 			}
-			appendRun(s, fg, cellBG, !m.sidebar && i == line && j == col, font)
+			appendRun(s, fg, cellBG, font)
 		}
 		selectedEOL := offset+d.LineRuneCount(i) >= a && offset+d.LineRuneCount(i) < b
 		if selectedEOL && visual >= t.left && visual < t.left+max(1, m.mainWidth()-7) {
@@ -571,10 +597,7 @@ func (m *Model) editorLines() []string {
 			if m.colors.EditorSelectionForeground != "" {
 				fg = m.colors.EditorSelectionForeground
 			}
-			appendRun(" ", fg, selectionBG, !m.sidebar && i == line && col == d.LineRuneCount(i), 0)
-		}
-		if !selectedEOL && !m.sidebar && i == line && col == d.LineRuneCount(i) && visual >= t.left && visual < t.left+max(1, m.mainWidth()-7) {
-			appendRun(" ", m.colors.Foreground, bg, true, 0)
+			appendRun(" ", fg, selectionBG, 0)
 		}
 		flush()
 		numberColor := m.colors.LineNumber

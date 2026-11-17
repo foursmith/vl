@@ -116,7 +116,7 @@ func TestEditorRunsKeepSyntaxSelectionCursorAndFocus(t *testing.T) {
 	m.tabs[0].highlightText = d.Text
 	m.tabs[0].spans = [][]highlight.Span{{{Start: 0, End: 2, Color: theme.Dark().GitAdded, Font: theme.Italic}}}
 	first := uv.NewStyledString(m.editorLines()[0]).Lines(ansi.GraphemeWidth)[0]
-	selected, cursor := false, false
+	selected := false
 	for _, cell := range first {
 		if cell.Content == "a" {
 			selected = true
@@ -127,17 +127,13 @@ func TestEditorRunsKeepSyntaxSelectionCursorAndFocus(t *testing.T) {
 				t.Fatal("selected syntax lost its TextMate font style")
 			}
 		}
-		cursor = cursor || cell.Style.Attrs&uv.AttrReverse != 0
 	}
-	if !selected || !cursor {
+	if !selected || m.editorCursor() == nil {
 		t.Fatal("selected text or cursor missing")
 	}
 	m.sidebar = true
-	second := uv.NewStyledString(m.editorLines()[0]).Lines(ansi.GraphemeWidth)[0]
-	for _, cell := range second {
-		if cell.Style.Attrs&uv.AttrReverse != 0 {
-			t.Fatal("cached editor cursor remained after focus moved to sidebar")
-		}
+	if m.editorCursor() != nil {
+		t.Fatal("editor cursor remained after focus moved to sidebar")
 	}
 	d.Anchor = -1
 	m.editorLines()

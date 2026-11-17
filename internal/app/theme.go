@@ -104,7 +104,7 @@ func (m *Model) styleInput() {
 	}
 	m.input.SetStyles(textinput.Styles{
 		Focused: state, Blurred: state,
-		Cursor: textinput.CursorStyle{Color: lipgloss.Color(theme.Composite(m.colors.InputForeground, m.colors.Input)), Shape: tea.CursorBlock, Blink: true},
+		Cursor: textinput.CursorStyle{Color: lipgloss.Color(theme.Composite(m.colors.InputForeground, m.colors.Input)), Shape: tea.CursorBar, Blink: true},
 	})
 }
 

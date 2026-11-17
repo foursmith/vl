@@ -97,8 +97,9 @@ does not install hooks or alter a repository's configuration.
 - Diff layout holds plain search rows; only viewport rows receive ANSI painting.
   Hunk navigation reuses the layout, and unchanged Git output reuses parsed data.
 - Editor rendering groups equal styles into runs and caches only visible rows.
-  Text, cursor, selection, focus and horizontal layout changes invalidate rows;
-  scrolling evicts rows outside the viewport.
+  Text, current line, selection and horizontal layout changes invalidate rows;
+  scrolling evicts rows outside the viewport. The terminal renders the cursor:
+  a blinking bar for insertion and a steady block for Vim navigation.
 - Sidebar wheel events scroll the viewport without selection or diff requests.
   Git decorations use one path index instead of a nested file/change scan.
 - Undo uses bounded text snapshots (128 entries / approximately 8 MiB retained),

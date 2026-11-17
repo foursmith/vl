@@ -57,7 +57,7 @@ TextMate document state across edits.
 - Text, rune/byte line offsets and plain-ASCII metadata are indexed per text
   change. Cursor and dirty-state queries avoid whole-file rune/byte copies.
 - Editor style runs are batched. Rendered rows are retained only for the visible
-  viewport and invalidated by text, cursor, selection, focus, layout or new
+  viewport and invalidated by text, current line, selection, layout or new
   highlight results.
 - Diff layout/search content stays plain; only visible rows are painted. Hunk
   navigation reuses the layout. Identical Git diff results reuse parsed data.

@@ -4,7 +4,8 @@
 默认关闭，设置自动保存。仅可编辑的文本标签页使用 Vim 操作；侧栏、Diff、图片和弹窗仍使用[普通快捷键](KEYBINDINGS.md)。
 
 按键区分大小写；`Space w`、`cs([` 等表示依次按下，不是同时按下。
-状态栏显示 `NORMAL`、`INSERT`、`VISUAL` 或 `VISUAL LINE`，输入组合命令时也会显示等待状态。
+状态栏最左侧以彩色底块显示 `NORMAL`、`INSERT`、`VISUAL` 或 `VISUAL LINE`，输入组合命令时也会显示等待状态。
+Insert 使用闪烁竖线光标，Normal 和 Visual 使用常亮方块光标。
 
 ## 移动与定位
 
