@@ -99,8 +99,8 @@ func TestDiffVimNavigationAndShortcutPriority(t *testing.T) {
 		t.Fatal("Ctrl+D must change layout without changing read-only capability")
 	}
 	press(m, "ctrl+f")
-	if m.modal != "find" {
-		t.Fatal("Ctrl+F must open search")
+	if !m.fileFindFocused() || m.modal != "" {
+		t.Fatal("Ctrl+F must open the shared find widget")
 	}
 }
 

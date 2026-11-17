@@ -63,11 +63,11 @@ func TestVimMappedFocusAndClearSearch(t *testing.T) {
 	m.activeTab = 0
 	m.sidebar = false
 
-	m.find = "one"
+	setTestFind(m, "one")
 	d.SelectRange(0, 3)
 	press(m, " ")
 	press(m, "enter")
-	if d.Anchor != -1 || m.find != "one" {
+	if d.Anchor != -1 || m.findOptions.Query != "one" {
 		t.Fatal("clear highlights lost search pattern or selection")
 	}
 	press(m, "c")
@@ -94,7 +94,7 @@ func TestVimClipboardDeliveryGuards(t *testing.T) {
 			case "mode":
 				m.tabs[0].vim.InsertMode = true
 			case "modal":
-				m.modal = "find"
+				m.modal = "confirm"
 			case "tab":
 				m.tabs[0].doc = &editor.Document{Text: "other", Anchor: -1}
 			}

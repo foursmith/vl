@@ -85,7 +85,7 @@ func TestLargeDiffPaintsOnlyViewportAndKeepsHunkSelection(t *testing.T) {
 	if m.diffHunk != 1 {
 		t.Fatal("hunk navigation lost index")
 	}
-	m.find = "new value 19"
+	setTestFind(m, "new value 19")
 	m.findNext()
 	if !strings.Contains(plain(strings.Join(m.diffView(), "\n")), "new value 19") {
 		t.Fatal("source search no longer reveals the matching Diff row")

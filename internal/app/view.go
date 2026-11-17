@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"github.com/clipperhouse/uax29/v2/graphemes"
 	"github.com/ourongxing/vl/internal/diff"
+	searchservice "github.com/ourongxing/vl/internal/search"
 	"github.com/ourongxing/vl/internal/theme"
 )
 
@@ -110,6 +111,8 @@ func (m *Model) resize() {
 	m.syncPicker()
 	m.renderDiff()
 	m.ensureSidebar()
+	m.clampSearch()
+
 	m.ensureEditor()
 	// Layout adjustments alone do not make an untouched position worth saving.
 	if unchangedPosition {
@@ -129,6 +132,8 @@ type hoverRenderCache struct {
 type hoverRenderKey struct {
 	row     int
 	picker  int
+	findX   int
+	findY   int
 	hint    string
 	divider bool
 }
@@ -140,11 +145,17 @@ func (m *Model) View() tea.View {
 		v.BackgroundColor = lipgloss.Color(m.colors.Panel)
 		return v
 	}
-	hoveredRow := m.hoveredSidebarRow()
+	hovered := m.hoveredSidebarRow()
+	if m.section == search {
+		hovered = m.searchHoveredRow()
+	}
 	key := hoverRenderKey{
-		row: hoveredRow, hint: m.hoverHint(),
+		row: hovered, hint: m.hoverHint(),
 		picker:  m.hoveredPickerIndex(),
 		divider: m.sidebarDividerAt(m.hoverX, m.hoverY),
+	}
+	if m.fileFindAt(m.hoverX, m.hoverY) {
+		key.findX, key.findY = m.hoverX+1, m.hoverY+1
 	}
 	if m.hoverOnly && m.hoverRender.main != nil && m.hoverRender.key == key {
 		return m.hoverRender.view
@@ -156,8 +167,13 @@ func (m *Model) View() tea.View {
 	if !m.hoverOnly || main == nil || m.width < 70 && m.sidebar && m.sidebarVisible {
 		main = m.mainLines()
 	}
+	find := m.fileFindLines()
+	findOffset := m.fileFindX() - m.mainX()
 	for y := 0; y < m.bodyHeight(); y++ {
 		line := main[y]
+		if index := y - m.contentRow(); index >= 0 && index < len(find) {
+			line = row(ansi.Cut(line, 0, findOffset), findOffset, m.colors.Foreground, m.colors.Background) + find[index]
+		}
 		if m.sideShown() {
 			color := m.colors.Panel
 			if m.resizingSidebar || m.sidebarDividerAt(m.hoverX, m.hoverY) {
@@ -210,7 +226,7 @@ func (m *Model) editorCursor() *tea.Cursor {
 	if !m.editing() && m.diffOpen {
 		return m.reviewCursor()
 	}
-	if !m.editing() || m.sidebar || m.modal != "" || m.contextMenu != nil {
+	if !m.editing() || m.sidebar || m.fileFindFocused() || m.modal != "" || m.contextMenu != nil {
 		return nil
 	}
 	t := &m.tabs[m.activeTab]
@@ -225,7 +241,7 @@ func (m *Model) editorCursor() *tea.Cursor {
 	start := t.doc.ByteOffset(t.doc.LineOffset(line))
 	end := t.doc.ByteOffset(t.doc.Cursor)
 	x := 7 + ansi.StringWidth(expandTabs(t.doc.Text[start:end])) - t.left
-	if x < 7 || x >= m.mainWidth() || y < 0 || y >= m.contentHeight() {
+	if x < 7 || x >= m.mainWidth() || y < 0 || y >= m.contentHeight() || m.fileFindAt(m.mainX()+x, m.contentRow()+y) {
 		return nil
 	}
 	shape, blink := tea.CursorBar, true
@@ -363,6 +379,7 @@ func (m *Model) renderDiff() {
 	// The viewport only tracks row geometry; the shared document owns search.
 	m.viewport.SetContentLines(make([]string, len(m.diffRows)))
 	m.rebuildReview(reviewRight)
+	m.viewport.SetHeight(m.contentHeight())
 }
 
 func (m *Model) nextHunk(delta int) {
@@ -453,7 +470,7 @@ func expandTabs(text string) string {
 // line and horizontal layout changes invalidate them together.
 type editorRenderKey struct {
 	flashRevision                                   uint64
-	find                                            string
+	findOptions                                     searchservice.Options
 	text                                            string
 	line, selectionStart, selectionEnd, width, left int
 	sticky                                          [maxStickyRows]int
@@ -467,11 +484,11 @@ func (m *Model) editorLines() []string {
 	line, _ := d.Position()
 	a, b := d.Selection()
 	sticky := m.editorStickyRows()
-	find := m.find
+	findOptions := m.findOptions
 	if m.findHidden {
-		find = ""
+		findOptions = searchservice.Options{}
 	}
-	key := editorRenderKey{find: find, flashRevision: m.flashRevision, stickyCount: len(sticky), text: d.Text, line: line, selectionStart: a, selectionEnd: b, width: m.mainWidth(), left: t.left}
+	key := editorRenderKey{findOptions: findOptions, flashRevision: m.flashRevision, stickyCount: len(sticky), text: d.Text, line: line, selectionStart: a, selectionEnd: b, width: m.mainWidth(), left: t.left}
 	copy(key.sticky[:], sticky)
 	if t.renderedRows == nil || t.renderKey != key {
 		t.renderKey = key
@@ -536,7 +553,7 @@ func (m *Model) editorLines() []string {
 			}
 			run.WriteString(s)
 		}
-		matches := searchRanges(source[i], find)
+		matches := m.fileSearchRowRanges(d, i)
 		matchIndex := 0
 		spanIndex := 0
 		visual, runeIndex := 0, 0
@@ -689,6 +706,9 @@ func (m *Model) click(msg tea.MouseClickMsg) tea.Cmd {
 	if m.sidebarAt(msg.X) {
 		return m.clickSidebar(msg)
 	}
+	if m.fileFindAt(msg.X, msg.Y) {
+		return m.clickFileFind(msg.X-m.mainX(), msg.Y-m.contentRow())
+	}
 	if msg.Y == m.contentRow()-1 && !m.editing() && m.diffOpen {
 		button := m.diffModeButton()
 		if msg.X >= m.mainX()+button.x && msg.X < m.mainX()+button.x+button.width {
@@ -702,6 +722,7 @@ func (m *Model) click(msg tea.MouseClickMsg) tea.Cmd {
 		return nil
 	}
 	m.sidebar = false
+	m.blurFileFind()
 	m.lastClickKey = ""
 	if m.welcomeVisible() {
 		return m.clickWelcome(msg)

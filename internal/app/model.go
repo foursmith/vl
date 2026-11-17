@@ -21,6 +21,7 @@ import (
 	"github.com/ourongxing/vl/internal/i18n"
 	"github.com/ourongxing/vl/internal/imagepreview"
 	"github.com/ourongxing/vl/internal/platform"
+	searchservice "github.com/ourongxing/vl/internal/search"
 	"github.com/ourongxing/vl/internal/theme"
 	"github.com/ourongxing/vl/internal/watcher"
 )
@@ -31,6 +32,7 @@ const (
 	changes section = iota
 	explorer
 	history
+	search
 )
 
 type item struct {
@@ -53,11 +55,12 @@ type item struct {
 }
 
 type tab struct {
-	scopeText string
-	scopes    []codeScope
-	folds     []codeScope
-	foldRows  []int
-	image     *imageState
+	findRanges findRangeCache
+	scopeText  string
+	scopes     []codeScope
+	folds      []codeScope
+	foldRows   []int
+	image      *imageState
 
 	vim              editor.Vim
 	doc              *editor.Document
@@ -102,6 +105,8 @@ type clipboardMsg struct {
 }
 
 type Model struct {
+	findWidget                         findWidgetState
+	fileSearchOptionsDialog            bool
 	navigationState                    navigationState
 	leaderTarget                       string
 	explorerYankRoot, explorerYankPath string
@@ -179,7 +184,10 @@ type Model struct {
 	confirmationLabel       string
 	confirmationButton      int
 	dialogTop               int
-	find                    string
+	search                  searchState
+	findOptions             searchservice.Options
+	findMatcherOptions      searchservice.Options
+	findMatcher             *searchservice.Matcher
 	findHidden              bool
 	expanded                map[string]bool
 	treeEntries             []files.Entry
@@ -218,6 +226,7 @@ func newModel(ctx context.Context, repo *gitservice.Repository, nerd, editorOnly
 	if editorOnly {
 		m.notice = ""
 	}
+	m.search = newSearch()
 	m.emptyDiff = m.diffState
 	m.styleInput()
 	m.resize()
@@ -414,6 +423,12 @@ func (m *Model) preview() tea.Cmd {
 }
 
 func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
+	beforeDocument := m.document()
+	beforeText := ""
+	beforeSearchSeq := m.search.seq
+	if beforeDocument != nil {
+		beforeText = beforeDocument.Text
+	}
 	_, motion := msg.(tea.MouseMotionMsg)
 	m.hoverOnly = motion && m.contextMenu == nil && !m.resizingSidebar && m.textDrag == nil && m.diffDrag == nil && m.imagePan == nil
 	if !m.hoverOnly {
@@ -424,6 +439,15 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			next = tea.Batch(next, cmd)
 		}
 		m.keepEditedTabs()
+		if beforeDocument != nil && m.search.seq == beforeSearchSeq {
+			after := m.document()
+			changed := beforeDocument.Text != beforeText || after != nil && after.Path == beforeDocument.Path && after.Text != beforeText
+			if changed {
+				if cmd := m.refreshWorkspaceSearch(); cmd != nil {
+					next = tea.Batch(next, cmd)
+				}
+			}
+		}
 		if !m.hoverOnly {
 			if cmd := m.loadVisibleHistory(); cmd != nil {
 				next = tea.Batch(next, cmd)
@@ -473,6 +497,18 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		return m, cmd
 	}
 	switch msg := msg.(type) {
+	case searchMsg:
+		if msg.seq == m.search.seq {
+			m.search.loading = false
+			m.search.result = msg.result
+			m.sortSearchFiles()
+			if msg.err != nil {
+				m.search.err = msg.err.Error()
+			}
+			m.clampSearch()
+		}
+		return m, nil
+
 	case layoutSavedMsg:
 		if msg.err != nil {
 			m.notice = m.tr("Save preferences: %s", m.tr(msg.err.Error()))
@@ -725,6 +761,9 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}
 		m.resizingSidebar = false
 		if msg.Button == tea.MouseRight {
+			if m.fileFindAt(msg.X, msg.Y) {
+				return m, nil
+			}
 			return m, m.openContextMenu(msg.X, msg.Y)
 		}
 		if m.sidebarDividerAt(msg.X, msg.Y) {
@@ -771,6 +810,13 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			if msg.Button == tea.MouseWheelUp {
 				delta = -3
 			}
+			if m.section == search {
+				if msg.Y >= m.searchResultY() {
+					m.search.top += delta
+					m.clampSearch()
+				}
+				return m, nil
+			}
 			m.sideTop += delta
 			m.clampSidebarScroll()
 		} else if m.editing() && m.activeTab >= 0 {
@@ -797,6 +843,12 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}
 		return m, m.key(msg)
 	case tea.PasteMsg:
+		if m.modal == "" && m.fileFindFocused() {
+			return m, m.fileFindInput(msg)
+		}
+		if m.modal == "" && m.sidebar && m.section == search {
+			return m, m.searchInput(msg)
+		}
 		if m.flash != nil {
 			return m, m.flashText(msg.Content)
 		}
@@ -826,8 +878,30 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		msg = tea.KeyPressMsg{Code: tea.KeyEscape}
 		k = "esc"
 	}
-	if m.editorOnly && key.Matches(msg, workbenchKeys.Recent, workbenchKeys.Explorer, workbenchKeys.Changes, workbenchKeys.History, workbenchKeys.Sidebar, workbenchKeys.Focus, workbenchKeys.Output, workbenchKeys.DiffLayout) {
+	if m.fileFindFocused() {
+		if handled, cmd := m.fileFindKey(msg); handled {
+			return cmd
+		}
+	}
+	if !m.sidebar && m.fileFindHeight() > 0 && k == "alt+h" {
+		return m.toggleFileReplacement()
+	}
+	if !m.sidebar && k == "shift+f3" {
+		if !m.findWidget.workspaceMatch {
+			m.presentFileFind()
+		}
+		m.navigateFileFind(-1)
 		return nil
+	}
+	if m.editorOnly && key.Matches(msg, workbenchKeys.Recent, workbenchKeys.Search, workbenchKeys.Replace, workbenchKeys.Explorer, workbenchKeys.Changes, workbenchKeys.History, workbenchKeys.Sidebar, workbenchKeys.Focus, workbenchKeys.Output, workbenchKeys.DiffLayout) {
+		return nil
+	}
+	if m.sidebar && m.section == search {
+		switch k {
+		case "ctrl+q", "ctrl+p", "ctrl+h", "ctrl+shift+p", "f1", "ctrl+1", "ctrl+2", "ctrl+3", "ctrl+4", "ctrl+shift+f", "ctrl+shift+h", "ctrl+l", "f6", "ctrl+s", "ctrl+w", "alt+left", "alt+right", "ctrl+j":
+		default:
+			return m.searchKey(msg)
+		}
 	}
 	if m.editing() && m.sidebar {
 		m.tabs[m.activeTab].vim.CancelPending()
@@ -871,6 +945,10 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		return m.openPalette()
 	case key.Matches(msg, workbenchKeys.Position):
 		return m.prompt("position", m.tr("Go to line · line:column"), "")
+	case key.Matches(msg, workbenchKeys.Replace):
+		return m.openReplace()
+	case key.Matches(msg, workbenchKeys.Search):
+		return m.openSearch()
 	case key.Matches(msg, workbenchKeys.Explorer):
 		return m.selectSection(explorer)
 	case key.Matches(msg, workbenchKeys.Changes):
@@ -908,7 +986,7 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	case key.Matches(msg, workbenchKeys.PreviousTab):
 		return m.switchTab(-1)
 	case key.Matches(msg, workbenchKeys.Find):
-		return m.prompt("find", m.tr("Find in current view"), m.find)
+		return m.openFileFind()
 	case key.Matches(msg, workbenchKeys.FindNext):
 		return m.findNext()
 	case key.Matches(msg, workbenchKeys.Escape):

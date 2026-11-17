@@ -59,8 +59,17 @@ colons take precedence over location suffixes.
   repository; committing a submodule does not commit its parent's pointer.
 - **Explorer and tabs:** compact folder trees, file search, preview/kept tabs,
   context menus, recent workspaces and per-folder session restoration.
+- **Workspace search:** second sidebar tab, grouped file results with line numbers and match highlights;
+  case, whole-word, regex and ignored-file options, including unsaved open text buffers.
+  Use Replace below the search field or Ctrl+Shift+H for selected-match/file or workspace replacement,
+  with regex capture groups, stale-result checks and one undo step per file. Edits require explicit saving.
+  Full-width search and replacement inputs keep the sidebar focused on results.
+  The Options picker provides preserve-case replacement, include/exclude globs, changed-file and
+  open-editor scopes, and ignore files. The same editor find/replace component handles Ctrl+F, Vim / and n, context menus and
+  workspace-result handoff, including match counts and per-file replacement.
+  Scope filters compose and stay active after closing the picker; see [search controls](docs/KEYBINDINGS.md#全文搜索与替换).
 - **Text editing:** grapheme-aware movement, selection, system clipboard, undo/redo,
-  literal search, line jumps, syntax highlighting and save. Vim is the only interaction
+  shared find/replace with match counts and next/previous navigation, line jumps, syntax highlighting and save. Vim is the only interaction
   mode, with Normal/Insert/Visual editing, Flash jumps, Surround and repeat commands.
 - **Images:** read-only PNG, JPEG, GIF (first frame) and SVG previews, with zoom and pan.
 - **Workspace UI:** sticky code/folder context, resizable left/right sidebar,
@@ -70,6 +79,9 @@ File and Git metadata changes refresh automatically. Clean files reload;
 unsaved edits are retained and external modifications are reported.
 
 ## Using the workspace
+
+Search workspace text with **Ctrl+2** or **Ctrl+Shift+F**.
+Sidebar shortcuts **Ctrl+1/2/3/4** open Explorer, Search, Changes and History.
 
 Open files with **Ctrl+P**, commands with **Ctrl+Shift+P**, and recent workspaces with **Ctrl+H**.
 The file/command picker accepts `>` for commands, `:line[:column]` for a position

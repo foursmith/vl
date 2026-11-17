@@ -159,6 +159,12 @@ func (m *Model) statusLayout() []statusSegment {
 	}
 	rightX := m.width - rightWidth
 	notice := m.notice
+	if m.sidebar && m.section == search && notice == "" {
+		notice = m.tr("Tab: fields/results · Ctrl+Shift+J: options")
+		if m.search.replace && m.search.focus == 1 {
+			notice = m.tr("Enter: replace · Ctrl+Alt+Enter: replace all")
+		}
+	}
 	if hint := m.hoverHint(); hint != "" {
 		notice = hint
 	}

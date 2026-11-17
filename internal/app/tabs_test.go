@@ -79,12 +79,12 @@ func TestSidebarSectionsPreserveActiveTab(t *testing.T) {
 				}))
 			}
 			active, count, doc, diff := m.activeTab, len(m.tabs), m.document(), m.diffState
-			for i, key := range []string{"ctrl+3", "ctrl+2", "ctrl+3", "ctrl+2"} {
+			for i, key := range []string{"ctrl+4", "ctrl+3", "ctrl+4", "ctrl+3"} {
 				if i < 2 {
 					drain(t, m, press(m, key))
 				} else {
 					target := history
-					if key == "ctrl+2" {
+					if key == "ctrl+3" {
 						target = changes
 					}
 					for _, nav := range m.navigation() {

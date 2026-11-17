@@ -422,9 +422,7 @@ func (m *Model) diffRow(line *diff.Line, width int, right bool, selected diffRan
 	overlay := diffCodeOverlay{}
 	if logical, ok := m.reviewLine[line]; ok && right == m.reviewRight && m.review != nil {
 		overlay.offset = m.review.LineOffset(logical)
-		if !m.findHidden {
-			overlay.find = m.find
-		}
+		overlay.matches = m.fileSearchRowRanges(m.review, logical)
 		if m.flashValid() {
 			overlay.flash = m.flash
 		}
@@ -433,9 +431,9 @@ func (m *Model) diffRow(line *diff.Line, width int, right bool, selected diffRan
 }
 
 type diffCodeOverlay struct {
-	find   string
-	offset int
-	flash  *flashState
+	matches [][2]int
+	offset  int
+	flash   *flashState
 }
 
 // Paint token runs only up to the visible right edge, preserving source rune
@@ -448,7 +446,7 @@ func diffCode(colors theme.Palette, code string, spans []highlight.Span, width, 
 	if len(overlays) > 0 {
 		overlay = overlays[0]
 	}
-	matches := searchRanges(code, overlay.find)
+	matches := overlay.matches
 	matchIndex := 0
 	var out, run strings.Builder
 	color := colors.Foreground

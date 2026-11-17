@@ -112,6 +112,7 @@ func (t tab) path() string {
 func (m *Model) editing() bool { return m.document() != nil }
 
 func (m *Model) activateTab(index int) {
+	m.blurFileFind()
 	m.leaderTarget = ""
 	if m.activeTab >= 0 && m.activeTab < len(m.tabs) && m.activeTab != index {
 		m.rememberFilePosition(&m.tabs[m.activeTab])

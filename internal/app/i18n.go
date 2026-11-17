@@ -9,6 +9,10 @@ func (m *Model) tr(message string, args ...any) string {
 	return i18n.Text(m.displayLanguage, message, args...)
 }
 
+func searchText(message string, args ...any) string {
+	return i18n.Text(i18n.English, message, args...)
+}
+
 // SetDisplayLanguage changes presentation without changing command IDs or data.
 // Invalid saved values fall back to English.
 func (m *Model) SetDisplayLanguage(value string) {

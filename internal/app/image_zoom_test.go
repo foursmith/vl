@@ -55,7 +55,7 @@ func TestImageZoomRoutingLimitsPanAndReset(t *testing.T) {
 	if m.tabs[0].image.zoom != 1 {
 		t.Fatal("sidebar wheel zoomed image")
 	}
-	m.modal = "find"
+	m.modal = "confirm"
 	m.Update(tea.MouseWheelMsg{X: x, Y: y, Button: tea.MouseWheelUp})
 	if m.tabs[0].image.zoom != 1 {
 		t.Fatal("modal wheel zoomed image")

@@ -116,9 +116,22 @@ func (m *Model) changeActionRow(entry item, w int, fg, bg string, state treeRowS
 }
 
 func (m *Model) hoverHint() string {
+	if m.modal == "" && m.fileFindAt(m.hoverX, m.hoverY) {
+		for _, c := range m.fileFindControls(m.fileFindWidth()) {
+			if m.hoverY == m.contentRow()+c.y && m.hoverX >= m.fileFindX()+c.x && m.hoverX < m.fileFindX()+c.x+c.width {
+				return c.hint
+			}
+		}
+	}
 	if m.resizingSidebar || m.sidebarDividerAt(m.hoverX, m.hoverY) {
 		return m.tr("Drag to resize sidebar")
 	}
+	if m.modal == "" && m.section == search && m.sidebarAt(m.hoverX) {
+		if hint := m.searchHoverHint(m.hoverX-m.sideX(), m.hoverY); hint != "" {
+			return hint
+		}
+	}
+
 	if index := m.hoveredSidebarRow(); index >= 0 {
 		width := m.sideWidth()
 		if !m.sideShown() {

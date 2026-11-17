@@ -25,15 +25,16 @@ func (m *Model) sidebarAt(x int) bool {
 func (m *Model) navigation() []navigationItem {
 	return []navigationItem{
 		{1, 4, m.symbol(symbolExplorer), explorer},
-		{5, 4, m.symbol(symbolBranch), changes},
-		{9, 4, m.symbol(symbolHistory), history},
+		{5, 4, m.symbol(symbolSearch), search},
+		{9, 4, m.symbol(symbolBranch), changes},
+		{13, 4, m.symbol(symbolHistory), history},
 	}
 }
 
 func (m *Model) sidebarLines() []string { return m.sidebarLinesWidth(m.sideWidth()) }
 
 func (m *Model) hoveredSidebarRow() int {
-	if m.resizingSidebar || m.modal != "" || m.hoverX < 0 || !m.sidebarAt(m.hoverX) || m.hoverY < headerHeight || m.hoverY >= m.bodyHeight() {
+	if m.section == search || m.resizingSidebar || m.modal != "" || m.hoverX < 0 || !m.sidebarAt(m.hoverX) || m.hoverY < headerHeight || m.hoverY >= m.bodyHeight() {
 		return -1
 	}
 	i := m.sidebarRowAt(m.hoverY)
@@ -62,6 +63,9 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 		label += strings.Repeat(" ", max(0, item.width-ansi.StringWidth(label)))
 		nav.WriteString(theme.Style(fg, m.colors.Panel).Underline(m.monochrome && active).Render(label))
 		x = item.x + item.width
+	}
+	if m.section == search {
+		return m.searchLines(row(nav.String(), w, m.colors.SideForeground, m.colors.Panel), w)
 	}
 	lines := []string{row(nav.String(), w, m.colors.SideForeground, m.colors.Panel)}
 	if m.snapshot.NoRepository && (m.section == changes || m.section == history) {
@@ -201,6 +205,9 @@ func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 	if y >= 0 && y < headerHeight {
 		for _, item := range m.navigation() {
 			if msg.X >= item.x && msg.X < item.x+item.width {
+				if item.section == search {
+					return m.openSearch()
+				}
 				return m.selectSection(item.section)
 			}
 		}
@@ -211,6 +218,9 @@ func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 			return m.initializeRepository()
 		}
 		return nil
+	}
+	if m.section == search {
+		return m.clickSearch(msg.X, y)
 	}
 	w := m.sideWidth()
 	if !m.sideShown() {

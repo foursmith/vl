@@ -93,7 +93,11 @@ func (m *Model) runShortcut(command shortcut) tea.Cmd {
 			return m.saveEditor(true)
 		}
 	case shortcutClearSearch:
-		m.findHidden = true
+		if m.findWidget.visible {
+			m.closeFileFind()
+		} else {
+			m.findHidden = true
+		}
 		if d := m.editorDocument(); d != nil {
 			d.ClearSelection()
 			m.tabs[m.activeTab].vim.Reset(d)

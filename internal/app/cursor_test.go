@@ -41,7 +41,7 @@ func TestEditorCursorModePositionAndVisibility(t *testing.T) {
 		t.Fatal("sidebar retained editor caret")
 	}
 	m.sidebar = false
-	m.modal = "find"
+	m.modal = "confirm"
 	if m.editorCursor() != nil {
 		t.Fatal("modal retained editor caret")
 	}

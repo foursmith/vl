@@ -4,8 +4,6 @@ import (
 	"context"
 	"path/filepath"
 
-	tea "charm.land/bubbletea/v2"
-
 	"github.com/ourongxing/vl/internal/editor"
 	gitservice "github.com/ourongxing/vl/internal/git"
 )
@@ -40,7 +38,8 @@ func (m *Model) editorActions() []action {
 		{"language.select", m.tr("Preferences: Configure Display Language"), "", "", m.openLanguagePicker},
 		{"file.save", m.tr("File: Save"), workbenchKeys.Save.Help().Key, docReason, m.save},
 		{"file.close", m.tr("View: Close Editor"), workbenchKeys.Close.Help().Key, tabReason, m.closeTab},
-		{"edit.find", m.tr("Find: Search Current View"), workbenchKeys.Find.Help().Key, "", func() tea.Cmd { return m.prompt("find", m.tr("Find in current view"), m.find) }},
+		{"edit.replace", m.tr("Find: Replace Current View"), "", docReason, m.openFileReplace},
+		{"edit.find", m.tr("Find: Search Current View"), workbenchKeys.Find.Help().Key, "", m.openFileFind},
 		{"app.quit", m.tr("Quit"), workbenchKeys.Quit.Help().Key, "", m.quit},
 	}
 }

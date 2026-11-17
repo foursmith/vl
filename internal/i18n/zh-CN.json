@@ -315,5 +315,11 @@
   "Open Working Tree File": "打开工作区文件",
   "Focus Other Diff Side": "切换 Diff 左右侧焦点",
   "Open a working-tree diff first": "请先打开工作区 Diff",
-  "Open an index diff first": "请先打开暂存区 Diff"
+  "Open an index diff first": "请先打开暂存区 Diff",
+  "Search: Find in Files": "搜索：在文件中查找",
+  "Search: Replace in Files": "搜索：在文件中替换",
+  "Search: Options": "搜索：选项",
+  "Tab: fields/results · Ctrl+Shift+J: options": "Tab：输入框/结果 · Ctrl+Shift+J：选项",
+  "Enter: replace · Ctrl+Alt+Enter: replace all": "Enter：替换 · Ctrl+Alt+Enter：全部替换",
+  "Find: Replace Current View": "查找：替换当前文件"
 }

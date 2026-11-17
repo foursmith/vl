@@ -302,7 +302,7 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 				add(m.tr("Undo"), "Ctrl+Z", func() tea.Cmd { m.document().Undo(); m.ensureEditor(); return nil })
 				add(m.tr("Redo"), "Ctrl+Y", func() tea.Cmd { m.document().Redo(); m.ensureEditor(); return nil })
 				add(m.tr("Save"), workbenchKeys.Save.Help().Key, m.save)
-				add(m.tr("Find…"), workbenchKeys.Find.Help().Key, func() tea.Cmd { return m.prompt("find", m.tr("Find in current view"), m.find) })
+				add(m.tr("Find…"), workbenchKeys.Find.Help().Key, m.openFileFind)
 			} else if m.diffOpen {
 				if index := m.viewport.YOffset() + y - m.contentRow(); index >= 0 && index < len(m.diffRowHunks) {
 					m.diffHunk = m.diffRowHunks[index]
@@ -314,7 +314,7 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 				}
 				actions = append(actions, action{label: m.tr("Copy"), key: workbenchKeys.Copy.Help().Key, disabled: reason, run: func() tea.Cmd { return m.copy(false) }})
 				add(m.tr("Toggle Inline View"), workbenchKeys.DiffLayout.Help().Key, func() tea.Cmd { m.split = !m.split; m.renderDiff(); return nil })
-				add(m.tr("Find…"), workbenchKeys.Find.Help().Key, func() tea.Cmd { return m.prompt("find", m.tr("Find in current view"), m.find) })
+				add(m.tr("Find…"), workbenchKeys.Find.Help().Key, m.openFileFind)
 			} else if m.currentImage() != nil {
 				add(m.tr("Fit to Window"), "0", func() tea.Cmd { m.resetImageZoom(); return nil })
 			}

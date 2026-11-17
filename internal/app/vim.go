@@ -41,7 +41,7 @@ func (m *Model) vimKey(k string) (bool, tea.Cmd) {
 			return true, m.openQuickPicker(":")
 		}
 		if k == "/" {
-			return true, m.prompt("find", m.tr("Find in current view"), m.find)
+			return true, m.openFileFind()
 		}
 		return true, m.findNext()
 	}

@@ -116,6 +116,25 @@ func (m *Model) syncReviewMouse() {
 	m.review.SelectRange(offset(s.anchor), offset(s.cursor))
 }
 
+// Search navigation centers the matching row in both files and text diffs.
+// Folded source lines and diff headers use their painted row coordinates.
+func (m *Model) centerTextCursor() {
+	d := m.editorDocument()
+	if d == nil {
+		return
+	}
+	line, _ := d.Position()
+	if m.editing() {
+		t := &m.tabs[m.activeTab]
+		t.revealFold(line)
+		t.top = t.sourceRow(max(0, t.visibleRow(line)-m.contentHeight()/2))
+	} else if len(m.reviewRows) > 0 {
+		row := m.reviewRows[min(line, len(m.reviewRows)-1)]
+		m.viewport.SetYOffset(row - m.contentHeight()/2)
+	}
+	m.ensureTextCursor()
+}
+
 func (m *Model) ensureTextCursor() {
 	if m.editing() {
 		m.ensureEditor()
@@ -154,7 +173,7 @@ func (m *Model) ensureTextCursor() {
 }
 
 func (m *Model) reviewCursor() *tea.Cursor {
-	if m.review == nil || len(m.reviewRows) == 0 || m.sidebar || m.modal != "" || m.contextMenu != nil {
+	if m.review == nil || len(m.reviewRows) == 0 || m.sidebar || m.fileFindFocused() || m.modal != "" || m.contextMenu != nil {
 		return nil
 	}
 	d := m.review
@@ -173,7 +192,7 @@ func (m *Model) reviewCursor() *tea.Cursor {
 	if m.diffLayout.split && m.reviewRight {
 		left += width + 1
 	}
-	if y < 0 || y >= m.contentHeight() || x < left+m.diffGutter || x >= left+width {
+	if y < 0 || y >= m.contentHeight() || x < left+m.diffGutter || x >= left+width || m.fileFindAt(x, m.contentRow()+y) {
 		return nil
 	}
 	return &tea.Cursor{Position: tea.Position{X: x, Y: m.contentRow() + y}, Shape: tea.CursorBlock, Color: lipgloss.Color(m.colors.Foreground)}

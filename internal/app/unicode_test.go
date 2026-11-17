@@ -53,9 +53,9 @@ func TestFindExpandsPartialGraphemeSelection(t *testing.T) {
 	d := m.document()
 	d.Edit("e\u0301x")
 	d.SetPosition(0, 0)
-	m.find = "\u0301"
+	setTestFind(m, "\u0301")
 	m.findNext()
-	if d.SelectedText() != "e\u0301" || d.Cursor != 2 {
+	if d.SelectedText() != "e\u0301" || d.Cursor != 0 {
 		t.Fatal("find left selection/cursor inside combining cluster")
 	}
 }

@@ -87,7 +87,7 @@ func (m *Model) clickPicker(msg tea.MouseClickMsg) tea.Cmd {
 }
 
 func (m *Model) isPicker() bool {
-	return m.modal == "quick" || m.modal == "remotes" || m.modal == "refs" || m.modal == "recent" || m.modal == "themes" || m.modal == "languages"
+	return m.modal == "searchOptions" || m.modal == "quick" || m.modal == "remotes" || m.modal == "refs" || m.modal == "recent" || m.modal == "themes" || m.modal == "languages"
 }
 
 func (m *Model) selectPickerChoice() tea.Cmd {

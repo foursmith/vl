@@ -21,7 +21,7 @@ func TestRecentWorkspacesDoNotDisplaceSidebarNavigation(t *testing.T) {
 		if m.sidebarLines()[0] != before {
 			t.Fatal("recent workspaces displaced the sidebar navigation")
 		}
-		m.click(tea.MouseClickMsg{X: m.sideX() + 10, Y: 0, Button: tea.MouseLeft})
+		m.click(tea.MouseClickMsg{X: m.sideX() + 14, Y: 0, Button: tea.MouseLeft})
 		if m.section != history {
 			t.Fatal("navigation is not clickable at the top of the sidebar")
 		}

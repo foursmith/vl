@@ -35,11 +35,11 @@ func TestVimWorkbenchRouting(t *testing.T) {
 		t.Fatal("Normal mode accepted bracketed paste")
 	}
 	press(m, "/")
-	if m.modal != "find" {
-		t.Fatal("search did not open")
+	if !m.fileFindFocused() || m.modal != "" {
+		t.Fatal("search component did not open")
 	}
 	press(m, "word")
-	if d.Text != "Xone two\nthree" || !strings.Contains(m.input.Value(), "word") {
+	if d.Text != "Xone two\nthree" || !strings.Contains(m.search.query.Value(), "word") {
 		t.Fatal("Vim intercepted modal input")
 	}
 	press(m, "esc")

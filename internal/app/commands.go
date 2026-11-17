@@ -46,6 +46,9 @@ func (m *Model) actions() []action {
 		{"explorer.newFile", m.tr("Explorer: New File"), "", "", func() tea.Cmd { return m.newEntry(false) }},
 		{"explorer.newFolder", m.tr("Explorer: New Folder"), "", "", func() tea.Cmd { return m.newEntry(true) }},
 		{"explorer.collapseAll", m.tr("Explorer: Collapse Folders in Explorer"), "", "", m.collapseFolders},
+		{"search.options", m.tr("Search: Options"), "Ctrl+Shift+J", "", m.openSearchOptions},
+		{"search.replace", m.tr("Search: Replace in Files"), workbenchKeys.Replace.Help().Key, "", m.openReplace},
+		{"view.search", m.tr("Search: Find in Files"), workbenchKeys.Search.Help().Key, "", m.openSearch},
 		{"view.changes", m.tr("View: Changes"), workbenchKeys.Changes.Help().Key, "", func() tea.Cmd { return m.selectSection(changes) }},
 		{"view.history", m.tr("View: Commit History"), workbenchKeys.History.Help().Key, "", func() tea.Cmd { return m.selectSection(history) }},
 		{"view.diff", m.tr("Diff Editor: Toggle Inline View"), workbenchKeys.DiffLayout.Help().Key, "", func() tea.Cmd { m.split = !m.split; m.renderDiff(); return nil }},
@@ -184,6 +187,12 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 		msg = tea.KeyPressMsg{Code: tea.KeyEscape}
 		k = "esc"
 	}
+	if m.modal == "searchOptions" {
+		if (k == "space" || k == " ") && m.input.Value() == "" {
+			return m.selectPickerChoice()
+		}
+	}
+
 	if m.confirmationDialog() {
 		count := len(m.confirmationActions())
 		switch k {
@@ -282,9 +291,6 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 			}
 		case "stash":
 			return m.gitOperation("Stash", "stash", "push", "--include-untracked", "-m", value)
-		case "find":
-			m.find = value
-			return m.findNext()
 		case "newFile":
 			return m.createEntry(value, false)
 		case "pasteFile":
@@ -569,25 +575,11 @@ func (m *Model) switchTab(delta int) tea.Cmd {
 
 func (m *Model) findNext() tea.Cmd {
 	m.findHidden = false
-	if m.find == "" {
-		return nil
-	}
-	if d := m.editorDocument(); d != nil {
-		runes := []rune(d.Text)
-		start := min(d.Cursor+1, len(runes))
-		index := strings.Index(string(runes[start:]), m.find)
-		if index < 0 {
-			start = 0
-			index = strings.Index(d.Text, m.find)
+	if m.findOptions.Query != "" {
+		if !m.findWidget.workspaceMatch {
+			m.presentFileFind()
 		}
-		if index >= 0 {
-			prefix := []rune(string(runes[start:])[:index])
-			d.SelectRange(start+len(prefix), start+len(prefix)+len([]rune(m.find)))
-			m.sidebar = false
-			m.ensureTextCursor()
-		} else {
-			m.notice = m.tr("No match")
-		}
+		m.navigateFileFind(1)
 	}
 	return nil
 }
