@@ -143,3 +143,12 @@ Interactive terminal acceptance is separate. Restart running instances after reb
 - [Theme compatibility](docs/THEME.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Third-party notices](THIRD_PARTY_NOTICES.md)
+
+## License
+
+This Source Code Form is subject to the terms of the Mozilla Public License,
+v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain
+one at https://mozilla.org/MPL/2.0/.
+
+See [LICENSE](LICENSE) for the full text. Third-party components retain their
+respective licenses; see [Third-party notices](THIRD_PARTY_NOTICES.md).
