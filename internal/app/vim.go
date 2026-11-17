@@ -24,7 +24,9 @@ func (m *Model) vimKey(k string) (bool, tea.Cmd) {
 		if k == "pgup" {
 			rows = -rows
 		}
+		before, _ := d.Position()
 		v.MovePage(d, rows)
+		m.moveAcrossFolds(before)
 		m.ensureTextCursor()
 		return true, nil
 	}
@@ -43,14 +45,24 @@ func (m *Model) vimKey(k string) (bool, tea.Cmd) {
 		}
 		return true, m.findNext()
 	}
+	before, _ := d.Position()
+	vertical := !v.InsertMode && !v.CommandPending() && (k == "j" || k == "k" || k == "up" || k == "down")
 	if !v.Handle(d, k) {
 		return false, nil
+	}
+	if vertical {
+		m.moveAcrossFolds(before)
 	}
 	m.ensureTextCursor()
 	if text, ready := v.TakeClipboardCopy(); ready {
 		return true, func() tea.Msg { return clipboardMsg{err: clipboard.WriteAll(text)} }
 	}
-	switch v.TakeAction() {
+	action := v.TakeAction()
+	switch action {
+	case "fold:a", "fold:c", "fold:o", "fold:M", "fold:R", "fold:C", "fold:O":
+		if m.editing() {
+			m.editorFold(action[len("fold:"):])
+		}
 	case "focus":
 		if m.editorOnly {
 			return true, nil

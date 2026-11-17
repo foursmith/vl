@@ -120,9 +120,10 @@ Runtime state uses `$XDG_STATE_HOME/vl/`, defaulting to `~/.local/state/vl/` whe
 the variable is unset, empty or relative. It contains: `recent.json` for recent
 folders, `workspaces/` for tab sessions, and `files/` for cursor and scroll positions.
 Each file has its own `files/<SHA-256 of the real absolute file path>.json` record.
+Code folds are saved with each file's position and restored when their first and last lines still match at the saved line numbers.
 File-tree opens, direct file invocations and different workspaces share the same record, including
 symlink aliases. Changed positions are saved when switching tabs, replacing previews,
-closing files and exiting vl; opening a file without moving its cursor or scrolling
+closing files and exiting vl; opening a file without moving its cursor, scrolling or changing folds
 does not create or rewrite its position record. Workspace sessions only save the tab list and active tab.
 State is read only from the configured state directory.
 `-theme` and `-lang` override saved choices at startup.

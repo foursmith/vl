@@ -41,7 +41,7 @@ func TestFilePositionStoreSharesAliasesAndKeepsFilesIndependent(t *testing.T) {
 	if err := other.Save(second, FilePosition{Line: 90}); err != nil {
 		t.Fatal(err)
 	}
-	if got, ok, err := other.Load(alias); err != nil || !ok || got != want {
+	if got, ok, err := other.Load(alias); err != nil || !ok || !got.Equal(want) {
 		t.Fatalf("alias position = %#v, %v, %v", got, ok, err)
 	}
 	entries, err := os.ReadDir(store.Dir)

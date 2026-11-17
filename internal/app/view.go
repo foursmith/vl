@@ -100,7 +100,7 @@ func (m *Model) resize() {
 	unchangedPosition := false
 	if m.document() != nil {
 		t := &m.tabs[m.activeTab]
-		unchangedPosition = t.positionBaseline != nil && *t.positionBaseline == documentPosition(*t)
+		unchangedPosition = t.positionBaseline != nil && t.positionBaseline.Equal(documentPosition(*t))
 	}
 	m.clampWorkspaces()
 	m.hoverOnly = false
@@ -216,7 +216,7 @@ func (m *Model) editorCursor() *tea.Cursor {
 	}
 	t := &m.tabs[m.activeTab]
 	line, _ := t.doc.Position()
-	y := line - t.top
+	y := t.visibleRow(line) - t.visibleRow(t.top)
 	sticky := m.editorStickyRows()
 	if index := slices.Index(sticky, line); index >= 0 {
 		y = index
@@ -386,12 +386,13 @@ func (m *Model) ensureEditor() {
 	}
 	t := &m.tabs[m.activeTab]
 	line, col := t.doc.Position()
+	t.revealFold(line)
 	t.doc.Lines()
 	if line < t.top {
 		t.top = line
 	}
-	if line >= t.top+m.contentHeight() {
-		t.top = line - m.contentHeight() + 1
+	if t.visibleRow(line) >= t.visibleRow(t.top)+m.contentHeight() {
+		t.top = t.sourceRow(t.visibleRow(line) - m.contentHeight() + 1)
 	}
 	m.clampEditorScroll(t)
 	m.revealEditorRow(line)
@@ -412,8 +413,8 @@ func (m *Model) ensureEditor() {
 
 // Keep the final line within the last full screen, including after edits/resizes.
 func (m *Model) clampEditorScroll(t *tab) {
-	lines := len(t.doc.Lines())
-	t.top = min(max(0, t.top), max(0, lines-m.contentHeight()))
+	lines := t.visibleRow(len(t.doc.Lines())-1) + 1
+	t.top = t.sourceRow(min(max(0, t.visibleRow(t.top)), max(0, lines-m.contentHeight())))
 }
 
 // displayCluster is shared by painting, cursor scrolling and mouse hit testing.
@@ -478,7 +479,7 @@ func (m *Model) editorLines() []string {
 		t.renderedRows = make(map[int]string, m.contentHeight())
 	}
 	for i := range t.renderedRows {
-		if !slices.Contains(sticky, i) && (i < t.top+len(sticky) || i >= t.top+m.contentHeight()) {
+		if !slices.Contains(sticky, i) && (t.visibleRow(i) < t.visibleRow(t.top)+len(sticky) || t.visibleRow(i) >= t.visibleRow(t.top)+m.contentHeight()) {
 			delete(t.renderedRows, i)
 		}
 	}
@@ -488,7 +489,7 @@ func (m *Model) editorLines() []string {
 	}
 	var lines []string
 	for y := 0; y < m.contentHeight(); y++ {
-		i := t.top + y
+		i := t.sourceRow(t.visibleRow(t.top) + y)
 		if y < len(sticky) {
 			i = sticky[y]
 		}
@@ -508,6 +509,15 @@ func (m *Model) editorLines() []string {
 		bg := gutterBG
 		if i == line {
 			bg = m.colors.CurrentLine
+		}
+		foldedLines := 0
+		for _, fold := range t.folds {
+			if fold.start == i {
+				foldedLines = fold.end - fold.start
+				bg = theme.Composite(m.colors.FoldBackground, bg)
+				gutterBG = bg
+				break
+			}
 		}
 		var text, run strings.Builder
 		runFG, runBG := "", ""
@@ -612,11 +622,19 @@ func (m *Model) editorLines() []string {
 			appendRun(" ", fg, selectionBG, 0)
 		}
 		flush()
+		if foldedLines > 0 {
+			text.WriteString(theme.Style(m.colors.Accent, bg).Render(" … " + m.tr("%d lines", foldedLines)))
+		}
 		numberColor := m.colors.LineNumber
 		if i == line {
 			numberColor = m.colors.LineNumberActive
 		}
-		gutter := theme.Style(numberColor, gutterBG).Render(fmt.Sprintf("%5d  ", i+1))
+		marker := " "
+		if foldedLines > 0 {
+			marker = ">"
+			numberColor = m.colors.Accent
+		}
+		gutter := theme.Style(numberColor, gutterBG).Render(fmt.Sprintf("%5d%s ", i+1, marker))
 		rendered := row(gutter+row(text.String(), max(1, m.mainWidth()-7), m.colors.Foreground, bg), m.mainWidth(), m.colors.Foreground, m.colors.Background)
 		if len(sticky) > 0 && y == len(sticky)-1 {
 			// Underline the final pinned row without taking a row from the editor.

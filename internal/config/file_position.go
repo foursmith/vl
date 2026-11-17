@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 )
 
 // FilePositionStore shares file positions across all workspaces and editor modes.
@@ -14,10 +15,22 @@ import (
 type FilePositionStore struct{ Dir string }
 
 type FilePosition struct {
-	Line   int `json:"line,omitempty"`
-	Column int `json:"column,omitempty"`
-	Top    int `json:"top,omitempty"`
-	Left   int `json:"left,omitempty"`
+	Line   int    `json:"line,omitempty"`
+	Column int    `json:"column,omitempty"`
+	Top    int    `json:"top,omitempty"`
+	Left   int    `json:"left,omitempty"`
+	Folds  []Fold `json:"folds,omitempty"`
+}
+
+type Fold struct {
+	Start int    `json:"start"`
+	End   int    `json:"end"`
+	First string `json:"first"`
+	Last  string `json:"last"`
+}
+
+func (p FilePosition) Equal(other FilePosition) bool {
+	return p.Line == other.Line && p.Column == other.Column && p.Top == other.Top && p.Left == other.Left && slices.Equal(p.Folds, other.Folds)
 }
 
 func NewFilePositionStore() (*FilePositionStore, error) {

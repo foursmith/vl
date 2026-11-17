@@ -18,6 +18,7 @@ type Palette struct {
 
 	FindMatch                   string
 	FindMatchHighlight          string
+	FoldBackground              string
 	EditorSelection             string
 	EditorSelectionForeground   string
 	InputForeground             string

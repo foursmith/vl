@@ -185,6 +185,9 @@ func (v *Vim) AcceptsLeader() bool { return !v.InsertMode && v.surround == nil }
 // Reject mutations before interpreting them so they cannot enter Insert or
 // change clipboard/undo state. Document guards also protect direct callers.
 func (v *Vim) readOnlyKey(key string) bool {
+	if v.pending == "z" {
+		return true
+	}
 	if v.pending == "y" || v.pending == "yi" || v.pending == "ya" {
 		return key != "s"
 	}

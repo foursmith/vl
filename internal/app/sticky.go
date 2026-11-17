@@ -15,6 +15,13 @@ func stickyLimit(height int) int { return min(maxStickyRows, max(0, height-1)) }
 
 type codeScope struct{ start, end int }
 
+func compareCodeScopes(a, b codeScope) int {
+	if a.start == b.start {
+		return b.end - a.end
+	}
+	return a.start - b.start
+}
+
 func codeScopes(path, text string) []codeScope {
 	source := strings.Split(text, "\n")
 	var scopes []codeScope
@@ -79,22 +86,28 @@ func codeScopes(path, text string) []codeScope {
 			scopes = append(scopes, codeScope{start, len(source)})
 		}
 	}
-	slices.SortFunc(scopes, func(a, b codeScope) int {
-		if a.start == b.start {
-			return b.end - a.end
-		}
-		return a.start - b.start
-	})
+	slices.SortFunc(scopes, compareCodeScopes)
 	return scopes
 }
 
 func (m *Model) editorStickyRows() []int {
 	t := &m.tabs[m.activeTab]
-	if t.stickyText != t.doc.Text {
-		t.stickyText = t.doc.Text
-		t.scopes = codeScopes(t.doc.Path, t.doc.Text)
+	t.syncCodeScopes()
+	if len(t.folds) == 0 {
+		return stickyRows(t.scopes, t.top, stickyLimit(m.contentHeight()))
 	}
-	return stickyRows(t.scopes, t.top, stickyLimit(m.contentHeight()))
+	var scopes []codeScope
+	for _, scope := range t.scopes {
+		start, end := t.visibleRow(scope.start), t.visibleRow(scope.end)
+		if t.sourceRow(start) == scope.start && end > start {
+			scopes = append(scopes, codeScope{start, end})
+		}
+	}
+	rows := stickyRows(scopes, t.visibleRow(t.top), stickyLimit(m.contentHeight()))
+	for i := range rows {
+		rows[i] = t.sourceRow(rows[i])
+	}
+	return rows
 }
 
 func stickyRows(scopes []codeScope, top, limit int) []int {
@@ -119,7 +132,8 @@ func (m *Model) editorRowAt(y int) int {
 	if y >= 0 && y < len(sticky) {
 		return sticky[y]
 	}
-	return m.tabs[m.activeTab].top + y
+	t := &m.tabs[m.activeTab]
+	return t.sourceRow(t.visibleRow(t.top) + y)
 }
 
 func (m *Model) sidebarStickyRows() []int {
@@ -172,7 +186,8 @@ func (m *Model) sidebarRowAt(y int) int {
 
 func (m *Model) revealEditorRow(line int) {
 	sticky := m.editorStickyRows()
-	if line >= m.tabs[m.activeTab].top && line < m.tabs[m.activeTab].top+len(sticky) && !slices.Contains(sticky, line) {
-		m.tabs[m.activeTab].top = max(0, line-stickyLimit(m.contentHeight()))
+	t := &m.tabs[m.activeTab]
+	if line >= t.top && t.visibleRow(line) < t.visibleRow(t.top)+len(sticky) && !slices.Contains(sticky, line) {
+		t.top = t.sourceRow(max(0, t.visibleRow(line)-stickyLimit(m.contentHeight())))
 	}
 }

@@ -31,7 +31,7 @@ func TestFilePositionsSurvivePreviewReplacementCloseAndRestart(t *testing.T) {
 	m.openPreviewFile("file1.go")
 	m.document().SetPosition(20, 3)
 	m.openPreviewFile("file0.go")
-	if got := documentPosition(m.tabs[m.activeTab]); got != want {
+	if got := documentPosition(m.tabs[m.activeTab]); !got.Equal(want) {
 		t.Fatalf("replaced preview position = %#v, want %#v", got, want)
 	}
 	m.closeAllTabs()
@@ -61,7 +61,7 @@ func TestFilePositionsSurvivePreviewReplacementCloseAndRestart(t *testing.T) {
 		t.Fatal("position history reopened closed tabs")
 	}
 	restored.openFile("file0.go")
-	if got := documentPosition(restored.tabs[restored.activeTab]); got != want {
+	if got := documentPosition(restored.tabs[restored.activeTab]); !got.Equal(want) {
 		t.Fatalf("reopened position = %#v, want %#v", got, want)
 	}
 	restored.openFile("file1.go")
@@ -135,7 +135,7 @@ func TestExplorerClickRestoresFilePositions(t *testing.T) {
 	want := documentPosition(m.tabs[m.activeTab])
 	click(1)
 	click(0)
-	if got := documentPosition(m.tabs[m.activeTab]); got != want {
+	if got := documentPosition(m.tabs[m.activeTab]); !got.Equal(want) {
 		t.Fatalf("explorer preview position = %#v, want %#v", got, want)
 	}
 	m.closeAllTabs()
@@ -143,7 +143,7 @@ func TestExplorerClickRestoresFilePositions(t *testing.T) {
 	m.SetSession(saved)
 	m.restoreSession()
 	click(0)
-	if got := documentPosition(m.tabs[m.activeTab]); got != want {
+	if got := documentPosition(m.tabs[m.activeTab]); !got.Equal(want) {
 		t.Fatalf("explorer reopened position = %#v, want %#v", got, want)
 	}
 }
@@ -272,7 +272,7 @@ func TestUnchangedFilePositionsDoNotRewriteRecords(t *testing.T) {
 	if err != nil || !info.ModTime().Equal(oldTime) {
 		t.Fatalf("opening rewrote position record: %v, %v", info, err)
 	}
-	if got, _, err := store.Load(path); err != nil || got != original {
+	if got, _, err := store.Load(path); err != nil || !got.Equal(original) {
 		t.Fatalf("opening changed saved position: %#v, %v", got, err)
 	}
 	m.document().SetPosition(40, 3)
@@ -314,5 +314,84 @@ func TestReopeningFileDoesNotRestoreDeletedPosition(t *testing.T) {
 	m.closeTab()
 	if _, err := os.Stat(store.Dir); !os.IsNotExist(err) {
 		t.Fatalf("deleted position recreated: %v", err)
+	}
+}
+
+func TestFoldStatePersistsAcrossWorkspaceAndStandalone(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	defer m.Close()
+	store := &config.FilePositionStore{Dir: filepath.Join(t.TempDir(), "files")}
+	m.SetFilePositionStore(store)
+	path := filepath.Join(m.repo.Root, "file0.go")
+	text := "func outer() {\n if true {\n  inner()\n }\n other()\n}\nlast"
+	if err := os.WriteFile(path, []byte(text), 0600); err != nil {
+		t.Fatal(err)
+	}
+	m.openFile("file0.go")
+	m.document().SetPosition(1, 0)
+	press(m, "z")
+	press(m, "a")
+	m.document().SetPosition(0, 0)
+	press(m, "z")
+	press(m, "a")
+	want := documentPosition(m.tabs[m.activeTab])
+	m.closeTab()
+	m.openFile("file0.go")
+	if got := documentPosition(m.tabs[m.activeTab]); !got.Equal(want) || len(got.Folds) != 2 {
+		t.Fatalf("workspace did not restore nested folds: %#v", got)
+	}
+	m.closeTab()
+	standalone, err := NewEditor(context.Background(), path, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer standalone.Close()
+	standalone.SetFilePositionStore(store)
+	state := &standalone.tabs[0]
+	if got := documentPosition(*state); !got.Equal(want) || state.sourceRow(1) != 6 {
+		t.Fatalf("standalone did not restore folded display: %#v", got)
+	}
+	// Opening an unchanged file preserves both the record and its timestamp.
+	entries, err := os.ReadDir(store.Dir)
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("file records: %v, %v", entries, err)
+	}
+	record := filepath.Join(store.Dir, entries[0].Name())
+	oldTime := time.Unix(100, 0)
+	if err := os.Chtimes(record, oldTime, oldTime); err != nil {
+		t.Fatal(err)
+	}
+	if err := standalone.SaveFilePositions(); err != nil {
+		t.Fatal(err)
+	}
+	if info, err := os.Stat(record); err != nil || !info.ModTime().Equal(oldTime) {
+		t.Fatal("unchanged restored folds rewrote the record", err)
+	}
+	// Only unfolding changes: cursor and scroll remain at zero.
+	press(standalone, "z")
+	press(standalone, "a")
+	if err := standalone.SaveFilePositions(); err != nil {
+		t.Fatal(err)
+	}
+	saved, _, err := store.Load(path)
+	if err != nil || len(saved.Folds) != 1 || saved.Folds[0].Start != 1 {
+		t.Fatalf("fold-only change was not saved: %#v, %v", saved, err)
+	}
+	// Changes inside a block keep its fold when the boundary lines still match.
+	if err := os.WriteFile(path, []byte(strings.Replace(text, "inner()", "changed()", 1)), 0600); err != nil {
+		t.Fatal(err)
+	}
+	m.openFile("file0.go")
+	if len(m.tabs[m.activeTab].folds) != 1 {
+		t.Fatal("body-only edit discarded a fold with matching boundary lines")
+	}
+	m.closeTab()
+	// Shifted boundary lines no longer match at the saved coordinates.
+	if err := os.WriteFile(path, []byte("// new content\n"+text), 0600); err != nil {
+		t.Fatal(err)
+	}
+	m.openFile("file0.go")
+	if len(m.tabs[m.activeTab].folds) != 0 {
+		t.Fatal("restored stale folds after an external edit")
 	}
 }

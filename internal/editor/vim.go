@@ -135,6 +135,13 @@ func (v *Vim) handleKey(d *Document, key string) bool {
 		op := v.pending
 		n = min(9999, n*max(1, v.operatorCount))
 		v.clear()
+		if op == "z" {
+			switch key {
+			case "a", "c", "o", "M", "R", "C", "O":
+				v.action = "fold:" + key
+			}
+			return true
+		}
 		if (op == "c" || op == "d" || op == "y") && key == "s" {
 			v.beginSurround(d, op, n)
 			return true
@@ -198,7 +205,7 @@ func (v *Vim) handleKey(d *Document, key string) bool {
 		v.clampUnlessInsert(d)
 		return true
 	}
-	if key == "d" || key == "c" || key == "y" || key == "g" {
+	if key == "d" || key == "c" || key == "y" || key == "g" || key == "z" {
 		v.pending = key
 		v.operatorCount = n
 		v.count = 0

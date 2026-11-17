@@ -8,7 +8,14 @@ import (
 
 func documentPosition(t tab) config.FilePosition {
 	line, column := t.doc.Position()
-	return config.FilePosition{Line: line, Column: column, Top: t.top, Left: t.left}
+	position := config.FilePosition{Line: line, Column: column, Top: t.top, Left: t.left}
+	if t.scopeText == t.doc.Text && len(t.folds) > 0 {
+		lines := t.doc.Lines()
+		for _, fold := range t.folds {
+			position.Folds = append(position.Folds, config.Fold{Start: fold.start, End: fold.end, First: lines[fold.start], Last: lines[fold.end]})
+		}
+	}
+	return position
 }
 
 func (m *Model) rememberFilePosition(t *tab) error {
@@ -16,7 +23,7 @@ func (m *Model) rememberFilePosition(t *tab) error {
 		return nil
 	}
 	position := documentPosition(*t)
-	if t.positionBaseline != nil && *t.positionBaseline == position {
+	if t.positionBaseline != nil && t.positionBaseline.Equal(position) {
 		return nil
 	}
 	if m.filePositionStore != nil {
@@ -48,6 +55,15 @@ func (m *Model) restoreFilePosition(t *tab) {
 	if exists {
 		t.doc.SetPosition(saved.Line, saved.Column)
 		t.top, t.left = max(0, saved.Top), max(0, saved.Left)
+		t.syncCodeScopes()
+		t.folds = nil
+		lines := t.doc.Lines()
+		for _, fold := range saved.Folds {
+			if fold.Start >= 0 && fold.End > fold.Start && fold.End < len(lines) && lines[fold.Start] == fold.First && lines[fold.End] == fold.Last {
+				t.folds = append(t.folds, codeScope{start: fold.Start, end: fold.End})
+			}
+		}
+		t.rebuildFoldRows()
 	}
 }
 

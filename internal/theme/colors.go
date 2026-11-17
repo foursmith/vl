@@ -114,6 +114,7 @@ func (t *Theme) makePalette() Palette {
 	p.FindMatch = get("editor.findMatchBackground", p.PopupSelection)
 	p.FindMatchHighlight = get("editor.findMatchHighlightBackground", p.PopupSelection)
 	p.CurrentLine = get("editor.lineHighlightBackground", p.Background)
+	p.FoldBackground = t.colorOr("editor.foldBackground", WithOpacity(p.Accent, .12))
 	p.Strong = t.Color("strongForeground")
 	p.Brand = t.Color("disabledForeground")
 	p.MenuBackground = get("menu.background", p.Background)

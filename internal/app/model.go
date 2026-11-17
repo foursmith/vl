@@ -53,9 +53,11 @@ type item struct {
 }
 
 type tab struct {
-	stickyText string
-	scopes     []codeScope
-	image      *imageState
+	scopeText string
+	scopes    []codeScope
+	folds     []codeScope
+	foldRows  []int
+	image     *imageState
 
 	vim              editor.Vim
 	doc              *editor.Document
@@ -792,7 +794,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 				delta = -3
 			}
 			t := &m.tabs[m.activeTab]
-			t.top += delta
+			t.top = t.sourceRow(t.visibleRow(t.top) + delta)
 			m.clampEditorScroll(t)
 		} else {
 			var cmd tea.Cmd
