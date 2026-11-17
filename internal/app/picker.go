@@ -42,7 +42,7 @@ func (m *Model) pickerOverlay(base []string) []string {
 	border := theme.Style(m.colors.PopupBorder, bg)
 	box := []string{
 		border.Render("╭" + strings.Repeat("─", w) + "╮"),
-		border.Render("│") + row(" "+m.input.View(), w, m.colors.InputForeground, inputBG) + border.Render("│"),
+		border.Render("│") + row(" "+m.inputView(m.input, l.x+2, l.y+1), w, m.colors.InputForeground, inputBG) + border.Render("│"),
 		border.Render("├" + strings.Repeat("─", w) + "┤"),
 	}
 	hovered := l.indexAt(m.hoverX, m.hoverY)

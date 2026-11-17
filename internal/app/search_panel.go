@@ -144,7 +144,7 @@ func (m *Model) searchLines(nav string, w int) []string {
 		if focus == 1 {
 			boxEnd = w - 5
 		}
-		lines[y] = m.searchFieldLine(input, m.sidebar && s.focus == focus, end, boxEnd, placeholder, label, m.colors.Panel)
+		lines[y] = m.searchFieldLine(input, m.sidebar && s.focus == focus, end, boxEnd, placeholder, label, m.colors.Panel, m.sideX(), y)
 	}
 	field(&s.query, 0, l.query, searchText("Search in files"), "")
 	if s.replace {

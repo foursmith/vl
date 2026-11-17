@@ -50,11 +50,12 @@ func (m *Model) dialogLayout() dialogLayout {
 	}
 	w := max(6, min(76, m.width-4))
 	paint := func(text, fg string) string { return row(" "+text, w-2, fg, m.colors.Popup) }
+	x, y := (m.width-w)/2, min(3, max(0, m.height-5))
 	content := []string{
 		paint(safe(m.modalTitle), m.colors.Foreground),
-		row(" "+m.input.View(), w-2, m.colors.Foreground, m.colors.Input),
+		row(" "+m.inputView(m.input, x+2, y+2), w-2, m.colors.Foreground, m.colors.Input),
 	}
-	return dialogLayout{width: w, x: (m.width - w) / 2, y: min(3, max(0, m.height-len(content)-3)), content: content}
+	return dialogLayout{width: w, x: x, y: y, content: content}
 }
 
 func (m *Model) confirmationLayout() dialogLayout {

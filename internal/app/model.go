@@ -175,6 +175,7 @@ type Model struct {
 	contextMenu             *contextMenu
 	modal, modalTitle       string
 	input                   textinput.Model
+	inputCaret              *tea.Cursor
 	palette                 []action
 	lastCommand             string
 	pickerIndex             int
@@ -218,8 +219,7 @@ func New(ctx context.Context, repo *gitservice.Repository, nerd bool) *Model {
 
 func newModel(ctx context.Context, repo *gitservice.Repository, nerd, editorOnly bool) *Model {
 	ctx, cancel := context.WithCancel(ctx)
-	input := textinput.New()
-	input.CharLimit = 2000
+	input := newInput()
 	dark, light := theme.Builtin("dark_modern"), theme.Builtin("light_modern")
 	m := &Model{displayLanguage: i18n.English, cellWidth: 8, cellHeight: 16, colors: dark.Palette(), colorTheme: dark, darkTheme: dark, lightTheme: light, ctx: ctx, cancel: cancel, repo: repo, width: 120, height: 36, nerd: nerd, editorOnly: editorOnly, sidebar: !editorOnly, sidebarVisible: !editorOnly, split: true, diffState: newDiffState(), input: input, activeTab: -1, notice: "Loading repository…"}
 	m.snapshot.NoRepository = editorOnly || !repo.HasRepository()

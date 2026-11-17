@@ -151,7 +151,7 @@ func TestStaleResultsAndDirtyQuit(t *testing.T) {
 	}
 	m.tabs = []tab{{doc: &editor.Document{Path: "/tmp/a", Text: "unsaved", Anchor: -1}}}
 	m.activeTab = 0
-	if cmd := m.quit(); cmd == nil || m.modal != "confirm" {
+	if cmd := m.quit(); cmd != nil || m.modal != "confirm" || m.confirm == nil {
 		t.Fatal("unsaved changes were not guarded")
 	}
 	press(m, "esc")

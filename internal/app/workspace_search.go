@@ -35,17 +35,13 @@ type searchMsg struct {
 type searchRow struct{ file, match int }
 
 func newSearch() searchState {
-	q := textinput.New()
+	q := newInput()
 	q.Prompt = " "
-	q.CharLimit = 2000
-	r := textinput.New()
+	r := newInput()
 	r.Prompt = " "
-	r.CharLimit = 2000
-	include, exclude := textinput.New(), textinput.New()
+	include, exclude := newInput(), newInput()
 	include.Prompt = " "
 	exclude.Prompt = " "
-	include.CharLimit = 2000
-	exclude.CharLimit = 2000
 	return searchState{query: q, replacement: r, include: include, exclude: exclude, folded: map[string]bool{}}
 }
 func (m *Model) openSearch() tea.Cmd {

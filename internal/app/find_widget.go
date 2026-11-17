@@ -310,16 +310,15 @@ func (m *Model) fileFindControls(w int) []searchPanelControl {
 
 const searchFieldInset = 3
 
-func (m *Model) searchFieldLine(input *textinput.Model, active bool, textEnd, boxEnd int, placeholder, label, background string) string {
+func (m *Model) searchFieldLine(input *textinput.Model, active bool, textEnd, boxEnd int, placeholder, label, background string, x, y int) string {
 	configure := func(field *textinput.Model) {
 		field.SetWidth(max(1, min(textEnd, boxEnd)-searchFieldInset-3))
 		field.Placeholder = placeholder
 		field.SetStyles(m.input.Styles())
 		field.Prompt = " "
-		field.SetCursor(field.Position())
 	}
 	// Only the focused surface owns input geometry. The other surface paints a
-	// copy, so sidebar and editor widths cannot change one another's scrolling.
+	// copy, so sidebar and editor widths remain independent.
 	shown := *input
 	if active {
 		configure(input)
@@ -330,7 +329,7 @@ func (m *Model) searchFieldLine(input *textinput.Model, active bool, textEnd, bo
 	if !active || m.modal != "" {
 		shown.Blur()
 	}
-	text := ansi.Truncate(shown.View(), max(0, textEnd-searchFieldInset-1), "")
+	text := ansi.Truncate(m.inputView(shown, x+searchFieldInset, y), max(0, textEnd-searchFieldInset-1), "")
 	return row(label, searchFieldInset, m.colors.Muted, background) + row(text, boxEnd-searchFieldInset, m.colors.InputForeground, m.colors.Input)
 }
 func (m *Model) paintSearchControls(lines []string, w int, controls []searchPanelControl, originX, originY int, background string) {
@@ -411,9 +410,9 @@ func (m *Model) fileFindLines() []string {
 			}
 		}
 		if line == fileFindQueryRow {
-			lines[line] = m.searchFieldLine(&m.search.query, m.fileFindFocused() && m.search.focus == 0, end, boxEnd, "Find", "", background)
+			lines[line] = m.searchFieldLine(&m.search.query, m.fileFindFocused() && m.search.focus == 0, end, boxEnd, "Find", "", background, m.fileFindX(), m.contentRow()+line)
 		} else {
-			lines[line] = m.searchFieldLine(&m.search.replacement, m.fileFindFocused() && m.search.focus == 1, end, boxEnd, "Replace", "", background)
+			lines[line] = m.searchFieldLine(&m.search.replacement, m.fileFindFocused() && m.search.focus == 1, end, boxEnd, "Replace", "", background, m.fileFindX(), m.contentRow()+line)
 		}
 	}
 	for i := range lines {

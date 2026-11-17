@@ -161,6 +161,9 @@ func (m *Model) View() tea.View {
 		return m.hoverRender.view
 	}
 	var lines []string
+	if !m.hoverOnly {
+		m.inputCaret = nil
+	}
 	side := m.sidebarLines()
 	main := m.hoverRender.main
 	// In narrow terminals the main surface itself contains the sidebar.
@@ -218,6 +221,9 @@ func (m *Model) View() tea.View {
 	v.MouseMode = tea.MouseModeAllMotion
 	v.ReportFocus = true
 	v.Cursor = m.editorCursor()
+	if m.inputCaret != nil && m.contextMenu == nil {
+		v.Cursor = m.inputCaret
+	}
 	m.hoverRender = hoverRenderCache{main: main, view: v, key: key}
 	return v
 }
