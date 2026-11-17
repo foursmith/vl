@@ -8,6 +8,14 @@ hosting, Lua extensions, and embedded terminals are outside the initial scope.
 
 ## Ownership
 
+One Bubble Tea program owns the terminal for the application lifetime.
+`app.Runtime` replaces workspace models without leaving the alternate screen.
+Before replacement, the runner saves the current tabs and file positions;
+Runtime cancels the old model's background work and deletes its Kitty images.
+Terminal dimensions, capabilities and appearance subscriptions carry into the
+new model. Command results carry a workspace generation, checked before Bubble
+Tea handles terminal effects or delivers messages to the active model.
+
 ```text
 cmd/vl                     flags, process lifetime, concrete composition
   └── internal/app         Bubble Tea model/update/view, commands, task delivery

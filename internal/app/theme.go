@@ -126,7 +126,7 @@ func (m *Model) themeNotificationMode(msg tea.ModeReportMsg) tea.Cmd {
 }
 
 // ThemeNotificationRestoreSequence is written after Bubble Tea releases the
-// terminal, including on errors and repository switches. Preserve subscriptions
+// terminal, including on errors. Preserve subscriptions
 // already enabled by the shell or a parent application.
 func (m *Model) ThemeNotificationRestoreSequence() string {
 	if m.themeNotificationsOwned {

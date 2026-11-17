@@ -44,7 +44,7 @@ func TestSidebarWorkspaceSwitch(t *testing.T) {
 						t.Fatal("workspace path hint missing")
 					}
 					drain(t, m, m.click(tea.MouseClickMsg{X: x, Y: 2, Button: tea.MouseLeft}))
-					if m.modal != "" || m.NextRepository() == nil || m.NextRepository().Root != target.repo.Root {
+					if m.modal != "" || m.nextRepository == nil || m.nextRepository.Root != target.repo.Root {
 						t.Fatal("click did not switch directly to the workspace")
 					}
 				})
@@ -108,7 +108,7 @@ func TestRecentFoldersPickerSearchAndOpen(t *testing.T) {
 		t.Fatalf("folder search: %+v", rows)
 	}
 	drain(t, m, press(m, "enter"))
-	if m.NextRepository() == nil || m.NextRepository().Root != target.repo.Root {
+	if m.nextRepository == nil || m.nextRepository.Root != target.repo.Root {
 		t.Fatal("selected repository was not handed to runner")
 	}
 	if m.repo != old {
@@ -161,7 +161,7 @@ func TestRepositorySwitchProtectsDirtyFilesAndBusyOperations(t *testing.T) {
 	}
 	doc.Insert("edited during discovery")
 	drain(t, m, cmd)
-	if m.NextRepository() != nil || m.document() != doc || !doc.Dirty() {
+	if m.nextRepository != nil || m.document() != doc || !doc.Dirty() {
 		t.Fatal("asynchronous discovery lost unsaved changes")
 	}
 }
@@ -170,11 +170,11 @@ func TestFailedAndCurrentFolderKeepRepository(t *testing.T) {
 	m := explorerWorkspace(t)
 	old := m.repo
 	drain(t, m, m.openRepository(filepath.Join(t.TempDir(), "missing")))
-	if m.repo != old || m.NextRepository() != nil || m.openingRepository {
+	if m.repo != old || m.nextRepository != nil || m.openingRepository {
 		t.Fatal("failed switch changed repository or stayed pending")
 	}
 	drain(t, m, m.openRepository(old.Root))
-	if m.NextRepository() != nil || !strings.Contains(m.notice, "Already in this repository") {
+	if m.nextRepository != nil || !strings.Contains(m.notice, "Already in this repository") {
 		t.Fatal("current repository restarted")
 	}
 }
@@ -206,7 +206,7 @@ func TestWorkspaceContextMenuRemovesCapturedFolder(t *testing.T) {
 			if len(m.workspaces) != 1 || m.workspaces[0] != other {
 				t.Fatalf("remaining: %v", m.workspaces)
 			}
-			if m.repo.Root != folder || m.NextRepository() != nil {
+			if m.repo.Root != folder || m.nextRepository != nil {
 				t.Fatal("removal closed the active workspace")
 			}
 			folders, err := config.RecentFolders()

@@ -78,7 +78,7 @@ func TestFolderWatcherAndRecentOpen(t *testing.T) {
 	ready.watcher.Close()
 	target := folderWorkspace(t)
 	drain(t, m, m.openRepository(target.repo.Root))
-	if m.NextRepository() == nil || m.NextRepository().Root != target.repo.Root {
+	if m.nextRepository == nil || m.nextRepository.Root != target.repo.Root {
 		t.Fatal("recent folder did not open")
 	}
 }

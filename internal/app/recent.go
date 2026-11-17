@@ -69,9 +69,5 @@ func (m *Model) finishOpenRepository(msg repositoryOpenedMsg) tea.Cmd {
 		return nil
 	}
 	m.nextRepository = msg.repo
-	return tea.Quit
+	return nil
 }
-
-// NextRepository is set only after successful discovery and unsaved-file checks.
-// The runner closes this model's background work before opening a fresh model.
-func (m *Model) NextRepository() *gitservice.Repository { return m.nextRepository }

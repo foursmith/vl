@@ -100,49 +100,25 @@ func main() {
 		if _, line, column, locationErr := startupLocation(path); locationErr == nil && line > 0 {
 			m.SetEditorPosition(line, column)
 		}
-		err = runProgram(ctx, m)
+		m, err = runProgram(ctx, m, nil)
 		if saveErr := m.SaveFilePositions(); saveErr != nil {
 			fmt.Fprintln(os.Stderr, "Save file positions:", saveErr)
 		}
-		m.Close()
 	} else {
-		for {
-			sessionPath, sessionErr := config.SessionPath(repo.Root)
-			if sessionErr == nil {
-				var session config.Session
-				session, sessionErr = config.LoadSession(sessionPath)
-				if sessionErr == nil {
-					m.SetSession(session)
-				}
-			}
-			if sessionErr != nil {
-				fmt.Fprintln(os.Stderr, "Load workspace tabs:", sessionErr)
-			}
-			if recentErr := config.RememberFolder(repo.Root); recentErr != nil {
-				fmt.Fprintln(os.Stderr, "Save recent folders:", recentErr)
-			}
-			err = runProgram(ctx, m)
-			if saveErr := m.SaveFilePositions(); saveErr != nil {
-				fmt.Fprintln(os.Stderr, "Save file positions:", saveErr)
-			}
-			if sessionErr == nil {
-				if saveErr := config.SaveSession(sessionPath, m.Session()); saveErr != nil {
-					fmt.Fprintln(os.Stderr, "Save workspace tabs:", saveErr)
-				}
-			}
-			m.Close()
-			next := m.NextRepository()
-			if err != nil || next == nil {
-				break
-			}
-			preferences := m.Layout()
-			repo = next
-			m = app.New(ctx, repo, *icons)
-			m.SetFilePositionStore(positionStore)
-			m.SetLayout(preferences)
-			m.SetLayoutStore(layoutStore)
-		}
+		sessionPath := loadWorkspace(m, repo)
+		m, err = runProgram(ctx, m, func(old *app.Model, next *git.Repository) *app.Model {
+			saveWorkspace(old, sessionPath)
+			updated := app.New(ctx, next, *icons)
+			updated.SetFilePositionStore(positionStore)
+			updated.SetLayout(old.Layout())
+			updated.SetLayoutStore(layoutStore)
+			sessionPath = loadWorkspace(updated, next)
+			return updated
+		})
+		saveWorkspace(m, sessionPath)
 	}
+	m.Close()
+
 	if layoutErr != nil {
 		fmt.Fprintln(os.Stderr, "Load layout preferences:", layoutErr)
 	} else {
@@ -180,14 +156,52 @@ func startupPath(args []string) (string, error) {
 	return path, nil
 }
 
-func runProgram(ctx context.Context, m *app.Model) error {
-	defer func() { fmt.Fprint(os.Stdout, m.ImageCleanupSequence()+m.ThemeNotificationRestoreSequence()) }()
-	options := []tea.ProgramOption{tea.WithContext(ctx)}
+// Return a writable session path only after loading succeeds, so a failed load
+// cannot replace an unreadable session with the new model's empty tabs.
+func loadWorkspace(m *app.Model, repo *git.Repository) string {
+	path, err := config.SessionPath(repo.Root)
+	if err == nil {
+		var session config.Session
+		session, err = config.LoadSession(path)
+		if err == nil {
+			m.SetSession(session)
+		}
+	}
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Load workspace tabs:", err)
+	}
+	if recentErr := config.RememberFolder(repo.Root); recentErr != nil {
+		fmt.Fprintln(os.Stderr, "Save recent folders:", recentErr)
+	}
+	if err != nil {
+		return ""
+	}
+	return path
+}
+
+func saveWorkspace(m *app.Model, sessionPath string) {
+	if err := m.SaveFilePositions(); err != nil {
+		fmt.Fprintln(os.Stderr, "Save file positions:", err)
+	}
+	if sessionPath != "" {
+		if err := config.SaveSession(sessionPath, m.Session()); err != nil {
+			fmt.Fprintln(os.Stderr, "Save workspace tabs:", err)
+		}
+	}
+}
+
+func runProgram(ctx context.Context, m *app.Model, switchWorkspace func(*app.Model, *git.Repository) *app.Model) (*app.Model, error) {
+	runtime := app.NewRuntime(m, switchWorkspace)
+	defer func() {
+		current := runtime.Current()
+		fmt.Fprint(os.Stdout, current.ImageCleanupSequence()+current.ThemeNotificationRestoreSequence())
+	}()
+	options := []tea.ProgramOption{tea.WithContext(ctx), tea.WithFilter(runtime.Filter)}
 	if os.Getenv("NO_COLOR") != "" {
 		options = append(options, tea.WithColorProfile(colorprofile.ASCII))
 	}
-	_, err := tea.NewProgram(m, options...).Run()
-	return err
+	_, err := tea.NewProgram(runtime, options...).Run()
+	return runtime.Current(), err
 }
 
 // A direct file invocation is independent of Git discovery and workspace sessions.
