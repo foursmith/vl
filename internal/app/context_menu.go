@@ -168,7 +168,7 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 		}
 	} else if m.sidebarAt(x) && y >= m.workspaceRows()+headerHeight && y < m.bodyHeight() {
 		m.sidebar = true
-		index := m.sideTop + y - m.sidebarHeaderRows()
+		index := m.sidebarRowAt(y)
 		var entry *item
 		if y >= m.sidebarHeaderRows() && index >= 0 && index < len(m.items) {
 			m.selected = index

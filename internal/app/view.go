@@ -2,7 +2,7 @@ package app
 
 import (
 	"fmt"
-	"github.com/clipperhouse/uax29/v2/graphemes"
+	"slices"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -11,6 +11,7 @@ import (
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/clipperhouse/uax29/v2/graphemes"
 	"github.com/ourongxing/elegit/internal/diff"
 	"github.com/ourongxing/elegit/internal/theme"
 )
@@ -354,6 +355,7 @@ func (m *Model) ensureEditor() {
 		t.top = line - m.contentHeight() + 1
 	}
 	m.clampEditorScroll(t)
+	m.revealEditorRow(line)
 	visual := col
 	if !t.doc.PlainASCII(line) {
 		start, end := t.doc.ByteOffset(t.doc.LineOffset(line)), t.doc.ByteOffset(t.doc.Cursor)
@@ -414,6 +416,8 @@ type editorRenderKey struct {
 	text                        string
 	cursor, anchor, width, left int
 	focused                     bool
+	sticky                      [maxStickyRows]int
+	stickyCount                 int
 }
 
 func (m *Model) editorLines() []string {
@@ -422,19 +426,24 @@ func (m *Model) editorLines() []string {
 	source := d.Lines()
 	line, col := d.Position()
 	a, b := d.Selection()
-	key := editorRenderKey{text: d.Text, cursor: d.Cursor, anchor: d.Anchor, width: m.mainWidth(), left: t.left, focused: !m.sidebar}
+	sticky := m.editorStickyRows()
+	key := editorRenderKey{stickyCount: len(sticky), text: d.Text, cursor: d.Cursor, anchor: d.Anchor, width: m.mainWidth(), left: t.left, focused: !m.sidebar}
+	copy(key.sticky[:], sticky)
 	if t.renderedRows == nil || t.renderKey != key {
 		t.renderKey = key
 		t.renderedRows = make(map[int]string, m.contentHeight())
 	}
 	for i := range t.renderedRows {
-		if i < t.top || i >= t.top+m.contentHeight() {
+		if !slices.Contains(sticky, i) && (i < t.top+len(sticky) || i >= t.top+m.contentHeight()) {
 			delete(t.renderedRows, i)
 		}
 	}
 	var lines []string
 	for y := 0; y < m.contentHeight(); y++ {
 		i := t.top + y
+		if y < len(sticky) {
+			i = sticky[y]
+		}
 		if i >= len(source) {
 			lines = append(lines, row("", m.mainWidth(), m.colors.Foreground, m.colors.Background))
 			continue
@@ -444,7 +453,11 @@ func (m *Model) editorLines() []string {
 			continue
 		}
 		offset := d.LineOffset(i)
-		bg := m.colors.Background
+		gutterBG := m.colors.Background
+		if y < len(sticky) {
+			gutterBG = m.colors.Panel
+		}
+		bg := gutterBG
 		if i == line {
 			bg = m.colors.CurrentLine
 		}
@@ -525,7 +538,7 @@ func (m *Model) editorLines() []string {
 		if i == line {
 			numberColor = m.colors.LineNumberActive
 		}
-		gutter := theme.Style(numberColor, m.colors.Background).Render(fmt.Sprintf("%5d  ", i+1))
+		gutter := theme.Style(numberColor, gutterBG).Render(fmt.Sprintf("%5d  ", i+1))
 		rendered := row(gutter+row(text.String(), max(1, m.mainWidth()-7), m.colors.Foreground, bg), m.mainWidth(), m.colors.Foreground, m.colors.Background)
 		t.renderedRows[i] = rendered
 		lines = append(lines, rendered)

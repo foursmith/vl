@@ -52,7 +52,9 @@ type item struct {
 }
 
 type tab struct {
-	image *imageState
+	stickyText string
+	scopes     []codeScope
+	image      *imageState
 
 	doc             *editor.Document
 	diff            *diffState
@@ -127,6 +129,8 @@ type Model struct {
 	textDrag                *editor.Document
 	diffDrag                *diffState
 	snapshot                gitservice.Snapshot
+	stickyItems             []item
+	stickyTree              []codeScope
 	items                   []item
 	selected, sideTop       int
 	refreshSeq              int
@@ -318,6 +322,10 @@ func (m *Model) ensureSidebar() {
 		m.sideTop = m.selected - h + 1
 	}
 	m.sideTop = max(0, m.sideTop)
+	sticky := m.sidebarStickyRows()
+	if m.selected >= m.sideTop && m.selected < m.sideTop+len(sticky) {
+		m.sideTop = max(0, m.selected-stickyLimit(h))
+	}
 }
 
 func (m *Model) clampSidebarScroll() {

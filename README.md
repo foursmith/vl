@@ -75,6 +75,12 @@ no Git repository; initialization keeps open editor tabs and unsaved edits.
   explain their reason in the status bar. Folder rows offer recursive stage,
   unstage and confirmed discard within that folder. Group headers offer the same
   batch actions and open-all; collapsed descendants are included.
+- Sticky scroll keeps enclosing code block headers above the editor and parent
+  folders above Explorer/Changes trees (up to five rows, leaving room for content).
+  Code context follows braces in common Go/C/JS-style files and indentation in
+  Python; it is a lightweight lexical outline, not a language-server symbol tree.
+  Pinned code keeps line numbers and syntax colors; click it to return to its
+  source. Pinned folders retain folding, hover, and context-menu actions.
 - Unified and side-by-side text diffs, line numbers, addition/deletion colors,
   hunk navigation and mouse selection, current-view search.
 - Compact diff controls show worktree/index context, nonzero change counts,

@@ -36,7 +36,7 @@ func (m *Model) hoveredSidebarRow() int {
 	if m.resizingSidebar || m.modal != "" || m.hoverX < 0 || !m.sidebarAt(m.hoverX) || m.hoverY < m.sidebarHeaderRows() || m.hoverY >= m.bodyHeight() {
 		return -1
 	}
-	i := m.sideTop + m.hoverY - m.sidebarHeaderRows()
+	i := m.sidebarRowAt(m.hoverY)
 	if i < 0 || i >= len(m.items) {
 		return -1
 	}
@@ -75,8 +75,12 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 		return lines[:h]
 	}
 	hovered := m.hoveredSidebarRow()
+	sticky := m.sidebarStickyRows()
 	for y := m.sidebarHeaderRows(); y < h; y++ {
 		i := m.sideTop + y - m.sidebarHeaderRows()
+		if offset := y - m.sidebarHeaderRows(); offset < len(sticky) {
+			i = sticky[offset]
+		}
 		text := ""
 		fg, bg := m.colors.SideForeground, m.colors.Panel
 		if i < len(m.items) {
@@ -224,7 +228,7 @@ func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 	if !m.sideShown() {
 		w = m.width
 	}
-	i := m.sideTop + y - m.sidebarHeaderRows()
+	i := m.sidebarRowAt(y)
 	if y < m.sidebarHeaderRows() || i < 0 || i >= len(m.items) {
 		return nil
 	}
