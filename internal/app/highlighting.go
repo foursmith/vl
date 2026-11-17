@@ -74,7 +74,7 @@ func (m *Model) scheduleHighlight() tea.Cmd {
 	if !t.doc.Dirty() {
 		delay = 0
 	}
-	return tea.Tick(delay, func(time.Time) tea.Msg { return highlightStartMsg{request} })
+	return delayedMessage(ctx, delay, func(time.Time) tea.Msg { return highlightStartMsg{request} })
 }
 
 func (m *Model) highlightTarget(request highlightRequest) *tab {

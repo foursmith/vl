@@ -244,7 +244,7 @@ func (m *Model) tick() tea.Cmd {
 	if m.watcher != nil {
 		delay = 30 * time.Second
 	}
-	return tea.Tick(delay, func(t time.Time) tea.Msg { return tickMsg(t) })
+	return delayedMessage(m.ctx, delay, func(t time.Time) tea.Msg { return tickMsg(t) })
 }
 
 func (m *Model) refresh() tea.Cmd {

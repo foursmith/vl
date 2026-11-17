@@ -106,7 +106,7 @@ type imageProbeTimeoutMsg struct{}
 func (m *Model) probeImages() tea.Cmd {
 	return tea.Batch(
 		tea.Raw(ansi.KittyGraphics([]byte("AAAA"), "a=q", fmt.Sprintf("i=%d", kittyProbeID), "f=24", "s=1", "v=1", "t=d")),
-		tea.Tick(2*time.Second, func(time.Time) tea.Msg { return imageProbeTimeoutMsg{} }),
+		delayedMessage(m.ctx, 2*time.Second, func(time.Time) tea.Msg { return imageProbeTimeoutMsg{} }),
 	)
 }
 
