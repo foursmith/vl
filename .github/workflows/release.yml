@@ -59,7 +59,7 @@ jobs:
           done
 
           binary="$stage/linux-amd64/vl"
-          test "$("$binary" -version)" = "vl $version"
+          test "$("$binary" --version)" = "vl $version"
           "$binary" preview --color=never --lines=1 cmd/vl/main.go > "$stage/preview"
           grep -qx 'package main' "$stage/preview"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
