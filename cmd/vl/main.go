@@ -22,13 +22,16 @@ import (
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "preview" {
+		os.Exit(runPreview(os.Args[2:], os.Stdout, os.Stderr))
+	}
 	displayLanguage := flag.String("lang", "", "display language: en or zh-CN (default: saved preference, or en)")
 	icons := flag.Bool("icons", true, "use Nerd Font glyphs adapted from Material Icon Theme; set -icons=false for plain text")
 	colorTheme := flag.String("theme", "", "color theme: builtin ID (dark_modern, dark_plus, dark_vs, light_modern, light_plus, light_vs), local:filename from ~/.config/vl/themes, or a theme file")
 	themeType := flag.String("theme-type", "", "local theme uiTheme from its extension: vs, vs-dark, hc-light, hc-black (default: theme type, or vs-dark)")
 	version := flag.Bool("version", false, "print version")
 	flag.Usage = func() {
-		fmt.Fprintln(flag.CommandLine.Output(), "Usage: vl [options] [folder|file[:line[:column]]]\n\nA VSCode-like Git diff viewer with basic text editing.\nA file opens in editor-only mode. Line and column numbers start at 1.\nWithout a path, opens the most recent workspace.")
+		fmt.Fprintln(flag.CommandLine.Output(), "Usage: vl [options] [folder|file[:line[:column]]]\n       vl preview [options] file\n\nA VSCode-like Git diff viewer with basic text editing.\nA file opens in editor-only mode. Line and column numbers start at 1.\nWithout a path, opens the most recent workspace.")
 		flag.PrintDefaults()
 	}
 	flag.Parse()

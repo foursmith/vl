@@ -15,6 +15,7 @@ type Layout struct {
 	LightThemeType string `json:"lightThemeType,omitempty"`
 	ThemeType      string `json:"themeType,omitempty"`
 	Theme          string `json:"theme,omitempty"`
+	ThemePinned    bool   `json:"themePinned,omitempty"`
 	SidebarWidth   int    `json:"sidebarWidth"`
 	SidebarRight   bool   `json:"sidebarRight"`
 }

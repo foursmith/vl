@@ -13,6 +13,7 @@ import (
 
 // SetColorTheme commits a selection. Preview changes never call this method.
 func (m *Model) SetColorTheme(selected *theme.Theme) tea.Cmd {
+	m.themePinned = m.appearance.source == "" || selected.IsLight() != m.appearance.light
 	if selected.IsLight() {
 		m.lightTheme = selected
 	} else {
@@ -28,8 +29,7 @@ func (m *Model) committedTheme() *theme.Theme {
 	return m.colorTheme
 }
 
-// Appearance is session state. The first report establishes a baseline; only
-// later changes from the same source can switch an aligned theme.
+// Appearance records the currently authoritative source for this terminal.
 type appearanceState struct {
 	source string
 	light  bool
@@ -41,7 +41,17 @@ func (m *Model) externalColorScheme(light bool, source string) tea.Cmd {
 		return nil
 	}
 	m.appearance = appearanceState{source: source, light: light}
-	if previous.source != source || previous.light == light || m.committedTheme().IsLight() != previous.light {
+	aligned := m.committedTheme().IsLight() == light
+	if m.themePinned {
+		// The first system sample can arrive before a terminal with a
+		// different appearance replies. Let that terminal resolve the pin.
+		if !aligned || (source == "system" && previous.source == "") {
+			return nil
+		}
+		m.themePinned = false
+		return m.savePreferences()
+	}
+	if aligned {
 		return nil
 	}
 	selected := m.darkTheme

@@ -103,8 +103,8 @@ func TestLightThemePickerAndDiffSurfaces(t *testing.T) {
 func TestThemeFollowsOnlyWhenPreviouslyAligned(t *testing.T) {
 	m := tabWorkspace(t, 0)
 	m.Update(uv.LightColorSchemeEvent{})
-	if m.colorTheme.IsLight() {
-		t.Fatal("first report must only establish the appearance baseline")
+	if !m.colorTheme.IsLight() {
+		t.Fatal("first report did not select the matching startup theme")
 	}
 	m.setTestTheme("light_plus", "")
 	m.Update(uv.DarkColorSchemeEvent{})
@@ -139,13 +139,20 @@ func TestThemePairAndAlignmentSurviveRestart(t *testing.T) {
 	m.setTestTheme("dark_plus", "")
 	next := tabWorkspace(t, 0)
 	next.SetLayout(m.Layout())
-	next.Update(uv.LightColorSchemeEvent{})
-	if next.committedTheme().ID != "dark_plus" {
-		t.Fatal("first report replaced saved theme")
+	path := filepath.Join(t.TempDir(), "layout.json")
+	next.SetLayoutStore(config.NewLayoutStore(path))
+	_, cmd := next.Update(uv.LightColorSchemeEvent{})
+	drain(t, next, cmd)
+	if next.committedTheme().ID != "light_plus" {
+		t.Fatal("startup did not follow the appearance change while VL was closed")
+	}
+	saved, err := config.LoadLayout(path)
+	if err != nil || saved.Theme != "light_plus" || saved.ThemePinned {
+		t.Fatalf("startup theme was not saved: %+v, %v", saved, err)
 	}
 	next.Update(uv.DarkColorSchemeEvent{})
 	if next.committedTheme().ID != "dark_plus" {
-		t.Fatal("mismatched saved theme was replaced")
+		t.Fatal("startup lost the remembered dark theme")
 	}
 	next.Update(uv.LightColorSchemeEvent{})
 	if next.committedTheme().ID != "light_plus" {
@@ -157,7 +164,7 @@ func TestThemePairAndAlignmentSurviveRestart(t *testing.T) {
 	}
 }
 
-func TestFirstTerminalReportDoesNotTreatSystemHandoffAsAppearanceChange(t *testing.T) {
+func TestFirstTerminalReportPreservesManualOverrideAcrossSystemHandoff(t *testing.T) {
 	m := tabWorkspace(t, 0)
 	m.setTestTheme("dark_plus", "")
 	m.Update(systemAppearanceMsg{light: false, known: true})
@@ -178,6 +185,20 @@ func TestFirstAppearancePreservesExplicitSelection(t *testing.T) {
 	m.Update(uv.LightColorSchemeEvent{})
 	if m.committedTheme().ID != "dark_plus" {
 		t.Fatal("first report replaced manual theme")
+	}
+	reopened := tabWorkspace(t, 0)
+	reopened.SetLayout(m.Layout())
+	reopened.Update(uv.LightColorSchemeEvent{})
+	if reopened.committedTheme().ID != "dark_plus" || !reopened.Layout().ThemePinned {
+		t.Fatal("reopening lost the manual override")
+	}
+	reopened.Update(uv.DarkColorSchemeEvent{})
+	if reopened.Layout().ThemePinned {
+		t.Fatal("matching external appearance did not resume automatic switching")
+	}
+	reopened.Update(uv.LightColorSchemeEvent{})
+	if reopened.committedTheme().ID != "light_modern" {
+		t.Fatal("reopened VL did not follow after alignment resumed")
 	}
 	m.Update(systemAppearanceMsg{light: false, known: true})
 	if !m.appearance.light {
@@ -432,8 +453,8 @@ func TestPickerHasContinuousFrame(t *testing.T) {
 func TestSystemAppearanceFallbackAndTerminalPriority(t *testing.T) {
 	m := tabWorkspace(t, 0)
 	m.Update(systemAppearanceMsg{light: true, known: true})
-	if m.colorTheme.IsLight() || !m.appearance.light {
-		t.Fatal("first system report must only establish the appearance baseline")
+	if !m.colorTheme.IsLight() || !m.appearance.light {
+		t.Fatal("system appearance did not select the startup theme")
 	}
 	m.setTestTheme("light_vs", "")
 	m.Update(systemAppearanceMsg{light: false, known: true})
@@ -445,8 +466,8 @@ func TestSystemAppearanceFallbackAndTerminalPriority(t *testing.T) {
 		t.Fatal("unknown system appearance changed theme")
 	}
 	m.Update(uv.LightColorSchemeEvent{})
-	if m.committedTheme().ID != "dark_modern" {
-		t.Fatal("first terminal report replaced saved selection")
+	if m.committedTheme().ID != "light_vs" {
+		t.Fatal("initial terminal report did not take priority over system appearance")
 	}
 	m.Update(uv.DarkColorSchemeEvent{})
 	m.Update(uv.LightColorSchemeEvent{})

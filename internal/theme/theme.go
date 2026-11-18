@@ -71,3 +71,8 @@ type Palette struct {
 func Style(fg, bg string) lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(lipgloss.Color(Composite(fg, bg))).Background(lipgloss.Color(bg))
 }
+
+func (f FontStyle) Apply(style lipgloss.Style) lipgloss.Style {
+	return style.Bold(f&Bold != 0).Italic(f&Italic != 0).
+		Underline(f&Underline != 0).Strikethrough(f&Strikethrough != 0)
+}

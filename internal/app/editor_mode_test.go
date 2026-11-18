@@ -65,6 +65,29 @@ func TestEditorModeIsolatedAndFullWidth(t *testing.T) {
 	}
 }
 
+func TestEditorStartupHighlightsWithSavedTheme(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "main.go")
+	if err := os.WriteFile(path, []byte("package main\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	m, err := NewEditor(context.Background(), path, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer m.Close()
+	m.SetLayout(config.Layout{Theme: "light_modern", LightTheme: "light_modern"})
+	tab := &m.tabs[m.activeTab]
+	before := tab.highlightJob.seq
+	batch := m.Init()().(tea.BatchMsg)
+	if !tab.highlightJob.pending || tab.highlightJob.seq == before {
+		t.Fatal("startup did not replace the pending theme-restoration job")
+	}
+	drain(t, m, batch[len(batch)-1])
+	if len(tab.spans) == 0 || len(tab.spans[0]) == 0 || tab.spans[0][0].Color != "#0000FF" {
+		t.Fatal("startup did not apply Light Modern syntax colors")
+	}
+}
+
 func TestEditorCloseProtectsEditsAndExits(t *testing.T) {
 	for _, choice := range []string{"save", "discard", "cancel"} {
 		t.Run(choice, func(t *testing.T) {

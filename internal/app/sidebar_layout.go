@@ -75,6 +75,7 @@ func (m *Model) Layout() config.Layout {
 		SidebarWidth:   m.sidebarWidth,
 		SidebarRight:   m.sidebarRight,
 		Theme:          selected.ID,
+		ThemePinned:    m.themePinned,
 		DarkTheme:      dark.ID,
 		LightTheme:     light.ID,
 		DarkThemeType:  dark.UIThemeOverride,
@@ -91,6 +92,7 @@ func (m *Model) SetLayout(layout config.Layout) {
 	m.SetSidebarLayout(layout.SidebarWidth, layout.SidebarRight)
 	m.restoreThemeSlot(layout.DarkTheme, layout.DarkThemeType, false)
 	m.restoreThemeSlot(layout.LightTheme, layout.LightThemeType, true)
+	m.themePinned = false
 	if layout.Theme == "" {
 		return
 	}
@@ -100,6 +102,7 @@ func (m *Model) SetLayout(layout config.Layout) {
 	case layout.Theme == layout.LightTheme && layout.ThemeType == layout.LightThemeType:
 		m.applyTheme(m.lightTheme)
 	}
+	m.themePinned = layout.ThemePinned && layout.Theme == m.colorTheme.ID && layout.ThemeType == m.colorTheme.UIThemeOverride
 }
 
 func (m *Model) dragSidebar(x int) {

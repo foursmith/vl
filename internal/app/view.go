@@ -38,7 +38,6 @@ func safe(text string) string {
 	}
 	return b.String()
 }
-func plain(s string) string { return ansi.Strip(s) }
 func row(text string, width int, fg, bg string) string {
 	fg = theme.Composite(fg, bg)
 	width = max(0, width)
@@ -559,7 +558,7 @@ func (m *Model) editorLines() []string {
 			if run.Len() == 0 {
 				return
 			}
-			style := syntaxStyle(runFG, runBG, runFont)
+			style := runFont.Apply(theme.Style(runFG, runBG))
 			text.WriteString(style.Render(run.String()))
 			run.Reset()
 		}
@@ -765,8 +764,4 @@ func (m *Model) click(msg tea.MouseClickMsg) tea.Cmd {
 		}
 	}
 	return nil
-}
-
-func syntaxStyle(fg, bg string, font theme.FontStyle) lipgloss.Style {
-	return theme.Style(fg, bg).Bold(font&theme.Bold != 0).Italic(font&theme.Italic != 0).Underline(font&theme.Underline != 0).Strikethrough(font&theme.Strikethrough != 0)
 }

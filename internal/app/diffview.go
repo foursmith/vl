@@ -453,7 +453,7 @@ func diffCode(colors theme.Palette, code string, spans []highlight.Span, width, 
 	spanIndex, column, visual := 0, 0, 0
 	flush := func() {
 		if run.Len() > 0 {
-			out.WriteString(syntaxStyle(color, runBG, font).Render(run.String()))
+			out.WriteString(font.Apply(theme.Style(color, runBG)).Render(run.String()))
 			run.Reset()
 		}
 	}

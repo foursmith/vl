@@ -18,10 +18,10 @@ is the installed VS Code build `08d4889f9ec4a1685d257b9b95de036c8e1ce1e5`.
 ## Switching
 
 vl remembers one dark and one light theme (Dark Modern and Light Modern by
-default). There is no Auto entry. On an external light/dark transition, vl
-switches to the remembered counterpart only if the committed theme matched the
-previous external appearance. A deliberately mismatched selection survives the
-transition. Once it matches the environment again, the next transition follows.
+default). It selects the matching theme at startup and on external light/dark
+transitions. A deliberate selection that differs from the external appearance
+stays active across transitions and restarts. Automatic switching resumes when
+the external appearance matches the selection again.
 
 Terminal appearance uses
 [DEC mode 2031 color scheme notifications](https://contour-terminal.org/vt-extensions/color-palette-update-notifications/).
@@ -31,8 +31,7 @@ and request the current light/dark scheme with `CSI ? 996 n`. Notifications
 Until a terminal report arrives, macOS falls back to its system appearance,
 checked every two seconds with `defaults read -g AppleInterfaceStyle` outside
 the UI loop. Other platforms require terminal reports for automatic changes.
-The first report only establishes a baseline, including on first launch. Without
-either source, the selected theme remains unchanged.
+Without either source, vl uses the saved selection.
 
 The terminal's default background follows the selected theme's sidebar/chrome
 background so padding outside the cell grid blends with the app. Editor/diff cells
@@ -93,13 +92,11 @@ scan of installed extensions or Marketplace download.
 The committed selection (`theme`, `themeType`) and remembered pair (`darkTheme`,
 `lightTheme`, with optional `darkThemeType` / `lightThemeType` overrides) are saved
 in `layout.json` alongside sidebar preferences. Confirming a theme writes this
-snapshot immediately, independently of terminal notification support; previews
-do not write it. First appearance reports preserve an explicit/saved selection
-and establish the current source's baseline. A handoff from system appearance to
-terminal reports also establishes a new baseline. Only subsequent changes from
-the same source can switch the theme. Appearance state belongs to the running
-session and is not restored from a different terminal. Missing remembered files
-report an error and fall back to Modern for that appearance.
+snapshot immediately, independently of terminal notification support. A
+mismatched manual selection is saved with `themePinned`. A startup or live
+appearance change that selects a different theme also writes the snapshot.
+Previewing a theme in the picker is temporary until confirmed. Missing
+remembered files report an error and fall back to Modern for that appearance.
 
 Each model owns one immutable theme containing its UI palette and compiled token
 rules. Switching, including between two dark themes, cancels pending syntax jobs, drops

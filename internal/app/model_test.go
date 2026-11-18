@@ -16,6 +16,8 @@ import (
 	gitservice "github.com/ourongxing/vl/internal/git"
 )
 
+func plain(s string) string { return ansi.Strip(s) }
+
 func drain(t testing.TB, m *Model, cmd tea.Cmd) {
 	t.Helper()
 	queue := []tea.Cmd{cmd}

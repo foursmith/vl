@@ -132,6 +132,7 @@ type Model struct {
 	localThemesSeq          uint64
 	darkTheme               *theme.Theme
 	lightTheme              *theme.Theme
+	themePinned             bool
 	appearance              appearanceState
 	layoutStore             *config.LayoutStore
 	themeNotifications      bool
@@ -256,6 +257,12 @@ func newModel(ctx context.Context, repo *gitservice.Repository, nerd, editorOnly
 
 func (m *Model) Init() tea.Cmd {
 	commands := []tea.Cmd{m.scheduleMarkdownImages(), m.tick(), m.startWatcher(), m.probeImages(), m.pollSystemAppearance(false), tea.Raw(ansi.RequestModeLightDark)}
+	if m.editing() {
+		// Theme restoration can prepare highlighting before the event loop
+		// starts. Queue a fresh request so startup always runs the command.
+		m.tabs[m.activeTab].highlightJob.stop()
+		commands = append(commands, m.scheduleHighlight())
+	}
 	if !m.editorOnly {
 		commands = append(commands, m.refresh())
 	}

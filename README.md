@@ -46,6 +46,31 @@ File locations use one-based line and character column numbers; positions beyond
 the file are clamped to its end or the line's end. Existing paths containing
 colons take precedence over location suffixes.
 
+### Code preview
+
+```sh
+vl preview cmd/vl/main.go
+vl preview --color=always --skip=20 --lines=30 --width=80 -- cmd/vl/main.go
+vl preview --line-numbers --wrap --width=80 cmd/vl/main.go
+```
+
+`vl preview` writes syntax-highlighted source to the terminal using the
+editor's TextMate grammars and saved theme. Redirected output is plain text by
+default. Use `--color=always` for consumers of ANSI output and `--theme` to select
+a syntax theme for one invocation. `--line-numbers` shows the original source
+line numbers. `--wrap` wraps long lines instead of clipping them and requires
+`--width`, which includes the line-number gutter. `--skip` and `--lines` count
+source lines before wrapping. Preview reads incrementally, caps long source
+lines at 32 KiB, and continues in plain text after the highlighting budget
+is exhausted.
+
+For Yazi 26.9.1 or newer, copy [the previewer](contrib/yazi/vl-code.yazi) into
+`~/.config/yazi/plugins/`, put `vl` on your `PATH`, and change `run = "code"`
+to `run = "vl-code"` in the code entries under `[plugin]` → `previewers` in
+`yazi.toml`. The plugin passes the pane dimensions and scroll offset to
+`vl preview` for local files. Yazi's built-in code preview handles virtual
+URLs and clamps scroll offsets beyond the end of a file.
+
 ## Features
 
 - **Git:** staged, unstaged, untracked and conflicted status; file and hunk staging;
@@ -129,8 +154,9 @@ Use **Ctrl+Shift+P → Preferences: Color Theme** to preview and select a theme,
 **Preferences: Configure Display Language** to switch between English and 简体中文.
 Theme, language and layout preferences persist across restarts and workspace switches.
 
-Dark/light terminal notifications select the remembered matching theme; macOS
-system appearance is the fallback. A manually selected mismatched theme stays selected.
+Dark/light terminal notifications select the remembered matching theme at
+startup and when the terminal appearance changes. macOS system appearance is
+the fallback. A manually selected mismatched theme stays selected.
 Local VS Code JSON/JSONC and TextMate themes belong in `~/.config/vl/themes/`;
 see [theme compatibility](docs/THEME.md).
 
