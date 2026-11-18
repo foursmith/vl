@@ -260,11 +260,11 @@ func TestSearchFileNameOpensFileAndChevronOnlyFolds(t *testing.T) {
 	m.openSearch()
 	m.search.query.SetValue("package")
 	drain(t, m, m.runSearch())
-	m.clickSearch(1, m.searchResultY())
+	m.clickSearch(0, m.searchResultY())
 	if len(m.tabs) != 0 || len(m.searchRows()) != 1 {
 		t.Fatal("chevron opened a file instead of folding")
 	}
-	m.clickSearch(7, m.searchResultY())
+	m.clickSearch(2, m.searchResultY())
 	if m.document() == nil || !m.sidebar || m.findOptions.Query != "package" || m.document().SelectedText() != "package" {
 		t.Fatal("file name did not activate file search")
 	}

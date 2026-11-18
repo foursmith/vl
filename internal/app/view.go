@@ -102,9 +102,8 @@ func (m *Model) outputHeight() int {
 	return 0
 }
 
-const headerHeight = 1
 const tabRow = 0
-const editorContentRow = headerHeight + 1
+const editorContentRow = tabRow + 2
 
 func (m *Model) contentRow() int {
 	if m.editorOnly {
@@ -199,13 +198,13 @@ func (m *Model) View() tea.View {
 			line = row(ansi.Cut(line, 0, findOffset), findOffset, m.colors.Foreground, m.colors.Background) + find[index]
 		}
 		if m.sideShown() {
-			color := m.colors.Panel
-			if m.resizingSidebar || m.sidebarDividerAt(m.hoverX, m.hoverY) {
+			color := m.colors.SideBarBorder
+			if m.colors.Accent != "" && (m.resizingSidebar || m.sidebarDividerAt(m.hoverX, m.hoverY)) {
 				color = m.colors.Accent
 			}
-			glyph := "│"
-			if color == "" {
-				glyph = " "
+			glyph := " "
+			if color != "" {
+				glyph = "│"
 			}
 			divider := row(glyph, 1, color, m.colors.Panel)
 			if m.sidebarRight {
@@ -782,7 +781,7 @@ func (m *Model) overlay(base []string) []string {
 }
 
 func (m *Model) click(msg tea.MouseClickMsg) tea.Cmd {
-	if !m.editorOnly && msg.Y >= 0 && msg.Y < headerHeight && msg.X >= m.mainX() && msg.X < m.mainX()+m.mainWidth() && !(m.width < 70 && m.sidebar && m.sidebarVisible) && (msg.Button == tea.MouseLeft || msg.Button == tea.MouseMiddle) {
+	if !m.editorOnly && msg.Y == tabRow && msg.X >= m.mainX() && msg.X < m.mainX()+m.mainWidth() && !(m.width < 70 && m.sidebar && m.sidebarVisible) && (msg.Button == tea.MouseLeft || msg.Button == tea.MouseMiddle) {
 		return m.clickTab(msg)
 	}
 	if msg.Button != tea.MouseLeft {

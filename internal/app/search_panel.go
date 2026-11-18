@@ -9,17 +9,19 @@ import (
 	"github.com/ourongxing/vl/internal/theme"
 )
 
+const sidebarSearchFieldInset = 2
+
 type searchPanelGeometry struct {
 	query, replacement, summary, results int
 	details, include, exclude            int
 }
 
 func (m *Model) searchPanelLayout() searchPanelGeometry {
-	l := searchPanelGeometry{query: 1, replacement: -1, summary: 3, results: 4}
+	l := searchPanelGeometry{query: headerHeight, replacement: -1, summary: headerHeight + 2, results: headerHeight + 3}
 	if m.search.replace {
-		l.replacement = 3
-		l.summary = 5
-		l.results = 6
+		l.replacement = l.query + 2
+		l.summary += 2
+		l.results += 2
 	}
 	l.details = l.summary - 1
 	l.include, l.exclude = -1, -1
@@ -50,7 +52,7 @@ func (m *Model) searchPanelControls(w int) []searchPanelControl {
 	if m.search.replace {
 		toggleY = l.query + 1
 	}
-	controls = append(controls, searchPanelControl{id: "replaceToggle", label: label, hint: "Toggle Replace (Alt+H)", x: 1, y: toggleY, width: 1, quiet: true})
+	controls = append(controls, searchPanelControl{id: "replaceToggle", label: label, hint: "Toggle Replace (Alt+H)", x: 0, y: toggleY, width: 1, quiet: true})
 	add := func(y int, ids, labels, hints []string) {
 		right := w - 2
 		for index := len(ids) - 1; index >= 0; index-- {
@@ -127,12 +129,12 @@ func (m *Model) searchControlAction(id string) tea.Cmd {
 	}
 	return m.runSearch()
 }
-func (m *Model) searchLines(nav string, w int) []string {
+func (m *Model) searchLines(nav []string, w int) []string {
 	s := &m.search
 	l := m.searchPanelLayout()
 	lines := make([]string, max(m.bodyHeight(), l.results))
-	lines[0] = nav
-	indent := strings.Repeat(" ", searchFieldInset)
+	copy(lines, nav)
+	indent := strings.Repeat(" ", sidebarSearchFieldInset)
 	controls := m.searchPanelControls(w)
 	field := func(input *textinput.Model, focus, y int, placeholder, label string) {
 		end := w
@@ -145,7 +147,7 @@ func (m *Model) searchLines(nav string, w int) []string {
 		if focus == 1 {
 			boxEnd = w - 5
 		}
-		lines[y] = m.searchFieldLine(input, m.sidebar && s.focus == focus, end, boxEnd, placeholder, label, m.colors.Panel, m.sideX(), y)
+		lines[y] = m.searchFieldLine(input, m.sidebar && s.focus == focus, end, boxEnd, placeholder, label, m.colors.Panel, m.sideX(), y, sidebarSearchFieldInset)
 	}
 	field(&s.query, 0, l.query, searchText("Search in files"), "")
 	if s.replace {
@@ -170,11 +172,11 @@ func (m *Model) searchLines(nav string, w int) []string {
 	}
 	if summary != "" && !s.details && (s.options.Include != "" || s.options.Exclude != "" || s.options.OnlyOpen || s.options.ChangedOnly || s.options.IncludeIgnored) {
 		filtered := summary + " · Filters"
-		if ansi.StringWidth(filtered) <= w-searchFieldInset-1 {
+		if ansi.StringWidth(filtered) <= w-sidebarSearchFieldInset-1 {
 			summary = filtered
 		}
 	}
-	lines[l.summary] = row(indent+ansi.Truncate(strings.TrimSpace(safe(summary)), max(0, w-searchFieldInset-1), "…"), w, theme.Readable(m.colors.Muted, m.colors.Panel), m.colors.Panel)
+	lines[l.summary] = row(indent+ansi.Truncate(strings.TrimSpace(safe(summary)), max(0, w-sidebarSearchFieldInset-1), "…"), w, theme.Readable(m.colors.Muted, m.colors.Panel), m.colors.Panel)
 	for i := range lines {
 		lines[i] = row(lines[i], w, m.colors.SideForeground, m.colors.Panel)
 	}
@@ -229,7 +231,7 @@ func (m *Model) clickSearch(x, y int) tea.Cmd {
 	if m.selectSidebarRow(index) == nil {
 		return nil
 	}
-	if row, ok := m.selectedSearchRow(); ok && row.match < 0 && x < 3 {
+	if row, ok := m.selectedSearchRow(); ok && row.match < 0 && x < m.searchResultChevronX()+2 {
 		m.lastClickKey = ""
 		path := m.search.result.Files[row.file].Path
 		m.search.folded[path] = !m.search.folded[path]

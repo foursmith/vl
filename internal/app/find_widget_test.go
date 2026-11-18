@@ -286,7 +286,7 @@ func TestSharedFindInputOwnerKeepsOwnWidth(t *testing.T) {
 	}
 	m.sidebar = true
 	m.focusSearch(0)
-	m.searchLines("", m.sideWidth())
+	m.searchLines(nil, m.sideWidth())
 	inputWidth = m.search.query.Width()
 	m.View()
 	if m.search.query.Width() != inputWidth {

@@ -17,13 +17,20 @@ func TestNavigationAndTabsShareCompactHeaderWithoutTitleBar(t *testing.T) {
 	if !strings.Contains(first, "E") || !strings.Contains(first, "file0.go") || strings.Contains(first, "Commands") {
 		t.Fatalf("navigation and tabs are not aligned: %q", first)
 	}
-	if headerHeight != 1 {
-		t.Fatal("navigation and tabs must not add blank padding rows")
+	sidebar := m.sidebarLines()
+	for i, item := range m.navigation() {
+		x := 4 * i
+		if ansi.Strip(ansi.Cut(sidebar[0], x, x+4)) != item.glyph+"   " {
+			t.Fatalf("navigation icon %q did not start at column %d", item.glyph, x)
+		}
+	}
+	if strings.TrimSpace(plain(sidebar[1])) != "" {
+		t.Fatal("the second navigation row should be empty")
 	}
 	if len(lines) != m.height || m.bodyHeight() != m.height-1 {
 		t.Fatal("title bar space was not reclaimed")
 	}
-	second := ansi.Strip(lines[headerHeight])
+	second := ansi.Strip(lines[tabRow+1])
 	if !strings.Contains(second, "file0.go") || !strings.Contains(plain(m.sidebarLines()[headerHeight]), m.items[0].label) {
 		t.Fatalf("file tree and breadcrumbs start at the wrong row: %q", second)
 	}

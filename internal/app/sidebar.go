@@ -15,6 +15,11 @@ type navigationItem struct {
 	section  section
 }
 
+const (
+	headerHeight           = 2
+	sidebarNavigationWidth = 4
+)
+
 func (m *Model) sidebarAt(x int) bool {
 	if m.sideShown() {
 		return x >= m.sideX() && x < m.sideX()+m.sideWidth()
@@ -24,10 +29,10 @@ func (m *Model) sidebarAt(x int) bool {
 
 func (m *Model) navigation() []navigationItem {
 	return []navigationItem{
-		{1, 4, m.symbol(symbolExplorer), explorer},
-		{5, 4, m.symbol(symbolSearch), search},
-		{9, 4, m.symbol(symbolBranch), changes},
-		{13, 4, m.symbol(symbolHistory), history},
+		{0, sidebarNavigationWidth, m.symbol(symbolExplorer), explorer},
+		{sidebarNavigationWidth, sidebarNavigationWidth, m.symbol(symbolSearch), search},
+		{2 * sidebarNavigationWidth, sidebarNavigationWidth, m.symbol(symbolBranch), changes},
+		{3 * sidebarNavigationWidth, sidebarNavigationWidth, m.symbol(symbolHistory), history},
 	}
 }
 
@@ -45,11 +50,9 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 		return nil
 	}
 	h := m.bodyHeight()
-	var nav strings.Builder
+	var nav, navBottom strings.Builder
 	inactive := theme.Readable(m.colors.NavigationInactiveForeground, m.colors.Panel)
-	x := 0
 	for _, item := range m.navigation() {
-		nav.WriteString(row("", item.x-x, m.colors.SideForeground, m.colors.Panel))
 		active := item.section == m.section
 		fg, bg := inactive, m.colors.Panel
 		if active {
@@ -62,14 +65,17 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 		glyph := ansi.Truncate(item.glyph, item.width, "")
 		label := theme.Style(fg, bg).Underline(active && m.monochrome).Render(glyph)
 		nav.WriteString(row(label, item.width, fg, bg))
-		x = item.x + item.width
+		navBottom.WriteString(row("", item.width, fg, bg))
+	}
+	lines := []string{
+		row(nav.String(), w, m.colors.SideForeground, m.colors.Panel),
+		row(navBottom.String(), w, m.colors.SideForeground, m.colors.Panel),
 	}
 	if m.section == search {
-		return m.searchLines(row(nav.String(), w, m.colors.SideForeground, m.colors.Panel), w)
+		return m.searchLines(lines, w)
 	}
-	lines := []string{row(nav.String(), w, m.colors.SideForeground, m.colors.Panel)}
 	if m.snapshot.NoRepository && (m.section == changes || m.section == history) {
-		for _, text := range []string{"", m.tr(" Not a Git repository"), "", m.tr(" [Initialize Repository]"), m.tr(" Enter: Initialize")} {
+		for _, text := range []string{"", m.tr("Not a Git repository"), "", m.tr("[Initialize Repository]"), m.tr("Enter: Initialize")} {
 			lines = append(lines, row(text, w, m.colors.Muted, m.colors.Panel))
 		}
 		for len(lines) < h {
@@ -127,7 +133,7 @@ func (m *Model) treeRow(entry item, w int, bg string, state treeRowState) (strin
 	}
 	if entry.header {
 		fg := theme.Readable(m.colors.Muted, bg)
-		return row(" "+strings.Repeat("  ", entry.depth)+m.treeChevron(m.folderExpanded(entry))+" "+entry.label, w, fg, bg), fg
+		return row(strings.Repeat("  ", entry.depth)+m.treeChevron(m.folderExpanded(entry))+" "+entry.label, w, fg, bg), fg
 	}
 	decoration := m.gitDecorationColor(entry)
 	fg := m.colors.SideForeground
@@ -152,8 +158,14 @@ func (m *Model) treeRow(entry item, w int, bg string, state treeRowState) (strin
 	}
 
 	padding := "  "
-	if m.section == explorer {
+	if m.section == changes {
 		padding = " "
+	}
+	if m.section == explorer {
+		padding = ""
+		if m.monochrome && m.sidebar && state.selected {
+			padding = " " // The selection marker occupies this cell.
+		}
 	}
 	indent := padding + strings.Repeat("  ", min(entry.depth, 10))
 	path := entry.file
@@ -212,7 +224,7 @@ func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 		return nil
 	}
 	if m.snapshot.NoRepository && (m.section == changes || m.section == history) {
-		if y == headerHeight+3 && msg.X >= 1 && msg.X < ansi.StringWidth(m.tr(" [Initialize Repository]")) {
+		if y == headerHeight+3 && msg.X >= 0 && msg.X < ansi.StringWidth(m.tr("[Initialize Repository]")) {
 			return m.initializeRepository()
 		}
 		return nil

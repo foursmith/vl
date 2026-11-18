@@ -142,7 +142,11 @@ func (m *Model) repositoryHeader(repo, key string) item {
 }
 
 func (m *Model) repositoryHeaderPrefix(entry item) string {
-	return " " + m.treeChevron(m.folderExpanded(entry)) + " " + m.symbol(symbolRepository) + " "
+	prefix := m.treeChevron(m.folderExpanded(entry)) + " " + m.symbol(symbolRepository) + " "
+	if m.monochrome {
+		return " " + prefix
+	}
+	return prefix
 }
 
 func (m *Model) repositoryBranchText(entry item, width, buttons int) string {

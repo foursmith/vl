@@ -61,7 +61,7 @@ func TestSearchInputsUseNativeBarCursor(t *testing.T) {
 		m.focusSearch(tt.focus)
 		m.searchField(tt.focus).SetValue("中a")
 		c := m.View().Cursor
-		if c == nil || c.Shape != tea.CursorBar || c.X != m.sideX()+searchFieldInset+1+3 || c.Y != tt.row {
+		if c == nil || c.Shape != tea.CursorBar || c.X != m.sideX()+sidebarSearchFieldInset+1+3 || c.Y != tt.row {
 			t.Fatalf("search focus %d: %+v", tt.focus, c)
 		}
 	}

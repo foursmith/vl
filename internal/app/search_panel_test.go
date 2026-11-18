@@ -40,7 +40,7 @@ func TestSearchDetailsInlineFieldsAndFocus(t *testing.T) {
 		t.Fatal("details must expand in the panel")
 	}
 	layout := m.searchPanelLayout()
-	lines := m.searchLines("", 36)
+	lines := m.searchLines(nil, 36)
 	if !strings.HasPrefix(plain(lines[layout.include]), "In ") || !strings.HasPrefix(plain(lines[layout.exclude]), "Ex ") {
 		t.Fatal("path field labels must start in the left gutter")
 	}
@@ -182,10 +182,10 @@ func TestSearchUsesInlineFieldsAndActions(t *testing.T) {
 	for _, width := range []int{28, 36, 60} {
 		m.search.focus = 0
 		m.search.query.Focus()
-		lines := m.searchLines("", width)
+		lines := m.searchLines(nil, width)
 		m.search.focus = 1
 		m.search.replacement.Focus()
-		m.searchLines("", width)
+		m.searchLines(nil, width)
 		if m.search.query.Width() < 8 || m.search.replacement.Width() < 8 {
 			t.Fatal("inline controls left insufficient input space")
 		}

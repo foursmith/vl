@@ -4,12 +4,42 @@ import (
 	"strings"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/ourongxing/vl/internal/fileicon"
 	"github.com/ourongxing/vl/internal/theme"
 )
+
+func TestSidebarDividerFollowsSurfaceColors(t *testing.T) {
+	m := newHoverRenderModel(t)
+	const y = 4
+	assertCell := func(glyph, foreground string) {
+		t.Helper()
+		screen := uv.NewScreenBuffer(m.width, m.height)
+		uv.NewStyledString(m.View().Content).Draw(screen, uv.Rect(0, 0, m.width, m.height))
+		cell := screen.CellAt(m.dividerX(), y)
+		if cell.Content != glyph ||
+			(foreground != "" && !sameColor(cell.Style.Fg, lipgloss.Color(foreground))) ||
+			!sameColor(cell.Style.Bg, lipgloss.Color(m.colors.Panel)) {
+			t.Fatalf("unexpected divider cell: %#v", cell)
+		}
+	}
+
+	m.SetColorTheme(theme.Builtin("dark_modern"))
+	assertCell(" ", "")
+	m.Update(tea.MouseMotionMsg{X: m.dividerX(), Y: y})
+	assertCell("│", m.colors.Accent)
+	m.Update(tea.MouseMotionMsg{X: m.mainX() + 8, Y: y})
+	assertCell(" ", "")
+
+	m.SetColorTheme(decorationTheme(t))
+	if m.colors.SideBarBorder == "" || m.colors.SideBarBorder == m.colors.Panel {
+		t.Fatal("matching surfaces require a visible border")
+	}
+	assertCell("│", m.colors.SideBarBorder)
+}
 
 func TestSelectedFolderKeepsChevronWithoutAnExtraArrow(t *testing.T) {
 	m := tabWorkspace(t, 0)
@@ -21,12 +51,12 @@ func TestSelectedFolderKeepsChevronWithoutAnExtraArrow(t *testing.T) {
 
 	m.SetColorTheme(theme.Builtin("dark_modern"))
 	selected := func() string { return plain(m.sidebarLinesWidth(34)[headerHeight]) }
-	if got := selected(); !strings.HasPrefix(got, " "+m.treeChevron(true)) {
+	if got := selected(); !strings.HasPrefix(got, m.treeChevron(true)) {
 		t.Fatalf("ordinary selection should use the existing highlight: %q", got)
 	}
 
 	m.SetColorTheme(theme.Builtin("hc_black"))
-	if got := selected(); !strings.HasPrefix(got, " "+m.treeChevron(true)) {
+	if got := selected(); !strings.HasPrefix(got, m.treeChevron(true)) {
 		t.Fatalf("high-contrast selection should also keep just the chevron: %q", got)
 	}
 	cells := uv.NewStyledString(m.sidebarLinesWidth(34)[headerHeight]).Lines(ansi.GraphemeWidth)[0]

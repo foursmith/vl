@@ -309,9 +309,9 @@ func (m *Model) fileFindControls(w int) []searchPanelControl {
 
 const searchFieldInset = 3
 
-func (m *Model) searchFieldLine(input *textinput.Model, active bool, textEnd, boxEnd int, placeholder, label, background string, x, y int) string {
+func (m *Model) searchFieldLine(input *textinput.Model, active bool, textEnd, boxEnd int, placeholder, label, background string, x, y, inset int) string {
 	configure := func(field *textinput.Model) {
-		field.SetWidth(max(1, min(textEnd, boxEnd)-searchFieldInset-3))
+		field.SetWidth(max(1, min(textEnd, boxEnd)-inset-3))
 		field.Placeholder = placeholder
 		field.SetStyles(m.input.Styles())
 		field.Prompt = " "
@@ -328,8 +328,8 @@ func (m *Model) searchFieldLine(input *textinput.Model, active bool, textEnd, bo
 	if !active || m.modal != "" {
 		shown.Blur()
 	}
-	text := ansi.Truncate(m.inputView(shown, x+searchFieldInset, y), max(0, textEnd-searchFieldInset-1), "")
-	return row(label, searchFieldInset, theme.Readable(m.colors.Muted, background), background) + row(text, boxEnd-searchFieldInset, m.colors.InputForeground, m.colors.Input)
+	text := ansi.Truncate(m.inputView(shown, x+inset, y), max(0, textEnd-inset-1), "")
+	return row(label, inset, theme.Readable(m.colors.Muted, background), background) + row(text, boxEnd-inset, m.colors.InputForeground, m.colors.Input)
 }
 func (m *Model) paintSearchControls(lines []string, w int, controls []searchPanelControl, originX, originY int, background string) {
 	for _, c := range controls {
@@ -409,9 +409,9 @@ func (m *Model) fileFindLines() []string {
 			}
 		}
 		if line == fileFindQueryRow {
-			lines[line] = m.searchFieldLine(&m.search.query, m.fileFindFocused() && m.search.focus == 0, end, boxEnd, "Find", "", background, m.fileFindX(), m.contentRow()+line)
+			lines[line] = m.searchFieldLine(&m.search.query, m.fileFindFocused() && m.search.focus == 0, end, boxEnd, "Find", "", background, m.fileFindX(), m.contentRow()+line, searchFieldInset)
 		} else {
-			lines[line] = m.searchFieldLine(&m.search.replacement, m.fileFindFocused() && m.search.focus == 1, end, boxEnd, "Replace", "", background, m.fileFindX(), m.contentRow()+line)
+			lines[line] = m.searchFieldLine(&m.search.replacement, m.fileFindFocused() && m.search.focus == 1, end, boxEnd, "Replace", "", background, m.fileFindX(), m.contentRow()+line, searchFieldInset)
 		}
 	}
 	for i := range lines {

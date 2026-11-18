@@ -35,6 +35,14 @@ func (m *Model) searchControlWidth() int {
 func (m *Model) searchRowAction(index int) bool {
 	return index == m.hoveredSidebarRow() || (m.search.focus == 2 && index == m.search.selected)
 }
+
+func (m *Model) searchResultChevronX() int {
+	if m.monochrome {
+		return 1
+	}
+	return 0
+}
+
 func (m *Model) searchResultRow(index, w int, r searchRow) string {
 	s := &m.search
 	f := s.result.Files[r.file]
@@ -66,7 +74,7 @@ func (m *Model) searchResultRow(index, w int, r searchRow) string {
 			parent = ""
 		}
 		icon := fileicon.For(f.Path, m.nerd)
-		prefix := " " + m.treeChevron(!s.folded[f.Path]) + " " + row(icon.Glyph, 2, icon.Color, bg)
+		prefix := strings.Repeat(" ", m.searchResultChevronX()) + m.treeChevron(!s.folded[f.Path]) + " " + row(icon.Glyph, 2, icon.Color, bg)
 		badge := theme.TextStyle(m.colors.Foreground, m.colors.DiffPlaceholder).Render(fmt.Sprintf(" %d ", len(f.Matches)))
 		budget := max(0, end-ansi.StringWidth(prefix)-ansi.StringWidth(badge)-1)
 		name := ansi.Truncate(safe(filepath.Base(f.Path)), budget, "…")
@@ -78,7 +86,7 @@ func (m *Model) searchResultRow(index, w int, r searchRow) string {
 		text = row(label, max(0, end-ansi.StringWidth(badge)), fg, bg) + badge
 	} else {
 		number := fmt.Sprintf("%d", f.Matches[r.match].Line)
-		prefix := "   " + theme.TextStyle(m.colors.Muted, bg).Render(number) + "  "
+		prefix := "  " + theme.TextStyle(m.colors.Muted, bg).Render(number) + "  "
 		content := m.searchSnippet(f, r.match, max(0, end-ansi.StringWidth(prefix)), fg, bg)
 		text = row(prefix+content, end, fg, bg)
 	}

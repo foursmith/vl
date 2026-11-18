@@ -79,8 +79,16 @@ func TestSidebarRightGeometryAndMouseTargets(t *testing.T) {
 	}
 	for _, nav := range m.navigation() {
 		if nav.section == changes {
-			_, cmd := m.Update(tea.MouseClickMsg{X: m.sideX() + nav.x + 1, Y: 0, Button: tea.MouseLeft})
-			drain(t, m, cmd)
+			for y := range 2 {
+				for dx := range nav.width {
+					drain(t, m, m.selectSection(explorer))
+					_, cmd := m.Update(tea.MouseClickMsg{X: m.sideX() + nav.x + dx, Y: y, Button: tea.MouseLeft})
+					drain(t, m, cmd)
+					if m.section != changes {
+						t.Fatalf("right sidebar navigation missed cell (%d, %d)", dx, y)
+					}
+				}
+			}
 		}
 	}
 	if m.section != changes {

@@ -60,7 +60,12 @@ func (t *Theme) makePalette() Palette {
 	p.LineNumber = t.Color("editorLineNumber.foreground")
 	p.LineNumberActive = t.Color("editorLineNumber.activeForeground")
 	p.Border = get("panel.border", p.Panel)
-	p.SideBarBorder = t.Color("sideBar.border")
+	if p.Panel == p.Background {
+		p.SideBarBorder = get("sideBar.border", p.Panel)
+		if p.SideBarBorder == p.Panel {
+			p.SideBarBorder = distinguish(p.Panel, p.Panel, Readable(p.SideForeground, p.Panel), 1.4)
+		}
+	}
 	p.FocusBorder = get("focusBorder", p.Panel)
 	p.FocusOutline = t.Color("contrastActiveBorder")
 	p.Accent = t.Color("textLink.foreground")

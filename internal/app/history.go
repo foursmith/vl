@@ -175,10 +175,10 @@ func (m *Model) historyRow(entry item, w int, bg string) (string, string) {
 		return m.explorerRow(entry, w, bg)
 	}
 	if entry.commit == nil && entry.historyChange == nil && entry.folder == "" {
-		return row("   "+safe(entry.label), w, m.colors.Muted, bg), m.colors.Muted
+		return row("  "+safe(entry.label), w, m.colors.Muted, bg), m.colors.Muted
 	}
 	if entry.commit == nil {
-		indent := "  "
+		indent := " "
 		text, fg := m.explorerRow(entry, max(0, w-2-len(indent)), bg)
 		return indent + theme.Style(m.colors.Accent, bg).Render("│ ") + text, fg
 	}
@@ -204,7 +204,7 @@ func (m *Model) historyRow(entry item, w int, bg string) (string, string) {
 			badges += " [" + safe(ref.Name) + "]"
 		}
 	}
-	indent := strings.Repeat("  ", entry.depth)
+	indent := strings.Repeat(" ", max(0, 2*entry.depth-1))
 	w = max(0, w-len(indent))
 	tagWidth := min(ansi.StringWidth(tags), max(0, w/2))
 	tags = ansi.Truncate(tags, tagWidth, "…")
