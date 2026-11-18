@@ -10,7 +10,7 @@ import (
 	"github.com/charmbracelet/x/ansi/kitty"
 )
 
-func kittyPixelRows(id, columns, rows int, pixels image.Image) ([]string, error) {
+func kittyPixelRows(id, columns, rows int, pixels image.Image) (string, []string, error) {
 	var upload bytes.Buffer
 	err := kitty.EncodeGraphics(&upload, pixels, &kitty.Options{
 		Action: kitty.TransmitAndPut, ID: id, PlacementID: 1,
@@ -18,14 +18,11 @@ func kittyPixelRows(id, columns, rows int, pixels image.Image) ([]string, error)
 		VirtualPlacement: true, Columns: columns, Rows: rows, DoNotMoveCursor: true,
 	})
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	result := make([]string, rows)
 	for y := 0; y < rows; y++ {
 		var line strings.Builder
-		if y == 0 {
-			line.WriteString(upload.String())
-		}
 		// Indexed foreground plus the third diacritic keeps IDs exact even when
 		// the workbench renderer uses a 256-color profile.
 		fmt.Fprintf(&line, "\x1b[38;5;%dm", id&255)
@@ -38,7 +35,7 @@ func kittyPixelRows(id, columns, rows int, pixels image.Image) ([]string, error)
 		line.WriteString("\x1b[0m")
 		result[y] = line.String()
 	}
-	return result, nil
+	return upload.String(), result, nil
 }
 
 func DeleteKitty(id int) string {

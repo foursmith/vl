@@ -124,7 +124,31 @@ func (m *Model) commandActions() []action {
 
 func (m *Model) openPalette() tea.Cmd { return m.openQuickPicker(">") }
 
+// Cache filtering across passive mouse motion and repeated reads in one event.
+// Other events clear the cache before they can change action labels or targets.
+type pickerFilterCache struct {
+	valid        bool
+	modal, query string
+	palette      *action
+	count        int
+	rows         []action
+}
+
 func (m *Model) filteredActions() []action {
+	var first *action
+	if len(m.palette) > 0 {
+		first = &m.palette[0]
+	}
+	cache := &m.pickerFilter
+	if cache.valid && cache.modal == m.modal && cache.query == m.input.Value() && cache.palette == first && cache.count == len(m.palette) {
+		return cache.rows
+	}
+	rows := m.filterActions()
+	*cache = pickerFilterCache{valid: true, modal: m.modal, query: m.input.Value(), palette: first, count: len(m.palette), rows: rows}
+	return rows
+}
+
+func (m *Model) filterActions() []action {
 	query := m.input.Value()
 	if m.commandPicker() {
 		query = strings.TrimSpace(strings.TrimPrefix(query, ">"))

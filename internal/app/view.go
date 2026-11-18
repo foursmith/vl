@@ -105,6 +105,7 @@ func (m *Model) resize() {
 	}
 	m.hoverOnly = false
 	m.hoverRender = hoverRenderCache{}
+	m.pickerFilter = pickerFilterCache{}
 	m.viewport.SetWidth(m.mainWidth())
 	m.viewport.SetHeight(m.contentHeight())
 	m.resizeInput()
@@ -130,12 +131,14 @@ type hoverRenderCache struct {
 }
 
 type hoverRenderKey struct {
-	row     int
-	picker  int
-	findX   int
-	findY   int
-	hint    string
-	divider bool
+	row                   int
+	menu                  *contextMenu
+	menuSelected, menuTop int
+	picker                int
+	findX                 int
+	findY                 int
+	hint                  string
+	divider               bool
 }
 
 func (m *Model) View() tea.View {
@@ -153,6 +156,9 @@ func (m *Model) View() tea.View {
 		row: hovered, hint: m.hoverHint(),
 		picker:  m.hoveredPickerIndex(),
 		divider: m.sidebarDividerAt(m.hoverX, m.hoverY),
+	}
+	if menu := m.contextMenu; menu != nil {
+		key.menu, key.menuSelected, key.menuTop = menu, menu.selected, menu.top
 	}
 	if m.fileFindAt(m.hoverX, m.hoverY) {
 		key.findX, key.findY = m.hoverX+1, m.hoverY+1

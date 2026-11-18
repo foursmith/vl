@@ -18,6 +18,9 @@ type imageState struct {
 	*imagepreview.Image
 	id                     int
 	rows                   []string
+	content                []string
+	region                 imagepreview.Region
+	upload                 *imageUpload
 	width, height          int
 	zoom, centerX, centerY float64
 }
@@ -60,14 +63,21 @@ func (m *Model) imagePreviewLines(im *imageState, w, h int) []string {
 	}
 	region := im.ViewRegion(max(1, w-4), max(1, h-2), m.cellWidth, m.cellHeight, im.zoom, im.centerX, im.centerY)
 	cols, rows := region.Columns, region.Rows
-	content, err := im.KittyRegionRows(im.id, region)
 	lines := make([]string, h)
-	if err != nil {
-		lines[h/2] = "  " + safe(m.tr(err.Error()))
-		return lines
+	if im.content == nil || im.region != region {
+		im.upload = nil
+		upload, content, err := im.KittyRegion(im.id, region)
+		if err != nil {
+			lines[h/2] = "  " + safe(m.tr(err.Error()))
+			im.content = nil
+			im.width, im.height, im.rows = w, h, lines
+			return lines
+		}
+		im.content, im.region = content, region
+		im.upload = &imageUpload{target: im, payload: upload}
 	}
 	x, y := (w-cols)/2, (h-rows)/2
-	for r, line := range content {
+	for r, line := range im.content {
 		lines[y+r] = strings.Repeat(" ", x) + line
 	}
 	im.width, im.height, im.rows = w, h, lines
@@ -94,7 +104,11 @@ func (m *Model) finishImageReload(msg imageReloadMsg) {
 			}
 			return
 		}
-		t.image.Image, t.image.rows, t.diskNotice = msg.fresh, nil, ""
+		t.diskNotice = ""
+		if msg.fresh.SameContent(t.image.Image) {
+			return
+		}
+		t.image.Image, t.image.rows, t.image.content = msg.fresh, nil, nil
 		return
 	}
 }

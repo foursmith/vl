@@ -208,6 +208,7 @@ type Model struct {
 	hoverX, hoverY          int
 	hoverOnly               bool
 	hoverRender             hoverRenderCache
+	pickerFilter            pickerFilterCache
 	workspaceSeq            int
 	workspaces              []string
 	openingRepository       bool
@@ -432,9 +433,10 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		beforeText = beforeDocument.Text
 	}
 	_, motion := msg.(tea.MouseMotionMsg)
-	m.hoverOnly = motion && m.contextMenu == nil && !m.resizingSidebar && m.textDrag == nil && m.diffDrag == nil && m.imagePan == nil
+	m.hoverOnly = motion && !m.resizingSidebar && m.textDrag == nil && m.diffDrag == nil && m.imagePan == nil
 	if !m.hoverOnly {
 		m.hoverRender = hoverRenderCache{}
+		m.pickerFilter = pickerFilterCache{}
 	}
 	defer func() {
 		if cmd := m.flushRetiredImages(); cmd != nil {
@@ -527,7 +529,8 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		m.kittyProbeDone = true
 	case uv.CellSizeEvent:
 		m.imagePan = nil
-		if msg.Width > 0 && msg.Height > 0 && msg.Width <= 256 && msg.Height <= 256 {
+		if msg.Width > 0 && msg.Height > 0 && msg.Width <= 256 && msg.Height <= 256 &&
+			(msg.Width != m.cellWidth || msg.Height != m.cellHeight) {
 			m.cellWidth, m.cellHeight = msg.Width, msg.Height
 			for i := range m.tabs {
 				if im := m.tabs[i].image; im != nil {

@@ -37,12 +37,22 @@ func (im *Image) ViewRegion(columns, rows, cellWidth, cellHeight int, zoom, cent
 		Rows:    min(rows, max(1, int(math.Ceil(visibleHeight*scale/float64(cellHeight)))))}
 }
 
-// KittyRegionRows sends a bounded PNG crop using a virtual Kitty placement.
+// KittyRegionRows includes the pixel upload before the first placeholder row.
 func (im *Image) KittyRegionRows(id int, region Region) ([]string, error) {
+	upload, rows, err := im.KittyRegion(id, region)
+	if err == nil {
+		rows[0] = upload + rows[0]
+	}
+	return rows, err
+}
+
+// KittyRegion separates the pixel transfer from the virtual placement's text.
+// Upload once via terminal I/O; redraw placeholders without retransmitting PNGs.
+func (im *Image) KittyRegion(id int, region Region) (string, []string, error) {
 	if id <= 0 || uint64(id) > 0xffffffff || id&0x00ffff00 != 0 ||
 		region.Columns <= 0 || region.Rows <= 0 || region.Columns > 255 || region.Rows > 255 ||
 		region.Width <= 0 || region.Height <= 0 || region.Scale <= 0 {
-		return nil, fmt.Errorf("invalid Kitty image region")
+		return "", nil, fmt.Errorf("invalid Kitty image region")
 	}
 	width, height := max(1, int(math.Round(region.Width*region.Scale))), max(1, int(math.Round(region.Height*region.Scale)))
 	transferScale := min(1, 4096/float64(max(width, height)))
@@ -51,7 +61,7 @@ func (im *Image) KittyRegionRows(id int, region Region) ([]string, error) {
 	if im.vector != nil {
 		pixmap, err := im.rasterSVGRegion(width, height, region)
 		if err != nil {
-			return nil, err
+			return "", nil, err
 		}
 		pixels = pixmap.AsRGBA()
 	} else {

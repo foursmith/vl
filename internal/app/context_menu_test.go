@@ -120,10 +120,15 @@ func TestContextMenuPreservesSelectionAndConsumesInput(t *testing.T) {
 	if m.document().Text != before {
 		t.Fatal("menu input reached editor")
 	}
-	m.Update(tea.MouseMotionMsg{X: m.mainX() + 5, Y: 4})
-	if m.hoverOnly {
-		t.Fatal("menu hover reuses stale frame")
+	m.View()
+	layout := m.contextMenuLayout()
+	m.Update(tea.MouseMotionMsg{X: layout.x + 2, Y: layout.y + 2})
+	if m.contextMenu.selected != 1 {
+		t.Fatal("menu hover did not select the second action")
 	}
+	assertFreshHoverFrame(t, m)
+	m.Update(tea.MouseMotionMsg{X: layout.x + 3, Y: layout.y + 2})
+	assertFreshHoverFrame(t, m)
 	press(m, "esc")
 	if m.contextMenu != nil {
 		t.Fatal("escape did not dismiss menu")

@@ -24,7 +24,9 @@ func NewRuntime(m *Model, switchWorkspace func(*Model, *gitservice.Repository) *
 
 func (r *Runtime) Current() *Model { return r.current }
 func (r *Runtime) View() tea.View  { return r.current.View() }
-func (r *Runtime) Init() tea.Cmd   { return workspaceCommand(r.generation, r.current.Init()) }
+func (r *Runtime) Init() tea.Cmd {
+	return workspaceCommand(r.generation, tea.Batch(r.current.Init(), r.current.prepareImageUploads()))
+}
 
 // Filter runs before Bubble Tea handles RawMsg and QuitMsg as well as before
 // Update, so even terminal effects queued by a closed workspace are discarded.
@@ -33,7 +35,10 @@ func (r *Runtime) Filter(_ tea.Model, msg tea.Msg) tea.Msg {
 		if result.generation != r.generation {
 			return nil
 		}
-		return result.msg
+		msg = result.msg
+	}
+	if upload, ok := msg.(imageUploadMsg); ok {
+		return r.current.imageUploadMessage(upload)
 	}
 	return msg
 }
@@ -77,5 +82,5 @@ func (r *Runtime) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Retire the old images before the new workspace can upload any.
 		return r, tea.Sequence(tea.Raw(cleanup), r.Init())
 	}
-	return r, workspaceCommand(r.generation, cmd)
+	return r, workspaceCommand(r.generation, tea.Batch(cmd, r.current.prepareImageUploads()))
 }

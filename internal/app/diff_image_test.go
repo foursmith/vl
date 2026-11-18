@@ -124,8 +124,8 @@ func TestDiffImagesReadActualReviewVersions(t *testing.T) {
 						t.Fatalf("%+v side %d: wrong version", tc, side)
 					}
 				}
-				if !strings.Contains(m.View().Content, "\x1b_G") {
-					t.Fatal("image protocol did not reach the view")
+				if !strings.Contains(imageUploadOutput(t, m), "\x1b_G") || strings.Contains(m.View().Content, "\x1b_G") {
+					t.Fatal("image upload was missing or embedded in the view")
 				}
 			}
 			for _, size := range [][2]int{{120, 35}, {70, 20}, {30, 8}} {

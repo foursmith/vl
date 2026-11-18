@@ -59,6 +59,7 @@ func (m *Model) externalColorScheme(light bool, source string) tea.Cmd {
 		selected = m.lightTheme
 	}
 	if m.themeBeforePreview != nil {
+		m.pickerFilter = pickerFilterCache{}
 		m.themeBeforePreview = selected
 		for i := range m.palette {
 			m.palette[i].key = ""
@@ -80,6 +81,7 @@ func (m *Model) applyTheme(selected *theme.Theme) tea.Cmd {
 	m.styleInput()
 	m.hoverOnly = false
 	m.hoverRender = hoverRenderCache{}
+	m.pickerFilter = pickerFilterCache{}
 	for i := range m.tabs {
 		t := &m.tabs[i]
 		if d := t.diff; d != nil {

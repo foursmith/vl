@@ -28,7 +28,7 @@ func TestImageProtocolDetectionAndCellSize(t *testing.T) {
 		t.Fatal("missing unsupported-terminal explanation")
 	}
 	m.Update(uv.KittyGraphicsEvent{Options: kitty.Options{ID: kittyProbeID}, Payload: []byte("OK")})
-	if !m.kittySupported || !strings.Contains(strings.Join(m.imageLines(), ""), "\x1b_G") {
+	if !m.kittySupported || !strings.Contains(imageUploadOutput(t, m), "\x1b_G") {
 		t.Fatal("did not enable image protocol")
 	}
 	m.Update(uv.CellSizeEvent{Width: 10, Height: 22})
@@ -54,6 +54,7 @@ func TestDiffImagesSurviveTerminalRenderer(t *testing.T) {
 	renderer.SetFullscreen(true)
 	renderer.SetColorProfile(colorprofile.ANSI256)
 	frame := func() {
+		output.WriteString(imageUploadOutput(t, m))
 		scr := uv.NewScreenBuffer(m.width, m.height)
 		uv.NewStyledString(m.View().Content).Draw(scr, uv.Rect(0, 0, m.width, m.height))
 		renderer.Render(scr.RenderBuffer)
@@ -100,6 +101,7 @@ func TestImageProtocolSurvivesRendererAndCleansOwnedIDs(t *testing.T) {
 	renderer.SetFullscreen(true)
 	renderer.SetColorProfile(colorprofile.ANSI256)
 	frame := func() {
+		output.WriteString(imageUploadOutput(t, m))
 		scr := uv.NewScreenBuffer(m.width, m.height)
 		uv.NewStyledString(m.View().Content).Draw(scr, uv.Rect(0, 0, m.width, m.height))
 		renderer.Render(scr.RenderBuffer)
@@ -143,4 +145,67 @@ func TestImageProtocolSurvivesRendererAndCleansOwnedIDs(t *testing.T) {
 	if cleanup := m.ImageCleanupSequence(); cleanup != deletion {
 		t.Fatalf("cleanup escaped image ownership: %q", cleanup)
 	}
+}
+
+func TestImageContextMenuHoverDoesNotRetransmitPixels(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	defer m.Close()
+	m.kittySupported = true
+	writePreviewPNG(t, filepath.Join(m.repo.Root, "image.png"), 800, 600)
+	m.openPreviewFile("image.png")
+	var output bytes.Buffer
+	renderer := uv.NewTerminalRenderer(&output, []string{"TERM=xterm-kitty", "COLORTERM=truecolor"})
+	renderer.SetFullscreen(true)
+	frame := func() {
+		output.WriteString(imageUploadOutput(t, m))
+		scr := uv.NewScreenBuffer(m.width, m.height)
+		uv.NewStyledString(m.View().Content).Draw(scr, uv.Rect(0, 0, m.width, m.height))
+		renderer.Render(scr.RenderBuffer)
+		if err := renderer.Flush(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	frame()
+	for _, x := range []int{m.mainX() + 1, m.mainX() + 10} {
+		m.openContextMenu(x, m.contentRow()+1)
+		for i := 0; i < 3; i++ {
+			output.Reset()
+			m.Update(tea.MouseMotionMsg{X: x + 2, Y: m.contentRow() + 3 + i%2})
+			frame()
+			if strings.Contains(output.String(), "\x1b_G") {
+				t.Fatalf("menu hover retransmitted pixels at x=%d, step=%d", x, i)
+			}
+		}
+		m.contextMenu = nil
+		m.hoverOnly = false
+		output.Reset()
+		frame()
+		if strings.Contains(output.String(), "\x1b_G") {
+			t.Fatal("closing menu retransmitted pixels")
+		}
+	}
+}
+
+// Run the same transfer preparation and final filtering used by Runtime.
+func imageUploadOutput(t testing.TB, m *Model) string {
+	t.Helper()
+	runtime := NewRuntime(m, nil)
+	var output strings.Builder
+	queue := []tea.Cmd{m.prepareImageUploads()}
+	for len(queue) > 0 {
+		cmd := queue[0]
+		queue = queue[1:]
+		if cmd == nil {
+			continue
+		}
+		msg := cmd()
+		if batch, ok := msg.(tea.BatchMsg); ok {
+			queue = append(queue, batch...)
+			continue
+		}
+		if raw, ok := runtime.Filter(runtime, msg).(tea.RawMsg); ok {
+			output.WriteString(raw.Msg.(string))
+		}
+	}
+	return output.String()
 }

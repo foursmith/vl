@@ -39,7 +39,9 @@ func BenchmarkDiffRender(b *testing.B) {
 
 func BenchmarkHunkNavigation(b *testing.B) {
 	m := New(context.Background(), &gitservice.Repository{Root: b.TempDir()}, true)
+	b.Cleanup(m.Close)
 	m.width, m.height = 180, 55
+	showDiffFixture(m)
 	m.patch = benchmarkPatch()
 	m.diffPath = "file.go"
 	m.renderDiff()
