@@ -30,23 +30,37 @@ type previewOptions struct {
 const previewLineBytes = 32 << 10
 const previewContextLines = 64
 
+const previewUsage = `Usage:
+  vl preview [options] file
+
+Options:
+  -h, --help       Show this help
+  --skip N         Skip N source lines
+  --lines N        Print up to N source lines (0 prints through EOF)
+  --width N        Limit each row to N columns, including line numbers (0 is unlimited)
+  --tab-size N     Use N spaces per tab (1–32, default: 4)
+  --line-numbers   Show source line numbers
+  --wrap           Wrap long lines at --width
+  --color MODE     Use auto, always, or never (default: auto)
+  --theme ID       Use a syntax theme (default: saved theme)
+`
+
 func runPreview(args []string, stdout, stderr io.Writer) int {
 	var opt previewOptions
 	flags := flag.NewFlagSet("preview", flag.ContinueOnError)
 	flags.SetOutput(stderr)
-	flags.IntVar(&opt.skip, "skip", 0, "skip this many source lines")
-	flags.IntVar(&opt.lines, "lines", 0, "maximum source lines to print (0 prints through EOF)")
-	flags.IntVar(&opt.width, "width", 0, "maximum columns per row, including line numbers (0 leaves rows unclipped)")
-	flags.IntVar(&opt.tabSize, "tab-size", 4, "spaces per tab (1–32)")
-	flags.BoolVar(&opt.lineNumbers, "line-numbers", false, "show source line numbers")
-	flags.BoolVar(&opt.wrap, "wrap", false, "wrap long lines at --width instead of clipping")
-	color := flags.String("color", "auto", "syntax colors: auto, always, or never")
-	themeName := flags.String("theme", "", "syntax theme ID (default: VL's saved theme)")
+	flags.IntVar(&opt.skip, "skip", 0, "")
+	flags.IntVar(&opt.lines, "lines", 0, "")
+	flags.IntVar(&opt.width, "width", 0, "")
+	flags.IntVar(&opt.tabSize, "tab-size", 4, "")
+	flags.BoolVar(&opt.lineNumbers, "line-numbers", false, "")
+	flags.BoolVar(&opt.wrap, "wrap", false, "")
+	color := flags.String("color", "auto", "")
+	themeName := flags.String("theme", "", "")
 	flags.Usage = func() {
-		fmt.Fprintln(stderr, "Usage: vl preview [options] file")
-		flags.PrintDefaults()
+		fmt.Fprint(stderr, previewUsage)
 	}
-	if err := flags.Parse(args); err != nil {
+	if err := parseFlags(flags, args); err != nil {
 		if err == flag.ErrHelp {
 			return 0
 		}

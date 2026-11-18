@@ -36,7 +36,7 @@ make package VERSION=0.0.0-dev
 
 2. Wait for the Release workflow to succeed. Open the draft in GitHub Releases
    and check that all six archives, both installers, and `checksums.txt` are attached.
-   The tag sets the value printed by `vl -version`, without the leading `v`.
+   The tag sets the value printed by `vl --version`, without the leading `v`.
    Tags such as `v0.1.0-rc.1` create prerelease drafts.
 3. Review the generated notes, update them for users, and publish the draft
    from GitHub. If uploading fails, rerun the failed job before publishing. It

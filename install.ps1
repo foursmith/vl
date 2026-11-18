@@ -59,7 +59,7 @@ try {
         throw "The release archive does not contain vl.exe: $archive"
     }
     try {
-        $binaryVersion = & $binary -version
+        $binaryVersion = & $binary --version
         if ($LASTEXITCODE -ne 0 -or ($binaryVersion -join "`n").Trim() -ne "vl $version") {
             throw "Expected 'vl $version', received '$binaryVersion' (exit code $LASTEXITCODE)."
         }
@@ -95,15 +95,15 @@ if (-not $command -or $command.CommandType -ne 'Application' -or $command.Source
     throw "Installed vl.exe at $target, but PowerShell cannot resolve 'vl' to it. Check PATH, PATHEXT (.EXE), and any alias or function named vl."
 }
 try {
-    $installedVersion = vl -version
+    $installedVersion = vl --version
     if ($LASTEXITCODE -ne 0 -or ($installedVersion -join "`n").Trim() -ne "vl $version") {
         throw "Expected 'vl $version', received '$installedVersion' (exit code $LASTEXITCODE)."
     }
 } catch {
-    throw "Installed vl.exe at $target, but 'vl -version' failed: $($_.Exception.Message)"
+    throw "Installed vl.exe at $target, but 'vl --version' failed: $($_.Exception.Message)"
 }
 Write-Host "Installed vl $version to $target"
-Write-Host "Verified: vl -version -> $installedVersion"
+Write-Host "Verified: vl --version -> $installedVersion"
 Write-Host 'Run vl in this PowerShell session to get started.'
 Write-Host 'For other terminal sessions, fully exit and reopen the terminal application to reload PATH.'
 Write-Host ("Or run directly: & '" + $target.Replace("'", "''") + "'")

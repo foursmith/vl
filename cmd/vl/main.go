@@ -23,26 +23,52 @@ import (
 
 var buildVersion = "0.1.0-dev"
 
+const usage = `A VSCode-like terminal workbench with Vim-like keybindings.
+
+Usage:
+  vl [options] [folder|file[:line[:column]]]
+  vl preview [options] file
+
+Open a folder in the workspace viewer or a file in the editor.
+Line and column numbers start at 1. With no path, reopen the most recent workspace.
+
+Options:
+  -h, --help        Show this help
+  -v, --version     Print the version
+  --lang LANGUAGE   Use en or zh-CN (default: saved preference, or en)
+  --icons=false     Use plain-text icons instead of Nerd Font glyphs
+  --theme ID        Use a bundled or imported theme (e.g. dark_modern)
+
+Run 'vl preview --help' for preview options.
+`
+
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "preview" {
 		os.Exit(runPreview(os.Args[2:], os.Stdout, os.Stderr))
 	}
-	displayLanguage := flag.String("lang", "", "display language: en or zh-CN (default: saved preference, or en)")
-	icons := flag.Bool("icons", true, "use Nerd Font glyphs adapted from Material Icon Theme; set -icons=false for plain text")
-	colorTheme := flag.String("theme", "", "bundled or imported color theme ID (for example, dark_modern or light_2026)")
-	version := flag.Bool("version", false, "print version")
-	flag.Usage = func() {
-		fmt.Fprintln(flag.CommandLine.Output(), "Usage: vl [options] [folder|file[:line[:column]]]\n       vl preview [options] file\n\nA VSCode-like Git diff viewer with basic text editing.\nA file opens in editor-only mode. Line and column numbers start at 1.\nWithout a path, opens the most recent workspace.")
-		flag.PrintDefaults()
+	flags := flag.NewFlagSet("vl", flag.ContinueOnError)
+	displayLanguage := flags.String("lang", "", "")
+	icons := flags.Bool("icons", true, "")
+	colorTheme := flags.String("theme", "", "")
+	var version bool
+	flags.BoolVar(&version, "version", false, "")
+	flags.BoolVar(&version, "v", false, "")
+	flags.Usage = func() {
+		fmt.Fprint(flags.Output(), usage)
 	}
-	flag.Parse()
-	if *version {
+	if err := parseFlags(flags, os.Args[1:]); err != nil {
+		if err == flag.ErrHelp {
+			return
+		}
+		os.Exit(2)
+	}
+	if version {
 		fmt.Println("vl", buildVersion)
 		return
 	}
 	language, validLanguage := i18n.Parse(*displayLanguage)
 	if !validLanguage {
-		fmt.Fprintln(os.Stderr, "Unsupported display language; use -lang en or -lang zh-CN")
+		fmt.Fprintln(os.Stderr, "Unsupported display language. Use --lang en or --lang zh-CN.")
 		os.Exit(2)
 	}
 	var selectedTheme *theme.Theme
@@ -54,11 +80,11 @@ func main() {
 			os.Exit(2)
 		}
 	}
-	if flag.NArg() > 1 {
-		flag.Usage()
+	if flags.NArg() > 1 {
+		flags.Usage()
 		os.Exit(2)
 	}
-	path, err := startupPath(flag.Args())
+	path, err := startupPath(flags.Args())
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
