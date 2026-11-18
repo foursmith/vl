@@ -40,9 +40,9 @@ func (m *Model) pickerOverlay(base []string) []string {
 	w := l.width - 2
 	border := theme.Style(m.colors.PopupBorder, bg)
 	box := []string{
-		border.Render("╭" + strings.Repeat("─", w) + "╮"),
+		inputBorderRule(border, l.width, "╭", "╮"),
 		border.Render("│") + row(" "+m.inputView(m.input, l.x+2, l.y+1), w, m.colors.InputForeground, bg) + border.Render("│"),
-		border.Render("├" + strings.Repeat("─", w) + "┤"),
+		inputBorderRule(border, l.width, "├", "┤"),
 	}
 	hovered := l.indexAt(m.hoverX, m.hoverY)
 	for index := l.start; index < l.start+l.count; index++ {
@@ -56,7 +56,7 @@ func (m *Model) pickerOverlay(base []string) []string {
 		}
 		box = append(box, border.Render("│")+row("  "+message, w, theme.Readable(m.colors.Muted, bg), bg)+border.Render("│"))
 	}
-	box = append(box, border.Render("╰"+strings.Repeat("─", w)+"╯"))
+	box = append(box, inputBorderRule(border, l.width, "╰", "╯"))
 	return m.composeOverlay(base, box, l.x, l.y)
 }
 

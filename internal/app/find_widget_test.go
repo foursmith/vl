@@ -82,7 +82,7 @@ func TestSharedFindCompactRowsAndUnselectedCount(t *testing.T) {
 	}
 	m.document().SelectRange(0, 0)
 	line := plain(m.fileFindLines()[0])
-	if strings.Contains(line, "0/2") || !strings.Contains(line, "2 matches") {
+	if strings.Contains(line, "0/2") || !strings.Contains(line, "2 matches") || !strings.HasPrefix(line, "╭") || !strings.HasSuffix(line, "╮") {
 		t.Fatalf("unselected count is misleading: %s", line)
 	}
 	m.openFileReplace()
@@ -90,14 +90,17 @@ func TestSharedFindCompactRowsAndUnselectedCount(t *testing.T) {
 		t.Fatal("expanded find should include the count in its five rows")
 	}
 	lines := m.fileFindLines()
-	divider := strings.Repeat("─", m.fileFindWidth()-searchFieldInset)
+	divider := strings.Repeat("─", m.fileFindWidth()-searchFieldInset-1) + "┤"
 	if ansi.Cut(plain(lines[fileFindQueryRow+1]), searchFieldInset, m.fileFindWidth()) != divider {
 		t.Fatal("find and replace must have a divider beside the toggle")
+	}
+	if bottom := plain(lines[len(lines)-1]); !strings.HasPrefix(bottom, "╰") || !strings.HasSuffix(bottom, "╯") {
+		t.Fatal("find box must have a rounded bottom border")
 	}
 	for y, line := range lines {
 		cells := uv.NewStyledString(line).Lines(ansi.GraphemeWidth)[0]
 		for x, cell := range cells {
-			if !sameColor(cell.Style.Bg, lipgloss.Color(m.colors.Input)) {
+			if !sameColor(cell.Style.Bg, lipgloss.Color(m.colors.Popup)) {
 				t.Fatalf("find box background interrupted at (%d, %d)", x, y)
 			}
 		}

@@ -46,21 +46,24 @@ func TestSearchDetailsInlineFieldsAndFocus(t *testing.T) {
 	if layout.summary-layout.details-1 != 5 {
 		t.Fatal("path filters should share a five-row box")
 	}
-	divider := strings.Repeat("─", 35-searchFieldInset)
+	divider := strings.Repeat("─", 34-searchFieldInset) + "┤"
 	if ansi.Cut(plain(lines[layout.query+1]), searchFieldInset, 35) != divider || ansi.Cut(plain(lines[layout.include+1]), searchFieldInset, 35) != divider {
 		t.Fatal("paired fields must have a divider across the box")
 	}
 	toggle := uv.NewStyledString(lines[layout.query+1]).Lines(ansi.GraphemeWidth)[0][1]
-	if !sameColor(toggle.Style.Bg, lipgloss.Color(m.colors.Input)) {
+	if !sameColor(toggle.Style.Bg, lipgloss.Color(m.colors.Popup)) {
 		t.Fatal("replacement toggle should be inside the search box")
 	}
 	for y := layout.details + 1; y < layout.summary; y++ {
 		cells := uv.NewStyledString(lines[y]).Lines(ansi.GraphemeWidth)[0]
-		if !sameColor(cells[1].Style.Bg, lipgloss.Color(m.colors.Input)) {
+		if !sameColor(cells[1].Style.Bg, lipgloss.Color(m.colors.Popup)) {
 			t.Fatalf("path filter box background interrupted on row %d", y)
 		}
 	}
-	if !strings.HasPrefix(plain(lines[layout.include]), " ⊕ ") || !strings.HasPrefix(plain(lines[layout.exclude]), " ⊖ ") {
+	if !strings.HasPrefix(plain(lines[layout.details+1]), "╭") || !strings.HasPrefix(plain(lines[layout.summary-1]), "╰") {
+		t.Fatal("path filter box must have rounded corners")
+	}
+	if !strings.HasPrefix(plain(lines[layout.include]), "│⊕ ") || !strings.HasPrefix(plain(lines[layout.exclude]), "│⊖ ") {
 		t.Fatal("path filter symbols must be inset inside the box")
 	}
 	m.clickSearch(3, layout.include)
@@ -68,7 +71,7 @@ func TestSearchDetailsInlineFieldsAndFocus(t *testing.T) {
 	if m.search.include.Value() != "*.go" {
 		t.Fatal("include field did not receive input")
 	}
-	if line := plain(m.searchLines(nil, 36)[layout.include]); !strings.HasPrefix(line, " ⊕ *.go") {
+	if line := plain(m.searchLines(nil, 36)[layout.include]); !strings.HasPrefix(line, "│⊕ *.go") {
 		t.Fatalf("filter symbol needs a space before the input: %q", line)
 	}
 	m.searchKey(tea.KeyPressMsg{Code: tea.KeyTab})
@@ -93,7 +96,7 @@ func TestSearchFilterIconsKeepTheInputBackgroundWhenSelected(t *testing.T) {
 		switch c.id {
 		case "changed", "open", "ignore":
 			cells := uv.NewStyledString(lines[c.y]).Lines(ansi.GraphemeWidth)[0]
-			if cell := cells[c.x]; !sameColor(cell.Style.Fg, lipgloss.Color(m.colors.Accent)) || !sameColor(cell.Style.Bg, lipgloss.Color(m.colors.Input)) {
+			if cell := cells[c.x]; !sameColor(cell.Style.Fg, lipgloss.Color(m.colors.Accent)) || !sameColor(cell.Style.Bg, lipgloss.Color(m.colors.Popup)) {
 				t.Fatalf("selected %s icon must use the accent on the input background", c.id)
 			}
 		}

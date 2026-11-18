@@ -53,7 +53,7 @@ func (m *Model) dialogLayout() dialogLayout {
 	x, y := (m.width-w)/2, min(3, max(0, m.height-5))
 	content := []string{
 		paint(safe(m.modalTitle), m.colors.Foreground),
-		row(" "+m.inputView(m.input, x+2, y+2), w-2, m.colors.Foreground, m.colors.Input),
+		row(" "+m.inputView(m.input, x+2, y+2), w-2, m.colors.InputForeground, m.colors.Popup),
 	}
 	return dialogLayout{width: w, x: x, y: y, content: content}
 }

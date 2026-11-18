@@ -110,6 +110,20 @@ func TestAllDialogsDismissOnClickAndPreserveUnsavedFiles(t *testing.T) {
 		m := tabWorkspace(t, 0)
 		confirmed := false
 		m.prompt(kind, "Dialog", "")
+		layout := m.dialogLayout()
+		view := m.View()
+		top := strings.Split(view.Content, "\n")[layout.y]
+		if !strings.HasPrefix(plain(ansi.Cut(top, layout.x, layout.x+layout.width)), "╭") {
+			t.Fatalf("%s dialog has no rounded frame", kind)
+		}
+		if kind != "confirm" {
+			cells := uv.NewStyledString(layout.content[1]).Lines(ansi.GraphemeWidth)[0]
+			for _, cell := range cells {
+				if !sameColor(cell.Style.Bg, lipgloss.Color(m.colors.Popup)) {
+					t.Fatalf("%s dialog input must share the frame background", kind)
+				}
+			}
+		}
 		m.confirm = func() tea.Cmd { confirmed = true; return nil }
 		_, cmd := m.Update(tea.MouseClickMsg{X: 24, Y: 5, Button: tea.MouseLeft})
 		if m.modal != "" || m.input.Focused() || confirmed || cmd != nil || m.confirm != nil {

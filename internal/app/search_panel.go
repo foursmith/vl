@@ -145,20 +145,11 @@ func (m *Model) searchLines(nav []string, w int) []string {
 		}
 		lines[y] = m.searchFieldLine(input, m.sidebar && s.focus == focus, end, w-1, placeholder, label, m.sideX(), y)
 	}
-	padding := row("", w-1, m.colors.InputForeground, m.colors.Input)
-	for y := headerHeight; y < l.details; y++ {
-		lines[y] = padding
-	}
 	field(&s.query, 0, l.query, searchText("Search in files"), "")
 	if s.replace {
-		lines[l.query+1] = m.searchFieldDivider(w - 1)
 		field(&s.replacement, 1, l.replacement, "Replace", "")
 	}
 	if s.details {
-		for y := l.details + 1; y < l.summary; y++ {
-			lines[y] = padding
-		}
-		lines[l.include+1] = m.searchFieldDivider(w - 1)
 		field(&s.include, 3, l.include, "", " ⊕")
 		field(&s.exclude, 4, l.exclude, "", " ⊖")
 	}
@@ -182,10 +173,16 @@ func (m *Model) searchLines(nav []string, w int) []string {
 		}
 	}
 	lines[l.summary] = row(indent+ansi.Truncate(strings.TrimSpace(safe(summary)), max(0, w-sidebarSearchFieldInset-1), "…"), w, theme.Readable(m.colors.Muted, m.colors.Panel), m.colors.Panel)
+	m.paintSearchControls(lines, w, controls, m.sideX(), 0, m.colors.Panel)
+	searchBox := lines[headerHeight:l.details]
+	m.frameSearchBox(searchBox, w-1, len(searchBox), "")
+	if s.details {
+		filterBox := lines[l.details+1 : l.summary]
+		m.frameSearchBox(filterBox, w-1, len(filterBox), "")
+	}
 	for i := range lines {
 		lines[i] = row(lines[i], w, m.colors.SideForeground, m.colors.Panel)
 	}
-	m.paintSearchControls(lines, w, controls, m.sideX(), 0, m.colors.Panel)
 	m.clampSearch()
 	rows := m.searchRows()
 	for y := l.results; y < m.bodyHeight(); y++ {

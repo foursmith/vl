@@ -5,9 +5,14 @@ import (
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/clipperhouse/uax29/v2/graphemes"
 )
+
+func inputBorderRule(style lipgloss.Style, width int, left, right string) string {
+	return style.Render(left + strings.Repeat("─", max(0, width-2)) + right)
+}
 
 func newInput() textinput.Model {
 	input := textinput.New()

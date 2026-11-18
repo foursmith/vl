@@ -30,11 +30,13 @@ func (m *Model) fileFindHeight() int {
 	if !m.findWidget.visible || m.editorDocument() == nil || m.width < 70 && m.sidebar && m.sidebarVisible {
 		return 0
 	}
-	height := fileFindQueryRow + 2
+	return min(m.fileFindFrameHeight(), max(0, m.bodyHeight()-m.contentRow()))
+}
+func (m *Model) fileFindFrameHeight() int {
 	if m.search.replace && m.editing() {
-		height = fileReplaceRow + 2
+		return fileReplaceRow + 2
 	}
-	return min(height, max(0, m.bodyHeight()-m.contentRow()))
+	return fileFindQueryRow + 2
 }
 func (m *Model) fileFindFocused() bool {
 	return m.findWidget.focused && !m.sidebar && m.fileFindHeight() > 0
@@ -307,9 +309,29 @@ func (m *Model) fileFindControls(w int) []searchPanelControl {
 
 const searchFieldInset = 3
 
-func (m *Model) searchFieldDivider(boxEnd int) string {
-	line := strings.Repeat(" ", searchFieldInset) + strings.Repeat("─", max(0, boxEnd-searchFieldInset))
-	return row(line, boxEnd, theme.WithOpacity(m.colors.InputForeground, .28), m.colors.Input)
+func (m *Model) frameSearchBox(lines []string, width, height int, title string) {
+	bg := m.colors.Popup
+	border := theme.Style(m.colors.PopupBorder, bg)
+	if title = ansi.Truncate(title, max(0, width-6), "…"); title == "" {
+		lines[0] = inputBorderRule(border, width, "╭", "╮")
+	} else {
+		gap := width - 5 - ansi.StringWidth(title)
+		lines[0] = border.Render("╭"+strings.Repeat("─", gap)+" ") +
+			theme.TextStyle(m.colors.Muted, bg).Render(title) + border.Render(" ─╮")
+	}
+	side := border.Render("│")
+	for y := 1; y < len(lines); y++ {
+		switch {
+		case y == height-1:
+			lines[y] = inputBorderRule(border, width, "╰", "╯")
+		case height == 5 && y == 2:
+			gutter := row(ansi.Cut(lines[y], 1, searchFieldInset), searchFieldInset-1, m.colors.InputForeground, bg)
+			rule := strings.Repeat("─", max(0, width-searchFieldInset-1))
+			lines[y] = side + gutter + border.Render(rule+"┤")
+		default:
+			lines[y] = side + ansi.Cut(lines[y], 1, width-1) + side
+		}
+	}
 }
 
 func (m *Model) searchFieldLine(input *textinput.Model, active bool, textEnd, boxEnd int, placeholder, label string, x, y int) string {
@@ -327,7 +349,8 @@ func (m *Model) searchFieldLine(input *textinput.Model, active bool, textEnd, bo
 		shown.Blur()
 	}
 	text := ansi.Truncate(m.inputView(shown, x+inset, y), max(0, textEnd-inset-1), "")
-	return row(label, inset, theme.Readable(m.colors.Muted, m.colors.Input), m.colors.Input) + row(text, boxEnd-inset, m.colors.InputForeground, m.colors.Input)
+	bg := m.colors.Popup
+	return row(label, inset, theme.Readable(m.colors.Muted, bg), bg) + row(text, boxEnd-inset, m.colors.InputForeground, bg)
 }
 func (m *Model) paintSearchControls(lines []string, w int, controls []searchPanelControl, originX, originY int, background string) {
 	for _, c := range controls {
@@ -337,7 +360,7 @@ func (m *Model) paintSearchControls(lines []string, w int, controls []searchPane
 		fg := m.colors.Accent
 		bg := background
 		if c.embedded {
-			fg, bg = m.colors.InputForeground, m.colors.Input
+			fg, bg = m.colors.InputForeground, m.colors.Popup
 			if c.id == "replaceAll" {
 				fg = m.colors.Accent
 			}
@@ -383,14 +406,6 @@ func (m *Model) fileFindLines() []string {
 	}
 	lines := make([]string, h)
 	controls := m.fileFindControls(w)
-	background := m.colors.Input
-	statusEnd := max(0, w-1)
-	status := ansi.Truncate(m.fileFindStatus(), statusEnd, "…")
-	lines[0] = row(strings.Repeat(" ", max(0, statusEnd-ansi.StringWidth(status)))+status, w, m.colors.Muted, background)
-	padding := row("", w, m.colors.InputForeground, background)
-	for line := 1; line < h; line++ {
-		lines[line] = padding
-	}
 	field := func(input *textinput.Model, focus, line int, placeholder string) {
 		if line >= h {
 			return
@@ -404,11 +419,11 @@ func (m *Model) fileFindLines() []string {
 		lines[line] = m.searchFieldLine(input, m.fileFindFocused() && m.search.focus == focus, end, w, placeholder, "", m.fileFindX(), m.contentRow()+line)
 	}
 	field(&m.search.query, 0, fileFindQueryRow, "Find")
-	if m.search.replace && m.editing() && fileFindQueryRow+1 < h {
-		lines[fileFindQueryRow+1] = m.searchFieldDivider(w)
+	if m.search.replace && m.editing() {
 		field(&m.search.replacement, 1, fileReplaceRow, "Replace")
 	}
-	m.paintSearchControls(lines, w, controls, m.fileFindX(), m.contentRow(), background)
+	m.paintSearchControls(lines, w, controls, m.fileFindX(), m.contentRow(), m.colors.Popup)
+	m.frameSearchBox(lines, w, m.fileFindFrameHeight(), m.fileFindStatus())
 	return lines
 }
 func (m *Model) fileFindWidth() int { return min(m.mainWidth(), 64, max(30, m.mainWidth()-16)) }
