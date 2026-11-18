@@ -2,11 +2,11 @@ import type { JSX } from "@solidjs/web"
 import { createRootRoute, HeadContent, Scripts } from "@tanstack/solid-router"
 import stylesheet from "../styles.css?url"
 
-const title = "vl — Terminal workbench with Vim keybindings"
-const description = "A VSCode-like terminal workbench with Vim-like keybindings. Browse code, review diffs, and make quick edits."
+const title = "VL — VS Code-like Terminal Workbench with Vim-like Keybindings"
+const description = "A VS Code-like terminal workbench with Vim-like keybindings. Browse code, review diffs, and make quick edits."
 const siteUrl = "https://vl.foursmith.com/"
 const imageUrl = new URL("og.png", siteUrl).href
-const imageAlt = "Blue ANSI VL wordmark in the vl terminal workbench."
+const imageAlt = "Blue ANSI VL wordmark in the terminal workbench."
 
 export const Route = createRootRoute({
   head: () => ({
@@ -17,7 +17,7 @@ export const Route = createRootRoute({
       { title },
       { name: "description", content: description },
       { property: "og:type", content: "website" },
-      { property: "og:site_name", content: "vl" },
+      { property: "og:site_name", content: "VL" },
       { property: "og:url", content: siteUrl },
       { property: "og:title", content: title },
       { property: "og:description", content: description },
@@ -40,7 +40,7 @@ export const Route = createRootRoute({
     scripts: [
       {
         type: "application/ld+json",
-        children: JSON.stringify({ "@context": "https://schema.org", "@type": "WebSite", name: "vl", url: siteUrl }),
+        children: JSON.stringify({ "@context": "https://schema.org", "@type": "WebSite", name: "VL", url: siteUrl }),
       },
     ],
   }),

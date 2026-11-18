@@ -149,7 +149,7 @@ export function AnsiTerminal(props: { children: JSX.Element }) {
   }
 
   return (
-    <div class="@container overflow-hidden rounded-md border border-line bg-inset font-mono">
+    <div class="@container overflow-hidden bg-inset font-mono">
       <div class="flex min-h-10 items-center gap-2.5 border-b border-line bg-panel ps-4 pe-1 text-xs text-muted">
         <span class="text-accent" aria-hidden="true">&gt;_</span>
         <span>vl .</span>

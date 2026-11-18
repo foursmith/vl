@@ -46,7 +46,11 @@
 }
 
 @utility landing-section {
-  @apply page-gutter scroll-mt-14 border-t border-line py-[clamp(2rem,4.5vw,4rem)];
+  @apply scroll-mt-14 border-t border-line;
+}
+
+@utility section-heading {
+  @apply page-gutter py-[clamp(1.25rem,3vw,2rem)];
 }
 
 @utility section-title {

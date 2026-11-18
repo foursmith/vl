@@ -1,4 +1,4 @@
-import { createSignal, onSettled } from "solid-js"
+import { createSignal, onCleanup, onSettled } from "solid-js"
 
 const platforms = [
   { id: "macos", name: "macOS" },
@@ -14,15 +14,23 @@ const shellInstall = `curl -fsSL ${releaseAssets}/install.sh | sh`
 const powershellInstall = `Invoke-RestMethod -UseBasicParsing ${releaseAssets}/install.ps1 | Invoke-Expression`
 
 function Command(props: { text: string; label: string }) {
-  const [status, setStatus] = createSignal("")
+  const [status, setStatus] = createSignal<"idle" | "copied" | "failed">("idle")
+  let resetFeedback: ReturnType<typeof setTimeout> | undefined
+  const feedback = () => status() === "copied"
+    ? "Copied"
+    : status() === "failed" ? "Select the command to copy it manually." : ""
+
+  onCleanup(() => clearTimeout(resetFeedback))
 
   async function copy() {
     try {
       await navigator.clipboard.writeText(props.text)
-      setStatus("Copied")
+      setStatus("copied")
     } catch {
-      setStatus("Select the command to copy it manually.")
+      setStatus("failed")
     }
+    clearTimeout(resetFeedback)
+    resetFeedback = setTimeout(() => setStatus("idle"), 2000)
   }
 
   return (
@@ -33,13 +41,19 @@ function Command(props: { text: string; label: string }) {
           type="button"
           class="grid size-8 cursor-pointer place-items-center rounded-sm text-muted hover:bg-line hover:text-accent focus-visible:text-accent"
           aria-label={`Copy ${props.label}`}
-          title={`Copy ${props.label}`}
+          title={feedback() || `Copy ${props.label}`}
           onClick={copy}
         >
-          <span class="copy-icon" aria-hidden="true" />
+          {status() === "idle" ? (
+            <span class="copy-icon" aria-hidden="true" />
+          ) : status() === "copied" ? (
+            <span class="h-2 w-3.5 -translate-y-0.5 -rotate-45 border-b-2 border-s-2 text-accent" aria-hidden="true" />
+          ) : (
+            <span class="font-mono font-semibold text-accent" aria-hidden="true">!</span>
+          )}
         </button>
       </div>
-      <p class="text-sm text-accent" role="status">{status()}</p>
+      <p class="sr-only" role="status">{feedback()}</p>
     </div>
   )
 }
@@ -85,10 +99,12 @@ export function InstallSection() {
 
   return (
     <section id="install" class="landing-section" aria-labelledby="install-title">
-      <h2 id="install-title" class="section-title">Install vl</h2>
-      <p class="mt-2 text-muted">Choose your platform. Release binaries are available for x86-64 and ARM64.</p>
+      <div class="section-heading">
+        <h2 id="install-title" class="section-title">Install vl</h2>
+        <p class="mt-2 text-muted">Choose your platform. Release binaries are available for x86-64 and ARM64.</p>
+      </div>
 
-      <div class="mt-6 overflow-hidden rounded-md border border-line bg-panel">
+      <div class="border-t border-line bg-panel">
         <div class="flex border-b border-line bg-inset font-mono text-xs" role="tablist" aria-label="Installation platform">
           {platforms.map(({ id, name }, index) => (
             <button
@@ -106,7 +122,7 @@ export function InstallSection() {
           ))}
         </div>
 
-        <div class="p-4 sm:p-6">
+        <div class="page-gutter py-4 sm:py-6">
           <div id="install-panel-macos" role="tabpanel" aria-labelledby="install-tab-macos" hidden={platform() !== "macos"}>
             <div class="grid gap-7 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
               <div class="min-w-0">

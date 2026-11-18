@@ -51,19 +51,19 @@ function Landing() {
       </header>
 
       <main>
-        <section class="page-gutter py-[clamp(1.75rem,5vw,4.5rem)]" aria-labelledby="hero-title">
+        <section aria-labelledby="hero-title">
           <AnsiTerminal>
             <p class="max-w-[27rem] font-sans text-[clamp(1rem,1.5vw,1.125rem)] leading-relaxed text-pretty text-muted">
               Browse code, review diffs, and make quick edits.
             </p>
-            <a class="inline-flex min-h-10 items-center justify-self-start rounded-md bg-ink px-4 font-sans text-sm font-semibold text-canvas hover:bg-white/85 hover:text-canvas lg:justify-self-end" href="#install">
+            <a class="inline-flex min-h-10 items-center justify-self-start border border-accent/35 bg-accent/8 px-4 text-sm font-medium text-accent hover:border-accent hover:bg-accent/15 lg:justify-self-end" href="#install">
               Install
             </a>
           </AnsiTerminal>
         </section>
 
         <section id="features" class="landing-section" aria-labelledby="features-title">
-          <div class="mb-6 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+          <div class="section-heading flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
             <h2 id="features-title" class="section-title">
               Features
             </h2>
@@ -72,7 +72,7 @@ function Landing() {
             </p>
           </div>
 
-          <div class="grid gap-px overflow-hidden rounded-md border border-line bg-line sm:grid-cols-2">
+          <div class="grid gap-px border-t border-line bg-line sm:grid-cols-2">
             {workbenchScreens.map(({ label, position }) => (
               <figure class="min-w-0 bg-panel p-2 sm:p-3">
                 <div class="relative aspect-[1600/919] overflow-hidden">
@@ -91,9 +91,9 @@ function Landing() {
             ))}
           </div>
 
-          <div class="mt-8 grid gap-px border-y border-line bg-line sm:grid-cols-3">
+          <div class="grid gap-px border-t border-line bg-line sm:grid-cols-3">
             {modes.map((mode) => (
-              <article class="bg-canvas p-5 sm:p-6">
+              <article class="page-gutter bg-canvas py-5 sm:py-6">
                 <code class="wrap-anywhere text-xs text-accent">{mode.command}</code>
                 <h3 class="mt-2.5 text-base font-semibold">{mode.title}</h3>
                 <p class="mt-1.5 leading-relaxed text-pretty text-muted">{mode.description}</p>
@@ -101,8 +101,8 @@ function Landing() {
             ))}
           </div>
 
-          <div class="mt-9 grid gap-7 sm:grid-cols-2 sm:gap-0">
-            <section aria-labelledby="omitted-vscode-title">
+          <div class="grid border-t border-line sm:grid-cols-2">
+            <section class="page-gutter py-6" aria-labelledby="omitted-vscode-title">
               <h3 id="omitted-vscode-title" class="text-lg font-semibold">Omitted VS Code features</h3>
               <ul class="mt-3 list-disc space-y-1.5 ps-5 leading-relaxed text-muted marker:text-accent">
                 <li>
@@ -119,7 +119,7 @@ function Landing() {
                 <li>Extension runtime and marketplace</li>
               </ul>
             </section>
-            <section class="border-t border-line pt-6 sm:border-s sm:border-t-0 sm:ps-8 sm:pt-0" aria-labelledby="omitted-vim-title">
+            <section class="page-gutter border-t border-line py-6 sm:border-s sm:border-t-0" aria-labelledby="omitted-vim-title">
               <h3 id="omitted-vim-title" class="text-lg font-semibold">Omitted Vim features</h3>
               <ul class="mt-3 list-disc space-y-1.5 ps-5 leading-relaxed text-muted marker:text-accent">
                 <li>Visual block mode</li>
