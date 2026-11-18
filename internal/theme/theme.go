@@ -13,7 +13,6 @@ type Palette struct {
 	NavigationForeground, NavigationInactiveForeground                                 string
 	TabBarBackground, TabActiveForeground, TabBorder                                   string
 	MenuBackground, MenuForeground, MenuSelection, MenuSelectionForeground, MenuBorder string
-	OutputBackground, OutputForeground                                                 string
 
 	FindMatch                    string
 	FindMatchForeground          string

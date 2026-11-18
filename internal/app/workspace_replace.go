@@ -110,7 +110,7 @@ func (m *Model) replaceSearch(all bool) tea.Cmd {
 				path = e.doc.Path
 			}
 			lastError = searchText("Could not replace in %s: %s", path, err.Error())
-			m.log(lastError)
+			m.notice = lastError
 			failedFiles++
 			continue
 		}

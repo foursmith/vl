@@ -151,7 +151,7 @@ func (m *Model) newEntry(directory bool) tea.Cmd {
 
 func (m *Model) createEntry(path string, directory bool) tea.Cmd {
 	if err := files.Create(m.repo.Root, path, directory); err != nil {
-		m.log(m.tr(err.Error()))
+		m.notice = m.tr(err.Error())
 		return nil
 	}
 	for parent := filepath.ToSlash(filepath.Dir(path)); parent != "." && parent != "/"; parent = filepath.ToSlash(filepath.Dir(parent)) {

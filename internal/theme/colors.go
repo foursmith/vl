@@ -155,8 +155,6 @@ func (t *Theme) makePalette() Palette {
 	p.MenuSelectionForeground = t.colorOr("menu.selectionForeground", p.MenuForeground)
 	p.MenuBorder = get("menu.border", p.MenuBackground)
 	p.MenuBorder = distinguish(p.MenuBorder, p.MenuBackground, Composite(p.MenuForeground, p.MenuBackground), 1.6)
-	p.OutputBackground = get("panel.background", p.Background)
-	p.OutputForeground = t.Color("foreground")
 	return p
 }
 

@@ -99,7 +99,7 @@ resolves the registration against the same theme. Null stays undefined, rather
 than becoming an editor foreground or another theme's color.
 
 The terminal adapter then maps component roles: sidebar lists, input boxes,
-Quick Input, menus, tab/group headers, status bar, output panel, Git decorations,
+Quick Input, menus, tab/group headers, status bar, Git decorations,
 and editor/diff surfaces. Text colors retain RGBA until actual painting. This
 matters when the same text appears on a selection, a token background, or a diff
 line. Inactive tab/placeholder/description defaults follow overridden source

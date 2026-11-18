@@ -2,9 +2,7 @@ package app
 
 import (
 	"context"
-	"fmt"
 	"image/color"
-	"strings"
 	"testing"
 
 	"charm.land/lipgloss/v2"
@@ -203,21 +201,5 @@ func TestEditorRunsKeepSyntaxSelectionCursorAndFocus(t *testing.T) {
 		if cell.Content == "a" && sameColor(cell.Style.Bg, lipgloss.Color(theme.Builtin("dark_modern").Palette().EditorSelection)) {
 			t.Fatal("cache kept a cleared selection")
 		}
-	}
-}
-
-func TestLargeOutputKeepsOnlyRecentLines(t *testing.T) {
-	m := New(context.Background(), &gitservice.Repository{Root: "/tmp/repo"}, false)
-	var text strings.Builder
-	for i := 0; i < 1000; i++ {
-		fmt.Fprintf(&text, "line %d\n", i)
-	}
-	m.addOutput(text.String())
-	if len(m.output) != 200 || m.output[0] != "line 800" || m.output[199] != "line 999" {
-		t.Fatal("output retained the wrong tail")
-	}
-	m.log("latest")
-	if len(m.output) != 200 || !strings.Contains(m.output[199], "latest") {
-		t.Fatal("output grew beyond its display history limit")
 	}
 }

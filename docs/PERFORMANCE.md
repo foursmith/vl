@@ -132,12 +132,11 @@ GOGC=50 go test ./internal/app -run '^$' -bench '^BenchmarkEditorEditHighlight$'
 - File-tree status projection uses path indexes. Folded change groups retain
   counts without constructing their hidden trees. Plain-text language detection
   is shared by the breadcrumb and status bar instead of rematching every frame.
-- Output is bounded to 200 logical lines detached from large command buffers.
-  Removed undo/redo entries are cleared so their backing arrays release text.
+- Removed undo/redo entries are cleared so their backing arrays release text.
 
 Tests cover scroll bounds, selection/focus, refresh position, Unicode byte/rune
 coordinates, bounded render and undo history, cancellation, stale syntax/diff
-results, diff search/hunk mapping, remote URL rewrites, and output retention. Rex smoke acceptance used a 5,001-line
+results, diff search/hunk mapping, and remote URL rewrites. Rex smoke acceptance used a 5,001-line
 Go file and a 10,000-line / 100-hunk diff: 40 characters inserted and undone
 returned to the clean state, and 40 successive hunk jumps reached the selected
 hunk while preserving the open editor tab.
@@ -158,7 +157,7 @@ with filesystem-dependent latency.
 ```sh
 go test -p 1 ./internal/app ./internal/editor ./internal/git ./internal/highlight \
   -run '^$' \
-  -bench 'Benchmark(ScrollFrame|ExplorerDecorations|DiffRender|HunkNavigation|EditorTyping|CursorMove|InsertUndo|QuickOpenFilter|ChangeTree|LongLineFrame|OutputPanelFrame|Snapshot|SyntaxHighlight)$' \
+  -bench 'Benchmark(ScrollFrame|ExplorerDecorations|DiffRender|HunkNavigation|EditorTyping|CursorMove|InsertUndo|QuickOpenFilter|ChangeTree|LongLineFrame|Snapshot|SyntaxHighlight)$' \
   -benchtime=500ms -benchmem
 
 go test ./internal/editor -run '^$' -bench '^BenchmarkSave$' -benchtime=3x -benchmem

@@ -112,7 +112,7 @@ func (m *Model) applyHistoryFiles(msg historyFilesMsg) {
 	state.loading = false
 	state.cancel = nil
 	if msg.err != nil {
-		m.log(m.tr(msg.err.Error()))
+		m.notice = m.tr(msg.err.Error())
 		return
 	}
 	state.files, state.loaded = msg.files, true

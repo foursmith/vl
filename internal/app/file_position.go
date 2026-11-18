@@ -28,7 +28,7 @@ func (m *Model) rememberFilePosition(t *tab) error {
 	}
 	if m.filePositionStore != nil {
 		if err := m.filePositionStore.Save(t.doc.Path, position); err != nil {
-			m.log(m.tr("Save file position: %s", err.Error()))
+			m.notice = m.tr("Save file position: %s", err.Error())
 			return err
 		}
 	}
@@ -49,7 +49,7 @@ func (m *Model) restoreFilePosition(t *tab) {
 	}
 	saved, exists, err := m.filePositionStore.Load(t.doc.Path)
 	if err != nil {
-		m.log(m.tr("Load file position: %s", err.Error()))
+		m.notice = m.tr("Load file position: %s", err.Error())
 		return
 	}
 	if exists {

@@ -95,13 +95,6 @@ func underlineRow(rendered, color string, startColumn int) string {
 	return out.String()
 }
 
-func (m *Model) outputHeight() int {
-	if m.outputVisible && m.height >= 18 {
-		return 7
-	}
-	return 0
-}
-
 const tabRow = 0
 const editorContentRow = tabRow + 2
 
@@ -112,7 +105,7 @@ func (m *Model) contentRow() int {
 	return editorContentRow
 }
 
-func (m *Model) bodyHeight() int    { return max(1, m.height-1-m.outputHeight()) }
+func (m *Model) bodyHeight() int    { return max(1, m.height-1) }
 func (m *Model) contentHeight() int { return max(1, m.bodyHeight()-m.contentRow()) }
 
 func (m *Model) resize() {
@@ -214,18 +207,6 @@ func (m *Model) View() tea.View {
 			}
 		}
 		lines = append(lines, line)
-	}
-	if h := m.outputHeight(); h > 0 {
-		lines = append(lines, row(m.tr("  OUTPUT   ·   Git"), m.width, m.colors.OutputForeground, m.colors.OutputBackground))
-		output := m.output
-		start := max(0, len(output)-(h-1))
-		for i := 0; i < h-1; i++ {
-			text := ""
-			if start+i < len(output) {
-				text = "  " + safe(output[start+i])
-			}
-			lines = append(lines, row(text, m.width, m.colors.OutputForeground, m.colors.OutputBackground))
-		}
 	}
 	lines = append(lines, m.statusLine())
 	if m.modal != "" {

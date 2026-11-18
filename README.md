@@ -108,7 +108,7 @@ URLs and clamps scroll offsets beyond the end of a file.
   Normal mode after typing in Insert mode.
 - **Images:** read-only PNG, JPEG, GIF (first frame), WebP and SVG previews, with zoom and pan.
 - **Workspace UI:** sticky code/folder context, resizable left/right sidebar,
-  output panel, English/简体中文, and built-in and VS Code color themes.
+  English/简体中文, and built-in and VS Code color themes.
 
 File and Git metadata changes refresh automatically. Clean files reload;
 unsaved edits are retained and external modifications are reported.

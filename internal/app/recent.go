@@ -58,7 +58,7 @@ func (m *Model) openRepository(path string) tea.Cmd {
 func (m *Model) finishOpenRepository(msg repositoryOpenedMsg) tea.Cmd {
 	m.openingRepository = false
 	if msg.err != nil {
-		m.log(m.tr("Failed to open folder: %s", m.tr(msg.err.Error())))
+		m.notice = m.tr("Failed to open folder: %s", m.tr(msg.err.Error()))
 		return nil
 	}
 	// Editing or a Git operation may have started while discovery was running.

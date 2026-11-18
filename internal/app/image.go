@@ -108,7 +108,7 @@ func (m *Model) finishImageReload(msg imageReloadMsg) {
 			notice := m.tr("Image unavailable on disk: %s", m.tr(msg.err.Error()))
 			if t.diskNotice != notice {
 				t.diskNotice = notice
-				m.log(notice)
+				m.notice = notice
 			}
 			return
 		}

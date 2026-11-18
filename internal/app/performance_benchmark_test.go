@@ -119,15 +119,3 @@ func BenchmarkLongLineFrame(b *testing.B) {
 		m.View()
 	}
 }
-
-func BenchmarkOutputPanelFrame(b *testing.B) {
-	m := New(context.Background(), &gitservice.Repository{Root: b.TempDir()}, false)
-	m.outputVisible = true
-	m.resize()
-	m.Update(operationMsg{title: "Bench", output: strings.Repeat("progress line\n", 50000)})
-	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		m.View()
-	}
-}

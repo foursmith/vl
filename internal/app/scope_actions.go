@@ -123,7 +123,7 @@ func (m *Model) runScopeAction(entry item, id string) tea.Cmd {
 					return "", fmt.Errorf(i18n.Text(language, "Completed %d/%d, %s: %w"), i, len(scope), c.Path, err)
 				}
 			}
-			return i18n.Text(language, "Processed %d files", len(scope)), nil
+			return "", nil
 		})
 	}
 	if id != "discard" {

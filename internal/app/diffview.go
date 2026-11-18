@@ -221,7 +221,7 @@ func (m *Model) finishDiff(msg diffMsg) tea.Cmd {
 		d.read = nil
 	}
 	if msg.err != nil {
-		m.log(m.tr(msg.err.Error()))
+		m.notice = m.tr(msg.err.Error())
 		return nil
 	}
 	if msg.prVersion != "" {

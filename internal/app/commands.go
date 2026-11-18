@@ -60,7 +60,6 @@ func (m *Model) actions() []action {
 		{"view.sidebarLeft", m.tr("View: Move Sidebar Left"), "", "", func() tea.Cmd { m.SetSidebarLayout(m.sidebarWidth, false); return nil }},
 		{"view.sidebarRight", m.tr("View: Move Sidebar Right"), "", "", func() tea.Cmd { m.SetSidebarLayout(m.sidebarWidth, true); return nil }},
 		{"view.sidebarResetWidth", m.tr("View: Reset Sidebar Width"), "", "", func() tea.Cmd { m.SetSidebarLayout(0, m.sidebarRight); return nil }},
-		{"view.output", m.tr("View: Toggle Output"), workbenchKeys.Output.Help().Key, "", func() tea.Cmd { m.outputVisible = !m.outputVisible; m.resize(); return nil }},
 		{"git.refresh", m.tr("Git: Refresh"), workbenchKeys.Refresh.Help().Key, "", m.refresh},
 		{"git.stage", m.tr("Git: Stage Changes"), "s", fileReason, func() tea.Cmd { return m.stageSelected(false) }},
 		{"git.unstage", m.tr("Git: Unstage Changes"), "u", fileReason, func() tea.Cmd { return m.stageSelected(true) }},
@@ -378,7 +377,10 @@ func (m *Model) startOperation(title string, run func() (string, error)) tea.Cmd
 			d.diffLoading = false
 		}
 	}
-	return func() tea.Msg { output, err := run(); return operationMsg{title, output, err} }
+	return func() tea.Msg {
+		_, err := run()
+		return operationMsg{title: title, err: err}
+	}
 }
 
 func (m *Model) gitOperation(title string, args ...string) tea.Cmd {

@@ -103,8 +103,8 @@ type diffMsg struct {
 	images    *diffImages
 }
 type operationMsg struct {
-	title, output string
-	err           error
+	title string
+	err   error
 }
 type tickMsg time.Time
 type clipboardMsg struct {
@@ -193,8 +193,6 @@ type Model struct {
 	languagePath            string
 	languageInfo            highlight.LanguageInfo
 	notice                  string
-	output                  []string
-	outputVisible           bool
 	contextMenu             *contextMenu
 	modal, modalTitle       string
 	input                   textinput.Model
@@ -611,7 +609,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 				m.modal = ""
 				m.input.Blur()
 			}
-			m.log(m.tr("Failed to update workspace list: %s", m.tr(msg.err.Error())))
+			m.notice = m.tr("Failed to update workspace list: %s", m.tr(msg.err.Error()))
 		} else {
 			m.workspaces = msg.folders
 			if m.modal == "recent" {
@@ -622,7 +620,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		return m, m.finishOpenRepository(msg)
 	case watchReadyMsg:
 		if msg.err != nil {
-			m.log(m.tr("File watcher unavailable: %s", m.tr(msg.err.Error())))
+			m.notice = m.tr("File watcher unavailable: %s", m.tr(msg.err.Error()))
 			return m, nil
 		}
 		m.watcher = msg.watcher
@@ -694,7 +692,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		m.hoverX, m.hoverY = -1, -1
 	case browserMsg:
 		if msg.err != nil {
-			m.log(m.tr("Failed to open browser: %s", m.tr(msg.err.Error())))
+			m.notice = m.tr("Failed to open browser: %s", m.tr(msg.err.Error()))
 		} else {
 			m.notice = m.tr("Opened %s", msg.target)
 		}
@@ -704,7 +702,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}
 		if msg.err != nil {
 			m.revealFile = ""
-			m.log(m.tr(msg.err.Error()))
+			m.notice = m.tr(msg.err.Error())
 			return m, nil
 		}
 		m.treeEntries = msg.entries
@@ -740,7 +738,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}
 		m.loading = false
 		if msg.err != nil {
-			m.log(m.tr(msg.err.Error()))
+			m.notice = m.tr(msg.err.Error())
 			return m, nil
 		}
 		wasNoRepository := m.snapshot.NoRepository
@@ -771,12 +769,9 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 	case operationMsg:
 		m.busy = false
 		if msg.err != nil {
-			m.log(m.tr(msg.err.Error()))
+			m.notice = m.tr(msg.err.Error())
 		} else {
-			m.log(m.tr("%s completed", m.tr(msg.title)))
-			if strings.TrimSpace(msg.output) != "" {
-				m.addOutput(msg.output)
-			}
+			m.notice = m.tr("%s completed", m.tr(msg.title))
 		}
 		if msg.title == "Commit" && msg.err == nil {
 			delete(m.commitDrafts, m.commitRepository)
@@ -787,7 +782,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		return m, m.refresh()
 	case clipboardMsg:
 		if msg.err != nil {
-			m.log(m.tr(msg.err.Error()))
+			m.notice = m.tr(msg.err.Error())
 		} else if msg.doc != nil && m.document() == msg.doc {
 			if msg.cut {
 				if msg.doc.SelectedText() == msg.text {
@@ -935,12 +930,12 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		m.navigateFileFind(-1)
 		return nil
 	}
-	if m.editorOnly && key.Matches(msg, workbenchKeys.Recent, workbenchKeys.Search, workbenchKeys.Replace, workbenchKeys.Explorer, workbenchKeys.Changes, workbenchKeys.History, workbenchKeys.PullRequests, workbenchKeys.Sidebar, workbenchKeys.Focus, workbenchKeys.Output, workbenchKeys.DiffLayout) {
+	if m.editorOnly && key.Matches(msg, workbenchKeys.Recent, workbenchKeys.Search, workbenchKeys.Replace, workbenchKeys.Explorer, workbenchKeys.Changes, workbenchKeys.History, workbenchKeys.PullRequests, workbenchKeys.Sidebar, workbenchKeys.Focus, workbenchKeys.DiffLayout) {
 		return nil
 	}
 	if m.sidebar && m.section == search {
 		switch k {
-		case "ctrl+q", "ctrl+p", "ctrl+h", "ctrl+shift+p", "f1", "ctrl+1", "ctrl+2", "ctrl+3", "ctrl+4", "ctrl+5", "ctrl+shift+f", "ctrl+shift+h", "ctrl+l", "f6", "ctrl+s", "ctrl+w", "alt+left", "alt+right", "ctrl+j":
+		case "ctrl+q", "ctrl+p", "ctrl+h", "ctrl+shift+p", "f1", "ctrl+1", "ctrl+2", "ctrl+3", "ctrl+4", "ctrl+5", "ctrl+shift+f", "ctrl+shift+h", "ctrl+l", "f6", "ctrl+s", "ctrl+w", "alt+left", "alt+right":
 		default:
 			return m.searchKey(msg)
 		}
@@ -1009,10 +1004,6 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 			m.sidebarVisible = true
 			m.resize()
 		}
-		return nil
-	case key.Matches(msg, workbenchKeys.Output):
-		m.outputVisible = !m.outputVisible
-		m.resize()
 		return nil
 	case key.Matches(msg, workbenchKeys.Refresh):
 		if m.section == pullRequests && !m.snapshot.NoRepository {
@@ -1169,7 +1160,7 @@ func (m *Model) saveEditor(closeAfter bool) tea.Cmd {
 		return nil
 	}
 	if err := d.Save(); err != nil {
-		m.log(m.tr(err.Error()))
+		m.notice = m.tr(err.Error())
 		return nil
 	}
 	m.notice = m.tr("Saved %s", filepath.Base(d.Path))
@@ -1188,7 +1179,7 @@ func (m *Model) reloadCleanTabs() {
 		if t.image != nil {
 			fresh, err := imagepreview.Open(t.image.Path)
 			if err != nil {
-				m.log(m.tr(err.Error()))
+				m.notice = m.tr(err.Error())
 			} else {
 				t.image.Image, t.image.rows = fresh, nil
 			}
@@ -1197,7 +1188,7 @@ func (m *Model) reloadCleanTabs() {
 			t.clearHighlight()
 			d, err := editor.Open(t.doc.Path)
 			if err != nil {
-				m.log(m.tr("Closed %s: %s", filepath.Base(t.doc.Path), m.tr(err.Error())))
+				m.notice = m.tr("Closed %s: %s", filepath.Base(t.doc.Path), m.tr(err.Error()))
 				continue
 			}
 			line, col := t.doc.Position()
@@ -1220,28 +1211,6 @@ func (m *Model) reloadCleanTabs() {
 		m.selectTab(m.activeTab)
 	}
 	m.ensureEditor()
-}
-
-func (m *Model) log(text string) {
-	m.notice = text
-	m.addOutput(time.Now().Format("15:04:05") + "  " + text)
-}
-
-// Bound stored output by displayed lines, and detach the retained tail from
-// large command buffers so scrolling never rescans an entire command log.
-func (m *Model) addOutput(text string) {
-	lines := strings.Split(strings.TrimSuffix(text, "\n"), "\n")
-	if len(lines) > 200 {
-		lines = lines[len(lines)-200:]
-	}
-	for _, line := range lines {
-		m.output = append(m.output, strings.Clone(line))
-	}
-	if len(m.output) > 200 {
-		drop := len(m.output) - 200
-		clear(m.output[:drop])
-		m.output = m.output[drop:]
-	}
 }
 
 func (m *Model) copy(cut bool) tea.Cmd {

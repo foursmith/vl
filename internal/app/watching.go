@@ -71,7 +71,7 @@ func (m *Model) syncWatch() {
 func (m *Model) handleWatch(batch watcher.Batch) tea.Cmd {
 	if batch.Err != nil {
 		m.watchDirty = true
-		m.log(m.tr("File watcher: %s", batch.Err.Error()))
+		m.notice = m.tr("File watcher: %s", batch.Err.Error())
 	}
 	for _, path := range batch.Paths {
 		metadata := false
@@ -137,7 +137,7 @@ func (m *Model) finishReload(msg fileReloadMsg) {
 			notice := m.tr("File unavailable on disk: %s: %s", filepath.Base(t.doc.Path), m.tr(msg.err.Error()))
 			if t.diskNotice != notice {
 				t.diskNotice = notice
-				m.log(notice)
+				m.notice = notice
 			}
 			return
 		}
@@ -151,7 +151,7 @@ func (m *Model) finishReload(msg fileReloadMsg) {
 			notice := m.tr("File changed on disk; keeping unsaved changes: %s", filepath.Base(t.doc.Path))
 			if t.diskNotice != notice {
 				t.diskNotice = notice
-				m.log(notice)
+				m.notice = notice
 			}
 			return
 		}

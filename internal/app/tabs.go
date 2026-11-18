@@ -49,7 +49,7 @@ func (m *Model) openDocument(path string, preview bool) bool {
 	if imagepreview.Supported(abs) {
 		im, err := imagepreview.Open(abs)
 		if err != nil {
-			m.log(m.tr(err.Error()))
+			m.notice = m.tr(err.Error())
 			return false
 		}
 		show(m.insertTab(tab{image: newImageState(im, m.allocateImageID()), preview: preview}))
@@ -57,7 +57,7 @@ func (m *Model) openDocument(path string, preview bool) bool {
 	}
 	d, err := editor.Open(abs)
 	if err != nil {
-		m.log(m.tr(err.Error()))
+		m.notice = m.tr(err.Error())
 		return false
 	}
 	show(m.insertTab(tab{doc: d, preview: preview}))
@@ -241,7 +241,7 @@ func (m *Model) chooseClose(choice string) tea.Cmd {
 			return nil
 		}
 		if err := d.Save(); err != nil {
-			m.log(m.tr(err.Error()))
+			m.notice = m.tr(err.Error())
 			return nil
 		}
 	}

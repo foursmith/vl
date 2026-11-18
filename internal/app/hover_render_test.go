@@ -121,7 +121,7 @@ func TestHoverActionFramesMatchFullRender(t *testing.T) {
 		}
 	}
 	// A non-mouse result must discard the entire cache before the next hover.
-	m.Update(operationMsg{title: "Test", output: "done"})
+	m.Update(operationMsg{title: "Test"})
 	if m.hoverRender.main != nil {
 		t.Fatal("operation result retained hover cache")
 	}

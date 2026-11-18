@@ -9,7 +9,7 @@ func binding(display, description string, keys ...string) key.Binding {
 // Bindings also supply the shortcut labels shown in commands and menus.
 var workbenchKeys = struct {
 	Quit, Copy, Files, Recent, Commands, Position                                      key.Binding
-	Explorer, Search, Replace, Changes, History, Sidebar, Focus, Output, Refresh       key.Binding
+	Explorer, Search, Replace, Changes, History, Sidebar, Focus, Refresh               key.Binding
 	PullRequests                                                                       key.Binding
 	DiffLayout, Save, Close, NextTab, PreviousTab, Find, FindNext, Escape, ContextMenu key.Binding
 }{
@@ -27,17 +27,17 @@ var workbenchKeys = struct {
 	PullRequests: binding("Ctrl+5", "Pull Requests", "ctrl+5"),
 	Sidebar:      binding("Ctrl+L", "Toggle sidebar", "ctrl+l"),
 	Focus:        binding("F6", "Switch focus", "f6"),
-	Output:       binding("Ctrl+J", "Toggle output", "ctrl+j"),
-	Refresh:      binding("F5", "Refresh", "f5"),
-	DiffLayout:   binding("Ctrl+D", "Toggle Inline View", "ctrl+d"),
-	Save:         binding("Ctrl+S", "Save", "ctrl+s"),
-	Close:        binding("Ctrl+W", "Close Editor", "ctrl+w"),
-	NextTab:      binding("Alt+Right", "Next tab", "alt+right"),
-	PreviousTab:  binding("Alt+Left", "Previous tab", "alt+left"),
-	Find:         binding("Ctrl+F", "Find", "ctrl+f"),
-	FindNext:     binding("F3", "Next match", "f3"),
-	Escape:       binding("Esc", "Dismiss", "esc"),
-	ContextMenu:  binding("Shift+F10", "Context menu", "shift+f10"),
+
+	Refresh:     binding("F5", "Refresh", "f5"),
+	DiffLayout:  binding("Ctrl+D", "Toggle Inline View", "ctrl+d"),
+	Save:        binding("Ctrl+S", "Save", "ctrl+s"),
+	Close:       binding("Ctrl+W", "Close Editor", "ctrl+w"),
+	NextTab:     binding("Alt+Right", "Next tab", "alt+right"),
+	PreviousTab: binding("Alt+Left", "Previous tab", "alt+left"),
+	Find:        binding("Ctrl+F", "Find", "ctrl+f"),
+	FindNext:    binding("F3", "Next match", "f3"),
+	Escape:      binding("Esc", "Dismiss", "esc"),
+	ContextMenu: binding("Shift+F10", "Context menu", "shift+f10"),
 }
 
 var pickerKeys = struct{ Up, Down, PageUp, PageDown, First, Last, Accept key.Binding }{

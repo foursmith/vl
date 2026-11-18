@@ -163,7 +163,7 @@ func (m *Model) applyPullRequests(msg pullRequestsMsg) {
 		if msg.after == "" {
 			m.pullRequestsError = msg.err
 			if inPullRequests {
-				m.log(m.tr("Could not load pull requests") + " · " + pullRequestErrorText(msg.err))
+				m.notice = m.tr("Could not load pull requests") + " · " + pullRequestErrorText(msg.err)
 			}
 		} else {
 			m.pullRequestsPageError = msg.err
@@ -470,7 +470,7 @@ func (m *Model) applyPullRequestDiff(msg pullRequestDiffMsg) tea.Cmd {
 	active := review == m.pullRequestReview && inPullRequests
 	if msg.err != nil {
 		if active {
-			m.log(m.tr("Could not load PR #%d diff: %s", review.pr.Number, pullRequestErrorText(msg.err)))
+			m.notice = m.tr("Could not load PR #%d diff: %s", review.pr.Number, pullRequestErrorText(msg.err))
 		}
 		return nil
 	}
