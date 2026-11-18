@@ -148,6 +148,39 @@ func TestWorkspaceSearchesNestedRepositoriesAndTheirIgnoreRules(t *testing.T) {
 		}
 	}
 }
+
+func TestWorkspaceSearchesGitlinkAsFolderWithoutUsableMetadata(t *testing.T) {
+	root, _ := filepath.EvalSymlinks(t.TempDir())
+	initSearchRepository(t, root)
+	child := filepath.Join(root, "module")
+	initSearchRepository(t, child)
+	writeSearchFile(t, filepath.Join(child, "visible.txt"), "needle")
+	searchGit(t, child, "add", "visible.txt")
+	searchGit(t, child, "-c", "user.name=Test", "-c", "user.email=test@example.test", "-c", "commit.gpgsign=false", "commit", "-m", "fixture")
+	sha := searchGit(t, child, "rev-parse", "HEAD")
+	searchGit(t, root, "update-index", "--add", "--cacheinfo", "160000,"+sha+",module")
+	if err := os.Rename(filepath.Join(child, ".git"), filepath.Join(t.TempDir(), "git")); err != nil {
+		t.Fatal(err)
+	}
+	writeSearchFile(t, filepath.Join(child, ".gitignore"), "ignored.txt\n")
+	writeSearchFile(t, filepath.Join(child, "ignored.txt"), "needle")
+	for _, brokenMarker := range []bool{false, true} {
+		if brokenMarker {
+			writeSearchFile(t, filepath.Join(child, ".git"), "gitdir: missing\n")
+		}
+		for _, includeIgnored := range []bool{false, true} {
+			want := 1
+			if includeIgnored {
+				want = 2
+			}
+			got, err := Run(context.Background(), root, Options{Query: "needle", IncludeIgnored: includeIgnored}, nil)
+			if err != nil || got.Count != want {
+				t.Fatalf("broken marker=%v, include ignored=%v: got %d matches, want %d: %v", brokenMarker, includeIgnored, got.Count, want, err)
+			}
+		}
+	}
+}
+
 func TestWorkspaceDoesNotStopAtFormerByteOrFileSizeLimits(t *testing.T) {
 	root := t.TempDir()
 	root, _ = filepath.EvalSymlinks(root)

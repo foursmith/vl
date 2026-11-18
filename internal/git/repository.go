@@ -188,7 +188,8 @@ func (r *Repository) Snapshot(ctx context.Context) (Snapshot, error) {
 		}
 	})
 	tasks.Go(func() {
-		s.Files, filesErr = r.readFiles(ctx)
+		listing, err := r.ListWorkspaceFiles(ctx, false)
+		s.Files, filesErr = listing.Paths, err
 		if filesErr != nil {
 			cancel()
 		}
@@ -215,22 +216,6 @@ func (r *Repository) readMetadata(ctx context.Context, s *Snapshot) error {
 		return err
 	}
 	return nil
-}
-
-func (r *Repository) readFiles(ctx context.Context) ([]string, error) {
-	raw, err := r.Run(ctx, "ls-files", "-z", "--cached", "--others", "--exclude-standard")
-	if err != nil {
-		return nil, err
-	}
-	var files []string
-	seen := map[string]bool{}
-	for _, path := range strings.Split(raw, "\x00") {
-		if path != "" && !seen[path] {
-			files = append(files, path)
-			seen[path] = true
-		}
-	}
-	return files, nil
 }
 
 func (r *Repository) Diff(ctx context.Context, c Change, staged bool) (string, error) {

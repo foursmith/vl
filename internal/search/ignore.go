@@ -14,25 +14,31 @@ type ignoreRule struct {
 	negate, directory bool
 }
 type ignoreFiles struct {
-	root     string
-	ordinary bool
-	cache    map[string][]ignoreRule
+	root    string
+	folders map[string]bool
+	cache   map[string]directoryIgnores
 }
 
-func (f *ignoreFiles) rules(dir string) ([]ignoreRule, error) {
-	if rules, ok := f.cache[dir]; ok {
-		return rules, nil
+type directoryIgnores struct {
+	rules    []ignoreRule
+	ordinary bool
+}
+
+func (f *ignoreFiles) rules(dir string) (directoryIgnores, error) {
+	if scope, ok := f.cache[dir]; ok {
+		return scope, nil
 	}
-	var rules []ignoreRule
+	scope := directoryIgnores{ordinary: f.folders[dir]}
 	if dir != "." {
 		parent, err := f.rules(filepath.Dir(dir))
 		if err != nil {
-			return nil, err
+			return directoryIgnores{}, err
 		}
-		rules = append(rules, parent...)
+		scope.rules = append(scope.rules, parent.rules...)
+		scope.ordinary = scope.ordinary || parent.ordinary
 	}
 	names := []string{".ignore"}
-	if f.ordinary {
+	if scope.ordinary {
 		names = []string{".gitignore", ".ignore"}
 	}
 	for _, name := range names {
@@ -41,7 +47,7 @@ func (f *ignoreFiles) rules(dir string) ([]ignoreRule, error) {
 			continue
 		}
 		if err != nil {
-			return nil, err
+			return directoryIgnores{}, err
 		}
 		for _, line := range strings.Split(string(data), "\n") {
 			line = strings.TrimRight(line, "\r ")
@@ -64,7 +70,7 @@ func (f *ignoreFiles) rules(dir string) ([]ignoreRule, error) {
 			}
 			body, err := globExpression(line)
 			if err != nil {
-				return nil, fmt.Errorf("%s: %w", filepath.Join(dir, name), err)
+				return directoryIgnores{}, fmt.Errorf("%s: %w", filepath.Join(dir, name), err)
 			}
 			prefix := "(?:^|.*/)"
 			if anchored {
@@ -72,20 +78,20 @@ func (f *ignoreFiles) rules(dir string) ([]ignoreRule, error) {
 			}
 			re, err := regexp.Compile(prefix + body + "(?:/.*)?$")
 			if err != nil {
-				return nil, err
+				return directoryIgnores{}, err
 			}
 			base := filepath.ToSlash(dir)
 			if base == "." {
 				base = ""
 			}
-			rules = append(rules, ignoreRule{base: base, pattern: re, negate: negate, directory: directory})
+			scope.rules = append(scope.rules, ignoreRule{base: base, pattern: re, negate: negate, directory: directory})
 		}
 	}
-	f.cache[dir] = rules
-	return rules, nil
+	f.cache[dir] = scope
+	return scope, nil
 }
 func (f *ignoreFiles) ignored(relative string) (bool, error) {
-	rules, err := f.rules(filepath.Dir(relative))
+	scope, err := f.rules(filepath.Dir(relative))
 	if err != nil {
 		return false, err
 	}
@@ -94,7 +100,7 @@ func (f *ignoreFiles) ignored(relative string) (bool, error) {
 	for i := range parts {
 		path := strings.Join(parts[:i+1], "/")
 		ignored := false
-		for _, rule := range rules {
+		for _, rule := range scope.rules {
 			local := path
 			if rule.base != "" {
 				prefix := rule.base + "/"

@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -66,6 +67,14 @@ func TestWorkspaceNestedFilesAndOwningRepositories(t *testing.T) {
 	write(t, child, "new file.txt", "new child file\n")
 	write(t, nested, "file.txt", "nested edit\n")
 	s := snapshot(t, root)
+	for _, path := range []string{"file.txt", "child space/file.txt", "child space/new file.txt", "child space/nested/file.txt"} {
+		if !slices.Contains(s.Files, path) {
+			t.Errorf("file picker listing missing %q: %v", path, s.Files)
+		}
+	}
+	if slices.Contains(s.Files, "child space") || slices.Contains(s.Files, "child space/nested") {
+		t.Errorf("file picker listing contains a directory: %v", s.Files)
+	}
 	summary := changeAt(t, s, "child space")
 	if !summary.Gitlink || !summary.GitlinkDirty || summary.Repository != "" {
 		t.Fatalf("parent summary: %+v", summary)

@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -14,7 +13,6 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/ourongxing/vl/internal/files"
 	gitservice "github.com/ourongxing/vl/internal/git"
 )
 
@@ -112,22 +110,53 @@ func Run(ctx context.Context, root string, o Options, buffers map[string]string)
 	if err := ctx.Err(); err != nil {
 		return result, err
 	}
-	root, err = filepath.EvalSymlinks(root)
+	root, err = filepath.Abs(root)
+	if err == nil {
+		root, err = filepath.EvalSymlinks(root)
+	}
 	if err != nil {
 		return result, fmt.Errorf("resolve search workspace: %w", err)
 	}
 	paths := map[string]bool{}
+	repo := &gitservice.Repository{Root: root}
+	fileIgnores := ignoreFiles{
+		root:    root,
+		folders: map[string]bool{".": !repo.HasRepository()},
+		cache:   map[string]directoryIgnores{},
+	}
 	var changed map[string]bool
 	if o.ChangedOnly {
 		changed = map[string]bool{}
 	}
 	if !o.OnlyOpen || o.ChangedOnly {
-		if err := listFiles(ctx, root, o.IncludeIgnored, paths, map[string]bool{}, changed); err != nil {
+		listing, err := repo.ListWorkspaceFiles(ctx, o.IncludeIgnored)
+		if err != nil {
 			return result, err
 		}
-	}
-	if o.OnlyOpen {
-		clear(paths)
+		for _, dir := range listing.OrdinaryFolders {
+			fileIgnores.folders[dir] = true
+		}
+		if !o.OnlyOpen {
+			for _, path := range listing.Paths {
+				paths[filepath.Join(root, path)] = true
+			}
+		}
+		for _, owner := range listing.Repositories {
+			if !o.ChangedOnly {
+				break
+			}
+			raw, err := owner.Run(ctx, "status", "--porcelain=v1", "-z", "--untracked-files=all")
+			if err != nil {
+				return result, err
+			}
+			entries, err := gitservice.ParseStatus(raw)
+			if err != nil {
+				return result, err
+			}
+			for _, entry := range entries {
+				changed[filepath.Join(owner.Root, entry.Path)] = true
+			}
+		}
 	}
 	// Buffers override disk contents without bypassing the selected ignore scope.
 	extra := map[string]string{}
@@ -144,10 +173,6 @@ func Run(ctx context.Context, root string, o Options, buffers map[string]string)
 			relative = append(relative, rel)
 		}
 		var err error
-		repo, openErr := gitservice.Open(ctx, root)
-		if openErr != nil {
-			return result, openErr
-		}
 		ignored, err = repo.Ignored(ctx, relative)
 		if err != nil {
 			return result, fmt.Errorf("check search buffer ignore rules: %w", err)
@@ -158,7 +183,6 @@ func Run(ctx context.Context, root string, o Options, buffers map[string]string)
 			paths[p] = true
 		}
 	}
-	fileIgnores := ignoreFiles{root: root, ordinary: !(&gitservice.Repository{Root: root}).HasRepository(), cache: map[string][]ignoreRule{}}
 	ordered := make([]string, 0, len(paths))
 	for p := range paths {
 		ordered = append(ordered, p)
@@ -234,76 +258,6 @@ func Run(ctx context.Context, root string, o Options, buffers map[string]string)
 	return result, nil
 }
 
-// Git reports initialized submodules and embedded repositories as directories.
-// List each repository separately so its own ignore rules and untracked files apply.
-func listFiles(ctx context.Context, root string, includeIgnored bool, paths, seen, changed map[string]bool) error {
-	if seen[root] {
-		return nil
-	}
-	seen[root] = true
-	repo, err := gitservice.Open(ctx, root)
-	if err != nil {
-		return err
-	}
-	if !repo.HasRepository() {
-		listed, err := files.List(ctx, root)
-		for _, path := range listed {
-			paths[filepath.Join(root, path)] = true
-		}
-		return err
-	}
-	if changed != nil {
-		raw, err := repo.Run(ctx, "status", "--porcelain=v1", "-z", "--untracked-files=all")
-		if err != nil {
-			return err
-		}
-		entries, err := gitservice.ParseStatus(raw)
-		if err != nil {
-			return err
-		}
-		for _, entry := range entries {
-			changed[filepath.Join(root, entry.Path)] = true
-		}
-	}
-	args := []string{"-C", root, "ls-files", "-z", "--cached", "--others"}
-	if !includeIgnored {
-		args = append(args, "--exclude-standard")
-	}
-	data, err := exec.CommandContext(ctx, "git", args...).Output()
-	if err != nil {
-		return fmt.Errorf("list search files in %s: %w", root, err)
-	}
-	for _, p := range strings.Split(string(data), "\x00") {
-		if p == "" || !filepath.IsLocal(p) || metadataPath(p) {
-			continue
-		}
-		path := filepath.Clean(filepath.Join(root, p))
-		info, err := os.Lstat(path)
-		if os.IsNotExist(err) {
-			continue
-		}
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
-			real, err := filepath.EvalSymlinks(path)
-			if err != nil {
-				return err
-			}
-			if real != path {
-				continue
-			}
-			if _, err := os.Lstat(filepath.Join(path, ".git")); err == nil {
-				if err := listFiles(ctx, path, includeIgnored, paths, seen, changed); err != nil {
-					return err
-				}
-			}
-		} else {
-			paths[path] = true
-		}
-	}
-	return ctx.Err()
-}
 func metadataPath(path string) bool {
 	for _, part := range strings.Split(filepath.ToSlash(path), "/") {
 		if part == ".git" {
