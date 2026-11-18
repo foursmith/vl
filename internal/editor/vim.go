@@ -150,6 +150,10 @@ func (v *Vim) Handle(d *Document, key, register string) (bool, string) {
 			v.record.selection = v.repeatSelection(d)
 		}
 	}
+	if key == "J" && v.VisualMode && d.Anchor >= 0 && !v.CommandPending() {
+		first, last := v.visualLineRange(d)
+		v.record.selection = &vimSelection{linewise: true, size: last - first + 1}
+	}
 	v.record.keys = append(v.record.keys, key)
 	handled, copied := v.handleKey(d, key)
 	if v.InsertMode {
@@ -268,6 +272,8 @@ func (v *Vim) handleNormal(d *Document, key string) (bool, string) {
 			op = "c"
 		}
 		copied = v.operate(d, op, d.Cursor, end, false)
+	case "J":
+		joinLines(d, row, row+max(2, n)-1)
 	case "u":
 		for range n {
 			d.Undo()

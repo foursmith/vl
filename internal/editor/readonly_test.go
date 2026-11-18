@@ -6,7 +6,7 @@ func TestReadOnlyVimRejectsMutationsAndSupportsYank(t *testing.T) {
 	source := "one two\nthree four\n"
 	for _, keys := range [][]string{
 		{"i", "X"}, {"a", "X"}, {"I"}, {"A"}, {"o"}, {"O"}, {"x"}, {"d", "d"}, {"c", "c"}, {"p"}, {"P"}, {"u"}, {"U"}, {"tab"}, {"`"}, {"."},
-		{"v", "l", "d"}, {"V", "j", "c"}, {"v", "S", "\""}, {"y", "s", "i", "w", "\""},
+		{"v", "l", "d"}, {"V", "j", "c"}, {"v", "S", "\""}, {"y", "s", "i", "w", "\""}, {"J"}, {"V", "j", "J"},
 	} {
 		d := &Document{ReadOnly: true, Text: source, Anchor: -1}
 		v := &Vim{}

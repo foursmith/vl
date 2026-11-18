@@ -62,6 +62,8 @@ func TestVimRepeatChanges(t *testing.T) {
 		{"change words", "one two three", []string{"c", "i", "w", "X", "esc", "w", "."}, "X X three"},
 		{"change quotes", `"one" "two"`, []string{"c", "i", "\"", "X", "esc", "L", "."}, `"X" "X"`},
 		{"open line", "a\nb", []string{"o", "X", "esc", "."}, "a\nX\nX\nb"},
+		{"join lines", "a\nb\nc\nd\n", []string{"J", "j", "."}, "a b\nc d\n"},
+		{"repeat visual join by line count", "a\nb\nc\na much longer line\nb\nc\n", []string{"v", "2", "j", "J", "j", "."}, "a b c\na much longer line b c\n"},
 		{"visual delete", "abcdef", []string{"v", "l", "d", "."}, "ef"},
 		{"visual change", "abcdef", []string{"v", "l", "c", "X", "esc", "l", "."}, "XXef"},
 		{"indent", "abc", []string{"tab", "."}, "\t\tabc"},

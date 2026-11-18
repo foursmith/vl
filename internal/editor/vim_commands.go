@@ -58,6 +58,39 @@ func (v *Vim) toggleCase(d *Document) {
 	v.VisualMode, v.VisualLine = false, false
 	v.clamp(d)
 }
+
+func joinLines(d *Document, first, last int) {
+	lines := d.Lines()
+	endRow := len(lines) - 1
+	// The empty row after a final newline isn't a line to join.
+	if endRow > 0 && lines[endRow] == "" {
+		endRow--
+	}
+	last = min(last, endRow)
+	if last <= first {
+		return
+	}
+
+	var joined strings.Builder
+	joined.WriteString(lines[first])
+	boundary := 0
+	for _, line := range lines[first+1 : last+1] {
+		line = strings.TrimLeft(line, " \t")
+		boundary = joined.Len()
+		if boundary > 0 && line != "" && line[0] != ')' {
+			tail := joined.String()[boundary-1]
+			if tail != ' ' && tail != '\t' {
+				joined.WriteByte(' ')
+			}
+		}
+		joined.WriteString(line)
+	}
+	start, end := d.byteOffsets[first], d.byteOffsets[last]+len(lines[last])
+	cursor := d.lineOffsets[first] + utf8.RuneCountInString(joined.String()[:boundary])
+	d.Edit(d.Text[:start] + joined.String() + d.Text[end:])
+	d.Cursor = cursor
+}
+
 func (v *Vim) indent(d *Document, right, keepVisual bool) {
 	cursorRow, cursorCol := d.Position()
 	anchorRow, anchorCol := cursorRow, cursorCol
@@ -184,7 +217,7 @@ func (v *Vim) readOnlyKey(key string) bool {
 	switch key {
 	case "i", "a", "o":
 		return v.VisualMode
-	case "I", "A", "O", "x", "D", "C", "d", "c", "p", "P", "u", "U", ".", "tab", "shift+tab", ">", "<", "`", "r", "s", "S":
+	case "I", "A", "O", "x", "D", "C", "d", "c", "p", "P", "u", "U", "J", ".", "tab", "shift+tab", ">", "<", "`", "r", "s", "S":
 		return false
 	}
 	return true

@@ -12,6 +12,12 @@ func (v *Vim) SyncVisual(d *Document) {
 	d.SelectVisual(v.visualAnchor, d.Cursor, v.VisualLine)
 }
 
+func (v *Vim) visualLineRange(d *Document) (first, last int) {
+	anchor, _ := d.positionAt(v.visualAnchor)
+	row, _ := d.Position()
+	return min(anchor, row), max(anchor, row)
+}
+
 func (v *Vim) handleVisual(d *Document, key string) (bool, string) {
 	if appendVimCount(&v.count, key) {
 		return true, ""
@@ -51,6 +57,13 @@ func (v *Vim) handleVisual(d *Document, key string) (bool, string) {
 	case "o":
 		d.Cursor, v.visualAnchor = v.visualAnchor, d.Cursor
 		v.SyncVisual(d)
+		return true, ""
+	case "J":
+		first, last := v.visualLineRange(d)
+		v.VisualMode, v.VisualLine = false, false
+		d.ClearSelection()
+		joinLines(d, first, max(first+1, last))
+		v.clamp(d)
 		return true, ""
 	case "y", "d", "x", "c":
 		start, end := d.Selection()

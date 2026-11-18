@@ -2,6 +2,38 @@ package editor
 
 import "testing"
 
+func TestVimJoinLines(t *testing.T) {
+	for _, tc := range []struct {
+		name, source, want string
+		keys               []string
+		row, col           int
+	}{
+		{"next line", "one\n \ttwo\nthree\n", "one two\nthree\n", []string{"J"}, 0, 3},
+		{"count and Unicode", "猫\n  犬\n\t鳥\n", "猫 犬 鳥\n", []string{"3", "J"}, 0, 3},
+		{"space and closing parenthesis", "text\t\n  word\n  )\n", "text\tword)\n", []string{"9", "J"}, 0, 9},
+		{"blank line", "one\n  \n  two", "one two", []string{"3", "J"}, 0, 3},
+		{"final newline", "one\ntwo\n", "one\ntwo\n", []string{"j", "J"}, 1, 0},
+		{"visual single row", "one\n  two\nthree", "one two\nthree", []string{"v", "J"}, 0, 3},
+		{"visual backwards", "one\n  two\n  three\nfour", "one two three\nfour", []string{"j", "j", "V", "2", "k", "J"}, 0, 7},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			d := &Document{Text: tc.source, Anchor: -1}
+			v := &Vim{}
+			if register := vimKeys(d, v, tc.keys...); register != "" {
+				t.Fatalf("join returned register text %q", register)
+			}
+			row, col := d.Position()
+			if d.Text != tc.want || row != tc.row || col != tc.col || v.VisualMode {
+				t.Fatalf("join produced %q at %d:%d in %s", d.Text, row, col, v.Label())
+			}
+			vimKeys(d, v, "u")
+			if d.Text != tc.source {
+				t.Fatalf("undo produced %q", d.Text)
+			}
+		})
+	}
+}
+
 func TestVimUserMappings(t *testing.T) {
 	for _, tt := range []struct {
 		name, text string
