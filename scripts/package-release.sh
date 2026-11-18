@@ -60,8 +60,11 @@ for platform in darwin-amd64 darwin-arm64 linux-amd64 linux-arm64 windows-amd64 
     archives+=("$archive")
 done
 
-sh -n install.sh
-cp install.sh install.ps1 "$stage/archives/"
+tag="v$version"
+sed "s/@RELEASE_TAG@/$tag/g" install.sh > "$stage/archives/install.sh"
+sed "s/@RELEASE_TAG@/$tag/g" install.ps1 > "$stage/archives/install.ps1"
+chmod +x "$stage/archives/install.sh"
+sh -n "$stage/archives/install.sh"
 assets=("${archives[@]}" install.sh install.ps1)
 (cd "$stage/archives" && shasum -a 256 "${assets[@]}" > checksums.txt)
 mkdir -p dist

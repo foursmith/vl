@@ -27,11 +27,9 @@ main() {
     fi
 
     releases=https://github.com/foursmith/vl/releases
-    release_url=$(curl -fsSLI -o /dev/null -w '%{url_effective}' "$releases/latest") ||
-        fail 'Could not find the latest vl release.'
-    tag=${release_url#"$releases/tag/"}
+    tag='@RELEASE_TAG@'
     printf '%s\n' "$tag" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$' ||
-        fail 'Could not find a published vl release.'
+        fail 'Download the installer from a vl release.'
     archive="vl_${tag#v}_${os}_${arch}.tar.gz"
     download="$releases/download/$tag"
 

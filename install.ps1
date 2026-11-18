@@ -10,10 +10,9 @@ switch ($processor) {
     default { throw 'vl supports x86_64 and arm64 on Windows.' }
 }
 
-$release = Invoke-RestMethod -UseBasicParsing 'https://api.github.com/repos/foursmith/vl/releases/latest'
-$tag = $release.tag_name
+$tag = '@RELEASE_TAG@'
 if ($tag -cnotmatch '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$') {
-    throw 'Could not find a published vl release.'
+    throw 'Download the installer from a vl release.'
 }
 $version = $tag.Substring(1)
 $archive = "vl_${version}_windows_${arch}.zip"
