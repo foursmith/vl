@@ -510,6 +510,23 @@ func (m *Model) clickModal(msg tea.MouseClickMsg) tea.Cmd {
 	if m.isPicker() {
 		return m.clickPicker(msg)
 	}
+	if m.gitMessageDialog() {
+		l := m.dialogLayout()
+		if msg.Button == tea.MouseLeft {
+			for i, button := range l.buttons {
+				if msg.Y == l.y+button.y && msg.X >= l.x+button.x && msg.X < l.x+button.x+button.width {
+					code := tea.KeyEscape
+					if i == 1 {
+						code = tea.KeyEnter
+					}
+					return m.updateModal(tea.KeyPressMsg{Code: code})
+				}
+			}
+		}
+		if msg.X >= l.x && msg.X < l.x+l.width && msg.Y >= l.y && msg.Y < l.y+len(l.content)+2 {
+			return nil
+		}
+	}
 	if m.confirmationDialog() {
 		l := m.dialogLayout()
 		if msg.Button == tea.MouseLeft {

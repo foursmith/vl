@@ -119,6 +119,83 @@ func TestWorkflowAndHunkRoundTrip(t *testing.T) {
 	run(t, r, "switch", "--", "main")
 }
 
+func TestPartialStagingUpdatesOnlySelectedIndexLines(t *testing.T) {
+	const path = "文件 [a].txt"
+	for _, test := range []struct {
+		name, before, after, indexed string
+		selectLine                   func(*patchdiff.Line) bool
+	}{
+		{"adjacent replacements", "a\nb\nc\nd\n", "A\nB\nC\nd\n", "A\nb\nC\nd\n", func(line *patchdiff.Line) bool {
+			return line.Old == 1 || line.Old == 3 || line.New == 1 || line.New == 3
+		}},
+		{"separate hunks", "a\n" + strings.Repeat("context\n", 10) + "z\n", "first\na\n" + strings.Repeat("context\n", 10) + "Z\n", "first\na\n" + strings.Repeat("context\n", 10) + "Z\n", func(*patchdiff.Line) bool {
+			return true
+		}},
+		{"end of file", "context\nold", "context\nnew", "context\nnew", func(*patchdiff.Line) bool { return true }},
+		{"added side at end of file", "context\nold", "context\nnew", "context\nold\nnew", func(line *patchdiff.Line) bool { return line.Kind == patchdiff.Added }},
+		{"new file", "", "first\nsecond\nthird", "second\nthird", func(line *patchdiff.Line) bool { return line.New > 1 }},
+		{"deleted file", "first\nsecond\nthird", "", "first\nthird", func(line *patchdiff.Line) bool { return line.Old == 2 }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			r := repository(t)
+			ctx := context.Background()
+			if test.before != "" {
+				write(t, r, path, test.before)
+				run(t, r, "add", "--", path)
+			}
+			if test.before != "" {
+				run(t, r, "commit", "-m", "initial")
+			}
+			if test.after != "" {
+				write(t, r, path, test.after)
+			} else if err := os.Remove(filepath.Join(r.Root, path)); err != nil {
+				t.Fatal(err)
+			}
+			apply := func(reverse bool, selected func(*patchdiff.Line) bool) {
+				t.Helper()
+				snapshot, err := r.Snapshot(ctx)
+				if err != nil || len(snapshot.Changes) != 1 {
+					t.Fatalf("status: %+v, %v", snapshot.Changes, err)
+				}
+				raw, err := r.Diff(ctx, snapshot.Changes[0], reverse)
+				if err != nil {
+					t.Fatal(err)
+				}
+				patch, err := patchdiff.Parse(raw).StagingPatch(path, reverse, selected)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if _, err := r.ApplyHunk(ctx, patch, false); err != nil {
+					t.Fatalf("apply: %v\n%s", err, patch)
+				}
+			}
+			apply(false, test.selectLine)
+			if got := run(t, r, "show", ":"+path); got != test.indexed {
+				t.Fatalf("index = %q, want %q", got, test.indexed)
+			}
+			apply(true, func(*patchdiff.Line) bool { return true })
+			if test.before == "" {
+				if got := run(t, r, "ls-files", "--", path); got != "" {
+					t.Fatalf("new file still in index: %q", got)
+				}
+				apply(false, test.selectLine)
+				if _, err := r.Unstage(ctx, Change{Path: path}); err != nil {
+					t.Fatal(err)
+				}
+				if got := run(t, r, "ls-files", "--", path); got != "" {
+					t.Fatalf("whole-file unstage left an index entry: %q", got)
+				}
+			} else if got := run(t, r, "show", ":"+path); got != test.before {
+				t.Fatalf("unstaged index = %q, want %q", got, test.before)
+			}
+			contents, err := os.ReadFile(filepath.Join(r.Root, path))
+			if test.after == "" && !os.IsNotExist(err) || test.after != "" && (err != nil || string(contents) != test.after) {
+				t.Fatalf("working file changed: %q, %v", contents, err)
+			}
+		})
+	}
+}
+
 func TestLiteralPathsRenameAndUnbornRepository(t *testing.T) {
 	r := repository(t)
 	ctx := context.Background()

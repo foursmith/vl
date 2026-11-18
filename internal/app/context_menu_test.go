@@ -228,6 +228,74 @@ func TestContextMenuChangeActionsAndStaleTargets(t *testing.T) {
 	}
 }
 
+func TestDiffContextMenuStagesAndUnstagesMouseSelection(t *testing.T) {
+	m := explorerWorkspace(t)
+	defer m.Close()
+	run := func(args ...string) string {
+		t.Helper()
+		out, err := m.repo.Run(m.ctx, args...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return out
+	}
+	run("config", "user.name", "Test")
+	run("config", "user.email", "test@example.test")
+	path := filepath.Join(m.repo.Root, "README.md")
+	before, after := "first\nsecond\nlast\n", "FIRST\nSECOND\nlast\n"
+	if err := os.WriteFile(path, []byte(before), 0644); err != nil {
+		t.Fatal(err)
+	}
+	run("add", "--", "README.md")
+	run("commit", "--no-gpg-sign", "-m", "initial")
+	if err := os.WriteFile(path, []byte(after), 0644); err != nil {
+		t.Fatal(err)
+	}
+	m.Update(tea.WindowSizeMsg{Width: 180, Height: 32})
+	drain(t, m, m.refresh())
+	drain(t, m, m.selectSection(changes))
+	open := func(staged bool) {
+		t.Helper()
+		m.sidebar = true
+		selectChanged(t, m, "README.md", staged)
+		drain(t, m, m.openSelected())
+	}
+	menuAt := func(line string) {
+		t.Helper()
+		if !m.diffLayout.split {
+			t.Fatal("expected a split diff")
+		}
+		for i, pair := range m.diffRows {
+			if pair.Right == nil || pair.Right.Text != line {
+				continue
+			}
+			x := m.mainX() + (m.mainWidth()-1)/2 + 1 + m.diffGutter
+			y := m.contentRow() + i - m.viewport.YOffset()
+			m.Update(tea.MouseClickMsg{X: x, Y: y, Button: tea.MouseLeft})
+			m.Update(tea.MouseReleaseMsg{X: x + 3, Y: y, Button: tea.MouseLeft})
+			m.Update(tea.MouseClickMsg{X: x + 2, Y: y, Button: tea.MouseRight})
+			return
+		}
+		t.Fatalf("diff row not found: %s", line)
+	}
+	open(false)
+	menuAt("+FIRST")
+	drain(t, m, chooseContextAction(t, m, "Stage Selected Ranges"))
+	if got := run("show", ":README.md"); got != "FIRST\nsecond\nlast\n" {
+		t.Fatalf("index after staging selection: %q", got)
+	}
+	open(true)
+	menuAt("+FIRST")
+	drain(t, m, chooseContextAction(t, m, "Unstage Selected Ranges"))
+	if got := run("show", ":README.md"); got != before {
+		t.Fatalf("index after unstaging selection: %q", got)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil || string(got) != after {
+		t.Fatalf("working file changed: %q, %v", got, err)
+	}
+}
+
 func TestContextMenuMouseAndDisabledActions(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	m.openFile("file0.go")

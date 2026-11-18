@@ -524,19 +524,20 @@ func (m *Model) requestPullRequestDiff(entry item) tea.Cmd {
 }
 
 func (m *Model) pullRequestSidebarMessage() []string {
+	shortcut := workbenchKeys.SidebarRefresh.Help().Key
 	switch {
 	case m.snapshot.NoRepository:
 		return []string{m.tr("Not a Git repository")}
 	case m.pullRequestsCancel != nil && m.pullRequests == nil:
 		return []string{m.tr("Loading pull requests…")}
 	case errors.Is(m.pullRequestsError, exec.ErrNotFound):
-		return []string{m.tr("Install GitHub CLI (gh)"), m.tr("F5: Retry")}
+		return []string{m.tr("Install GitHub CLI (gh)"), m.tr("%s: Retry", shortcut)}
 	case m.pullRequestsError != nil:
-		return []string{m.tr("Could not load pull requests"), m.tr("F5: Retry"), "", pullRequestErrorText(m.pullRequestsError)}
+		return []string{m.tr("Could not load pull requests"), m.tr("%s: Retry", shortcut), "", pullRequestErrorText(m.pullRequestsError)}
 	case m.pullRequestFilter == gitservice.PullRequestOpen:
-		return []string{m.tr("No open pull requests"), m.tr("F5: Refresh")}
+		return []string{m.tr("No open pull requests"), m.tr("%s: Refresh", shortcut)}
 	default:
-		return []string{m.tr("No pull requests"), m.tr("F5: Refresh")}
+		return []string{m.tr("No pull requests"), m.tr("%s: Refresh", shortcut)}
 	}
 }
 

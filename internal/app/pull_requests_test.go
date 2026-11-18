@@ -326,10 +326,10 @@ esac
 	}
 	pending := reopened.refreshPullRequests(true)
 	seq = reopened.pullRequestsSeq
-	_, cmd = reopened.Update(tea.KeyPressMsg{Code: tea.KeyF5})
+	cmd = press(reopened, "r")
 	drain(t, reopened, pending)
 	if reopened.pullRequestsSeq != seq+1 || reopened.pullRequestsCancel == nil {
-		t.Fatal("F5 did not supersede the active list refresh")
+		t.Fatal("r did not supersede the active list refresh")
 	}
 	drain(t, reopened, cmd)
 	if reopened.openPullRequestCount != 125 || len(reopened.pullRequests) != 52 ||

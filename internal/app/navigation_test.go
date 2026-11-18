@@ -129,10 +129,11 @@ func TestVimFileOperatorsProtectDirtyFilesAndOtherSections(t *testing.T) {
 	}
 	m.document().Undo()
 	drain(t, m, m.selectSection(changes))
+	selectChanged(t, m, "README.md", false)
 	press(m, "d")
 	press(m, "d")
-	if m.modal != "" || m.busy {
-		t.Fatal("dd applied in Changes")
+	if m.modal != "confirm" || m.confirmationKey != changesDiscardConfirmKey || m.busy {
+		t.Fatal("dd should only open the Git discard confirmation in Changes")
 	}
 }
 

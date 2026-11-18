@@ -204,6 +204,7 @@ type Model struct {
 	confirm                 func() tea.Cmd
 	confirmationDetail      string
 	confirmationLabel       string
+	confirmationKey         string
 	confirmationButton      int
 	dialogTop               int
 	search                  searchState
@@ -224,6 +225,7 @@ type Model struct {
 	branchStart             string
 	branchRepository        string
 	commitRepository        string
+	stashRepository         string
 	commitDrafts            map[string]string
 	openURL                 func(context.Context, string) error
 	hoverX, hoverY          int
@@ -955,6 +957,12 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		m.navigationState = navigationState{}
 		return m.pasteEntryPrompt()
 	}
+	if m.sidebar && m.section == changes {
+		if handled, cmd := m.changesKey(k); handled {
+			m.navigationState = navigationState{}
+			return cmd
+		}
+	}
 	if handled, cmd := m.navigationKey(k); handled {
 		return cmd
 	}
@@ -1005,14 +1013,8 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 			m.resize()
 		}
 		return nil
-	case key.Matches(msg, workbenchKeys.Refresh):
-		if m.section == pullRequests && !m.snapshot.NoRepository {
-			return m.forceRefreshPullRequests()
-		}
-		if !m.busy {
-			return m.refresh()
-		}
-		return nil
+	case key.Matches(msg, workbenchKeys.Refresh), m.sidebar && key.Matches(msg, workbenchKeys.SidebarRefresh):
+		return m.refreshView()
 	case key.Matches(msg, workbenchKeys.DiffLayout):
 		m.split = !m.split
 		m.renderDiff()
@@ -1054,17 +1056,21 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 			return m.splitFolderChain()
 		case "e":
 			return m.editSelected()
-		case "space":
-			entry := m.current()
-			return m.stageSelected(entry != nil && entry.staged)
-		case "s":
-			return m.stageSelected(false)
-		case "u":
-			return m.stageSelected(true)
-		case "c":
-			return m.commit()
-		case "a":
-			return m.stageAll()
+		}
+		if m.section != changes {
+			switch k {
+			case "space":
+				entry := m.current()
+				return m.stageSelected(entry != nil && entry.staged)
+			case "s":
+				return m.stageSelected(false)
+			case "u":
+				return m.stageSelected(true)
+			case "c":
+				return m.commit()
+			case "a":
+				return m.stageAll()
+			}
 		}
 		return nil
 	}

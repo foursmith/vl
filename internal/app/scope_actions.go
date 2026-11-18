@@ -133,7 +133,7 @@ func (m *Model) runScopeAction(entry item, id string) tea.Cmd {
 	if name == "" {
 		name = m.tr("%s changes", m.repositoryName(entry.repository))
 	}
-	cmd := m.ask(m.tr("Discard changes to %d files in %s?", len(scope), name), run)
+	cmd := m.askDiscard(m.tr("Discard changes to %d files in %s?", len(scope), name), run)
 	m.confirmationDetail = m.tr("Only affects this scope. Untracked files will be deleted and cannot be recovered by Git.")
 	return cmd
 }

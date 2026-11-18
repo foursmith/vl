@@ -119,7 +119,7 @@ func TestAllDialogsDismissOnClickAndPreserveUnsavedFiles(t *testing.T) {
 		if !strings.HasPrefix(plain(ansi.Cut(top, layout.x, layout.x+layout.width)), "╭") {
 			t.Fatalf("%s dialog has no rounded frame", kind)
 		}
-		if kind != "confirm" {
+		if kind != "confirm" && kind != "commit" {
 			cells := uv.NewStyledString(layout.content[1]).Lines(ansi.GraphemeWidth)[0]
 			for _, cell := range cells {
 				if !sameColor(cell.Style.Bg, lipgloss.Color(m.colors.Popup)) {
@@ -141,5 +141,31 @@ func TestAllDialogsDismissOnClickAndPreserveUnsavedFiles(t *testing.T) {
 	m.Update(tea.MouseClickMsg{X: 0, Y: 0, Button: tea.MouseLeft})
 	if m.modal != "" || len(m.closeQueue) != 0 || m.document() != doc || !doc.Dirty() {
 		t.Fatal("canceling dirty close lost unsaved document")
+	}
+}
+
+func TestCommitDialogButtonsKeepDraftAndAlignCaret(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	defer m.Close()
+	m.Update(tea.WindowSizeMsg{Width: 30, Height: 8})
+	m.prompt("commit", "Commit staged changes", "")
+	l := m.dialogLayout()
+	clickButton := func(index int) tea.Cmd {
+		button := l.buttons[index]
+		_, cmd := m.Update(tea.MouseClickMsg{X: l.x + button.x, Y: l.y + button.y, Button: tea.MouseLeft})
+		return cmd
+	}
+	if cmd := clickButton(1); cmd != nil || m.modal != "commit" || !m.input.Focused() {
+		t.Fatal("empty Commit should keep the dialog open")
+	}
+	m.Update(tea.MouseClickMsg{X: l.x + 4, Y: l.y + 4, Button: tea.MouseLeft})
+	m.Update(tea.PasteMsg{Content: "修正布局"})
+	view := m.View()
+	if view.Cursor == nil || view.Cursor.X != l.x+12 || view.Cursor.Y != l.y+4 {
+		t.Fatalf("caret did not align with the input: %+v", view.Cursor)
+	}
+	clickButton(0)
+	if m.modal != "" || m.commitDrafts[""] != "修正布局" {
+		t.Fatal("Cancel did not preserve the commit draft")
 	}
 }

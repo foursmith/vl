@@ -104,7 +104,7 @@ func TestHistoryScrollLoadsOlderCommitsAndRefreshResetsPages(t *testing.T) {
 	}
 	run("update-ref", "HEAD", newHead)
 	m.sideTop, m.selected = 0, 0
-	drain(t, m, m.refresh())
+	drain(t, m, press(m, "r"))
 	current := m.historyPages[""]
 	if current == page || len(current.commits) != 100 || current.commits[0].ID != newHead {
 		t.Fatal("changed head did not reset pagination")

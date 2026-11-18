@@ -239,11 +239,31 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 			add(m.tr("Paste"), "p", bind(m.pasteEntryPrompt))
 			add(m.tr("New File…"), "", bind(func() tea.Cmd { return m.newEntry(false) }))
 			add(m.tr("New Folder…"), "", bind(func() tea.Cmd { return m.newEntry(true) }))
-			add(m.tr("Refresh"), workbenchKeys.Refresh.Help().Key, m.refresh)
+			add(m.tr("Refresh"), workbenchKeys.SidebarRefresh.Help().Key, m.refreshView)
 			add(m.tr("Collapse Folders"), "", m.collapseFolders)
 		} else if m.section == changes && entry != nil {
 			for _, a := range m.changeRowActions(*entry, m.sidebarContentWidth()) {
-				actions = append(actions, action{label: a.label, disabled: a.disabled, run: bind(func() tea.Cmd { return m.runChangeRowAction(m.selected, a.id) })})
+				var shortcut string
+				switch a.id {
+				case "stage", "unstage":
+					shortcut = "Space"
+				case "discard":
+					shortcut = changesDiscardKey
+				case "commit":
+					shortcut = changesCommitKey
+				case "refresh":
+					shortcut = workbenchKeys.SidebarRefresh.Help().Key
+				}
+				actions = append(actions, action{label: a.label, key: shortcut, disabled: a.disabled, run: bind(func() tea.Cmd { return m.runChangeRowAction(m.selected, a.id) })})
+			}
+			if entry.repoHeader {
+				scope := *entry
+				scope.staged = true
+				actions = append(actions, action{
+					label:    m.tr("Unstage All Changes"),
+					disabled: m.changeActionDisabled(scope, "unstage", m.scopedChanges(scope)),
+					run:      bind(func() tea.Cmd { return m.unstageAllInRepository(scope.repository) }),
+				})
 			}
 		} else if m.section == search && entry != nil {
 			add(m.tr("Dismiss Result"), "dd / Del", bind(func() tea.Cmd { m.dismissSearchResult(m.search.selected); return nil }))
@@ -256,7 +276,7 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 					add(m.tr("Open on GitHub"), "o", func() tea.Cmd { return m.openBrowser(entry.pullRequest.URL) })
 				}
 			}
-			add(m.tr("Refresh"), workbenchKeys.Refresh.Help().Key, m.forceRefreshPullRequests)
+			add(m.tr("Refresh"), workbenchKeys.SidebarRefresh.Help().Key, m.refreshView)
 		}
 		if entry != nil {
 			if m.selectedEntryPath() != "" {
@@ -291,7 +311,7 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 					add(m.tr("Save"), workbenchKeys.Save.Help().Key, m.save)
 					add(m.tr("Find…"), workbenchKeys.Find.Help().Key, m.openFileFind)
 				} else if m.diffOpen {
-					if index := m.viewport.YOffset() + y - m.contentRow(); index >= 0 && index < len(m.diffRowHunks) {
+					if index := m.viewport.YOffset() + y - m.contentRow(); y >= m.contentRow() && index < len(m.diffRowHunks) {
 						m.diffHunk = m.diffRowHunks[index]
 					}
 					actions = append(actions, m.reviewActions()...)

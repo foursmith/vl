@@ -83,11 +83,11 @@ func TestTreeStageUnstageAndParentNavigation(t *testing.T) {
 	if m.diffPath != "cmd/main.go" || m.patch.Raw == "" {
 		t.Fatal("tree file did not open diff")
 	}
-	drain(t, m, m.stageSelected(false))
+	drain(t, m, press(m, " "))
 	if m.current() == nil || m.current().change == nil || m.current().change.Path != "cmd/main.go" || !m.current().staged {
 		t.Fatal("staging lost selected tree file")
 	}
-	drain(t, m, m.stageSelected(true))
+	drain(t, m, press(m, " "))
 	if m.current() == nil || m.current().change == nil || m.current().change.Path != "cmd/main.go" || m.current().staged {
 		t.Fatal("unstaging lost selected tree file")
 	}
@@ -108,6 +108,68 @@ func TestTreeStageUnstageAndParentNavigation(t *testing.T) {
 	m.click(tea.MouseClickMsg{X: 5, Y: headerHeight + index - m.sideTop, Button: tea.MouseLeft})
 	if !m.sidebarCollapsed[parentKey] {
 		t.Fatal("folder click did not collapse tree")
+	}
+}
+
+func TestChangesStageAllShortcutTogglesUnbornIndex(t *testing.T) {
+	m := explorerWorkspace(t)
+	defer m.Close()
+	drain(t, m, m.selectSection(changes))
+	selectChanged(t, m, "cmd/main.go", false)
+	drain(t, m, press(m, " "))
+
+	for _, staged := range []bool{true, false} {
+		drain(t, m, press(m, "a"))
+		if len(m.snapshot.Changes) != 3 {
+			t.Fatalf("expected three changes, got %+v", m.snapshot.Changes)
+		}
+		for _, change := range m.snapshot.Changes {
+			if change.Staged() != staged || change.Unstaged() == staged {
+				t.Fatalf("expected staged=%v, got %+v", staged, change)
+			}
+		}
+	}
+}
+
+func TestChangesDiscardAndStashShortcuts(t *testing.T) {
+	m := explorerWorkspace(t)
+	defer m.Close()
+	drain(t, m, m.selectSection(changes))
+	selectChanged(t, m, "cmd/main.go", false)
+	path := filepath.Join(m.repo.Root, "cmd", "main.go")
+
+	press(m, "s")
+	if m.modal != "stash" {
+		t.Fatalf("expected stash prompt, got %q", m.modal)
+	}
+	press(m, "esc")
+	press(m, "d")
+	if m.modal != "confirm" {
+		t.Fatalf("expected discard confirmation, got %q", m.modal)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Fatal(err)
+	}
+	drain(t, m, press(m, "x"))
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("expected untracked file to be discarded, got %v", err)
+	}
+	for _, identity := range [][2]string{{"user.name", "Test"}, {"user.email", "test@example.test"}} {
+		if _, err := m.repo.Run(m.ctx, "config", identity[0], identity[1]); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := m.repo.Run(m.ctx, "commit", "--no-gpg-sign", "--allow-empty", "-m", "initial"); err != nil {
+		t.Fatal(err)
+	}
+	press(m, "s")
+	drain(t, m, press(m, "enter"))
+	if len(m.snapshot.Changes) != 0 {
+		t.Fatalf("stash left changes in the working tree: %+v", m.snapshot.Changes)
+	}
+	saved, err := m.repo.Run(m.ctx, "stash", "show", "--include-untracked", "--name-only")
+	if err != nil || !strings.Contains(saved, "README.md") {
+		t.Fatalf("stash did not save the untracked file: %q, %v", saved, err)
 	}
 }
 

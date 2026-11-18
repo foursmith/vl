@@ -97,11 +97,7 @@ func (m *Model) commitInRepository(repo string) tea.Cmd {
 		return nil
 	}
 	m.commitRepository = repo
-	title := m.tr("Commit staged changes · %s", m.repositoryName(repo))
-	if branch := m.repositoryBranch(repo); branch != "" {
-		title += " [" + branch + "]"
-	}
-	return m.prompt("commit", title, m.commitDrafts[repo])
+	return m.prompt("commit", m.tr("Commit staged changes"), m.commitDrafts[repo])
 }
 
 func (m *Model) rememberCommitDraft() {

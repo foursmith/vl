@@ -26,6 +26,7 @@ type Line struct {
 type Hunk struct {
 	Header string
 	Lines  []string
+	start  int
 }
 type Patch struct {
 	Raw                  string
@@ -35,7 +36,7 @@ type Patch struct {
 	NewFile, DeletedFile bool
 }
 
-var hunkPattern = regexp.MustCompile(`^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@`)
+var hunkPattern = regexp.MustCompile(`^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@`)
 
 func Parse(raw string) Patch {
 	p := Patch{Raw: raw}
@@ -52,9 +53,9 @@ func Parse(raw string) Patch {
 		}
 		if match := hunkPattern.FindStringSubmatch(text); match != nil {
 			old, _ = strconv.Atoi(match[1])
-			newLine, _ = strconv.Atoi(match[2])
+			newLine, _ = strconv.Atoi(match[3])
 			hunk = len(p.Hunks)
-			p.Hunks = append(p.Hunks, Hunk{Header: header, Lines: []string{text}})
+			p.Hunks = append(p.Hunks, Hunk{Header: header, Lines: []string{text}, start: len(p.Lines)})
 			line.Kind, line.Hunk = HunkHeader, hunk
 		} else if hunk >= 0 && len(text) > 0 && strings.ContainsRune(" +-\\", rune(text[0])) {
 			line.Hunk = hunk
@@ -112,14 +113,19 @@ func (p Patch) Pairs() []Pair {
 			i++
 			continue
 		}
-		var left, right []*Line
-		for i < len(p.Lines) && (p.Lines[i].Kind == Added || p.Lines[i].Kind == Deleted) {
-			if p.Lines[i].Kind == Deleted {
+		var left, right, notes []*Line
+	changes:
+		for ; i < len(p.Lines); i++ {
+			switch {
+			case p.Lines[i].Kind == Deleted:
 				left = append(left, &p.Lines[i])
-			} else {
+			case p.Lines[i].Kind == Added:
 				right = append(right, &p.Lines[i])
+			case p.Lines[i].Hunk == line.Hunk && strings.HasPrefix(p.Lines[i].Text, "\\"):
+				notes = append(notes, &p.Lines[i])
+			default:
+				break changes
 			}
-			i++
 		}
 		for j := 0; j < max(len(left), len(right)); j++ {
 			pair := Pair{Hunk: line.Hunk}
@@ -130,6 +136,9 @@ func (p Patch) Pairs() []Pair {
 				pair.Right = right[j]
 			}
 			pairs = append(pairs, pair)
+		}
+		for _, note := range notes {
+			pairs = append(pairs, Pair{note, note, note.Hunk})
 		}
 	}
 	return pairs

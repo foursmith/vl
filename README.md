@@ -118,6 +118,21 @@ unsaved edits are retained and external modifications are reported.
 Search workspace text with **Ctrl+2** or **Ctrl+Shift+F**.
 Sidebar shortcuts **Ctrl+1/2/3/4/5** open Explorer, Search, Changes, History and PR.
 Explorer is the default. Each workspace remembers its selected sidebar tab.
+
+With focus in Changes, **Space** stages or unstages the selected file or group.
+**a** stages all changes in the selected repository, or unstages all when
+everything is staged. **c** opens the commit dialog and **s** opens the stash
+prompt. **d** asks to discard the selected unstaged changes and **x** confirms.
+**f**, **p**, and **P** fetch, pull (fast-forward only),
+and push the selected repository.
+With sidebar focus, **r** refreshes Explorer, Changes, History, or PR.
+
+Right-click a file, folder, group, or repository in Changes for staging actions.
+In a working-tree or staged diff, right-click a change to stage or unstage the
+whole file or the clicked hunk. Select text across changed lines to show
+**Stage Selected Ranges** or **Unstage Selected Ranges** in the same menu.
+**Shift+F10** opens the menu at the cursor.
+
 The badge below PR shows the number of open pull requests, including drafts.
 The PR list shows open pull requests by default. Use the filter and refresh
 buttons in the repository row to change the state filter or reload the list.
@@ -130,7 +145,7 @@ file tree. Moving onto a file previews its diff and keeps focus in the sidebar.
 Clicking a commit or PR toggles its tree, and clicking a file previews its diff.
 Each workspace keeps its 32 most recently used PR diffs in `vl/pr-patches` under
 the local cache directory. Expanding a PR reuses its cached diff if the source
-and target revisions match. Press **F5** in the PR tab to refresh the list,
+and target revisions match. Press **r** with the PR sidebar focused to refresh the list,
 count and current diff. Press **o** on a PR or file to open the PR on GitHub.
 
 Open files with **Ctrl+P**, commands with **Ctrl+Shift+P**, and recent workspaces with **Ctrl+H**.

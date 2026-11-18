@@ -109,7 +109,8 @@ func (r *Repository) run(ctx context.Context, input string, args ...string) (str
 	cmd := exec.CommandContext(ctx, "git", append(base, args...)...)
 	cmd.Dir = r.Root
 	literal := "1"
-	if args[0] == "check-ignore" {
+	// Stash uses Git-generated pathspecs to clean the files it saves.
+	if args[0] == "check-ignore" || args[0] == "stash" {
 		literal = "0"
 	}
 	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "GIT_LITERAL_PATHSPECS="+literal)
@@ -291,10 +292,7 @@ func (r *Repository) Unstage(ctx context.Context, c Change) (string, error) {
 		return "", err
 	}
 
-	args := []string{"reset", "-q", "HEAD", "--", c.Path}
-	if _, err := r.Run(ctx, "rev-parse", "--verify", "HEAD"); err != nil {
-		args = []string{"rm", "--cached", "--", c.Path}
-	}
+	args := []string{"reset", "-q", "--", c.Path}
 	if c.Original != "" {
 		args = append(args, c.Original)
 	}

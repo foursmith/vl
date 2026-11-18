@@ -36,7 +36,7 @@ func (m *Model) repositoryRowActions(entry item) []rowAction {
 	case pullRequests:
 		return []rowAction{
 			{id: "filter", glyph: m.symbol(symbolFilter), label: m.tr("Filter Pull Requests") + " · " + m.pullRequestFilterLabel(m.pullRequestFilter)},
-			{id: "refresh", glyph: m.symbol(symbolRefresh), label: m.tr("Refresh") + " · " + workbenchKeys.Refresh.Help().Key},
+			{id: "refresh", glyph: m.symbol(symbolRefresh), label: m.tr("Refresh") + " · " + workbenchKeys.SidebarRefresh.Help().Key},
 		}
 	}
 	return nil

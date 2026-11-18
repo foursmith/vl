@@ -154,7 +154,13 @@ func TestRepositoryStageAndCommitDoNotCrossIndexes(t *testing.T) {
 	selectChanged(t, m, "README.md", true)
 	drain(t, m, m.stageSelected(true))
 	selectRepository(t, m, "child space")
-	drain(t, m, m.stageAll())
+	for _, staged := range []bool{true, false, true} {
+		drain(t, m, press(m, "a"))
+		status, err := child.Run(m.ctx, "diff", "--cached", "--name-only")
+		if err != nil || (strings.TrimSpace(status) == "README.md") != staged {
+			t.Fatalf("child staged=%v: %q, %v", staged, status, err)
+		}
+	}
 	for _, c := range m.snapshot.Changes {
 		if c.Repository == "child space" && !c.Staged() {
 			t.Fatal("child file not staged")
@@ -173,11 +179,14 @@ func TestRepositoryStageAndCommitDoNotCrossIndexes(t *testing.T) {
 	}
 	selectRepository(t, m, "child space")
 	drain(t, m, m.commit())
-	if m.modal != "commit" || !strings.Contains(m.modalTitle, "child space [main]") {
+	if m.modal != "commit" || !strings.Contains(plain(m.View().Content), "child space [main]") {
 		t.Fatal("child commit target not visible")
 	}
 	m.input.SetValue("child commit")
-	drain(t, m, press(m, "enter"))
+	layout := m.dialogLayout()
+	button := layout.buttons[1]
+	_, cmd := m.Update(tea.MouseClickMsg{X: layout.x + button.x, Y: layout.y + button.y, Button: tea.MouseLeft})
+	drain(t, m, cmd)
 	if got, err := m.repo.Run(m.ctx, "rev-parse", "HEAD"); err != nil || got != rootHead {
 		t.Fatal("child commit changed parent HEAD")
 	}

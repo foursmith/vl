@@ -239,22 +239,92 @@ func (m *Model) textRowAt(y int) int {
 	return -1
 }
 
+func (m *Model) partialStageReason(reverse bool) string {
+	if m.diffChange == nil || m.diffLoading || m.editing() || m.diffStaged != reverse {
+		return m.tr("Open a working-tree or index diff first")
+	}
+	c := *m.diffChange
+	if reason := m.stageFileReason(c, reverse); reason != "" {
+		return reason
+	}
+	if m.images != nil || c.Gitlink || c.Conflicted() {
+		return m.tr("Stage this file as a whole")
+	}
+	if err := m.patch.PartialStagingError(); err != nil {
+		return m.tr(err.Error())
+	}
+	return ""
+}
+
+func (m *Model) selectedDiffChanges() map[*diff.Line]bool {
+	s := m.diffSelection
+	start, end := s.bounds()
+	if !s.active || start == end {
+		return nil
+	}
+	last := end.row
+	if end.col == 0 {
+		last--
+	}
+	selected := make(map[*diff.Line]bool)
+	for i := max(0, start.row); i <= last && i < len(m.diffRows); i++ {
+		line := m.selectionLine(i, s.right)
+		if line == nil || line.Kind != diff.Added && line.Kind != diff.Deleted {
+			continue
+		}
+		selected[line] = true
+		if m.diffLayout.split {
+			if other := m.selectionLine(i, !s.right); other != nil && (other.Kind == diff.Added || other.Kind == diff.Deleted) {
+				selected[other] = true
+			}
+		}
+	}
+	return selected
+}
+
 func (m *Model) reviewActions() []action {
+	var actions []action
 	sourceReason := ""
 	if m.diffChange == nil || m.diffLoading {
 		sourceReason = m.tr("Open a working-tree or index diff first")
 	}
-	stageReason, unstageReason := sourceReason, sourceReason
-	if m.diffStaged {
-		stageReason = m.tr("Open a working-tree diff first")
-	} else {
-		unstageReason = m.tr("Open an index diff first")
+	if m.diffChange != nil {
+		reverse := m.diffStaged
+		prefix, file, hunk, ranges := "diff.stage", "Stage File", "Stage Hunk", "Stage Selected Ranges"
+		if reverse {
+			prefix, file, hunk, ranges = "diff.unstage", "Unstage File", "Unstage Hunk", "Unstage Selected Ranges"
+		}
+		target, raw := m.diffState, m.patch.Raw
+		bind := func(run func() tea.Cmd) func() tea.Cmd {
+			return func() tea.Cmd {
+				if m.diffState != target || m.diffChange == nil || m.diffLoading || m.patch.Raw != raw {
+					m.notice = m.tr("Diff changed; refresh before staging")
+					return nil
+				}
+				return run()
+			}
+		}
+		partialReason := m.partialStageReason(reverse)
+		selected := m.selectedDiffChanges()
+		if len(selected) != 0 {
+			actions = append(actions, action{id: prefix + "Ranges", label: m.tr(ranges), disabled: partialReason, run: bind(func() tea.Cmd {
+				return m.stageDiffLines(reverse, ranges, func(line *diff.Line) bool { return selected[line] })
+			})})
+		}
+		if m.diffHunk >= 0 && m.diffHunk < len(m.patch.Hunks) {
+			actions = append(actions, action{id: prefix + "Hunk", label: m.tr(hunk), disabled: partialReason, run: bind(func() tea.Cmd {
+				return m.stageHunk(reverse)
+			})})
+		}
+		fileReason := sourceReason
+		if fileReason == "" {
+			fileReason = m.stageFileReason(*m.diffChange, reverse)
+		}
+		actions = append(actions, action{id: prefix + "File", label: m.tr(file), disabled: fileReason, run: bind(func() tea.Cmd {
+			return m.stageFile(*m.diffChange, reverse)
+		})})
 	}
-	actions := []action{
-		{id: "diff.stageHunk", label: m.tr("Stage Hunk"), disabled: stageReason, run: func() tea.Cmd { return m.stageHunk(false) }},
-		{id: "diff.unstageHunk", label: m.tr("Unstage Hunk"), disabled: unstageReason, run: func() tea.Cmd { return m.stageHunk(true) }},
-		{id: "diff.edit", label: m.tr("Open Working Tree File"), disabled: sourceReason, run: m.editDiff},
-	}
+	actions = append(actions, action{id: "diff.edit", label: m.tr("Open Working Tree File"), disabled: sourceReason, run: m.editDiff})
 	if m.diffLayout.split && m.review != nil {
 		actions = append(actions, action{id: "diff.otherSide", label: m.tr("Focus Other Diff Side"), run: func() tea.Cmd {
 			m.cancelFlash()
