@@ -1,0 +1,80 @@
+@import "tailwindcss" source("./");
+
+@font-face {
+  font-family: Geist;
+  src: url("@fontsource-variable/geist/files/geist-latin-wght-normal.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@theme {
+  --font-sans: Geist, system-ui, sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --color-canvas: #0e0f11;
+  --color-ink: #ededee;
+  --color-muted: #a0a1a6;
+  --color-line: #27292d;
+  --color-inset: #0b0c0e;
+  --color-panel: #121315;
+  --color-accent: #78b1e0;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    font-synthesis: none;
+    @apply bg-canvas text-ink antialiased;
+  }
+
+  a:hover {
+    @apply text-accent;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 4px;
+  }
+}
+
+@utility site-frame {
+  @apply mx-auto max-w-[72rem] border-line xl:border-x;
+}
+
+@utility page-gutter {
+  @apply px-[clamp(1rem,3.2vw,2.5rem)];
+}
+
+@utility landing-section {
+  @apply page-gutter scroll-mt-14 border-t border-line py-[clamp(2rem,4.5vw,4rem)];
+}
+
+@utility section-title {
+  @apply text-[clamp(1.65rem,3vw,2.15rem)] leading-tight font-semibold tracking-[-0.045em];
+}
+
+@layer components {
+  .copy-icon {
+    @apply relative h-[0.8rem] w-[0.68rem] rounded-xs border border-current;
+  }
+
+  .copy-icon::before {
+    content: "";
+    @apply absolute -top-1 -left-1 size-full rounded-tl-xs border-t border-l border-current;
+  }
+
+  .ansi-stage {
+    background-image: radial-gradient(circle, #ffffff15 0.65px, transparent 0.9px);
+    background-size: 14px 14px;
+    background-position: center;
+  }
+
+  .ansi-frame {
+    @apply inline-grid font-mono leading-none select-none;
+    font-variant-ligatures: none;
+  }
+
+  .ansi-frame > span {
+    color: color-mix(in srgb, var(--color-accent) var(--ink-opacity), var(--color-inset));
+  }
+}
