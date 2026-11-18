@@ -19,6 +19,24 @@ Agents write all my code now. I still review their diffs before they commit.
 VS Code with the Vim extension has been my go-to for years, so I built vl around
 the bits I actually use. One ~10 MB binary, ready to run.
 
+- **Omitted VS Code features**
+  - Language server integration
+    - Code completion
+    - Diagnostics
+    - Go to Definition
+  - Debugging
+  - Integrated terminal
+  - Build and test tasks
+  - Extension runtime and marketplace
+- **Omitted Vim features**
+  - Visual block mode
+  - Macros
+  - Named registers
+  - Marks and mark jumps
+  - Ex commands
+  - Vimscript configuration and plugins
+
+
 ## Install
 
 ### Homebrew
@@ -134,6 +152,13 @@ make build  # updates bin/vl
 make test
 make check  # go vet + race-enabled tests
 ```
+
+## Acknowledgments
+
+- Thanks to [TTT](https://github.com/eugenioenko/ttt) for [textmate-go](https://github.com/eugenioenko/textmate-go) and for inspiring vl’s implementation.
+- Thanks to [VS Code](https://github.com/microsoft/vscode), which vl’s entire interface is modeled after.
+- Thanks to [Vim](https://github.com/vim/vim), which vl’s keybindings are modeled after.
+
 ## License
 
 This Source Code Form is subject to the terms of the Mozilla Public License,
