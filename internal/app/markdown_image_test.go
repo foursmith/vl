@@ -2,8 +2,6 @@ package app
 
 import (
 	"context"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,6 +18,9 @@ func TestMarkdownImageRowsAndUpload(t *testing.T) {
 	const heading = "# Notes\n"
 	const reference = "![local](local%20image.png)\n"
 	source := heading + reference + "After\n" +
+		"![http](http://example.test/image.png)\n" +
+		"![https](https://example.test/image.png)\n" +
+		"![host-relative](//example.test/image.png)\n" +
 		"```md\n![fenced](fenced.png)\n```\n" + strings.Repeat("Tail\n", 25)
 	path := filepath.Join(dir, "notes.md")
 	if err := os.WriteFile(path, []byte(source), 0600); err != nil {
@@ -39,7 +40,10 @@ func TestMarkdownImageRowsAndUpload(t *testing.T) {
 	if load == nil {
 		t.Fatal("local image was not scheduled")
 	}
-	loaded := load().(markdownImageLoadedMsg)
+	loaded, ok := load().(markdownImageLoadedMsg)
+	if !ok {
+		t.Fatal("expected only the local raster image to be scheduled")
+	}
 	if loaded.image == nil || loaded.path != filepath.Join(filepath.Dir(m.document().Path), "local image.png") {
 		t.Fatalf("expected just the local file, got %q", loaded.path)
 	}
@@ -83,60 +87,5 @@ func TestMarkdownImageRowsAndUpload(t *testing.T) {
 	m.ensureEditor()
 	if len(tab.markdownImages.blocks) != 0 || m.flushRetiredImages() == nil {
 		t.Fatal("removing the reference left a placement or Kitty image behind")
-	}
-}
-
-func TestMarkdownRemoteImageAndSharePage(t *testing.T) {
-	dir := t.TempDir()
-	local := filepath.Join(dir, "image.png")
-	writePreviewPNG(t, local, 96, 80)
-	pixels, err := os.ReadFile(local)
-	if err != nil {
-		t.Fatal(err)
-	}
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/asset" && r.URL.Query().Get("format") == "png" {
-			w.Header().Set("Content-Type", "image/png")
-			_, _ = w.Write(pixels)
-			return
-		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = w.Write([]byte("<html><img src='/asset?format=png'></html>"))
-	}))
-	defer server.Close()
-	remote := server.URL + "/asset?format=png"
-	share := server.URL + "/share.png"
-	source := "![local](./image.png)\n\n![remote](" + remote + ")\n\n![share page](" + share + ")\n"
-	path := filepath.Join(dir, "notes.md")
-	if err := os.WriteFile(path, []byte(source), 0600); err != nil {
-		t.Fatal(err)
-	}
-	m, err := NewEditor(context.Background(), path, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer m.Close()
-	m.kittySupported = true
-	pending := m.scheduleMarkdownImages()()
-	cmds, ok := pending.(tea.BatchMsg)
-	if !ok || len(cmds) != 3 {
-		t.Fatalf("expected independent local and HTTPS/HTTP commands: %T, %v", pending, pending)
-	}
-	m.Update(cmds[0]())
-	tab := &m.tabs[m.activeTab]
-	if len(tab.markdownImages.blocks) != 1 || tab.markdownImages.blocks[0].line != 0 {
-		t.Fatal("local image did not appear independently from remote requests")
-	}
-	for _, cmd := range cmds[1:] {
-		m.Update(cmd())
-	}
-	if im := tab.markdownImages.files[remote]; im == nil || im.Bounds().Dx() != 96 {
-		t.Fatal("image URL with a query and no filename extension was not loaded")
-	}
-	if tab.markdownImages.files[share] != nil || len(tab.markdownImages.blocks) != 2 || tab.markdownImages.blocks[1].line != 2 {
-		t.Fatal("HTML share page was treated as an image")
-	}
-	if m.document().Text != source {
-		t.Fatal("remote image loading changed the source")
 	}
 }

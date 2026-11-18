@@ -1,8 +1,9 @@
-// Package imagepreview decodes bounded, read-only raster and SVG previews.
+// Package imagepreview decodes bounded, read-only image previews.
 package imagepreview
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"image"
@@ -11,10 +12,10 @@ import (
 	_ "image/png"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
-	"github.com/xo/okage/svg"
 	_ "golang.org/x/image/webp"
 )
 
@@ -24,20 +25,21 @@ const MaxPixels = 16 << 20
 type Image struct {
 	Path, Format string
 	pixels       image.Image
-	bounds       image.Rectangle
-	vector       *svg.Document
 	digest       [sha256.Size]byte
 }
 
 func Supported(path string) bool {
 	switch strings.ToLower(filepath.Ext(path)) {
-	case ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp":
+	case ".png", ".jpg", ".jpeg", ".gif", ".webp":
 		return true
+	case ".svg":
+		_, err := exec.LookPath("resvg")
+		return err == nil
 	}
 	return false
 }
 
-func Open(path string) (*Image, error) {
+func Open(ctx context.Context, path string) (*Image, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -57,33 +59,41 @@ func Open(path string) (*Image, error) {
 	if err != nil {
 		return nil, err
 	}
-	return Decode(path, data)
+	return Decode(ctx, path, data)
 }
 
 // Decode applies the same preview limits to Git blobs and disk files.
-func Decode(path string, data []byte) (*Image, error) {
-	if len(data) > MaxBytes {
+func Decode(ctx context.Context, path string, source []byte) (*Image, error) {
+	if len(source) > MaxBytes {
 		return nil, fmt.Errorf("image exceeds 32 MiB preview limit")
 	}
-	if strings.EqualFold(filepath.Ext(path), ".svg") {
-		im, err := openSVG(path, data)
-		if im != nil {
-			im.digest = sha256.Sum256(data)
+	data := source
+	svg := strings.EqualFold(filepath.Ext(path), ".svg")
+	if svg {
+		var err error
+		data, err = renderSVG(ctx, data)
+		if err != nil {
+			return nil, err
 		}
-		return im, err
 	}
-	config, _, err := image.DecodeConfig(bytes.NewReader(data))
+	config, format, err := image.DecodeConfig(bytes.NewReader(data))
 	if err != nil {
 		return nil, fmt.Errorf("image preview: %w", err)
+	}
+	if svg && format != "png" {
+		return nil, fmt.Errorf("resvg did not return a PNG")
 	}
 	if config.Width <= 0 || config.Height <= 0 || config.Width > MaxPixels/config.Height {
 		return nil, fmt.Errorf("image exceeds 16 megapixel preview limit")
 	}
-	pixels, format, err := image.Decode(bytes.NewReader(data))
+	pixels, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
 		return nil, fmt.Errorf("image preview: %w", err)
 	}
-	return &Image{Path: path, Format: format, pixels: pixels, bounds: pixels.Bounds(), digest: sha256.Sum256(data)}, nil
+	if svg {
+		format = "svg"
+	}
+	return &Image{Path: path, Format: format, pixels: pixels, digest: sha256.Sum256(source)}, nil
 }
 
 // SameContent identifies previews whose source bytes and decoding format match.
@@ -91,5 +101,5 @@ func (im *Image) SameContent(other *Image) bool {
 	return other != nil && im.Format == other.Format && im.digest == other.digest
 }
 
-// Bounds returns source dimensions without rasterizing vector content.
-func (im *Image) Bounds() image.Rectangle { return im.bounds }
+// Bounds returns the decoded image bounds.
+func (im *Image) Bounds() image.Rectangle { return im.pixels.Bounds() }

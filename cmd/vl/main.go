@@ -21,6 +21,8 @@ import (
 	"github.com/ourongxing/vl/internal/theme"
 )
 
+var buildVersion = "0.1.0-dev"
+
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "preview" {
 		os.Exit(runPreview(os.Args[2:], os.Stdout, os.Stderr))
@@ -35,7 +37,7 @@ func main() {
 	}
 	flag.Parse()
 	if *version {
-		fmt.Println("vl 0.1.0-dev")
+		fmt.Println("vl", buildVersion)
 		return
 	}
 	language, validLanguage := i18n.Parse(*displayLanguage)

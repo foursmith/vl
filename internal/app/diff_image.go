@@ -48,7 +48,7 @@ func (m *Model) diffImageReader(d *diffState) func(context.Context) *diffImages 
 			var im *imagepreview.Image
 			var err error
 			if side == 1 && commit == "" && !staged {
-				im, err = imagepreview.Open(filepath.Join(repo.Root, filepath.FromSlash(path)))
+				im, err = imagepreview.Open(ctx, filepath.Join(repo.Root, filepath.FromSlash(path)))
 				if os.IsNotExist(err) {
 					err = nil
 				}
@@ -60,7 +60,7 @@ func (m *Model) diffImageReader(d *diffState) func(context.Context) *diffImages 
 				var data []byte
 				data, err = repo.Blob(ctx, rev+":"+path, imagepreview.MaxBytes)
 				if err == nil && data != nil {
-					im, err = imagepreview.Decode(path, data)
+					im, err = imagepreview.Decode(ctx, path, data)
 				}
 			}
 			result.errors[side] = err

@@ -1205,7 +1205,7 @@ func (m *Model) reloadCleanTabs() {
 	for i, t := range m.tabs {
 		wasActive := i == m.activeTab
 		if t.image != nil {
-			fresh, err := imagepreview.Open(t.image.Path)
+			fresh, err := imagepreview.Open(m.ctx, t.image.Path)
 			if err != nil {
 				m.notice = m.tr(err.Error())
 			} else {

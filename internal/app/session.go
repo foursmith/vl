@@ -53,9 +53,6 @@ func (m *Model) Session() config.Session {
 	session := config.Session{Active: m.activeTab, SidebarTab: sidebarTab}
 	for _, t := range m.tabs {
 		saved := config.SessionTab{Kind: "file", Path: t.path(), Preview: t.preview}
-		if t.image != nil {
-			saved.Kind = "image"
-		}
 		if d := t.diff; d != nil {
 			if d.diffPR.Number != 0 {
 				saved.Kind = "pr-diff"
@@ -89,7 +86,7 @@ func (m *Model) restoreSession() tea.Cmd {
 			continue
 		}
 		switch saved.Kind {
-		case "file", "image":
+		case "file":
 			if !m.openDocument(saved.Path, false) {
 				continue
 			}

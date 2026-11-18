@@ -1,7 +1,13 @@
-.PHONY: build run test check
+.PHONY: build run test check package
+
+VERSION ?= 0.1.0-dev
+OUTPUT ?= bin/vl
 
 build:
-	go build -trimpath -ldflags="-s -w" -o bin/vl ./cmd/vl
+	go build -trimpath -ldflags="-s -w -X main.buildVersion=$(VERSION)" -o "$(OUTPUT)" ./cmd/vl
+
+package:
+	bash scripts/package-release.sh "$(VERSION)"
 
 run:
 	go run ./cmd/vl

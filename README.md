@@ -20,12 +20,19 @@ to Nerd Font glyphs.
 
 Advanced Git capabilities are still in progress; see the [roadmap](docs/ROADMAP.md).
 
-## Run
+## Install and run
 
-Requires Go **1.27.3+** and an interactive UTF-8 terminal.
+Download the archive for your system from [GitHub Releases](https://github.com/foursmith/vl/releases).
+Archives are available for macOS, Linux and Windows on `arm64` and `amd64`
+(x64). Extract the archive and put `vl` (`vl.exe` on Windows) on your `PATH`.
+
+Running vl requires an interactive UTF-8 terminal. Building from source requires Go **1.27.3+**.
 Folder workspaces also require Git on `PATH`.
+Image comparisons of stored Git revisions require Git **2.42+**.
 A Nerd Font is recommended; use `-icons=false` for plain-text controls and markers.
 Git uses your existing credentials or SSH agent; terminal password prompts are disabled.
+
+Maintainers can find the release steps in [the release guide](docs/RELEASE.md).
 
 ```sh
 make build
@@ -115,10 +122,11 @@ URLs and clamps scroll offsets beyond the end of a file.
 - **Text editing:** grapheme-aware movement, selection, system clipboard, undo/redo,
   shared find/replace with match counts and next/previous navigation, line jumps, syntax highlighting and save. Vim is the only interaction
   mode, with Normal/Insert/Visual editing, Flash jumps, Surround and repeat commands.
-- **Markdown:** visually aligned tables and inline local or HTTP(S) images. The
+- **Markdown:** visually aligned tables and inline local images. The
   Markdown source stays editable. Syntax highlighting refreshes on returning to
   Normal mode after typing in Insert mode.
-- **Images:** read-only PNG, JPEG, GIF (first frame), WebP and SVG previews, with zoom and pan.
+- **Images:** read-only PNG, JPEG, GIF (first frame), and WebP previews, with zoom and pan.
+  SVG previews use the optional `resvg` command on `PATH`. Without it, SVG files open as source text.
 - **Workspace UI:** sticky code/folder context, resizable left/right sidebar,
   English/简体中文, and built-in and VS Code color themes.
 
@@ -235,7 +243,7 @@ State is read only from the configured state directory.
 - Image rendering requires the [Kitty graphics protocol](https://sw.kovidgoyal.net/kitty/graphics-protocol/)
   with Unicode placeholders and a compatible terminal with 256-color support.
   Standalone previews explain when terminal graphics are unavailable. Image files are limited to 32 MiB
-  and 16 megapixels. SVG external image references are skipped.
+  and 16 megapixels.
 - Below 70 columns, sidebar and content share one surface; use Enter and Esc/F6
   to switch. Narrow diffs fall back to unified layout; added/deleted files always
   use full-width unified diffs.

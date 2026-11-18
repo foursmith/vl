@@ -113,7 +113,7 @@ func (m *Model) reloadWatchedFiles(paths []string) tea.Cmd {
 		if t.image != nil {
 			original, path, seq := t.image.Image, t.path(), t.reloadSeq
 			commands = append(commands, func() tea.Msg {
-				fresh, err := imagepreview.Open(path)
+				fresh, err := imagepreview.Open(m.ctx, path)
 				return imageReloadMsg{original, fresh, seq, err}
 			})
 			continue

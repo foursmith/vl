@@ -27,7 +27,7 @@ func performanceImageModel(t testing.TB) *Model {
 	if err := png.Encode(&data, pixels); err != nil {
 		t.Fatal(err)
 	}
-	im, err := imagepreview.Decode("image.png", data.Bytes())
+	im, err := imagepreview.Decode(t.Context(), "image.png", data.Bytes())
 	if err != nil {
 		t.Fatal(err)
 	}

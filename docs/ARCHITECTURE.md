@@ -21,7 +21,7 @@ cmd/vl                     flags, process lifetime, concrete composition
   └── internal/app         Bubble Tea model/update/view, commands, task delivery
         ├── internal/git        system Git adapter, status and repository results
         ├── internal/diff       patch parsing, line pairing, single-hunk extraction
-        ├── internal/imagepreview bounded raster/SVG decoding and Kitty image encoding
+        ├── internal/imagepreview bounded bitmap decoding, optional SVG conversion, and Kitty image encoding
         ├── internal/editor     document bytes, cursor, selection, undo and save
         ├── internal/files      lazy visible-directory reads and entry creation
         ├── internal/watcher    bounded/coalesced directory notifications
@@ -135,12 +135,11 @@ replacing a preview invalidates late results. Chunked PNG uploads ride on the
 first placeholder cell through Ultraviolet's APC pass-through. Unchanged cells
 do not retransmit. The placeholder grid follows normal clipping and modal overlays;
 only owned image IDs are deleted on close or exit. Reported terminal cell dimensions
-drive the fit calculation, with an 8×16 pixel fallback. SVG uses okage's pure-Go
-resvg port. Opening an SVG stores its parsed tree and source bounds; rendering
-rasterizes that tree directly at the target pixel resolution.
+drive the fit calculation, with an 8×16 pixel fallback. SVG previews send file or
+Git blob bytes to `resvg` on `PATH`, with a timeout and bounded PNG output.
 Each image tab owns its fit-relative zoom and normalized center. Wheel zoom
 preserves the source point beneath the pointer; dragging pans within source
-bounds. Raster/SVG transforms render only the visible source rectangle into a
+bounds. Raster transforms render only the visible source rectangle into a
 viewport-sized PNG, keeping high zoom independent of full-image allocation.
 Blur, tab switches and geometry changes cancel an active image drag.
 Startup probes the Kitty protocol; a terminal must also support Unicode placements

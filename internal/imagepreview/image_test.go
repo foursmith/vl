@@ -15,7 +15,7 @@ import (
 )
 
 func testRaster(pixels image.Image) *Image {
-	return &Image{pixels: pixels, bounds: pixels.Bounds()}
+	return &Image{pixels: pixels}
 }
 
 func TestFormatsAndTransparency(t *testing.T) {
@@ -40,7 +40,7 @@ func TestFormatsAndTransparency(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			im, err := Open(path)
+			im, err := Open(t.Context(), path)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -75,16 +75,39 @@ func TestFitPreservesAspectAndBounds(t *testing.T) {
 	}
 }
 
+func TestSVGPreviewWithResvg(t *testing.T) {
+	const path = "icon.SVG"
+	if !Supported(path) {
+		t.Skip("resvg is unavailable")
+	}
+	source := []byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 20"><rect width="20" height="20" fill="red"/></svg>`)
+	im, err := Decode(t.Context(), path, source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bounds := im.Bounds()
+	if im.Format != "svg" || bounds.Dx() != 2*bounds.Dy() || bounds.Dx() > 2048 {
+		t.Fatalf("unexpected SVG preview: %s %v", im.Format, bounds)
+	}
+	red, _, _, alpha := im.pixels.At(0, 0).RGBA()
+	if red != 65535 || alpha != 65535 {
+		t.Fatal("SVG lost its opaque red pixels")
+	}
+	if _, _, _, alpha := im.pixels.At(bounds.Max.X-1, 0).RGBA(); alpha != 0 {
+		t.Fatal("SVG lost its transparent pixels")
+	}
+}
+
 func TestRejectInvalidAndOversizedImages(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "bad.png")
 	os.WriteFile(path, []byte("not an image"), 0600)
-	if _, err := Open(path); err == nil {
+	if _, err := Open(t.Context(), path); err == nil {
 		t.Fatal("accepted corrupt image")
 	}
 	f, _ := os.Create(path)
 	f.Truncate(MaxBytes + 1)
 	f.Close()
-	if _, err := Open(path); err == nil {
+	if _, err := Open(t.Context(), path); err == nil {
 		t.Fatal("accepted oversized image")
 	}
 	// PNG's IHDR is sufficient for DecodeConfig; reject dimensions before decoding pixels.
@@ -101,7 +124,7 @@ func TestRejectInvalidAndOversizedImages(t *testing.T) {
 	checksum := crc32.ChecksumIEEE(data[12:29])
 	binary.BigEndian.PutUint32(data[29:33], checksum)
 	os.WriteFile(path, data, 0600)
-	if _, err := Open(path); err == nil || !strings.Contains(err.Error(), "megapixel") {
+	if _, err := Open(t.Context(), path); err == nil || !strings.Contains(err.Error(), "megapixel") {
 		t.Fatalf("dimension guard: %v", err)
 	}
 }

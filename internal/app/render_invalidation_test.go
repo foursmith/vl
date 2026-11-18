@@ -72,7 +72,7 @@ func TestImageReloadAndDuplicateCellReportRetainPixels(t *testing.T) {
 	im := m.tabs[0].image
 	original, upload := im.Image, im.upload
 	rows := im.rows
-	fresh, err := imagepreview.Open(original.Path)
+	fresh, err := imagepreview.Open(t.Context(), original.Path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +92,7 @@ func TestImageReloadAndDuplicateCellReportRetainPixels(t *testing.T) {
 		t.Fatal("unchanged visible crop was encoded again")
 	}
 	writePreviewPNG(t, filepath.Join(m.repo.Root, "image.png"), 240, 160)
-	fresh, err = imagepreview.Open(original.Path)
+	fresh, err = imagepreview.Open(t.Context(), original.Path)
 	if err != nil {
 		t.Fatal(err)
 	}

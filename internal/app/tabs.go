@@ -47,7 +47,7 @@ func (m *Model) openDocument(path string, preview bool) bool {
 		}
 	}
 	if imagepreview.Supported(abs) {
-		im, err := imagepreview.Open(abs)
+		im, err := imagepreview.Open(m.ctx, abs)
 		if err != nil {
 			m.notice = m.tr(err.Error())
 			return false

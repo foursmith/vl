@@ -182,6 +182,9 @@ func TestSessionRoundTripMixedTabs(t *testing.T) {
 	m.activateTab(0)
 	m.SaveFilePositions()
 	saved := m.Session()
+	if saved.Tabs[1].Kind != "file" {
+		t.Fatalf("image tab should be stored as a file, got %q", saved.Tabs[1].Kind)
+	}
 	sessionPath := filepath.Join(t.TempDir(), "sessions", "workspace.json")
 	if err := config.SaveSession(sessionPath, saved); err != nil {
 		t.Fatal(err)

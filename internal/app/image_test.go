@@ -143,14 +143,17 @@ func TestImagePreviewPreservesDirtyAndFailedOpen(t *testing.T) {
 	}
 }
 
-func TestSVGFilePreviewUsesImageTab(t *testing.T) {
+func TestSVGFilePreviewWithoutResvgUsesTextTab(t *testing.T) {
 	m := tabWorkspace(t, 1)
+	defer m.Close()
+	t.Setenv("PATH", "")
 	path := filepath.Join(m.repo.Root, "icon.svg")
-	if err := os.WriteFile(path, []byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="red"/></svg>`), 0600); err != nil {
+	const source = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="red"/></svg>`
+	if err := os.WriteFile(path, []byte(source), 0600); err != nil {
 		t.Fatal(err)
 	}
 	m.openPreviewFile("icon.svg")
-	if m.editing() || m.currentImage() == nil || m.currentImage().Format != "svg" {
-		t.Fatal("SVG did not open as an image")
+	if !m.editing() || m.currentImage() != nil || m.document().Text != source {
+		t.Fatal("SVG did not open as source text")
 	}
 }

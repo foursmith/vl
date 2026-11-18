@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -74,82 +73,74 @@ func TestDiffImagesRenameDeleteAndReplyOwnership(t *testing.T) {
 }
 
 func TestDiffImagesReadActualReviewVersions(t *testing.T) {
-	for _, ext := range []string{"png", "svg"} {
-		t.Run(ext, func(t *testing.T) {
-			m := tabWorkspace(t, 0)
-			defer m.Close()
-			m.kittySupported = true
-			path := "image." + ext
-			write := func(width int) {
-				if ext == "png" {
-					writePreviewPNG(t, filepath.Join(m.repo.Root, path), width, 5)
-				} else if err := os.WriteFile(filepath.Join(m.repo.Root, path), []byte(fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="5"><rect width="100%%" height="5" fill="red"/></svg>`, width)), 0600); err != nil {
-					t.Fatal(err)
+	m := tabWorkspace(t, 0)
+	defer m.Close()
+	m.kittySupported = true
+	const path = "image.png"
+	write := func(width int) {
+		writePreviewPNG(t, filepath.Join(m.repo.Root, path), width, 5)
+	}
+	commit := func() string {
+		imageGit(t, m, "-c", "user.name=Test", "-c", "user.email=test@example.com", "-c", "commit.gpgsign=false", "commit", "-m", "image")
+		return imageGit(t, m, "rev-parse", "HEAD")
+	}
+	write(8)
+	imageGit(t, m, "add", "--", path)
+	root := commit()
+	write(12)
+	imageGit(t, m, "add", "--", path)
+	head := commit()
+	write(20)
+	imageGit(t, m, "add", "--", path)
+	write(28)
+	c := gitservice.Change{Path: path, Index: 'M', Worktree: 'M'}
+	for _, tc := range []struct {
+		commit string
+		staged bool
+		widths [2]int
+	}{{"", false, [2]int{20, 28}}, {"", true, [2]int{12, 20}}, {head, false, [2]int{8, 12}}, {root, false, [2]int{0, 8}}} {
+		target := diffTarget{path: path, staged: tc.staged, commit: tc.commit, change: &c}
+		drain(t, m, m.requestDiff(target, readImageDiff(m, c, tc.staged, tc.commit)))
+		if m.images == nil {
+			t.Fatal("image diff was not loaded")
+		}
+		for side, width := range tc.widths {
+			im := m.images.sides[side]
+			if err := m.images.errors[side]; err != nil {
+				t.Fatal(err)
+			}
+			if width == 0 {
+				if im != nil {
+					t.Fatal("initial commit has a parent image")
 				}
+			} else if im == nil || im.Bounds().Dx() != width {
+				t.Fatalf("%+v side %d: wrong version", tc, side)
 			}
-			commit := func() string {
-				imageGit(t, m, "-c", "user.name=Test", "-c", "user.email=test@example.com", "-c", "commit.gpgsign=false", "commit", "-m", "image")
-				return imageGit(t, m, "rev-parse", "HEAD")
+		}
+		if !strings.Contains(imageUploadOutput(t, m), "\x1b_G") || strings.Contains(m.View().Content, "\x1b_G") {
+			t.Fatal("image upload was missing or embedded in the view")
+		}
+	}
+	for _, size := range [][2]int{{120, 35}, {70, 20}, {30, 8}} {
+		m.Update(tea.WindowSizeMsg{Width: size[0], Height: size[1]})
+		m.sidebar = false
+		for _, line := range strings.Split(m.View().Content, "\n") {
+			if ansi.StringWidth(line) != size[0] {
+				t.Fatal("image diff exceeded frame width")
 			}
-			write(8)
-			imageGit(t, m, "add", "--", path)
-			root := commit()
-			write(12)
-			imageGit(t, m, "add", "--", path)
-			head := commit()
-			write(20)
-			imageGit(t, m, "add", "--", path)
-			write(28)
-			c := gitservice.Change{Path: path, Index: 'M', Worktree: 'M'}
-			for _, tc := range []struct {
-				commit string
-				staged bool
-				widths [2]int
-			}{{"", false, [2]int{20, 28}}, {"", true, [2]int{12, 20}}, {head, false, [2]int{8, 12}}, {root, false, [2]int{0, 8}}} {
-				target := diffTarget{path: path, staged: tc.staged, commit: tc.commit, change: &c}
-				drain(t, m, m.requestDiff(target, readImageDiff(m, c, tc.staged, tc.commit)))
-				if m.images == nil {
-					t.Fatal("image diff was not loaded")
-				}
-				for side, width := range tc.widths {
-					im := m.images.sides[side]
-					if err := m.images.errors[side]; err != nil {
-						t.Fatal(err)
-					}
-					if width == 0 {
-						if im != nil {
-							t.Fatal("initial commit has a parent image")
-						}
-					} else if im == nil || im.Bounds().Dx() != width {
-						t.Fatalf("%+v side %d: wrong version", tc, side)
-					}
-				}
-				if !strings.Contains(imageUploadOutput(t, m), "\x1b_G") || strings.Contains(m.View().Content, "\x1b_G") {
-					t.Fatal("image upload was missing or embedded in the view")
-				}
-			}
-			for _, size := range [][2]int{{120, 35}, {70, 20}, {30, 8}} {
-				m.Update(tea.WindowSizeMsg{Width: size[0], Height: size[1]})
-				m.sidebar = false
-				for _, line := range strings.Split(m.View().Content, "\n") {
-					if ansi.StringWidth(line) != size[0] {
-						t.Fatal("image diff exceeded frame width")
-					}
-				}
-			}
-			m.Update(uv.CellSizeEvent{Width: 10, Height: 20})
-			if m.images.sides[1].rows != nil {
-				t.Fatal("cell size change retained stale placements")
-			}
-			m.kittySupported, m.kittyProbeDone = false, true
-			m.Update(tea.WindowSizeMsg{Width: 160, Height: 35})
-			if view := m.View().Content; strings.Contains(view, "\x1b_G") || !strings.Contains(view, "No response") {
-				t.Fatal("unsupported terminal did not degrade gracefully")
-			}
-			m.closeAllTabs()
-			if len(m.imageRetired) == 0 {
-				t.Fatal("closed image diffs leaked terminal images")
-			}
-		})
+		}
+	}
+	m.Update(uv.CellSizeEvent{Width: 10, Height: 20})
+	if m.images.sides[1].rows != nil {
+		t.Fatal("cell size change retained stale placements")
+	}
+	m.kittySupported, m.kittyProbeDone = false, true
+	m.Update(tea.WindowSizeMsg{Width: 160, Height: 35})
+	if view := m.View().Content; strings.Contains(view, "\x1b_G") || !strings.Contains(view, "No response") {
+		t.Fatal("unsupported terminal did not degrade gracefully")
+	}
+	m.closeAllTabs()
+	if len(m.imageRetired) == 0 {
+		t.Fatal("closed image diffs leaked terminal images")
 	}
 }

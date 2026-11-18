@@ -31,13 +31,6 @@ func markdownImagePath(document string, destination []byte) string {
 	if err != nil {
 		return ""
 	}
-	if u.Scheme == "http" || u.Scheme == "https" {
-		if u.Hostname() == "" || u.User != nil {
-			return ""
-		}
-		u.Fragment = ""
-		return u.String()
-	}
 	if u.Scheme != "" || u.Host != "" || u.Path == "" {
 		return ""
 	}
@@ -130,17 +123,11 @@ func (m *Model) scheduleMarkdownImages() tea.Cmd {
 	ctx, cancel := context.WithCancel(m.ctx)
 	cache.cancel = cancel
 	job := cache.job
-	// Reserve a local slot so slow HTTP requests cannot delay local images.
-	localSlots, remoteSlots := make(chan struct{}, 1), make(chan struct{}, 2)
+	slots := make(chan struct{}, 1)
 	var commands []tea.Cmd
 	for _, path := range paths {
 		if _, loaded := cache.files[path]; loaded {
 			continue
-		}
-		slots := localSlots
-		remote := strings.HasPrefix(path, "https://") || strings.HasPrefix(path, "http://")
-		if remote {
-			slots = remoteSlots
 		}
 		commands = append(commands, func() tea.Msg {
 			select {
@@ -152,7 +139,7 @@ func (m *Model) scheduleMarkdownImages() tea.Cmd {
 			if ctx.Err() != nil {
 				return nil
 			}
-			im := readMarkdownImage(ctx, path, remote)
+			im := readMarkdownImage(ctx, path)
 			if ctx.Err() != nil {
 				return nil
 			}
@@ -162,16 +149,12 @@ func (m *Model) scheduleMarkdownImages() tea.Cmd {
 	return tea.Batch(commands...)
 }
 
-func readMarkdownImage(ctx context.Context, path string, remote bool) *imagepreview.Image {
-	if remote {
-		im, _ := imagepreview.OpenURL(ctx, path)
-		return im
-	}
+func readMarkdownImage(ctx context.Context, path string) *imagepreview.Image {
 	info, err := os.Stat(path)
 	if err != nil || !info.Mode().IsRegular() {
 		return nil
 	}
-	im, _ := imagepreview.Open(path)
+	im, _ := imagepreview.Open(ctx, path)
 	return im
 }
 
