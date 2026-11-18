@@ -124,7 +124,7 @@ URLs and clamps scroll offsets beyond the end of a file.
   The Options picker provides preserve-case replacement, include/exclude globs, changed-file and
   open-editor scopes, and ignore files. The same editor find/replace component handles Ctrl+F, Vim / and n, context menus and
   workspace-result handoff, including match counts and per-file replacement.
-  Scope filters compose and stay active after closing the picker; see [search controls](docs/KEYBINDINGS.md#全文搜索与替换).
+  Scope filters compose and stay active after closing the picker; see [search controls](docs/KEYBINDINGS.md#search-across-files).
 - **Text editing:** grapheme-aware movement, selection, system clipboard, undo/redo,
   shared find/replace with match counts and next/previous navigation, line jumps, syntax highlighting and save. Vim is the only interaction
   mode, with Normal/Insert/Visual editing, Flash jumps, Surround and repeat commands.
@@ -180,7 +180,7 @@ in the current file, or `filename:line[:column]` to open a file at that position
 
 A single click in a sidebar list shows a reusable preview and leaves focus in the list.
 Moving focus into the editor keeps the displayed tab open. You can do this with
-Enter, F6, a double-click in the list, or a click in the editor or its tab.
+Enter, F2, a double-click in the list, or a click in the editor or its tab.
 Scrolling the content leaves the preview reusable. The active tab has a thin accent marker; file tabs
 share Explorer's Git colors and status letters. An unsaved dot takes precedence
 over the Git status letter. Tabs and text cursor/scroll positions are restored
@@ -198,8 +198,8 @@ cannot restore it.
 
 ## Keyboard shortcuts
 
-- [快捷键总览](docs/KEYBINDINGS.md): workspace, sidebar, editor, Diff, images and pickers.
-- [文本编辑详解](docs/VIM.md): Normal/Insert/Visual, operators, text objects, Flash and Surround.
+- [Keyboard shortcuts](docs/KEYBINDINGS.md) covers the workbench, sidebar, diff editor, image preview, and pickers.
+- [Vim keys in vl](docs/VIM.md) covers modes, operators, text objects, Flash, and Surround. See [where vl differs from Vim](docs/VIM.md#where-vl-differs-from-vim) for remapped keys.
 
 vl uses one Vim keybinding set throughout. Text tabs open in Normal; press `i` to
 insert and `Esc` to return to Normal. In content tabs, `Space 1`–`Space 9`
@@ -250,7 +250,7 @@ State is read only from the configured state directory.
   with Unicode placeholders and a compatible terminal with 256-color support.
   Standalone previews explain when terminal graphics are unavailable. Image files are limited to 32 MiB
   and 16 megapixels.
-- Below 70 columns, sidebar and content share one surface; use Enter and Esc/F6
+- Below 70 columns, sidebar and content share one surface; use Enter and Esc/F2
   to switch. Narrow diffs fall back to unified layout; added/deleted files always
   use full-width unified diffs.
 - `NO_COLOR` enables non-color focus indicators. Nerd Font icons are terminal

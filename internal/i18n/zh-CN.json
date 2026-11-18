@@ -142,7 +142,6 @@
   "No matches": "无匹配结果",
   "No recent workspaces": "没有最近打开的工作区",
   "Search files by name (append : to go to line)": "按名称搜索文件（添加 : 转到行）",
-  "Go to line · line:column": "转到行 · 行:列",
   "Save or close unsaved changes in this path first": "请先保存或关闭此路径下的未保存更改",
   "Path state changed; try again": "路径状态已更改，请重试",
   "This permanently deletes the file from disk. Uncommitted content cannot be recovered by Git.": "这会从磁盘永久删除文件。Git 无法恢复未提交的内容。",

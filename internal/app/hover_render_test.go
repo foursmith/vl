@@ -95,7 +95,7 @@ func TestHoverFramesMatchFullRender(t *testing.T) {
 					tea.MouseMotionMsg{X: m.sideX() + 8, Y: 4},
 					tea.MouseWheelMsg{X: m.mainX() + 8, Y: 4, Button: tea.MouseWheelDown},
 					tea.MouseMotionMsg{X: m.sideX() + 8, Y: 4},
-					tea.KeyPressMsg{Code: tea.KeyF6},
+					tea.KeyPressMsg{Code: tea.KeyF2},
 					tea.MouseMotionMsg{X: m.sideX() + 8, Y: 5},
 					tea.BlurMsg{},
 					tea.WindowSizeMsg{Width: 120, Height: 30},

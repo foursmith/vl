@@ -366,8 +366,6 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 			return m.pasteEntry(value)
 		case "newFolder":
 			return m.createEntry(value, true)
-		case "position":
-			return m.goToPosition(value)
 		}
 		return nil
 	}
@@ -716,15 +714,6 @@ func (m *Model) quit() tea.Cmd {
 		return m.ask(m.tr("Discard unsaved editor changes and quit?"), func() tea.Cmd { return tea.Quit })
 	}
 	return tea.Quit
-}
-
-func (m *Model) switchTab(delta int) tea.Cmd {
-	if len(m.tabs) == 0 {
-		return nil
-	}
-	index := ((m.activeTab+delta)%len(m.tabs) + len(m.tabs)) % len(m.tabs)
-	m.activateTab(index)
-	return nil
 }
 
 func (m *Model) findNext() tea.Cmd {

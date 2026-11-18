@@ -79,9 +79,9 @@ func TestVimMappedFocusAndClearSearch(t *testing.T) {
 		t.Fatal("cw did not change the word in the editor")
 	}
 	press(m, "esc")
-	m.Update(tea.KeyPressMsg{Code: tea.KeyF6})
+	m.Update(tea.KeyPressMsg{Code: tea.KeyF2})
 	if !m.sidebar || !m.sidebarVisible {
-		t.Fatal("F6 did not focus sidebar")
+		t.Fatal("F2 did not focus sidebar")
 	}
 }
 func TestVimUnnamedRegister(t *testing.T) {
@@ -184,8 +184,8 @@ func TestDiffLeaderSelectsTabsWithoutSpacePaging(t *testing.T) {
 		t.Fatal("Escape did not cancel Diff leader")
 	}
 	press(m, " ")
-	press(m, "f6")
-	press(m, "f6")
+	m.Update(tea.KeyPressMsg{Code: tea.KeyF2})
+	m.Update(tea.KeyPressMsg{Code: tea.KeyF2})
 	press(m, "1")
 	if m.activeTab != 2 {
 		t.Fatal("Diff leader crossed focus switch")

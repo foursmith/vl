@@ -265,8 +265,6 @@ func (m *Model) clickStatus(x int) tea.Cmd {
 			return m.openGitHub()
 		case "changes":
 			return m.selectSectionInRepository(changes, m.statusRepository())
-		case "position":
-			return m.prompt("position", m.tr("Go to line · line:column"), "")
 		}
 	}
 	return nil

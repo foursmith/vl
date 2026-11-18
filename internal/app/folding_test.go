@@ -217,8 +217,8 @@ func TestEditorFoldCommandsAndPrefixCancellation(t *testing.T) {
 	command("i")
 	// Pending fold commands cannot survive switching focus to the sidebar.
 	press(m, "z")
-	press(m, "f6")
-	press(m, "f6")
+	m.Update(tea.KeyPressMsg{Code: tea.KeyF2})
+	m.Update(tea.KeyPressMsg{Code: tea.KeyF2})
 	press(m, "a")
 	if !state.vim.InsertMode {
 		t.Fatal("fold prefix survived a focus switch")

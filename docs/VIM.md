@@ -1,176 +1,213 @@
-# 文本编辑详解
+# Vim keys in vl
 
-Vim 是 vl 唯一的交互模式，无需启用，也没有关闭选项。文本文件打开后进入 Normal，使用 `i/a` 等进入 Insert，`Esc` 返回 Normal。
-Diff 是只读编辑器，共用以下移动、选择、复制、搜索、Flash 和 Leader 命令；会修改文本或进入 Insert 的命令不可用。侧栏、图片和弹窗的导航见[快捷键总览](KEYBINDINGS.md)。文件树支持 `dd/yy/p`。
+Text files open in **Normal mode**. Use `i` to enter Insert mode, `v` to enter
+Visual mode, and `Esc` or `Ctrl+[` to get back to Normal. The diff editor is
+read-only and shares the motions, selections, yanks, and jumps. See
+[Keyboard shortcuts](KEYBINDINGS.md) for the rest of the workbench.
 
-按键区分大小写；`Space w`、`cs([` 等表示依次按下，不是同时按下。
-状态栏最左侧以彩色底块显示 `NORMAL`、`INSERT`、`VISUAL` 或 `VISUAL LINE`，输入组合命令时也会显示等待状态。
-Insert 使用闪烁竖线光标，Normal 和 Visual 使用常亮方块光标。
+## Where vl differs from Vim
 
-## 移动与定位
-
-以下移动可用于 Normal 和 Visual 模式。
-
-| 按键 | 操作 |
-| --- | --- |
-| `h j k l` / 方向键 | 左、下、上、右 |
-| `w` | 下一个单词开头 |
-| `b` | 前一个单词开头 |
-| `e` | 单词末尾 |
-| `0` / `Home` | 绝对行首，包含缩进 |
-| `H` / `^` | 本行第一个非空白字符 |
-| `L` / `$` / `End` | 行尾 |
-| `gg` | 第一行 |
-| `G` | 最后一行 |
-| `5G` / `5gg` | 第 5 行 |
-| `PageUp` / `PageDown` | 向上 / 向下一页 |
-
-数字可重复移动，例如 `3j`、`2w`。Normal 模式还支持：
-
-| 按键 | 操作 |
-| --- | --- |
-| `:` | 打开文件跳转输入框，已填入 `:`；输入 `42` 或 `42:8` 跳到指定行或行列 |
-| `/` | 打开共用文件查找栏，全部匹配项高亮，当前结果用另一种颜色 |
-| `n` | 下一个搜索结果，必要时恢复高亮 |
-| `Space Enter` | 清除全部搜索高亮，保留查询，供 `n` 继续使用 |
-
-搜索、匹配计数、上一项/下一项和替换与全局搜索共用组件及选项。默认字面匹配，可在“选项”中切换大小写、整词和正则。搜索匹配和 `n` 跳转会居中显示，文件首尾按边界定位。
-
-行、列从 1 开始。也可以使用 `Ctrl+G` 跳转、`Ctrl+F` 搜索、`F3` 查找下一项。
-
-## 输入与编辑
-
-| 按键（Normal） | 操作 |
-| --- | --- |
-| `i` / `a` | 在光标前 / 后进入 Insert |
-| `I` / `A` | 在首个非空白字符前 / 行尾进入 Insert |
-| `o` / `O` | 在下方 / 上方插入新行并进入 Insert |
-| `x` | 删除光标处字符；`3x` 删除 3 个字符 |
-| `r{字符}` | 替换光标处字符，留在 Normal；`3rX` 将 3 个字符替换为 `XXX` |
-| `s` | 删除光标处字符并进入 Insert；`3s` 删除 3 个字符后进入 Insert |
-| `dd` / `cc` / `yy` | 删除 / 修改 / 复制整行；`cc` 随后进入 Insert |
-| `D` / `C` | 删除 / 修改到行尾 |
-| `J` | 把下一行合并到当前行；`3J` 合并三行 |
-| `p` / `P` | 在光标后 / 前粘贴；整行文本粘贴到下方 / 上方 |
-| `u` / `U` | 撤销 / 重做；可加次数，如 `3u` |
-| `.` / `3.` | 重复上次修改 / 重复 3 次 |
-| `Tab` / `Shift+Tab` | 缩进 / 取消缩进当前行 |
-| 反引号（U+0060） | 移到前一个或当前单词开头，切换该处字符大小写 |
-
-Insert 模式直接输入文本，支持粘贴、退格、删除以及Insert 编辑快捷键。
-`Esc` 或 `Ctrl+[` 返回 Normal；在 Visual 模式中则取消选区。
-一次完整输入或修改操作可以一步撤销。
-
-`y/d/c/x/s` 将复制或移除的文本存入 vl 的默认寄存器，`p/P` 从该寄存器粘贴。默认寄存器在同一工作区的标签页之间共享。`ddp` 把当前行移到下一行之后。
-`Ctrl+C`、`Ctrl+X`、`Ctrl+V` 使用系统剪贴板。
-
-缩进插入一个 Tab；取消缩进移除一个 Tab 或最多四个空格。
-`U` 是重做，`Ctrl+H` 仍然打开最近工作区。
-
-## 操作符与文本对象
-
-`d` 删除、`c` 修改并进入 Insert、`y` 复制，可以搭配移动或文本对象。
-
-| 示例 | 操作 |
-| --- | --- |
-| `dw` / `de` | 删除到下个词首 / 当前词尾 |
-| `cw` | 从光标修改到当前词尾并进入 Insert。光标在空白处时修改到下个词首 |
-| `ce` / `yw` | 修改到词尾 / 复制到下个词首 |
-| `d0` / `dH` | 删除到绝对行首 / 首个非空白字符 |
-| `dL` / `d$` | 删除到行尾；`cL/c$`、`yL/y$` 同样通用 |
-| `dj` / `dk` | 删除当前行及下一行 / 上一行 |
-| `2dd` / `d2w` / `2d3w` | 删除 2 行 / 按 `w` 删除 2 次 / 按 `w` 删除 6 次 |
-| `diw` / `daw` | 删除单词内部 / 单词及相邻空白 |
-| `ci"` / `da(` / `yi{` | 修改双引号内 / 删除括号及内容 / 复制花括号内 |
-
-`i` 表示内部，`a` 表示包含外围。以下对象支持 `d/c/y`，也支持 Visual 模式的 `i/a` 选择。
-
-| 对象 | 内部 / 包含外围 | 说明 |
+| Key | In vl | In stock Vim |
 | --- | --- | --- |
-| 单词 | `iw` / `aw` | 按字母、数字等单词边界划分 |
-| 空白分隔的词 | `iW` / `aW` | 标点也作为词的一部分 |
-| 双引号、单引号、反引号 | `i"/a"`、`i'/a'`、i + 反引号 / a + 反引号 | 引号对象限制在当前行 |
-| 圆括号 | `i(`/`a(`，也可用 `)` 或 `b` | 支持嵌套和跨行 |
-| 方括号 | `i[` / `a[`，也可用 `]` | 支持嵌套和跨行 |
-| 花括号 | `i{` / `a{`，也可用 `}` 或 `B` | 支持嵌套和跨行 |
-| 尖括号 | `i<` / `a<`，也可用 `>` | 普通括号配对 |
+| `H` / `L` | First nonblank / end of the current line. Think `^` / `$`. | Top / bottom of the window |
+| `f`, `df`, `cf`, `yf` | Flash jump, or an operator up to a labeled target in the viewport | `f{char}` finds a character on the current line |
+| `U` | Redo. `u` still undoes. | Restore the last changed line. Redo is `Ctrl+R`. |
+| `:` | Quick Open with the line prompt prefilled. Try `:42` or `:42:8`. | Enter an Ex command |
+| `/`, `n` | Open the Find widget and jump to the next match. Use `Shift+F3` for the previous match. | Enter a search pattern and repeat the search. `N` goes in the opposite direction. |
+| `Space` | Leader in an editor tab. Try `Space w` to save or `Space Enter` to clear search highlights. | Move right in Normal mode |
+| `Ctrl+V` | Paste from the system clipboard in the text editor | Start Visual block in Normal mode |
+| `Ctrl+H` / `Ctrl+D` | Open Recent Workspace / Toggle Inline View | Move left / scroll down by half a screen in Normal mode |
+| `Ctrl+F` / `Ctrl+W` | Find / Close Editor | Page forward / start a window command in Normal mode |
+| `Tab` / `Shift+Tab` | Indent / outdent in Normal and Visual | `Tab` jumps forward in the jumplist in Normal mode |
+| Backtick | Move back to a word start and toggle case. In Visual, extend the selection with that motion and toggle its case. | Jump to a mark |
+| `[` / `]` in a diff | Previous / next hunk | Prefixes for bracket commands |
 
-## Visual 选择
+For Vim's defaults, see [motions](https://vimhelp.org/motion.txt.html),
+[undo and redo](https://vimhelp.org/undo.txt.html), and the
+[command index](https://vimhelp.org/index.txt.html).
 
-| 按键 | 操作 |
+**Know which clipboard you're using.** `y` yanks into vl's unnamed register.
+`d`, `c`, `x`, and `s` also put removed text there. `p` and `P` read that
+register, which is shared across editor tabs. For example, `ddp` moves a line
+down. Use `Ctrl+C`, `Ctrl+X`, and `Ctrl+V` for the system clipboard. Explorer's
+`yy` and `p` have their own file clipboard.
+
+vl supports a subset of Vim. Use Visual characterwise or linewise selection.
+For saving and closing, use the Leader or workbench bindings below. Visual
+block, macros, named registers, Ex commands, and mark jumps are unsupported.
+
+## Motions and search
+
+These motions work in Normal and Visual. Use a count to repeat a motion,
+like `3j` or `2w`.
+
+| Key | Motion |
 | --- | --- |
-| `v` / `V` | 进入字符 / 整行选择；再次按相同键退出，另一键切换模式 |
-| 移动键、`gg/G`、数字次数 | 扩展选区 |
-| `iw` / `aw` 等对象 | 选择文本对象 |
-| `o` | 交换选区两端 |
-| `y` | 复制选区并退出 |
-| `d` / `x` | 删除选区并退出 |
-| `c` | 修改选区并进入 Insert |
-| `J` | 合并选区覆盖的行（至少两行），退出 Visual |
-| `p` / `P` | 用默认寄存器的内容替换选区 |
-| `Tab` / `Shift+Tab` | 缩进 / 取消缩进，保留选区 |
-| `>` / `<` | 缩进 / 取消缩进，退出 Visual |
-| `S` + 包围符 | 包围选区，见下节 |
-| `Esc` / `Ctrl+[` | 取消选择，返回 Normal |
+| `h j k l` / arrow keys | Left, down, up, right |
+| `w` / `b` / `e` | Next word start / previous word start / end of word |
+| `0` / `Home` | Start of line, including indentation |
+| `^` / `H` | First nonblank on the line |
+| `$` / `L` / `End` | End of line |
+| `gg` / `G` | First / last line |
+| `5gg` / `5G` | Go to line 5 |
+| `PageUp` / `PageDown` | Move up / down a page |
 
-字符选择包含光标所在字符，整行选择包含整行内容。
+In Normal mode, `/` opens the same Find widget as `Ctrl+F`. Matches are
+highlighted and the current match is centered when you jump. `n` or `F3`
+advances and brings back hidden highlights. See
+[Find and Replace](KEYBINDINGS.md#find-and-replace) for the full set of bindings.
 
-## Surround 包围操作
+## Editing in Normal mode
 
-| 按键 | 操作 |
+| Key | Action |
 | --- | --- |
-| `ysiw"` | 给单词添加双引号 |
-| `ysaw]` | 给单词及相邻空白添加方括号 |
-| `ysw)` / `yse)` | 按移动范围添加圆括号 |
-| `yss)` / `2yss]` | 给当前行 / 当前及下一行添加括号 |
-| `ysL]` / `ysG]` / `ysgg]` | 包围到行尾 / 文件末行 / 文件首行的范围 |
-| `ysf` | 用 Flash 选择范围，再输入包围符 |
-| Visual `S"` / `S]` | 给选区添加双引号 / 方括号 |
-| `cs([` | 将圆括号换为方括号 |
-| `cs"'` | 将双引号换为单引号 |
-| `ds(` / `ds"` | 删除圆括号 / 双引号，保留内部文本 |
-| `2cs([` / `2ds(` | 修改 / 删除外一层圆括号 |
+| `i` / `a` | Insert before / append after the cursor |
+| `I` / `A` | Insert before the first nonblank / append at end of line |
+| `o` / `O` | Open a line below / above and enter Insert |
+| `x` / `s` | Delete the character / substitute it and enter Insert. Both take a count. |
+| `r{char}` | Replace a character in place. `3rX` writes `XXX`. |
+| `dd` / `cc` / `yy` | Delete / change / yank a line |
+| `D` / `C` | Delete / change to end of line |
+| `J` | Join the current line with the next. `3J` joins three lines. |
+| `p` / `P` | Put after / before the cursor. Linewise text goes below / above. |
+| `u` / `U` | Undo / redo. Both take a count. |
+| `.` / `3.` | Repeat the last change once / three times |
+| `Tab` / `Shift+Tab` | Indent / outdent the current line |
 
-支持双引号、单引号、反引号及 `() [] {} <>`。
-左右括号键等价，`<` 和 `>` 都可以添加尖括号。包围符内侧不会自动加空格。
-包围操作保留内部空白、不改默认寄存器、一步撤销，并支持 `.` 重复。
+An Insert session groups typing into one undo step. Dot repeat covers ordinary
+edits, completed Insert sessions, Visual edits, puts, indentation, case
+changes, Flash edits, and Surround. Moving the cursor or using undo during
+Insert preserves the previous repeatable change.
 
-## Flash 跳转
+### Operators and text objects
 
-在 Normal、Visual 或等待操作符时按 `f`，输入字面查询，再按显示的标签跳转。
-只搜索当前编辑器完整可见的文本，包括固定的顶部上下文行。
-标签临时覆盖字符显示，不修改正文。交互参考 [flash.nvim](https://github.com/folke/flash.nvim)。
+Combine `d` (delete), `c` (change), or `y` (yank) with a motion or text object.
+Change drops you into Insert. Counts before and after the operator multiply.
 
-| 按键 | 操作 |
+| Example | Action |
 | --- | --- |
-| 继续输入 | 缩小查询范围，标签避开可继续输入的查询字符 |
-| 显示的标签 | 选择对应目标；Visual 模式扩展选区 |
-| `Enter` | 选择当前标签页中最近的匹配 |
-| `Tab` / `Shift+Tab` | 下一页 / 上一页标签 |
-| `Esc` | 取消，保留原位置和选区 |
-| `df` / `cf` / `yf` | 跳转后删除 / 修改 / 复制到目标首字符，包含该字符 |
-| `ysf` | 跳转后输入包围符，包围对应范围 |
+| `dw` / `de` | Delete to the next word start / through the end of the word |
+| `cw` | Change through the end of the word. From whitespace, change up to the next word. |
+| `d0` / `d^` / `d$` | Delete to the start of the line / first nonblank / end of the line |
+| `dj` / `dk` | Delete the current line and the line below / above |
+| `2dd` / `d2w` / `2d3w` | Delete two lines / use two `w` motions / use six `w` motions |
+| `diw` / `daw` | Delete the word / the word plus adjacent whitespace |
+| `ci"` / `da(` / `yi{` | Change inside quotes / delete a pair of parentheses and its contents / yank inside braces |
 
-`yf/df/cf` 将对应的文本写入默认寄存器。`df` 和 `cf` 支持撤销和 `.`，重复时重新查找相同的字面目标。
+Use `i` for inner and `a` for around. Text objects also work directly in Visual.
 
-## 保存与工作区
+| Object | Inner / around | Details |
+| --- | --- | --- |
+| Word | `iw` / `aw` | Uses word and punctuation boundaries |
+| WORD | `iW` / `aW` | Runs up to whitespace, punctuation included |
+| Quotes | `i"` / `a"`, `i'` / `a'`, `i` / `a` followed by a backtick | Scoped to the current line |
+| Parentheses | `i(` / `a(` | `)` and `b` are aliases for `(` |
+| Square brackets | `i[` / `a[` | `]` is an alias for `[` |
+| Braces | `i{` / `a{` | `}` and `B` are aliases for `{` |
+| Angle brackets | `i<` / `a<` | `>` is an alias for `<` |
 
-| 按键 | 操作 |
+Parentheses, square brackets, and braces can nest and span lines.
+
+## Visual mode
+
+| Key | Action |
 | --- | --- |
-| `Space 1` … `Space 9` | 切换到从左起第 1–9 个标签；编号不存在时保持当前标签 |
-| `Space w` | 保存 |
-| `Space q` | 关闭当前标签；未保存时提示 |
-| `Space z` | 保存并关闭；保存失败时保持打开 |
-| `Space Enter` | 清除搜索高亮 |
-| `F6` | 切换编辑区与侧栏焦点 |
-| `Ctrl+S` / `Ctrl+W` | 保存 / 关闭标签 |
-| `Ctrl+P` / `Ctrl+H` / `Ctrl+Shift+P` | 文件跳转 / 最近工作区 / 命令 |
+| `v` / `V` | Characterwise / linewise Visual. Press the same key again to exit. |
+| Motion or text object | Extend the selection or select the object |
+| `o` | Swap the active end of the selection |
+| `y` | Yank and exit Visual |
+| `d` / `x` | Delete and exit Visual |
+| `c` | Change the selection and enter Insert |
+| `p` / `P` | Replace the selection with text from the unnamed register |
+| `J` | Join the selected lines, at least two, and exit Visual |
+| `Tab` / `Shift+Tab` | Indent / outdent and keep the selection |
+| `>` / `<` | Indent / outdent and exit Visual |
+| `S{delimiter}` | Surround the selection |
+| `Esc` / `Ctrl+[` | Clear the selection and return to Normal |
 
-Space 是 Leader，由工作区统一处理。文本、Diff 和图片标签共用切换、关闭命令；保存仅用于可编辑文本。`Esc` 取消未完成的 Leader。工作区快捷键仍然可用，完整列表见[快捷键总览](KEYBINDINGS.md)。
+## Insert mode
 
-## 重复与范围
+| Key | Action |
+| --- | --- |
+| Arrow keys, `Home` / `End` | Move the cursor |
+| `Ctrl+Left` / `Ctrl+Right` | Move by word |
+| `Ctrl+Home` / `Ctrl+End` | Move to the start / end of the file |
+| `Shift` + a movement key above | Extend the selection |
+| `PageUp` / `PageDown` | Move up / down a page |
+| `Ctrl+A` | Select All |
+| `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copy / Cut / Paste using the system clipboard |
+| `Ctrl+Z` / `Ctrl+Y` or `Ctrl+Shift+Z` | Undo / redo |
+| `Backspace` / `Delete` | Delete the selection or the character before / after the cursor |
+| `Enter` / `Tab` | Insert a newline / tab |
 
-`.` 支持普通修改、完成的 Insert 输入、Visual 修改、缩进、大小写切换、粘贴、Flash 操作符及 Surround。
-Insert 中移动光标或撤销会保留之前可安全重复的操作，不记录该次输入为新的重复操作。
+Type `./` or `../` to complete a path relative to the current file. Pick a
+suggestion with `Up` / `Down` and accept it with `Tab`. Accepting a directory
+adds `/` and shows its contents. Quote paths that contain spaces.
 
-这是内置的简化 Vim 命令集，当前不支持块选择、宏、命名寄存器、完整 Ex 命令、标记跳转等。
+## Flash
+
+Press `f`, type a literal query, and hit the label at the target.
+Flash searches fully visible text, including pinned context lines. In Visual
+mode, the jump extends the selection. The interaction follows
+[flash.nvim](https://github.com/folke/flash.nvim).
+
+| Key | Action |
+| --- | --- |
+| Keep typing | Narrow the matches |
+| Target label | Jump to that match |
+| `Enter` | Jump to the first target on the current label page |
+| `Tab` / `Shift+Tab` | Show labels or page through them |
+| `Esc` | Cancel and keep the original cursor and selection |
+| `df` / `cf` / `yf` | Delete / change / yank through the first character of the target |
+| `ysf` | Pick a target, then type a delimiter to surround the range |
+
+Flash operators use the unnamed register. Dot repeat for `df` and `cf` looks
+for the same literal target again.
+
+## Surround
+
+| Key | Action |
+| --- | --- |
+| `ysiw"` | Surround the word with double quotes |
+| `ysaw]` | Surround the word and adjacent whitespace with square brackets |
+| `ysw)` / `yse)` | Surround a motion with parentheses |
+| `yss)` / `2yss]` | Surround the current line / the current line and the next |
+| `ysL]` / `ysG]` / `ysgg]` | Surround through end of line / through the last line / back to the first line |
+| `S"` / `S]` in Visual | Surround the selection with quotes / square brackets |
+| `cs([` / `cs"'` | Change parentheses to square brackets / double quotes to single quotes |
+| `ds(` / `ds"` | Delete the delimiters and keep the contents |
+| `2cs([` / `2ds(` | Change / delete the next enclosing pair of parentheses |
+
+Surround takes quotes, backticks, and `() [] {} <>`. Either end of a bracket
+pair works. It keeps the inner whitespace and the unnamed register intact.
+Undo and dot repeat work on the entire change.
+
+## Folds
+
+| Key | Action |
+| --- | --- |
+| `za` | Toggle the current fold |
+| `zc` / `zo` | Close / open the current fold |
+| `zC` / `zO` | Close / open the current fold recursively |
+| `zM` / `zR` | Close / open all folds in the file |
+
+Folds follow brace-delimited blocks and Python indentation. Moving skips
+folded lines. A search or line jump opens the fold when its target is inside.
+Editing clears the fold state. Reopening a file restores saved folds whose
+block boundaries still match.
+
+## Leader and tabs
+
+`Space` is the Leader in editor tabs outside Insert mode. Press the keys in
+sequence. `Esc` cancels a pending sequence.
+
+| Key | Action |
+| --- | --- |
+| `Space 1` … `Space 9` | Go to a tab by its position from the left |
+| `Space w` / `Ctrl+S` | Save |
+| `Space q` / `Ctrl+W` | Close Editor |
+| `Space z` | Save and close |
+| `Space Enter` | Clear search highlights |
+
+Tab navigation and closing also work from diffs and image previews. Save
+commands apply to editable text files.

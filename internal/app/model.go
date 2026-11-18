@@ -975,7 +975,7 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	}
 	if m.sidebar && m.section == search {
 		switch k {
-		case "ctrl+q", "ctrl+p", "ctrl+h", "ctrl+shift+p", "f1", "ctrl+1", "ctrl+2", "ctrl+3", "ctrl+4", "ctrl+5", "ctrl+shift+f", "ctrl+shift+h", "ctrl+l", "f6", "ctrl+s", "ctrl+w", "alt+left", "alt+right":
+		case "ctrl+q", "ctrl+p", "ctrl+h", "ctrl+shift+p", "f1", "ctrl+1", "ctrl+2", "ctrl+3", "ctrl+4", "ctrl+5", "ctrl+shift+f", "ctrl+shift+h", "ctrl+l", "f2", "ctrl+s", "ctrl+w":
 		default:
 			return m.searchKey(msg)
 		}
@@ -1028,8 +1028,6 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		return m.openRecentWorkspaces()
 	case key.Matches(msg, workbenchKeys.Commands):
 		return m.openPalette()
-	case key.Matches(msg, workbenchKeys.Position):
-		return m.prompt("position", m.tr("Go to line · line:column"), "")
 	case key.Matches(msg, workbenchKeys.Replace):
 		return m.openReplace()
 	case key.Matches(msg, workbenchKeys.Search):
@@ -1064,10 +1062,6 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		return m.runShortcut(shortcut{action: shortcutSave})
 	case key.Matches(msg, workbenchKeys.Close):
 		return m.runShortcut(shortcut{action: shortcutClose})
-	case key.Matches(msg, workbenchKeys.NextTab):
-		return m.switchTab(1)
-	case key.Matches(msg, workbenchKeys.PreviousTab):
-		return m.switchTab(-1)
 	case key.Matches(msg, workbenchKeys.Find):
 		return m.openFileFind()
 	case key.Matches(msg, workbenchKeys.FindNext):

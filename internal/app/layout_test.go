@@ -109,7 +109,7 @@ func TestPickerOutsideClickDismissesWithoutClickThrough(t *testing.T) {
 }
 
 func TestAllDialogsDismissOnClickAndPreserveUnsavedFiles(t *testing.T) {
-	for _, kind := range []string{"newFile", "newFolder", "branch", "commit", "find", "position", "confirm"} {
+	for _, kind := range []string{"newFile", "newFolder", "branch", "commit", "find", "confirm"} {
 		m := tabWorkspace(t, 0)
 		confirmed := false
 		m.prompt(kind, "Dialog", "")

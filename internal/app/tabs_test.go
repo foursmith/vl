@@ -116,7 +116,7 @@ func TestPreviewReplacesOnlyCleanPreviewAndKeepsAfterUndo(t *testing.T) {
 	if len(m.tabs) != 1 || m.document() == first || !m.tabs[0].preview {
 		t.Fatal("single click did not replace the clean preview")
 	}
-	m.Update(tea.KeyPressMsg{Code: tea.KeyF6})
+	m.Update(tea.KeyPressMsg{Code: tea.KeyF2})
 	press(m, "x")
 	press(m, "ctrl+z")
 	if m.tabs[0].preview || m.document().Dirty() {
@@ -161,16 +161,12 @@ func TestDiffSharesFileTabOrder(t *testing.T) {
 	if len(m.tabs) != 3 || m.tabs[1].diff != d || m.activeTab != 1 {
 		t.Fatal("diff was moved or duplicated")
 	}
-	for _, index := range []int{2, 0, 1} {
-		m.switchTab(1)
-		if m.activeTab != index {
-			t.Fatalf("next tab = %d, want %d", m.activeTab, index)
-		}
-	}
-	for _, index := range []int{0, 2, 1} {
-		m.switchTab(-1)
-		if m.activeTab != index {
-			t.Fatalf("previous tab = %d, want %d", m.activeTab, index)
+	for index, key := range []string{"1", "2", "3", "2"} {
+		press(m, " ")
+		press(m, key)
+		want := int(key[0] - '1')
+		if m.activeTab != want {
+			t.Fatalf("tab jump %d selected %d, want %d", index, m.activeTab, want)
 		}
 	}
 	m.removeTab(m.tabs[0].doc)
@@ -297,7 +293,7 @@ func TestTabCloseHitboxesAndInactiveMiddleClose(t *testing.T) {
 func TestCloseDirtySaveDiscardCancelAndSaveFailure(t *testing.T) {
 	m := tabWorkspace(t, 2)
 	m.openPreviewFile("file0.go")
-	m.Update(tea.KeyPressMsg{Code: tea.KeyF6})
+	m.Update(tea.KeyPressMsg{Code: tea.KeyF2})
 	press(m, "i")
 	press(m, "x")
 	first := m.document()
@@ -433,7 +429,7 @@ func TestEditingKeepsDirtyActiveTabVisibleAtOverflowBoundary(t *testing.T) {
 }
 
 func TestPreviewStaysReusableUntilEditorTakesFocus(t *testing.T) {
-	for _, action := range []string{"enter", "l", "F6", "content click", "tab click"} {
+	for _, action := range []string{"enter", "l", "F2", "content click", "tab click"} {
 		t.Run(action, func(t *testing.T) {
 			m := tabWorkspace(t, 3)
 			t.Cleanup(m.Close)
@@ -449,8 +445,8 @@ func TestPreviewStaysReusableUntilEditorTakesFocus(t *testing.T) {
 				t.Fatal("replacement did not reuse the preview")
 			}
 			switch action {
-			case "F6":
-				m.Update(tea.KeyPressMsg{Code: tea.KeyF6})
+			case "F2":
+				m.Update(tea.KeyPressMsg{Code: tea.KeyF2})
 			case "content click":
 				m.Update(tea.MouseClickMsg{X: m.mainX() + 8, Y: m.contentRow(), Button: tea.MouseLeft})
 			case "tab click":

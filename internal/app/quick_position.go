@@ -53,7 +53,10 @@ func (m *Model) quickPositionActions(value string) ([]action, bool) {
 		if relErr != nil {
 			path = d.Path
 		}
-		return []action{makeAction(path, func() tea.Cmd { return m.goToPosition(position) })}, true
+		return []action{makeAction(path, func() tea.Cmd {
+			m.SetEditorPosition(line, column)
+			return nil
+		})}, true
 	}
 	var rows []action
 	query = strings.ToLower(query)
@@ -76,20 +79,6 @@ func (m *Model) quickPositionActions(value string) ([]action, bool) {
 		}
 	}
 	return rows, true
-}
-
-func (m *Model) goToPosition(value string) tea.Cmd {
-	d := m.editorDocument()
-	if d == nil {
-		return nil
-	}
-	line, column, err := editor.ParsePosition(value)
-	if err != nil {
-		m.notice = m.tr(err.Error())
-		return nil
-	}
-	m.SetEditorPosition(line, column)
-	return nil
 }
 
 // SetEditorPosition uses one-based line and rune column numbers, clamped to the file.

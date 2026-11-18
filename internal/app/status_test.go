@@ -52,11 +52,11 @@ func TestRevisionHoverAndFocusUseStatusNoticeArea(t *testing.T) {
 			}
 		}
 		m.selected = 0
-		m.Update(tea.KeyPressMsg{Code: tea.KeyF6})
+		m.Update(tea.KeyPressMsg{Code: tea.KeyF2})
 		if !m.sidebar || statusPart(t, m, "notice").text != tt.want {
 			t.Fatal("focusing the revision did not show its title")
 		}
-		m.Update(tea.KeyPressMsg{Code: tea.KeyF6})
+		m.Update(tea.KeyPressMsg{Code: tea.KeyF2})
 		if m.sidebar || strings.Contains(plain(m.statusLine()), title) {
 			t.Fatal("revision title remained after focus moved to the editor")
 		}

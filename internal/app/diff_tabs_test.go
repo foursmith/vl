@@ -169,7 +169,7 @@ func TestFilesAndDiffsSharePreviewAndKeepMechanism(t *testing.T) {
 	if len(m.tabs) != 1 || first.diffOpen || m.document() != doc {
 		t.Fatal("file preview did not close and replace diff safely")
 	}
-	m.Update(tea.KeyPressMsg{Code: tea.KeyF6})
+	m.Update(tea.KeyPressMsg{Code: tea.KeyF2})
 	press(m, "x")
 	openPreview("file0.go", false)
 	if len(m.tabs) != 2 || !doc.Dirty() || m.tabs[0].preview {

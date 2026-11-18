@@ -1,247 +1,182 @@
-# 快捷键总览
+# Keyboard shortcuts
 
-vl 统一使用 Vim 交互，没有普通编辑模式或 Vim 开关。文件打开后进入 Normal，`i/a` 等进入 Insert，`Esc` 返回 Normal。
-以下按键按焦点和当前视图生效；文本操作符、文本对象、Visual、Flash 和 Surround 见[文本编辑详解](VIM.md)。
-`Ctrl+…` 表示同时按下；字母快捷键如 `j`、`s` 使用小写。
+Use `Ctrl+P` to jump to a file, `Ctrl+Shift+P` to run a command, and `F2` to move
+focus between the sidebar and the editor. Files open in Normal mode. See the
+[Vim guide](VIM.md#where-vl-differs-from-vim) for the bindings that behave
+differently in vl.
 
-## 导航速查
+Keys are case-sensitive. `Ctrl+P` is a chord. `Space w` and `gg` are sequences.
 
-侧栏、Diff 和右键菜单支持 `h/j/k/l`、`gg/G` 和数字次数。
-`3j` 移动三项或三行，`gg` 到开头，`G` 到末尾，`5gg` / `5G` 到第五项或第五行。
-`PageUp/PageDown` 翻页；`Ctrl+F` 搜索，`Ctrl+D` 切换 Diff 布局。
+## Workbench
 
-| 焦点所在区域 | `j` / `k` | 左右导航 |
-| --- | --- | --- |
-| Explorer 文件树、Changes、History | 下一项 / 上一项，并预览 | `l` / `Right` / `Enter` 切换目录折叠或打开文件并聚焦，`h` / `Left` 直接选择父级 |
-| Diff（只读编辑器） | 向下 / 向上移动光标 | `h/l` 向左 / 向右移动 |
-| 右键菜单 | 下一项 / 上一项 | `h` 关闭，`l` 执行 |
-| 文本编辑器（Normal / Visual） | 向下 / 向上移动光标 | `h/l` 向左 / 向右移动 |
-| 文本编辑器（Insert） | 输入字母 | 方向键移动光标 |
-| 文件、命令等搜索选择器 | 输入搜索文字 | 使用 `Up/Down` 选择结果 |
-| 图片 | 向下 / 向上平移 | `h/l` / 方向键平移，可加次数 |
-
-使用 `F6` 切换侧栏与编辑区焦点；`Ctrl+1/2/3/4` 分别切到 Explorer、Search、Changes、History。
-
-在编辑器 Insert 模式下输入 `./` 或 `../`，会从当前文件所在目录补全相对路径。
-用 `Up/Down` 选择，按 `Tab` 插入。选中目录会添加 `/`，接着显示下一层候选。
-引号内支持带空格的路径。
-
-## 工作区与标签页
-
-| 按键 | 操作 |
+| Shortcut | Action |
 | --- | --- |
-| `Ctrl+1` / `Ctrl+2` / `Ctrl+3` / `Ctrl+4` | Explorer / Search / Changes / History |
-| `Ctrl+Shift+F` | 全文搜索 |
-| `Ctrl+Shift+H` | 在文件中替换 |
-| `Ctrl+P` | 搜索并打开文件 |
-| `Ctrl+H` | 打开最近工作区 |
-| `Ctrl+Shift+P` / `F1` | 命令面板 |
-| `Ctrl+G` | 跳到指定行或 `行:列`，从 1 开始 |
-| `Ctrl+F` / `F3` | 搜索当前内容 / 下一个结果 |
-| `F6` | 切换编辑区与侧栏焦点 |
-| `Esc` | 侧栏 / Diff 中聚焦侧栏；弹窗中取消；文本编辑器中返回 Normal |
-| `Ctrl+L` | 显示 / 隐藏侧栏 |
-| `Ctrl+D` | 切换统一 / 并排 Diff |
-| `F5` | 刷新仓库 |
-| `Ctrl+S` | 保存当前文本文件 |
-| `Ctrl+W` | 关闭当前标签，未保存时提示 |
-| `Alt+Left` / `Alt+Right` | 上一个 / 下一个标签 |
-| `Shift+F10` / 鼠标右键 | 打开当前侧栏项或内容的上下文菜单 |
-| `Ctrl+Q` | 退出，有未保存修改时提示 |
+| `Ctrl+P` | Quick Open (Go to File) |
+| `Ctrl+Shift+P` / `F1` | Show Command Palette |
+| `Ctrl+H` | Open Recent Workspace |
+| `Ctrl+1` / `Ctrl+2` / `Ctrl+3` / `Ctrl+4` / `Ctrl+5` | Focus Explorer / Search / Changes / History / Pull Requests |
+| `Ctrl+Shift+F` | Find in Files |
+| `Ctrl+Shift+H` | Replace in Files |
+| `Ctrl+L` | Toggle Sidebar |
+| `F2` | Focus the sidebar or the editor |
+| `Ctrl+S` | Save |
+| `Ctrl+W` | Close Editor. Prompts if the file has unsaved changes. |
+| `Space 1` … `Space 9` | Switch to a tab by number from a focused editor outside Insert mode |
+| `F5` | Refresh the active view |
+| `Shift+F10` / right-click | Open the context menu |
+| `Ctrl+Q` | Quit. Prompts if there are unsaved changes. |
 
-`Ctrl+C` 在聚焦的文本编辑器或 Diff 中复制选区；在其他视图中用于退出。
+Quick Open searches files as you type. Prefix the input with `>` for commands
+or `:` to go to a line or column. In a picker, use `Up` / `Down` to select a
+result, `PageUp` / `PageDown` to page, and `Enter` to accept. `Esc` dismisses
+the picker.
 
-## 侧栏
+`Ctrl+C` copies selected text when the text or diff editor has focus. In the
+main workbench outside those editors and text inputs, it can quit vl.
 
-| 按键 | 操作 |
+## Sidebar
+
+| Shortcut | Action |
 | --- | --- |
-| `Up` / `Down` 或 `k` / `j` | 上一项 / 下一项，并预览 |
-| `Enter` | 打开所选项、切换目录展开状态或执行当前项操作 |
-| `l` / `Right` | 与 `Enter` 相同：切换目录折叠状态；打开文件 / Diff 并切换焦点 |
-| `h` / `Left` | 直接选择父级，不改变当前目录的折叠状态；根节点保持原位 |
-| `L`（Explorer） | 拆开选中的紧凑目录链，保留末级目录的展开状态 |
-| `dd` / `Delete`（Explorer） | 删除所选文件 / 文件夹，有确认提示 |
-| `yy`（Explorer） | 复制所选文件或文件夹，使用独立的文件复制状态 |
-| `p`（Explorer） | 粘贴到所选文件夹，或所选文件的同级目录；确认目标路径后复制 |
-| `e`（文件项） | 编辑文件 |
-| `Space`（Changes） | 切换所选文件的暂存状态 |
-| `s` / `u`（Changes） | 暂存 / 取消暂存所选项 |
-| `a`（Changes） | 暂存全部 |
-| `c`（Changes） | 提交 |
+| `j` / `k` or `Down` / `Up` | Select and preview the next / previous item |
+| `gg` / `G` | Select the first / last item |
+| `3j`, `5gg`, `5G` | Move down three items or jump to the fifth item |
+| `PageUp` / `PageDown` | Move by a page |
+| `h` / `Left` | Select the visible parent. Keep the current fold state. |
+| `l` / `Right` / `Enter` | Expand or collapse a folder, or open the selected item |
+| `e` | Open the selected file for editing, where available |
+| `r` | Refresh the active view |
+| `o` (Pull Requests) | Open the selected PR in your browser |
 
-`yy/p` 复制磁盘内容；源路径有未保存的编辑时先保存。只在同一工作区内粘贴，不覆盖已有路径，不复制符号链接、特殊文件或 `.git` 元数据。复制自身时默认建议名称加 `-copy`。
-`dd/yy` 每次只操作所选的一项，不接受数字次数；文件夹操作包含其子项。`dd` 需要确认，`Esc` 取消。
+Moving the selection or single-clicking a file reuses the preview tab and keeps
+focus in the sidebar. Opening the file with `Enter` or `l`, switching to the
+editor with `F2`, or clicking the editor or its tab keeps that tab open. Scrolling
+and image zoom leave it in preview. On narrow terminals, use `Enter` to open
+the item and `F2` to switch back to the sidebar.
 
-单击文件或移动列表选择会复用预览标签，并保留侧栏焦点。通过 Enter、l 打开文件，或用 F6、点击内容区或标签进入编辑区时，当前标签自动固定。滚轮滚动和图片缩放保留预览状态。
+### Explorer
 
-提交、暂存和编辑是否可用取决于当前条目；只读历史内容保留其操作限制。
-终端宽度不足 70 列时，侧栏和内容共用一个区域，通过 `Enter` 和 `Esc/F6` 切换。
-
-## 全文搜索与替换
-
-第二个侧栏 Tab 为全文搜索，使用 `Ctrl+2` 或 `Ctrl+Shift+F` 打开。
-输入时自动搜索工作区文本，默认忽略大小写并遵循 Git 忽略规则；打开文件的未保存内容也参与搜索。
-结果按文件分组，显示行号和匹配高亮；点击文件名或匹配行在预览标签中打开并居中定位；文件名前的箭头只负责展开/折叠。上下键切换结果时复用预览标签并保留列表焦点；双击或 Enter 固定打开。
-打开后复用文件内搜索，高亮该文件中的全部匹配，并保留全文搜索的大小写、整词和正则选项；`n` / `F3` 继续跳转并居中，`Space Enter` 清除高亮。`Ctrl+F`、`/`、右键“查找”与全局结果复用编辑区同一个查找/替换组件，查询、替换内容和匹配选项保持一致。
-
-| 按键 | 操作 |
+| Shortcut | Action |
 | --- | --- |
-| `Tab` / `Shift+Tab` | 在搜索框、已展开的替换框和结果列表间切换 |
-| `Esc` | 从搜索框进入结果列表 |
-| `/` / `i` / `Ctrl+F`（结果列表） | 返回搜索框 |
-| `j/k` / 方向键、`gg/G`、`PageUp/PageDown`（结果列表） | 导航结果 |
-| `h/l`（结果列表） | `h` 回到所属文件组，不折叠；`l` 展开文件组，展开后打开结果 |
-| `Enter`（搜索框） | 立即搜索并进入结果列表 |
-| `Enter`（结果列表） | 固定打开所选文件或匹配位置 |
-| `dd` / `Delete` / 右键“移除结果”（结果列表） | 从当前结果中移除一行或文件组，不修改文件 |
+| `L` | Split the selected compact folder chain |
+| `dd` / `Delete` | Delete the selected file or folder after confirmation |
+| `yy` | Yank the selected file or folder into the Explorer's file clipboard |
+| `p` | Paste into the selected folder or next to the selected file. Confirm the destination path. |
 
-点击搜索框左侧的箭头或按 `Alt+H` 展开或收起替换；`Ctrl+Shift+H` 可直接打开替换框。
+`dd` and `yy` act on one item at a time, including its children if it's a folder.
+Save edits to the source before copying. Paste stays within the current
+workspace, refuses symlinks and special files, and skips `.git` metadata.
+Existing paths are protected. Copying into the source's parent suggests a
+name ending in `-copy` if the default destination is the source itself.
 
-| 按键 / 按钮 | 操作 |
+### Changes
+
+| Shortcut | Action |
 | --- | --- |
-| 替换框 `Enter` / `Ctrl+Enter` | 替换所选匹配；选中文件标题时替换该文件的全部保留匹配 |
-| `Ctrl+Alt+Enter` / “全部替换” | 替换所有保留的搜索结果 |
+| `Space` | Stage or unstage the selected change or group |
+| `a` | Toggle Stage All for the selected repository |
+| `c` | Commit |
+| `d` | Open Discard Changes for the selected unstaged item. Confirm with `x` or the dialog. |
+| `s` | Open Stash Changes, including untracked files |
+| `f` | Fetch |
+| `p` / `P` | Pull (fast-forward only) / Push |
 
-在“选项”中选择“保留大小写”启用保留大小写：例如 `old / Old / OLD` 替换为 `new / New / NEW`，下划线和连字符分段也会分别处理。
-替换支持空文本；正则模式支持 `$1`、`${name}` 等捕获组，捕获组展开后再应用大小写形式。
-替换前校验所有目标，结果过期时重新搜索，不会部分修改。
-修改保留在打开的标签中，不自动保存；每个文件一次撤销，使用 `Ctrl+Z` 撤销，逐个文件按 `Ctrl+S` 保存。
-从搜索结果移除的匹配或文件不参与后续替换。
+The row's context menu and the Command Palette also expose Stage Changes and
+Unstage Changes.
 
-包含/排除框支持逗号分隔的文件模式，例如 `*.go, **/*.{ts,tsx}`。
-支持 `*`、`**`、`?`、`{a,b}`、`[a-z]`、`[!a-z]`；默认在任意目录匹配，`./src` 限定工作区根目录。
-排除优先于包含，显式输入的排除条件不会因关闭忽略规则而失效。
+## Find and Replace
 
-点击 `…`，或按 `Ctrl+Shift+J` / `Alt+E` 就地展开或收起 `In`（包含文件）和 `Ex`（排除文件）输入框。
-两个输入框直接编辑文件模式，Tab 依次经过查询、替换、包含、排除和结果；收起后仍保留并应用筛选条件。
-
-搜索选项包含区分大小写、整词匹配、正则表达式、保留大小写、仅更改文件、仅已打开文件和遵循忽略规则。
-这些选项通过框内按钮切换，没有单独的 Alt 快捷键。“仅更改文件”需要 Git 仓库，包含暂存、未暂存、未跟踪文件及有修改的打开缓冲区。
-
-两个范围开关可以组合，取交集，并与包含/排除模式共同生效。
-忽略规则包括 Git 忽略规则、各级 `.ignore`；普通文件夹也支持各级 `.gitignore`。
-Git 元数据和符号链接始终不搜索。
-
-搜索和替换使用侧栏宽度，滚轮只滚动下方的结果列表。展开文件筛选后结果列表随之下移，切换侧栏 Tab 会保留输入、选项和结果。
-
-## 文件内查找与替换
-
-`Ctrl+F` / Normal `/` 打开编辑区右上角的查找浮层，正文位置和可滚动区域不变。全局搜索结果只定位并高亮匹配，不打开查找栏。
-当前匹配序号与总数单独显示在查找框上方，未选中匹配时只显示总数。展开替换后两框之间留一行。输入实时更新高亮，Enter 接受当前匹配并返回代码区，所有搜索定位保持居中。
-搜索与替换区域使用英文文案。文件查找参考 VS Code：左侧箭头展开替换，`Aa` / `ab` / `.*` 切换大小写、全词和正则，`↑` / `↓` 跳转，`×` 关闭；替换行的 `AB` 切换保留大小写。
-搜索 tab 将 `Aa` / `ab` / `.*` 放在搜索框内、`AB` 放在替换框内；框外的 Replace All 按钮执行全部替换，下一行右侧的 `…` 打开文件范围与其他选项。`Ctrl+Enter` 仍可替换当前结果。
-
-| 按键 / 操作 | 行为 |
+| Shortcut | Action |
 | --- | --- |
-| `n` / `F3` / 下一项 | 下一个匹配，末尾循环到开头 |
-| `Shift+F3` / 上一项 | 上一个匹配，开头循环到末尾 |
-| `Tab` | 在查询与替换输入间切换；未展开替换时返回代码区 |
-| `Esc` / 关闭 | 隐藏查找栏及搜索高亮，保留查询供 `n` 继续使用 |
-| `Ctrl+Shift+J` | 用键盘编辑匹配选项 |
-| 左侧箭头 / `Alt+H` | 展开或收起当前文件的替换输入 |
-| `Ctrl+Enter` | 替换当前匹配 |
-| `Ctrl+Alt+Enter` / 全部替换 | 只替换当前文件的全部匹配 |
+| `Ctrl+F` / Normal mode `/` | Open Find in the editor |
+| `F3` / Normal mode `n` | Find Next |
+| `Shift+F3` | Find Previous |
+| `Enter` in Find | Jump to the match and return focus to the editor |
+| `Alt+H` in Find | Show or hide Replace |
+| `Tab` / `Shift+Tab` | Switch between Find and Replace, or return to the editor when Replace is collapsed |
+| `Ctrl+Shift+J` / `Alt+E` in Find | Open Find options |
+| `Enter` in Replace / `Ctrl+Enter` | Replace the current match |
+| `Ctrl+Alt+Enter` | Replace all matches in this file |
+| `Esc` | Close Find and hide highlights |
+| `Space Enter` in the editor | Clear search highlights and keep the query |
 
-文件内替换与全局替换都支持捕获组、保留大小写和空文本。全局替换直接保存发生替换的文件，包括这些文件里原有的未保存编辑，无需打开新标签页。文件内查找浮层的替换需手动保存。已打开文件中的替换可以撤销。
-只读 Diff 共用查找、计数、导航和高亮，不能替换。文件内选项不展示跨文件范围过滤。
+Find opens as an overlay in the upper-right corner. It shares the query,
+replacement, and match options with workspace Search. Find Next and Find
+Previous wrap around. Use Match Case, Match Whole Word, or Use Regular
+Expression to change how the query matches. Replace also supports Preserve
+Case and capture groups like `$1` and `${name}`. In-file replacements stay in the
+buffer until you save. Read-only diffs support Find.
 
-## 文本编辑器
+### Search across files
 
-文本编辑器使用 Normal / Insert / Visual。Normal 中通过 `i/a/I/A/o/O` 进入 Insert，`v/V` 进入 Visual；`Esc` 返回 Normal。
-Normal 模式下使用以下折叠组合键，依次按下；`z` 是前缀，`Esc` 取消。在块内折叠时光标移到块首。
-
-| 按键 | 操作 |
+| Shortcut | Action |
 | --- | --- |
-| `za` | 切换当前代码块的折叠 / 展开 |
-| `zc` / `zo` | 折叠 / 展开当前层 |
-| `zC` / `zO` | 折叠 / 展开当前块及内部所有嵌套块 |
-| `zM` / `zR` | 折叠 / 展开当前文件全部代码块 |
+| `Ctrl+Shift+F` / `Ctrl+2` | Find in Files |
+| `Ctrl+Shift+H` | Replace in Files |
+| `Alt+H` | Show or hide the Replace field |
+| `Ctrl+Shift+J` / `Alt+E` | Show or hide Files to Include / Files to Exclude |
+| `Tab` / `Shift+Tab` | Cycle through the visible fields and results |
+| `Enter` in the search field | Run the search and focus the results |
+| `Esc` from a field | Focus the results |
+| `/` / `i` / `Ctrl+F` in the results | Focus the search field |
+| `j` / `k`, `gg` / `G`, `PageUp` / `PageDown` in the results | Move through matches and file groups |
+| `h` / `l` in the results | Select the parent file group / expand it or open the selected result |
+| `Enter` in the results | Open the selected file or match and keep the tab |
+| `dd` / `Delete` in the results | Remove a match or file group from the results. This leaves the file alone. |
+| `Enter` in Replace / `Ctrl+Enter` | Replace the selected match, or all retained matches in the selected file group |
+| `Ctrl+Alt+Enter` | Replace all retained results |
 
-支持大括号语言及 Python 缩进块，折叠行显示隐藏行数。移动会跳过隐藏行，搜索或跳行进入隐藏内容时自动展开；修改文本后清除折叠状态。
-折叠状态随文件位置保存，关闭后重新打开或重启时恢复；只检查所存行号处的块首、块尾是否仍然一致。
-下表是 Insert 中的输入和编辑操作；保存、关闭、搜索等工作区快捷键在各状态下共用。
+Search runs as you type and includes unsaved edits. Selecting a result previews
+it. Opening it focuses the editor at the match and highlights the other matches
+in that file. Use `n` or `F3` to keep jumping.
 
-| 按键 | 操作 |
+Include and exclude fields take comma-separated globs such as
+`*.go, **/*.{ts,tsx}`. Use `./` to anchor a pattern at the workspace root.
+Excludes win over includes. You can combine the open-file and changed-file
+filters with globs and ignore rules. A result you remove with `dd` is skipped
+during replacement.
+
+**Replace in Files saves to disk immediately**, including any edits already in
+the affected open buffers. Open files keep an undo step for the replacement.
+If a result goes stale, run the search again before replacing.
+
+## Diff editor
+
+The diff editor is read-only. Use the same motions, Visual selections, yanks,
+Find, and Flash bindings as in a text tab.
+
+| Shortcut | Action |
 | --- | --- |
-| 直接输入 | 在光标处输入文字，替换已有选区 |
-| 方向键 | 移动光标 |
-| `Home` / `End` | 行首 / 行尾 |
-| `Ctrl+Home` / `Ctrl+End` | 文件开头 / 结尾 |
-| `Ctrl+Left` / `Ctrl+Right` | 按词移动 |
-| `Shift` + 上述移动键 | 扩展选区 |
-| `PageUp` / `PageDown` | 向上 / 向下一页 |
-| `Ctrl+A` | 全选 |
-| `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | 复制 / 剪切 / 粘贴，使用系统剪贴板 |
-| `Ctrl+Z` | 撤销 |
-| `Ctrl+Y` / `Ctrl+Shift+Z` | 重做 |
-| `Backspace` / `Delete` | 删除光标前 / 后字符；有选区时删除选区 |
-| `Enter` | 换行 |
-| `Tab` | 插入一个 Tab |
-| 左键拖动 / `Shift` + 单击 | 选择文本 / 扩展选区 |
-| 横向滚轮 / `Shift` + 滚轮 | 横向滚动 |
+| `[` / `]` in Normal mode | Previous / Next Hunk |
+| `Ctrl+D` | Toggle Inline View (inline / side by side) |
+| `Shift+F10` / right-click | Open diff actions, including Stage Hunk or Unstage Hunk when available |
+| `Ctrl+C` | Copy selected source text to the system clipboard |
+| `Space 1` … `Space 9` / `Space q` | Switch tabs / close the tab |
 
-文本搜索按字面匹配、区分大小写，全部匹配项高亮，当前结果用另一种颜色。
-`Space Enter` 可以清除高亮，`n` 或 `F3` 继续搜索时恢复。
+In a side-by-side diff, click a side or run **Focus Other Diff Side** from the
+Command Palette. Motions and selections use the source shown on that side.
+Yanks and copies leave out line numbers and diff markers. Added or deleted
+files open inline, and side-by-side falls back to inline when space runs out.
 
-## Diff（只读编辑器）
+## Image preview
 
-Diff 和文本编辑器共用 Vim 命令、光标、选择、复制、搜索、Flash 和 Leader 处理。区别是 Diff 的文档只读，不能进入 Insert、修改、粘贴、撤销或保存。
-
-| 按键 | 操作 |
+| Shortcut | Action |
 | --- | --- |
-| `h/j/k/l`、方向键、`w/b/e`、`gg/G`、数字次数 | 在当前侧展示的源码中移动，自动滚动到光标 |
-| `v/V`、`iw/aw` 等文本对象 | 字符 / 整行选择及扩展选区 |
-| `yy`、`yw`、`yiw`、Visual `y`、`Ctrl+C` | 复制源码，不包含行号、差异符号或另一侧内容 |
-| `/` / `Ctrl+F`、`n` / `F3` | 搜索、下一个结果 |
-| `f`、`yf` | Flash 跳转、通过 Flash 选择并复制范围 |
-| `PageUp` / `PageDown` | 向上 / 向下一页 |
-| `Space 1` … `Space 9`、`Space q` | 切换标签 / 关闭当前标签 |
-| `Space Enter` | 清除搜索高亮 |
-| `[` / `]` | 上一个 / 下一个修改块 |
-| `Ctrl+D` | 切换统一 / 并排布局 |
-| 左键拖动 / `Shift` + 单击 | 选择源文本；并排 Diff 在单侧选择 |
-| 横向滚轮 / `Shift` + 滚轮 | 横向滚动 |
+| `+` / `=` / `-` | Zoom in / out around the viewport center |
+| Mouse wheel | Zoom around the pointer |
+| `h j k l` / arrow keys / drag | Pan. The keys take a count. |
+| `0` | Fit to window |
+| `Enter` | Keep the preview tab open |
+| `Space 1` … `Space 9` / `Space q` | Switch tabs / close the tab |
 
-并排 Diff 默认在右侧源码导航，点击左侧或执行命令面板中的“切换 Diff 左右侧焦点”可切换。移动、选择和搜索只涉及当前侧 Diff 中实际展示的源码，跳过标题、占位行和未展示的文件内容。
-暂存修改块、取消暂存修改块、打开工作区文件统一由右键菜单或命令面板执行。历史提交仍不可暂存。
-`e/n/p/f/b/u` 不再有 Diff 专用操作；遵循同一套 Vim 语义。Space 不翻页。
-新增 / 删除文件始终使用全宽统一 Diff；内容区域过窄时并排布局回退为统一布局。
+## Menus and dialogs
 
-## 图片
-
-| 按键 / 鼠标 | 操作 |
+| Shortcut | Action |
 | --- | --- |
-| 滚轮向上 / 向下 | 以指针位置为中心放大 / 缩小 |
-| `+` / `=` / `-` | 以视口中心放大 / 缩小 |
-| `h/j/k/l` / 方向键 / 左键拖动 | 平移 |
-| `0` | 恢复适应窗口 |
-| `Enter` | 保留当前预览标签 |
-| `Space 1` … `Space 9`、`Space q` | 切换标签 / 关闭当前标签 |
+| `k` / `j`, `Up` / `Down`, `Shift+Tab` / `Tab` | Select the previous / next menu item |
+| `Home` / `End` | Select the first / last menu item |
+| `l` / `Enter` / `Space` | Run the selected action |
+| `h` / `Esc` / `Shift+F10` | Close the context menu |
 
-## 文件、命令等选择器
-
-| 按键 | 操作 |
-| --- | --- |
-| 输入文字 / 粘贴 | 搜索或填写内容 |
-| `Up` / `Down` | 上一项 / 下一项 |
-| `PageUp` / `PageDown` | 上一页 / 下一页 |
-| `Home` / `End` | 第一项 / 最后一项（列表选择器） |
-| `Enter` | 确认或执行所选项 |
-| `Esc` | 取消 |
-
-文件与命令共用输入框：以 `>` 开头搜索命令，以 `:` 开头跳转行列，其他文字搜索文件。
-具体确认弹窗以屏幕提示为准。
-
-## 右键菜单
-
-使用 `Shift+F10` 或鼠标右键打开。
-
-| 按键 | 操作 |
-| --- | --- |
-| `Up` / `k` / `Shift+Tab` | 上一项 |
-| `Down` / `j` / `Tab` | 下一项 |
-| `Home` / `End` | 第一项 / 最后一项 |
-| `l` / `Enter` / `Space` | 执行所选操作 |
-| `h` / `Esc` / `Shift+F10` | 关闭菜单 |
-
-确认弹窗中，`h/l` 切换按钮，`j/k` 滚动说明，`Enter` 确认，`Esc` 取消。输入框中的字母始终作为文字输入。
+In confirmation dialogs, `h` / `l` switch buttons, `j` / `k` scroll the details,
+`Enter` activates the focused button, and `Esc` cancels.

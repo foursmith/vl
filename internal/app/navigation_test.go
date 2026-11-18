@@ -4,7 +4,45 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	tea "charm.land/bubbletea/v2"
 )
+
+func TestWorkbenchFocusShortcutAndRemovedBindings(t *testing.T) {
+	m := tabWorkspace(t, 2)
+	defer m.Close()
+	m.Update(tea.WindowSizeMsg{Width: 140, Height: 24})
+	m.openFile("file0.go")
+	m.openFile("file1.go")
+	for _, key := range []tea.KeyPressMsg{
+		{Code: 'g', Mod: tea.ModCtrl},
+		{Code: tea.KeyLeft, Mod: tea.ModAlt},
+		{Code: tea.KeyRight, Mod: tea.ModAlt},
+		{Code: tea.KeyF6},
+	} {
+		m.Update(key)
+		if m.modal != "" || m.sidebar || m.activeTab != 1 {
+			t.Fatalf("%s changed the dialog, focus, or active tab", key.String())
+		}
+	}
+	position := statusPart(t, m, "position")
+	m.Update(tea.MouseClickMsg{X: position.x + 1, Y: m.height - 1, Button: tea.MouseLeft})
+	if m.modal != "" {
+		t.Fatal("clicking the cursor position opened a dialog")
+	}
+
+	m.openSearch()
+	focusKey := tea.KeyPressMsg{Code: tea.KeyF2}
+	m.Update(focusKey)
+	if m.sidebar {
+		t.Fatal("F2 did not move focus out of workspace Search")
+	}
+	m.openFileFind()
+	m.Update(focusKey)
+	if !m.sidebar || m.fileFindFocused() {
+		t.Fatal("F2 did not move focus from Find to the sidebar")
+	}
+}
 
 func TestTreeVimNavigationAndFileOperators(t *testing.T) {
 	m := explorerWorkspace(t)
@@ -71,8 +109,8 @@ func TestTreeVimNavigationAndFileOperators(t *testing.T) {
 	}
 	// Unfinished operators cannot survive a focus switch.
 	press(m, "d")
-	press(m, "f6")
-	press(m, "f6")
+	m.Update(tea.KeyPressMsg{Code: tea.KeyF2})
+	m.Update(tea.KeyPressMsg{Code: tea.KeyF2})
 	press(m, "d")
 	if m.modal != "" {
 		t.Fatal("unfinished dd crossed focus switch")
