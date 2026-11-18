@@ -17,26 +17,14 @@ func delimiterPair(key string) (string, string, bool) {
 	}
 }
 
-func textObject(d *Document, key string, inner bool, count int) (int, int, bool) {
-	if key == "t" {
-		bounds, ok := tagSurround(d, count)
-		if !ok {
-			return 0, 0, false
-		}
-		if inner {
-			return bounds.insideStart, bounds.insideEnd, true
-		}
-		return bounds.start, bounds.end, true
-	}
-	if key == "w" || key == "W" {
-		return wordObject(d, key, inner, count)
-	}
+func delimiterObject(d *Document, opening, closing string, inner bool, count int) (int, int, bool) {
+	open, close := rune(opening[0]), rune(closing[0])
 	runes := []rune(d.Text)
 	row, _ := d.Position()
 	floor := d.LineOffset(row)
 	ceiling := floor + d.LineRuneCount(row)
-	if key == "\"" || key == "'" || key == "`" {
-		quote := []rune(key)[0]
+	if open == close {
+		quote := open
 		open := -1
 		for pos := floor; pos < ceiling; pos++ {
 			if runes[pos] == '\\' {
@@ -57,11 +45,6 @@ func textObject(d *Document, key string, inner bool, count int) (int, int, bool)
 		}
 		return 0, 0, false
 	}
-	opening, closing, ok := delimiterPair(key)
-	if !ok {
-		return 0, 0, false
-	}
-	open, close := []rune(opening)[0], []rune(closing)[0]
 	type pair struct{ start, end int }
 	var stack []int
 	var enclosing []pair

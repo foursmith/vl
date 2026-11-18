@@ -8,7 +8,6 @@ import (
 	"unicode/utf8"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/clipperhouse/uax29/v2/graphemes"
 	"github.com/ourongxing/vl/internal/editor"
@@ -68,7 +67,7 @@ func (m *Model) flashKey(msg tea.KeyPressMsg) tea.Cmd {
 	f := m.flash
 	k := msg.String()
 	switch k {
-	case "esc", "ctrl+[":
+	case "esc":
 		m.cancelFlash()
 		return nil
 	case "backspace":
@@ -141,11 +140,10 @@ func (m *Model) finishFlash(offset int) tea.Cmd {
 	}
 	m.cancelFlash()
 	v := &m.tabs[m.activeTab].vim
-	v.ApplyFlash(f.doc, offset, f.query, f.operator)
-	m.ensureTextCursor()
-	if text, ready := v.TakeClipboardCopy(); ready {
-		return func() tea.Msg { return clipboardMsg{err: clipboard.WriteAll(text)} }
+	if text := v.ApplyFlash(f.doc, offset, f.query, f.operator); text != "" {
+		m.vimRegister = text
 	}
+	m.ensureTextCursor()
 	return nil
 }
 func (m *Model) rebuildFlash() {

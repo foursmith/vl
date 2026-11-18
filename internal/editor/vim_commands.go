@@ -6,26 +6,16 @@ import (
 	"unicode/utf8"
 )
 
-func (v *Vim) TakeAction() string { action := v.action; v.action = ""; return action }
-func (v *Vim) TakeClipboardCopy() (string, bool) {
-	ready := v.clipboardReady
-	v.clipboardReady = false
-	text := v.clipboardText
-	v.clipboardText = ""
-	return text, ready
+func (v *Vim) TakeAction() string {
+	action := v.action
+	v.action = ""
+	return action
 }
+
 func (v *Vim) handleCommand(d *Document, key string) bool {
 	switch key {
-	case "p":
-		v.clear()
-		v.action = "clipboardPaste"
-		return true
-	case "P":
-		v.clear()
-		v.action = "clipboardPasteBefore"
-		return true
 	case "`":
-		v.clear()
+		v.clearPending()
 		v.clamp(d)
 		v.word(d, "b", []rune(d.Text))
 		if v.VisualMode {
@@ -73,10 +63,10 @@ func (v *Vim) indent(d *Document, right, keepVisual bool) {
 	anchorRow, anchorCol := cursorRow, cursorCol
 	first, last := cursorRow, cursorRow
 	if v.VisualMode {
-		anchorRow, anchorCol = positionAt(d, v.visualAnchor)
+		anchorRow, anchorCol = d.positionAt(v.visualAnchor)
 		start, end := d.Selection()
-		first, _ = positionAt(d, start)
-		last, _ = positionAt(d, end)
+		first, _ = d.positionAt(start)
+		last, _ = d.positionAt(end)
 		if last > first && end == d.LineOffset(last) {
 			last--
 		}
@@ -115,15 +105,12 @@ func (v *Vim) indent(d *Document, right, keepVisual bool) {
 		v.VisualMode, v.VisualLine = false, false
 		v.clamp(d)
 	}
-	v.clear()
+	v.clearPending()
 }
 
-// Clipboard text ending in a newline pastes as whole lines. Visual paste
+// Register text ending in a newline pastes as whole lines. Visual paste
 // replaces the current inclusive selection.
-func (v *Vim) pasteClipboard(d *Document, text string, after bool) {
-	if text == "" {
-		return
-	}
+func (v *Vim) put(d *Document, text string, after bool) {
 	text = strings.ReplaceAll(text, "\r\n", "\n")
 	if len(d.Text)+len(text) > MaxFileSize {
 		return
@@ -162,7 +149,7 @@ func (v *Vim) pasteClipboard(d *Document, text string, after bool) {
 		}
 	}
 	v.clamp(d)
-	v.clear()
+	v.clearPending()
 }
 
 // JumpTo shares the normal and Visual cursor rules with external navigation.
@@ -183,7 +170,7 @@ func (v *Vim) AcceptsLeader() bool { return !v.InsertMode && v.surround == nil }
 
 // Read-only documents share motions, text objects, selection and yank commands.
 // Reject mutations before interpreting them so they cannot enter Insert or
-// change clipboard/undo state. Document guards also protect direct callers.
+// change register/undo state. Document guards also protect direct callers.
 func (v *Vim) readOnlyKey(key string) bool {
 	if v.pending == "z" {
 		return true

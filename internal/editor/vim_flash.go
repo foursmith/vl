@@ -1,9 +1,10 @@
 package editor
 
 import (
-	"github.com/clipperhouse/uax29/v2/graphemes"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/clipperhouse/uax29/v2/graphemes"
 )
 
 type vimFlashEdit struct {
@@ -12,7 +13,6 @@ type vimFlashEdit struct {
 	count           int
 }
 
-func (v *Vim) CommandPending() bool { return v.pending != "" || v.surround != nil }
 func (v *Vim) FlashOperator() (string, bool) {
 	if v.InsertMode {
 		return "", false
@@ -29,10 +29,10 @@ func (v *Vim) FlashOperator() (string, bool) {
 	}
 	return "", false
 }
-func (v *Vim) ApplyFlash(d *Document, target int, query, operator string) {
+func (v *Vim) ApplyFlash(d *Document, target int, query, operator string) string {
 	if operator == "" {
 		v.JumpTo(d, target)
-		return
+		return ""
 	}
 	edit := &vimFlashEdit{operator: operator, query: query, forward: target >= d.Cursor}
 	for _, position := range flashTextPositions(d, query) {
@@ -43,29 +43,29 @@ func (v *Vim) ApplyFlash(d *Document, target int, query, operator string) {
 	edit.count = max(1, edit.count)
 	v.CancelPending()
 	v.record = &vimRecording{before: d.Text, flash: edit}
-	v.applyFlashRange(d, target, operator)
+	copied := v.applyFlashRange(d, target, operator)
 	if v.surround != nil {
-		return
+		return copied
 	}
 	if v.InsertMode {
-		v.record.inserting = true
-		v.record.insertText = d.Text
-		v.record.insertAnchor = d.Cursor
+		v.record.beginInsert(d)
 	} else {
 		v.finishRecording(d)
 	}
+	return copied
 }
-func (v *Vim) applyFlashRange(d *Document, target int, operator string) {
+func (v *Vim) applyFlashRange(d *Document, target int, operator string) string {
 	target = d.snap(target, false)
 	low, high := min(d.Cursor, target), d.next(max(d.Cursor, target))
 	if operator == "ys" {
 		v.beginSurround(d, "y", 1)
 		v.surround.phase = surroundTarget
 		v.surround.bounds = surroundBounds{low, low, high, high}
-		return
+		return ""
 	}
-	v.operate(d, operator, low, high, false)
-	v.clampUnlessInsert(d)
+	copied := v.operate(d, operator, low, high, false)
+	v.syncCursor(d)
+	return copied
 }
 func flashTextPositions(d *Document, query string) []int {
 	if query == "" {

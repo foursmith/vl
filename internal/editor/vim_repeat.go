@@ -19,7 +19,7 @@ type vimChange struct {
 	keys      []string
 	selection *vimSelection
 	insert    *vimInsertEdit
-	paste     *string
+	putText   string
 	after     bool
 	flash     *vimFlashEdit
 }
@@ -33,59 +33,18 @@ type vimRecording struct {
 	flash             *vimFlashEdit
 }
 
-func (v *Vim) Handle(d *Document, key string) bool {
-	if d.ReadOnly && !v.readOnlyKey(key) {
-		v.CancelPending()
-		return true
-	}
-	if key == "." && !v.InsertMode && !v.VisualMode && !v.CommandPending() {
-		count := max(1, v.count)
-		v.clear()
-		v.record = nil
-		v.repeatChange(d, count)
-		return true
-	}
-	if v.InsertMode {
-		if v.record != nil && !repeatableInsertKey(key) {
-			v.record.unsafe = true
-		}
-		handled := v.handleKey(d, key)
-		if !v.InsertMode {
-			v.finishRecording(d)
-		}
-		return handled
-	}
-	if v.record != nil && v.record.inserting {
-		v.record = nil
-	}
-	if v.record == nil {
-		v.record = &vimRecording{before: d.Text}
-		switch key {
-		case "S", "d", "c", "x", "tab", "shift+tab", ">", "<", "`":
-			v.record.selection = v.repeatSelection(d)
-		}
-	}
-	v.record.keys = append(v.record.keys, key)
-	handled := v.handleKey(d, key)
-	if v.InsertMode {
-		v.record.inserting = true
-		v.record.insertText = d.Text
-		v.record.insertAnchor = d.Cursor
-	} else if !v.CommandPending() && v.count == 0 {
-		if key == "u" || key == "U" {
-			v.record = nil
-		} else {
-			v.finishRecording(d)
-		}
-	}
-	return handled
+func (r *vimRecording) beginInsert(d *Document) {
+	r.inserting = true
+	r.insertText = d.Text
+	r.insertAnchor = d.Cursor
 }
+
 func repeatableInsertKey(key string) bool {
 	switch key {
 	case "left", "right", "up", "down", "home", "end", "pgup", "pgdown", "ctrl+z", "ctrl+y", "ctrl+shift+z":
 		return false
 	}
-	return !strings.HasPrefix(key, "alt+") && (!strings.HasPrefix(key, "ctrl+") || key == "ctrl+s" || key == "ctrl+[")
+	return !strings.HasPrefix(key, "alt+") && (!strings.HasPrefix(key, "ctrl+") || key == "ctrl+s")
 }
 func (v *Vim) finishRecording(d *Document) {
 	recording := v.record
@@ -93,9 +52,11 @@ func (v *Vim) finishRecording(d *Document) {
 	if recording == nil || recording.unsafe || recording.before == d.Text {
 		return
 	}
-	change := &vimChange{keys: append([]string(nil), recording.keys...), selection: recording.selection}
-
-	change.flash = recording.flash
+	change := &vimChange{
+		keys:      recording.keys,
+		selection: recording.selection,
+		flash:     recording.flash,
+	}
 	if recording.inserting {
 		change.insert = insertDifference(recording.insertText, d.Text, recording.insertAnchor)
 	}
@@ -133,8 +94,8 @@ func (v *Vim) repeatSelection(d *Document) *vimSelection {
 	start, end := d.Selection()
 	shape := &vimSelection{linewise: v.VisualLine}
 	if shape.linewise {
-		first, _ := positionAt(d, start)
-		last, _ := positionAt(d, d.previous(end))
+		first, _ := d.positionAt(start)
+		last, _ := d.positionAt(d.previous(end))
 		shape.size = last - first + 1
 	} else {
 		for pos := start; pos < end; pos = d.next(pos) {
@@ -158,11 +119,12 @@ func (v *Vim) selectForRepeat(d *Document, shape *vimSelection) {
 	}
 	v.SyncVisual(d)
 }
-func (v *Vim) repeatChange(d *Document, count int) {
+func (v *Vim) repeatChange(d *Document, count int) string {
 	change := v.lastChange
 	if change == nil {
-		return
+		return ""
 	}
+	var register string
 	for range count {
 		if len(d.Text) >= MaxFileSize {
 			break
@@ -171,13 +133,15 @@ func (v *Vim) repeatChange(d *Document, count int) {
 			break
 		}
 		v.selectForRepeat(d, change.selection)
-		if change.paste != nil {
-			v.pasteClipboard(d, *change.paste, change.after)
+		if change.putText != "" {
+			v.put(d, change.putText, change.after)
 		} else {
 			if change.flash != nil {
 				edit := change.flash
 				if target, ok := flashEditTarget(d, edit); ok {
-					v.applyFlashRange(d, target, edit.operator)
+					if text := v.applyFlashRange(d, target, edit.operator); text != "" {
+						register = text
+					}
 					if edit.operator == "ys" {
 						for _, key := range change.keys {
 							v.handleKey(d, key)
@@ -186,7 +150,9 @@ func (v *Vim) repeatChange(d *Document, count int) {
 				}
 			} else {
 				for _, key := range change.keys {
-					v.handleKey(d, key)
+					if _, text := v.handleKey(d, key); text != "" {
+						register = text
+					}
 				}
 			}
 			if v.InsertMode {
@@ -210,13 +176,16 @@ func (v *Vim) repeatChange(d *Document, count int) {
 			v.Reset(d)
 		}
 	}
+	return register
 }
-func (v *Vim) PasteClipboard(d *Document, text string, after bool) {
+func (v *Vim) putAndRecord(d *Document, text string, after bool) {
+	if text == "" {
+		return
+	}
 	before := d.Text
 	shape := v.repeatSelection(d)
-	v.pasteClipboard(d, text, after)
+	v.put(d, text, after)
 	if before != d.Text {
-		value := text
-		v.lastChange = &vimChange{paste: &value, after: after, selection: shape}
+		v.lastChange = &vimChange{putText: text, after: after, selection: shape}
 	}
 }

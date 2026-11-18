@@ -61,7 +61,7 @@ func TestFlashCancelVisualAndInsert(t *testing.T) {
 	press(m, "l")
 	anchor, cursor := m.document().Anchor, m.document().Cursor
 	flashQuery(m, "three")
-	press(m, "esc")
+	press(m, "ctrl+[")
 	if m.flash != nil || m.document().Anchor != anchor || m.document().Cursor != cursor || !m.tabs[0].vim.VisualMode {
 		t.Fatal("cancel changed Visual selection")
 	}
@@ -197,9 +197,9 @@ func TestFlashSingleEntryAndOperators(t *testing.T) {
 			t.Fatal("pending operator did not open Flash")
 		}
 		press(m, ",")
-		cmd := press(m, "enter")
-		if cmd == nil {
-			t.Fatal("operator omitted clipboard write")
+		cmd := m.flashKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+		if cmd != nil || m.vimRegister != "a," {
+			t.Fatalf("%s produced a command or wrong register text: %q", operator, m.vimRegister)
 		}
 		switch operator {
 		case "d":

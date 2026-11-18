@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -47,9 +46,6 @@ func (m *Model) contextMenuInput(msg tea.Msg) (tea.Cmd, bool) {
 	case tea.KeyPressMsg:
 		m.navigationState = navigationState{}
 		k := msg.String()
-		if k == "ctrl+[" {
-			k = "esc"
-		}
 		if k == "h" {
 			k = "esc"
 		}
@@ -339,7 +335,7 @@ func (m *Model) copyPathActions(path string) []action {
 		relative = path
 	}
 	copy := func(text string) func() tea.Cmd {
-		return func() tea.Cmd { return func() tea.Msg { return clipboardMsg{err: clipboard.WriteAll(text)} } }
+		return func() tea.Cmd { return writeClipboard(text, nil) }
 	}
 	return []action{{label: m.tr("Copy Path"), run: copy(absolute)}, {label: m.tr("Copy Relative Path"), run: copy(filepath.ToSlash(relative))}}
 }

@@ -324,8 +324,12 @@ func (d *Document) Delete(backward bool) {
 }
 
 func (d *Document) Position() (int, int) {
+	return d.positionAt(d.Cursor)
+}
+
+func (d *Document) positionAt(offset int) (int, int) {
 	d.Lines()
-	cursor := min(max(0, d.Cursor), d.runeCount)
+	cursor := min(max(0, offset), d.runeCount)
 	line := sort.Search(len(d.lineOffsets), func(i int) bool { return d.lineOffsets[i] > cursor }) - 1
 	return line, cursor - d.lineOffsets[line]
 }

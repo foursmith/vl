@@ -2,6 +2,17 @@ package editor
 
 import "unicode"
 
+func textObject(d *Document, key string, inner bool, count int) (int, int, bool) {
+	if key == "w" || key == "W" {
+		return wordObject(d, key, inner, count)
+	}
+	open, close, ok := delimiterPair(key)
+	if !ok {
+		return 0, 0, false
+	}
+	return delimiterObject(d, open, close, inner, count)
+}
+
 // Word objects use document grapheme boundaries, while character classes only
 // distinguish whitespace, identifier characters and punctuation.
 func wordObject(d *Document, key string, inner bool, count int) (int, int, bool) {

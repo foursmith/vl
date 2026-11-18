@@ -41,8 +41,10 @@ func TestReadOnlyDiffSharesVimMotionsSelectionAndSearch(t *testing.T) {
 		if m.diffSelectedText() != m.review.SelectedText() {
 			t.Fatalf("rendered selection differs: %q != %q", m.diffSelectedText(), m.review.SelectedText())
 		}
-		if cmd := press(m, "y"); cmd == nil {
-			t.Fatal("Visual yank did not request clipboard write")
+		selected := m.review.SelectedText()
+		press(m, "y")
+		if m.vimRegister != selected {
+			t.Fatal("Visual yank did not set the unnamed register")
 		}
 		if m.tabs[m.activeTab].vim.VisualMode || m.diffSelection.active {
 			t.Fatal("yank retained Visual selection")
@@ -147,7 +149,7 @@ func TestSharedLeaderCancelsAcrossDialogsAndBlur(t *testing.T) {
 			original := m.editorDocument().Text
 			press(m, " ")
 			if cmd := press(m, key); cmd != nil {
-				t.Fatal("removed clipboard leader alias ran")
+				t.Fatal("unknown leader key produced a command")
 			}
 			if m.editorDocument().Text != original || m.tabs[m.activeTab].vim.CommandPending() {
 				t.Fatal("unknown leader key leaked into Vim")

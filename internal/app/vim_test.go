@@ -106,9 +106,9 @@ func TestVimWordObjectsThroughWorkbench(t *testing.T) {
 	if d.Text != "alpha beta gamma" || m.tabs[0].vim.InsertMode {
 		t.Fatal("object prefix edited text or entered Insert")
 	}
-	cmd := press(m, "w")
-	if d.Text != "alpha gamma" || cmd == nil {
-		t.Fatal("daw did not delete and request clipboard write")
+	handled, cmd := m.vimKey("w")
+	if !handled || d.Text != "alpha gamma" || cmd != nil || m.vimRegister != "beta " {
+		t.Fatal("daw did not delete into the unnamed register")
 	}
 	press(m, "u")
 	if d.Text != "alpha beta gamma" {
@@ -223,7 +223,7 @@ func TestVimChangeSurroundThroughWorkbench(t *testing.T) {
 	}
 }
 
-func TestVimSurroundAddDeleteAndTagPasteThroughWorkbench(t *testing.T) {
+func TestVimSurroundThroughWorkbench(t *testing.T) {
 	m := flashModel(t, "one two\nnext\n")
 	for _, key := range []string{"y", "s", "i", "w", "\""} {
 		press(m, key)
@@ -240,13 +240,13 @@ func TestVimSurroundAddDeleteAndTagPasteThroughWorkbench(t *testing.T) {
 	m.document().SetPosition(0, 0)
 	press(m, "V")
 	press(m, "S")
-	m.Update(tea.PasteMsg{Content: `<p class="note">dd`})
-	if m.document().Text != "<p class=\"note\">\none two\n</p>\nnext\n" || m.tabs[0].vim.CommandPending() {
-		t.Fatal("tag paste failed or executed trailing keys:", m.document().Text)
+	press(m, "<")
+	if m.document().Text != "<one two>\nnext\n" || m.tabs[0].vim.CommandPending() {
+		t.Fatal("angle surround failed:", m.document().Text)
 	}
 	press(m, "u")
 	if m.document().Text != "one two\nnext\n" {
-		t.Fatal("tag surround undo failed")
+		t.Fatal("angle surround undo failed")
 	}
 	m.document().SetPosition(0, 0)
 	press(m, "y")

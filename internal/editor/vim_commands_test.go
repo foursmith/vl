@@ -39,27 +39,26 @@ func TestVimFocusAction(t *testing.T) {
 		t.Fatal("cw did not become focus mapping")
 	}
 }
-func TestVimClipboardYank(t *testing.T) {
+func TestVimRegisterYank(t *testing.T) {
 	for _, tt := range []struct {
 		keys []string
 		want string
 	}{{[]string{"y", "y"}, "one two\n"}, {[]string{"y", "w"}, "one "}, {[]string{"v", "l", "y"}, "on"}} {
 		d := &Document{Text: "one two\nthree", Anchor: -1}
 		v := &Vim{}
-		vimKeys(d, v, tt.keys...)
-		text, ready := v.TakeClipboardCopy()
-		if !ready || text != tt.want || v.VisualMode || d.Text != "one two\nthree" {
-			t.Fatalf("%v: %q ready %v", tt.keys, text, ready)
+		text := vimKeys(d, v, tt.keys...)
+		if text != tt.want || v.VisualMode || d.Text != "one two\nthree" {
+			t.Fatalf("%v: %q", tt.keys, text)
 		}
-		if _, ready = v.TakeClipboardCopy(); ready {
-			t.Fatal("clipboard yank delivered twice")
+		if copied := vimKeys(d, v, "esc"); copied != "" {
+			t.Fatal("later command returned the previous yank")
 		}
 	}
 }
-func TestVimClipboardPaste(t *testing.T) {
+func TestVimRegisterPut(t *testing.T) {
 	d := &Document{Text: "abc", Anchor: -1}
 	v := &Vim{}
-	v.PasteClipboard(d, "👩‍💻", true)
+	v.Handle(d, "p", "👩‍💻")
 	if d.Text != "a👩‍💻bc" {
 		t.Fatal(d.Text)
 	}
@@ -69,7 +68,7 @@ func TestVimClipboardPaste(t *testing.T) {
 	}
 	d.SetPosition(0, 0)
 	vimKeys(d, v, "v", "l")
-	v.PasteClipboard(d, "X", true)
+	v.Handle(d, "p", "X")
 	if d.Text != "Xc" || v.VisualMode {
 		t.Fatal(d.Text)
 	}
@@ -79,20 +78,21 @@ func TestVimClipboardPaste(t *testing.T) {
 	}
 }
 
-func TestVimUnifiedClipboard(t *testing.T) {
-	for _, keys := range [][]string{{"d", "w"}, {"c", "e"}, {"x"}} {
+func TestVimEditsUpdateRegister(t *testing.T) {
+	for _, tt := range []struct {
+		keys []string
+		want string
+	}{
+		{[]string{"d", "w"}, "one "},
+		{[]string{"c", "e"}, "one"},
+		{[]string{"x"}, "o"},
+		{[]string{"x", "."}, "n"},
+	} {
 		d := &Document{Text: "one two", Anchor: -1}
 		v := &Vim{}
-		vimKeys(d, v, keys...)
-		if text, ready := v.TakeClipboardCopy(); !ready || text == "" {
-			t.Fatalf("%v did not write clipboard", keys)
+		if copied := vimKeys(d, v, tt.keys...); copied != tt.want {
+			t.Fatalf("%v register = %q, want %q", tt.keys, copied, tt.want)
 		}
-	}
-	d := &Document{Text: "abc", Anchor: -1}
-	v := &Vim{}
-	v.PasteClipboard(d, "X", false)
-	if d.Text != "Xabc" {
-		t.Fatal(d.Text)
 	}
 }
 
@@ -101,18 +101,19 @@ func TestVimLineBoundaryAliases(t *testing.T) {
 		for _, prefix := range [][]string{nil, {"d"}, {"c"}, {"y"}, {"v"}, {"V"}} {
 			docs := [2]*Document{}
 			modes := [2]*Vim{}
+			copied := [2]string{}
 			for i, key := range pair {
 				d := &Document{Text: "  abc\nnext", Anchor: -1}
 				d.SetPosition(0, 3)
 				v := &Vim{}
 				keys := append(append([]string(nil), prefix...), key)
-				vimKeys(d, v, keys...)
+				copied[i] = vimKeys(d, v, keys...)
 				docs[i] = d
 				modes[i] = v
 			}
 			a, b := docs[0], docs[1]
 			av, bv := modes[0], modes[1]
-			if a.Text != b.Text || a.Cursor != b.Cursor || a.SelectedText() != b.SelectedText() || av.Label() != bv.Label() || av.clipboardText != bv.clipboardText || av.clipboardReady != bv.clipboardReady {
+			if a.Text != b.Text || a.Cursor != b.Cursor || a.SelectedText() != b.SelectedText() || av.Label() != bv.Label() || copied[0] != copied[1] {
 				t.Fatalf("%v with %v differ", pair, prefix)
 			}
 		}

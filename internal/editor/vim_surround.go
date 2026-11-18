@@ -2,10 +2,7 @@ package editor
 
 import (
 	"strings"
-	"unicode"
 	"unicode/utf8"
-
-	"github.com/clipperhouse/uax29/v2/graphemes"
 )
 
 type surroundPhase uint8
@@ -16,19 +13,17 @@ const (
 	surroundObject
 	surroundFirstLine
 	surroundTarget
-	surroundTag
 )
 
 type surroundBounds struct{ start, insideStart, insideEnd, end int }
 type vimSurround struct {
-	kind                   string
-	phase                  surroundPhase
-	count, digits          int
-	inner, linewise, block bool
-	bounds                 surroundBounds
-	text                   string
-	cursor, anchor         int
-	tag                    string
+	kind            string
+	phase           surroundPhase
+	count, digits   int
+	inner, linewise bool
+	bounds          surroundBounds
+	text            string
+	cursor, anchor  int
 }
 
 func (v *Vim) beginSurround(d *Document, kind string, count int) {
@@ -44,7 +39,6 @@ func (v *Vim) beginVisualSurround(d *Document) {
 	request := v.surround
 	request.phase = surroundTarget
 	request.linewise = v.VisualLine
-	request.block = v.VisualLine
 	request.bounds = surroundBounds{start, start, end, end}
 }
 func (v *Vim) handleSurround(d *Document, key string) bool {
@@ -53,7 +47,7 @@ func (v *Vim) handleSurround(d *Document, key string) bool {
 		if v.record != nil {
 			v.record.unsafe = true
 		}
-		v.clear()
+		v.clearPending()
 		return true
 	}
 	functionKey := len(key) > 1 && key[0] == 'f'
@@ -66,28 +60,27 @@ func (v *Vim) handleSurround(d *Document, key string) bool {
 		}
 	}
 	if functionKey || strings.HasPrefix(key, "ctrl+") || strings.HasPrefix(key, "alt+") {
-		v.clear()
+		v.clearPending()
 		return false
 	}
 	switch request.phase {
 	case surroundSource:
 		bounds, ok := sourceSurround(d, key, request.count)
 		if !ok {
-			v.clear()
+			v.clearPending()
 			return true
 		}
 		request.bounds = bounds
 		if request.kind == "d" {
-			v.completeSurround(d, "", "", false)
+			v.completeSurround(d, "", "")
 		} else {
 			request.phase = surroundTarget
 		}
 	case surroundRange:
-		if len(key) == 1 && key[0] >= '0' && key[0] <= '9' && (key != "0" || request.digits > 0) {
-			request.digits = min(9999, request.digits*10+int(key[0]-'0'))
+		if appendVimCount(&request.digits, key) {
 			return true
 		}
-		count := min(9999, request.count*max(1, request.digits))
+		count := min(maxVimCount, request.count*max(1, request.digits))
 		request.count = count
 		request.digits = 0
 		switch key {
@@ -102,23 +95,22 @@ func (v *Vim) handleSurround(d *Document, key string) bool {
 			start, end := d.LineOffset(row), d.LineOffset(last)+d.LineRuneCount(last)
 			request.bounds = surroundBounds{start, start, end, end}
 			request.phase = surroundTarget
-			request.block = last > row
 		default:
 			if !v.surroundMotion(d, request, key, count) {
-				v.clear()
+				v.clearPending()
 			}
 		}
 	case surroundObject:
 		start, end, ok := textObject(d, key, request.inner, request.count)
 		if !ok {
-			v.clear()
+			v.clearPending()
 			return true
 		}
 		request.bounds = surroundBounds{start, start, end, end}
 		request.phase = surroundTarget
 	case surroundFirstLine:
 		if key != "g" {
-			v.clear()
+			v.clearPending()
 			return true
 		}
 		row, _ := d.Position()
@@ -127,53 +119,13 @@ func (v *Vim) handleSurround(d *Document, key string) bool {
 		start, end := d.LineOffset(first), d.LineOffset(last)+d.LineRuneCount(last)
 		request.bounds = surroundBounds{start, start, end, end}
 		request.phase = surroundTarget
-		request.block = last > first
 	case surroundTarget:
-		if key == "<" || key == "t" {
-			request.phase = surroundTag
-			request.tag = "<"
-			return true
-		}
 		open, close, ok := delimiterPair(key)
 		if !ok {
-			v.clear()
+			v.clearPending()
 			return true
 		}
-		v.completeSurround(d, open, close, false)
-	case surroundTag:
-		switch key {
-		case "backspace":
-			iter := graphemes.FromString(request.tag)
-			end := 0
-			for iter.Next() {
-				end = iter.Start()
-			}
-			request.tag = request.tag[:end]
-			if request.tag == "" {
-				request.phase = surroundTarget
-			}
-			return true
-		case "enter":
-			value := request.tag
-			if !strings.HasSuffix(value, ">") {
-				value += ">"
-			}
-			if name, ok := surroundTagName(value); ok {
-				v.completeSurround(d, value, "</"+name+">", true)
-			}
-			return true
-		case "space":
-			key = " "
-		}
-		if key == "tab" || key == "delete" || key == "left" || key == "right" || key == "up" || key == "down" || key == "home" || key == "end" || key == "pgup" || key == "pgdown" || key == "shift+tab" || strings.IndexFunc(key, unicode.IsControl) >= 0 || len(request.tag)+len(key) > 1024 {
-			return true
-		}
-		request.tag += key
-		if strings.HasSuffix(request.tag, ">") {
-			if name, ok := surroundTagName(request.tag); ok {
-				v.completeSurround(d, request.tag, "</"+name+">", true)
-			}
-		}
+		v.completeSurround(d, open, close)
 	}
 	return true
 }
@@ -198,10 +150,9 @@ func (v *Vim) surroundMotion(d *Document, request *vimSurround, key string, coun
 		start, end := d.LineOffset(first), d.LineOffset(last)+d.LineRuneCount(last)
 		request.bounds = surroundBounds{start, start, end, end}
 		request.phase = surroundTarget
-		request.block = last > first
 		return true
 	}
-	if !v.motion(d, key, count, true) {
+	if !v.motion(d, key, count) {
 		return false
 	}
 	end := d.Cursor
@@ -219,30 +170,24 @@ func (v *Vim) surroundMotion(d *Document, request *vimSurround, key string, coun
 	return true
 }
 func sourceSurround(d *Document, key string, count int) (surroundBounds, bool) {
-	if key == "t" {
-		return tagSurround(d, count)
-	}
-	if _, _, ok := delimiterPair(key); !ok {
+	open, close, ok := delimiterPair(key)
+	if !ok {
 		return surroundBounds{}, false
 	}
-	start, end, ok := textObject(d, key, false, count)
+	start, end, ok := delimiterObject(d, open, close, false, count)
 	if !ok {
 		return surroundBounds{}, false
 	}
 	return surroundBounds{start, d.next(start), d.previous(end), end}, true
 }
-func (v *Vim) completeSurround(d *Document, open, close string, tag bool) {
+func (v *Vim) completeSurround(d *Document, open, close string) {
 	request := v.surround
 	bounds := request.bounds
 	if request.linewise && bounds.insideEnd > bounds.insideStart && d.Text[d.ByteOffset(bounds.insideEnd-1):d.ByteOffset(bounds.insideEnd)] == "\n" {
 		bounds.insideEnd--
 		close += "\n"
 	}
-	if tag && request.block {
-		open += "\n"
-		close = "\n" + close
-	}
-	v.clear()
+	v.clearPending()
 	v.VisualMode, v.VisualLine = false, false
 	v.replaceSurround(d, bounds, open, close)
 }
@@ -271,20 +216,4 @@ func (v *Vim) replaceSurround(d *Document, bounds surroundBounds, open, close st
 	d.Cursor = d.snap(cursor, false)
 	d.EndEditGroup()
 	v.clamp(d)
-}
-func (v *Vim) PasteSurround(d *Document, text string) bool {
-	if v.surround == nil || v.surround.phase != surroundTarget && v.surround.phase != surroundTag {
-		return false
-	}
-	if len(text) > 1024 || strings.IndexFunc(text, unicode.IsControl) >= 0 {
-		return true
-	}
-	iter := graphemes.FromString(text)
-	for iter.Next() {
-		if v.surround == nil {
-			break
-		}
-		v.Handle(d, iter.Value())
-	}
-	return true
 }

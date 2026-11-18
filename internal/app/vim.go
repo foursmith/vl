@@ -1,10 +1,6 @@
 package app
 
-import (
-	tea "charm.land/bubbletea/v2"
-	"github.com/atotto/clipboard"
-	"github.com/ourongxing/vl/internal/editor"
-)
+import tea "charm.land/bubbletea/v2"
 
 func (m *Model) vimKey(k string) (bool, tea.Cmd) {
 	v := &m.tabs[m.activeTab].vim
@@ -47,15 +43,16 @@ func (m *Model) vimKey(k string) (bool, tea.Cmd) {
 	}
 	before, _ := d.Position()
 	vertical := !v.InsertMode && !v.CommandPending() && (k == "j" || k == "k" || k == "up" || k == "down")
-	if !v.Handle(d, k) {
+	handled, text := v.Handle(d, k, m.vimRegister)
+	if !handled {
 		return false, nil
 	}
 	if vertical {
 		m.moveAcrossFolds(before)
 	}
 	m.ensureTextCursor()
-	if text, ready := v.TakeClipboardCopy(); ready {
-		return true, func() tea.Msg { return clipboardMsg{err: clipboard.WriteAll(text)} }
+	if text != "" {
+		m.vimRegister = text
 	}
 	action := v.TakeAction()
 	switch action {
@@ -70,46 +67,6 @@ func (m *Model) vimKey(k string) (bool, tea.Cmd) {
 		m.sidebar = true
 		m.sidebarVisible = true
 		m.resize()
-	case "clipboardPaste":
-		return true, m.readVimClipboard(true)
-	case "clipboardPasteBefore":
-		return true, m.readVimClipboard(false)
 	}
 	return true, nil
-}
-
-type vimClipboardMsg struct {
-	doc              *editor.Document
-	source, text     string
-	cursor, anchor   int
-	visual, linewise bool
-	after            bool
-	err              error
-}
-
-func (m *Model) readVimClipboard(after bool) tea.Cmd {
-	d := m.document()
-	v := &m.tabs[m.activeTab].vim
-	snapshot := vimClipboardMsg{after: after, doc: d, source: d.Text, cursor: d.Cursor, anchor: d.Anchor, visual: v.VisualMode, linewise: v.VisualLine}
-	return func() tea.Msg {
-		snapshot.text, snapshot.err = clipboard.ReadAll()
-		return snapshot
-	}
-}
-func (m *Model) applyVimClipboard(msg vimClipboardMsg) tea.Cmd {
-	if msg.err != nil {
-		m.log(msg.err.Error())
-		return nil
-	}
-	if m.sidebar || m.modal != "" || !m.editing() || m.document() != msg.doc {
-		return nil
-	}
-	d := m.document()
-	v := &m.tabs[m.activeTab].vim
-	if d.Text != msg.source || d.Cursor != msg.cursor || d.Anchor != msg.anchor || v.InsertMode || v.VisualMode != msg.visual || v.VisualLine != msg.linewise {
-		return nil
-	}
-	v.PasteClipboard(d, msg.text, msg.after)
-	m.ensureEditor()
-	return nil
 }

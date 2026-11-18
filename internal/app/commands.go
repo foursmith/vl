@@ -207,10 +207,6 @@ func (m *Model) ask(title string, run func() tea.Cmd) tea.Cmd {
 
 func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 	k := msg.String()
-	if k == "ctrl+[" {
-		msg = tea.KeyPressMsg{Code: tea.KeyEscape}
-		k = "esc"
-	}
 	if m.modal == "searchOptions" {
 		if (k == "space" || k == " ") && m.input.Value() == "" {
 			return m.selectPickerChoice()

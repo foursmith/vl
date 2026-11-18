@@ -31,10 +31,9 @@ func TestVimWordObjects(t *testing.T) {
 			d := &Document{Text: tt.text, Anchor: -1}
 			d.SetPosition(0, tt.col)
 			v := &Vim{}
-			vimKeys(d, v, tt.keys...)
-			copied, ready := v.TakeClipboardCopy()
-			if d.Text != tt.want || copied != tt.copy || ready != (tt.copy != "") || v.InsertMode || v.VisualMode {
-				t.Fatalf("text %q clipboard %q ready %v mode %s", d.Text, copied, ready, v.Label())
+			copied := vimKeys(d, v, tt.keys...)
+			if d.Text != tt.want || copied != tt.copy || v.InsertMode || v.VisualMode {
+				t.Fatalf("text %q register %q mode %s", d.Text, copied, v.Label())
 			}
 			if tt.want != tt.text {
 				vimKeys(d, v, "u")

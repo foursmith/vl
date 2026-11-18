@@ -4,18 +4,18 @@ import (
 	"testing"
 )
 
-func vimKeys(d *Document, v *Vim, keys ...string) {
+func vimKeys(d *Document, v *Vim, keys ...string) string {
+	var copied string
 	for _, k := range keys {
-		if !v.Handle(d, k) && v.InsertMode {
+		handled, text := v.Handle(d, k, copied)
+		if text != "" {
+			copied = text
+		}
+		if !handled && v.InsertMode {
 			d.Insert(k)
 		}
-		if v.action == "clipboardPaste" || v.action == "clipboardPasteBefore" {
-			after := v.action == "clipboardPaste"
-			v.action = ""
-			text := v.clipboardText
-			v.PasteClipboard(d, text, after)
-		}
 	}
+	return copied
 }
 func TestVimBasicEdits(t *testing.T) {
 	for _, tt := range []struct {
@@ -39,7 +39,7 @@ func TestVimBasicEdits(t *testing.T) {
 		{"line paste below", "one\ntwo", []string{"y", "y", "p"}, "one\none\ntwo"},
 		{"line paste at eof", "one", []string{"y", "y", "p"}, "one\none"},
 		{"line paste above", "one", []string{"y", "y", "P"}, "one\none"},
-		{"delete paste last line", "one\ntwo", []string{"j", "d", "d", "p"}, "one\ntwo"},
+		{"move line with ddp", "one\ntwo", []string{"d", "d", "p"}, "two\none"},
 		{"character paste", "one two", []string{"y", "w", "p"}, "oone ne two"},
 		{"open below", "one\ntwo", []string{"o", "X", "esc"}, "one\nX\ntwo"},
 		{"open above", "one", []string{"O", "X", "esc"}, "X\none"},
@@ -112,17 +112,16 @@ func TestVimResetAndIndependentSessions(t *testing.T) {
 	}
 }
 
-func TestVimClipboardAcrossEditors(t *testing.T) {
+func TestVimRegisterAcrossEditors(t *testing.T) {
 	a := &Document{Text: "one\ntwo", Anchor: -1}
 	av := &Vim{}
-	vimKeys(a, av, "l", "y", "y")
-	text, ready := av.TakeClipboardCopy()
-	if a.Cursor != 1 || !ready {
-		t.Fatal("line copy moved cursor or omitted clipboard")
+	text := vimKeys(a, av, "l", "y", "y")
+	if a.Cursor != 1 || text != "one\n" {
+		t.Fatal("line copy moved cursor or omitted register text")
 	}
 	b := &Document{Text: "other", Anchor: -1}
 	bv := &Vim{}
-	bv.PasteClipboard(b, text, true)
+	bv.Handle(b, "p", text)
 	if b.Text != "other\none" {
 		t.Fatal(b.Text)
 	}

@@ -87,12 +87,12 @@ func TestVimRepeatChanges(t *testing.T) {
 func TestVimRepeatInsertEditingAndSafety(t *testing.T) {
 	d := &Document{Text: "abc def", Cursor: 2, Anchor: -1}
 	v := &Vim{}
-	v.Handle(d, "i")
-	v.Handle(d, "backspace")
+	v.Handle(d, "i", "")
+	v.Handle(d, "backspace", "")
 	d.Delete(true)
-	v.Handle(d, "X")
+	v.Handle(d, "X", "")
 	d.Insert("X")
-	v.Handle(d, "esc")
+	v.Handle(d, "esc", "")
 	if d.Text != "aXc def" {
 		t.Fatal(d.Text)
 	}
@@ -104,22 +104,22 @@ func TestVimRepeatInsertEditingAndSafety(t *testing.T) {
 	d = &Document{Text: "abcdef", Anchor: -1}
 	v = &Vim{}
 	vimKeys(d, v, "x", "i")
-	v.Handle(d, "left")
+	v.Handle(d, "left", "")
 	d.Move("left", false)
-	v.Handle(d, "Q")
+	v.Handle(d, "Q", "")
 	d.Insert("Q")
-	v.Handle(d, "esc")
+	v.Handle(d, "esc", "")
 	vimKeys(d, v, ".")
 	if d.Text != "bcdef" {
 		t.Fatal("unsafe insert replaced previous repeat:", d.Text)
 	}
 	d = &Document{Text: "abc", Anchor: -1}
 	v = &Vim{}
-	v.PasteClipboard(d, "X", true)
+	v.Handle(d, "p", "X")
 	d.SetPosition(0, 3)
-	vimKeys(d, v, ".")
+	v.Handle(d, ".", "new register text")
 	if d.Text != "aXbcX" {
-		t.Fatal("clipboard repeat:", d.Text)
+		t.Fatal("register repeat:", d.Text)
 	}
 	d = &Document{Text: `""`, Anchor: -1}
 	v = &Vim{}
@@ -132,19 +132,19 @@ func TestVimFlashOperatorsAndRepeat(t *testing.T) {
 	for _, tt := range []struct{ op, want string }{{"d", "b,c"}, {"c", "Xb,c"}, {"y", "a,b,c"}} {
 		d := &Document{Text: "a,b,c", Anchor: -1}
 		v := &Vim{}
-		v.ApplyFlash(d, 1, ",", tt.op)
+		copied := v.ApplyFlash(d, 1, ",", tt.op)
 		if tt.op == "c" {
 			vimKeys(d, v, "X", "esc")
 		}
 		if d.Text != tt.want {
 			t.Fatalf("%s: %q", tt.op, d.Text)
 		}
-		if text, ready := v.TakeClipboardCopy(); !ready || text != "a," {
-			t.Fatal("Flash operator clipboard:", text)
+		if copied != "a," {
+			t.Fatal("Flash operator register:", copied)
 		}
 		if tt.op == "d" {
-			vimKeys(d, v, ".")
-			if d.Text != "c" {
+			register := vimKeys(d, v, ".")
+			if d.Text != "c" || register != "b," {
 				t.Fatal("Flash repeat:", d.Text)
 			}
 			vimKeys(d, v, "u")

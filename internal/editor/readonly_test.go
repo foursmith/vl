@@ -11,7 +11,7 @@ func TestReadOnlyVimRejectsMutationsAndSupportsYank(t *testing.T) {
 		d := &Document{ReadOnly: true, Text: source, Anchor: -1}
 		v := &Vim{}
 		for _, key := range keys {
-			v.Handle(d, key)
+			v.Handle(d, key, "")
 		}
 		if d.Text != source || d.Dirty() || v.InsertMode {
 			t.Fatalf("read-only mutation via %v", keys)
@@ -27,20 +27,12 @@ func TestReadOnlyVimRejectsMutationsAndSupportsYank(t *testing.T) {
 	}
 	d := &Document{ReadOnly: true, Text: source, Anchor: -1}
 	v := &Vim{}
-	for _, key := range []string{"w", "v", "e", "y"} {
-		v.Handle(d, key)
-	}
-	text, ok := v.TakeClipboardCopy()
-	if !ok || text != "two" || d.Text != source || v.VisualMode {
+	text := vimKeys(d, v, "w", "v", "e", "y")
+	if text != "two" || d.Text != source || v.VisualMode {
 		t.Fatalf("read-only Visual yank: %q", text)
 	}
-	v.Handle(d, "g")
-	v.Handle(d, "g")
-	v.Handle(d, "y")
-	v.Handle(d, "i")
-	v.Handle(d, "w")
-	text, ok = v.TakeClipboardCopy()
-	if !ok || text != "one" {
+	text = vimKeys(d, v, "g", "g", "y", "i", "w")
+	if text != "one" {
 		t.Fatalf("read-only text object: %q", text)
 	}
 }

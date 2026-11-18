@@ -76,38 +76,23 @@ func TestVimMappedFocusAndClearSearch(t *testing.T) {
 		t.Fatal("cw did not focus sidebar")
 	}
 }
-func TestVimClipboardDeliveryGuards(t *testing.T) {
-	for _, stale := range []string{"", "text", "cursor", "mode", "modal", "tab"} {
-		t.Run(stale, func(t *testing.T) {
-			m := newHoverRenderModel(t)
-			d := &editor.Document{Text: "abc", Anchor: -1}
-			m.tabs = []tab{{doc: d}}
-			m.activeTab = 0
-			m.sidebar = false
-
-			msg := vimClipboardMsg{doc: d, source: d.Text, cursor: d.Cursor, anchor: d.Anchor, text: "X", after: true}
-			switch stale {
-			case "text":
-				d.Insert("new")
-			case "cursor":
-				d.SetPosition(0, 1)
-			case "mode":
-				m.tabs[0].vim.InsertMode = true
-			case "modal":
-				m.modal = "confirm"
-			case "tab":
-				m.tabs[0].doc = &editor.Document{Text: "other", Anchor: -1}
-			}
-			before := d.Text
-			m.applyVimClipboard(msg)
-			if stale == "" {
-				if d.Text != "aXbc" {
-					t.Fatal(d.Text)
-				}
-			} else if d.Text != before {
-				t.Fatal("stale clipboard result applied")
-			}
-		})
+func TestVimUnnamedRegister(t *testing.T) {
+	m := flashModel(t, "one\ntwo")
+	source := m.document()
+	for _, key := range []string{"d", "d", "p"} {
+		handled, cmd := m.vimKey(key)
+		if !handled || cmd != nil {
+			t.Fatalf("%s did not stay in the Vim editor", key)
+		}
+	}
+	if source.Text != "two\none" || m.vimRegister != "one\n" {
+		t.Fatalf("ddp = %q, register = %q", source.Text, m.vimRegister)
+	}
+	target := &editor.Document{Text: "three", Anchor: -1}
+	m.tabs = append(m.tabs, tab{doc: target})
+	m.activeTab = 1
+	if handled, cmd := m.vimKey("P"); !handled || cmd != nil || target.Text != "one\nthree" {
+		t.Fatalf("put across tabs: %q", target.Text)
 	}
 }
 

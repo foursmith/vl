@@ -1,7 +1,6 @@
 package editor
 
 import (
-	"strings"
 	"testing"
 )
 
@@ -44,25 +43,24 @@ func TestVimVisualEdits(t *testing.T) {
 	for _, tt := range []struct {
 		name, text     string
 		keys           []string
-		want, register string
-		linewise       bool
+		want, copyText string
 	}{
-		{"delete single", "abc", []string{"v", "d"}, "bc", "a", false},
-		{"delete reverse", "abcd", []string{"l", "l", "v", "h", "d"}, "ad", "bc", false},
-		{"copy", "abcd", []string{"v", "l", "y"}, "abcd", "ab", false},
-		{"change", "abcd", []string{"v", "l", "c", "X", "Y", "esc"}, "XYcd", "ab", false},
-		{"delete lines", "a\nb\nc", []string{"V", "j", "d"}, "c", "a\nb\n", true},
-		{"delete last line", "a\nb", []string{"j", "V", "d"}, "a", "b", true},
-		{"copy lines", "a\nb\nc", []string{"j", "V", "k", "y"}, "a\nb\nc", "a\nb\n", true},
-		{"change lines", "a\nb\nc", []string{"V", "j", "c", "X", "esc"}, "X\nc", "a\nb\n", true},
-		{"delete emoji", "👩‍💻é中", []string{"v", "l", "d"}, "中", "👩‍💻é", false},
+		{"delete single", "abc", []string{"v", "d"}, "bc", "a"},
+		{"delete reverse", "abcd", []string{"l", "l", "v", "h", "d"}, "ad", "bc"},
+		{"copy", "abcd", []string{"v", "l", "y"}, "abcd", "ab"},
+		{"change", "abcd", []string{"v", "l", "c", "X", "Y", "esc"}, "XYcd", "ab"},
+		{"delete lines", "a\nb\nc", []string{"V", "j", "d"}, "c", "a\nb\n"},
+		{"delete last line", "a\nb", []string{"j", "V", "d"}, "a", "b\n"},
+		{"copy lines", "a\nb\nc", []string{"j", "V", "k", "y"}, "a\nb\nc", "a\nb\n"},
+		{"change lines", "a\nb\nc", []string{"V", "j", "c", "X", "esc"}, "X\nc", "a\nb\n"},
+		{"delete emoji", "👩‍💻é中", []string{"v", "l", "d"}, "中", "👩‍💻é"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			d := &Document{Text: tt.text, Anchor: -1}
 			v := &Vim{}
-			vimKeys(d, v, tt.keys...)
-			if d.Text != tt.want || v.clipboardText != clipboardExpected(tt.register, tt.linewise) || v.VisualMode || v.InsertMode || d.Anchor != -1 {
-				t.Fatalf("text %q register %+v mode %s anchor %d", d.Text, v.clipboardText, v.Label(), d.Anchor)
+			copied := vimKeys(d, v, tt.keys...)
+			if d.Text != tt.want || copied != tt.copyText || v.VisualMode || v.InsertMode || d.Anchor != -1 {
+				t.Fatalf("text %q register %q mode %s anchor %d", d.Text, copied, v.Label(), d.Anchor)
 			}
 			if tt.want != tt.text {
 				vimKeys(d, v, "u")
@@ -87,11 +85,4 @@ func TestVimVisualExit(t *testing.T) {
 			t.Fatal("Visual semantics leaked to regular selection")
 		}
 	}
-}
-
-func clipboardExpected(text string, linewise bool) string {
-	if linewise && !strings.HasSuffix(text, "\n") {
-		return text + "\n"
-	}
-	return text
 }

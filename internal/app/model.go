@@ -111,6 +111,7 @@ type Model struct {
 	leaderTarget                       string
 	explorerYankRoot, explorerYankPath string
 	flash                              *flashState
+	vimRegister                        string
 	flashRevision                      uint64
 	displayLanguage                    i18n.Language
 	kittySupported, kittyProbeDone     bool
@@ -415,6 +416,10 @@ func (m *Model) preview() tea.Cmd {
 }
 
 func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
+	// Normalize the Vim escape chord before any input handler sees it.
+	if key, ok := msg.(tea.KeyPressMsg); ok && key.Mod.Contains(tea.ModCtrl) && key.String() == "ctrl+[" {
+		msg = tea.KeyPressMsg{Code: tea.KeyEscape}
+	}
 	beforeDocument := m.document()
 	beforeText := ""
 	beforeSearchSeq := m.search.seq
@@ -726,8 +731,6 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			m.reloadCleanTabs()
 		}
 		return m, m.refresh()
-	case vimClipboardMsg:
-		return m, m.applyVimClipboard(msg)
 	case clipboardMsg:
 		if msg.err != nil {
 			m.log(m.tr(msg.err.Error()))
@@ -849,10 +852,6 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			m.selectPickerIndex(0)
 			return m, cmd
 		}
-		if !m.sidebar && m.editing() && m.tabs[m.activeTab].vim.PasteSurround(m.document(), msg.Content) {
-			m.ensureEditor()
-			return m, nil
-		}
 		if !m.sidebar && m.editing() && m.tabs[m.activeTab].vim.InsertMode {
 			m.document().Insert(msg.Content)
 			m.ensureEditor()
@@ -864,10 +863,6 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	m.stopTextDrag()
 	k := msg.String()
-	if k == "ctrl+[" {
-		msg = tea.KeyPressMsg{Code: tea.KeyEscape}
-		k = "esc"
-	}
 	if m.fileFindFocused() {
 		if handled, cmd := m.fileFindKey(msg); handled {
 			return cmd
@@ -1191,13 +1186,19 @@ func (m *Model) copy(cut bool) tea.Cmd {
 	} else if m.diffOpen && !cut {
 		text = m.diffSelectedText()
 	}
-	if text == "" {
-		return nil
-	}
 	if !cut {
 		d = nil
 	}
-	return func() tea.Msg { return clipboardMsg{text: text, err: clipboard.WriteAll(text), doc: d, cut: cut} }
+	return writeClipboard(text, d)
+}
+
+func writeClipboard(text string, cut *editor.Document) tea.Cmd {
+	if text == "" {
+		return nil
+	}
+	return func() tea.Msg {
+		return clipboardMsg{text: text, err: clipboard.WriteAll(text), doc: cut, cut: cut != nil}
+	}
 }
 
 func (m *Model) paste() tea.Cmd {
