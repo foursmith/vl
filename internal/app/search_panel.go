@@ -1,6 +1,7 @@
 package app
 
 import (
+	"slices"
 	"strings"
 
 	"charm.land/bubbles/v2/textinput"
@@ -17,20 +18,19 @@ type searchPanelGeometry struct {
 }
 
 func (m *Model) searchPanelLayout() searchPanelGeometry {
-	l := searchPanelGeometry{query: headerHeight, replacement: -1, summary: headerHeight + 2, results: headerHeight + 3}
+	l := searchPanelGeometry{query: headerHeight + 1, replacement: -1, include: -1, exclude: -1}
+	l.details = l.query + 2
 	if m.search.replace {
 		l.replacement = l.query + 2
-		l.summary += 2
-		l.results += 2
+		l.details = l.replacement + 2
 	}
-	l.details = l.summary - 1
-	l.include, l.exclude = -1, -1
+	l.summary = l.details + 1
 	if m.search.details {
-		l.include = l.details + 1
+		l.include = l.details + 2
 		l.exclude = l.include + 2
-		l.summary = l.exclude + 1
-		l.results = l.summary + 1
+		l.summary = l.exclude + 2
 	}
+	l.results = l.summary + 1
 	return l
 }
 
@@ -39,6 +39,7 @@ type searchPanelControl struct {
 	x, y, width     int
 	disabled        bool
 	embedded        bool
+	icon            bool
 	quiet           bool
 }
 
@@ -47,13 +48,13 @@ func (m *Model) searchPanelControls(w int) []searchPanelControl {
 	detailsIcon := m.symbol(symbolSearchDetails)
 	detailsWidth := max(2, ansi.StringWidth(detailsIcon))
 	controls := []searchPanelControl{{id: "details", label: detailsIcon, hint: "Toggle Search Details (Ctrl+Shift+J)", x: max(1, w-2-detailsWidth), y: l.details, width: detailsWidth, quiet: true}}
-	label := m.treeChevron(m.search.replace)
+	label := " " + m.treeChevron(m.search.replace)
 	toggleY := l.query
 	if m.search.replace {
-		toggleY = l.query + 1
+		toggleY++
 	}
-	controls = append(controls, searchPanelControl{id: "replaceToggle", label: label, hint: "Toggle Replace (Alt+H)", x: 0, y: toggleY, width: 1, quiet: true})
-	add := func(y int, ids, labels, hints []string) {
+	controls = append(controls, searchPanelControl{id: "replaceToggle", label: label, hint: "Toggle Replace (Alt+H)", x: 0, y: toggleY, width: sidebarSearchFieldInset, embedded: true, quiet: true})
+	add := func(y int, icons bool, ids, labels, hints []string) {
 		right := w - 2
 		for index := len(ids) - 1; index >= 0; index-- {
 			id := ids[index]
@@ -62,28 +63,27 @@ func (m *Model) searchPanelControls(w int) []searchPanelControl {
 			if x < 8 {
 				break
 			}
-			disabled := (id == "replace" || id == "replaceAll") && (m.search.loading || m.search.err != "" || m.search.result.Count == 0)
-			controls = append(controls, searchPanelControl{id: id, label: labels[index], hint: hints[index], x: x, y: y, width: width, disabled: disabled, embedded: id == "case" || id == "word" || id == "regex" || id == "preserve"})
+			disabled := id == "replaceAll" && (m.search.loading || m.search.err != "" || m.search.result.Count == 0)
+			controls = append(controls, searchPanelControl{id: id, label: labels[index], hint: hints[index], x: x, y: y, width: width, disabled: disabled, embedded: true, icon: icons})
 			right = x - 1
 			if id == "replaceAll" {
 				right--
 			}
 		}
 	}
-	add(l.query, []string{"case", "word", "regex"}, []string{"Aa", "ab", ".*"}, []string{"Match Case", "Match Whole Word", "Use Regular Expression"})
+	add(l.query, false, []string{"case", "word", "regex"}, []string{"Aa", "ab", ".*"}, []string{"Match Case", "Match Whole Word", "Use Regular Expression"})
 	if m.search.replace {
-		add(l.replacement, []string{"preserve", "replaceAll"}, []string{"AB", "↵"}, []string{"Preserve Case", "Replace All (Ctrl+Alt+Enter)"})
+		add(l.replacement, false, []string{"preserve", "replaceAll"}, []string{"AB", "↵"}, []string{"Preserve Case", "Replace All (Ctrl+Alt+Enter)"})
 	}
 	if m.search.details {
-		add(l.include, []string{"changed", "open"}, []string{"Changed", "Tab"}, []string{"Only Changed Files", "Only Open Tabs"})
-		add(l.exclude, []string{"ignore"}, []string{"Ignore rules"}, []string{"Respect .gitignore and .ignore"})
-		for index := range controls {
-			if controls[index].id == "changed" || controls[index].id == "open" || controls[index].id == "ignore" {
-				controls[index].embedded = true
-			}
+		changed := "Changed"
+		if m.nerd {
+			changed = m.symbol(symbolDiff)
 		}
+		add(l.include, m.nerd, []string{"changed", "open"}, []string{changed, m.symbol(symbolOpenTabs)}, []string{"Only Changed Files", "Only Open Tabs"})
+		add(l.exclude, m.nerd, []string{"ignore"}, []string{m.symbol(symbolIgnoreRules)}, []string{"Respect .gitignore and .ignore"})
 	}
-	return controls
+	return slices.DeleteFunc(controls, func(c searchPanelControl) bool { return c.y >= m.bodyHeight() })
 }
 func (m *Model) toggleSearchDetails() tea.Cmd {
 	m.search.details = !m.search.details
@@ -143,19 +143,24 @@ func (m *Model) searchLines(nav []string, w int) []string {
 				end = min(end, control.x)
 			}
 		}
-		boxEnd := w - 1
-		if focus == 1 {
-			boxEnd = w - 5
-		}
-		lines[y] = m.searchFieldLine(input, m.sidebar && s.focus == focus, end, boxEnd, placeholder, label, m.colors.Panel, m.sideX(), y, sidebarSearchFieldInset)
+		lines[y] = m.searchFieldLine(input, m.sidebar && s.focus == focus, end, w-1, placeholder, label, m.sideX(), y)
+	}
+	padding := row("", w-1, m.colors.InputForeground, m.colors.Input)
+	for y := headerHeight; y < l.details; y++ {
+		lines[y] = padding
 	}
 	field(&s.query, 0, l.query, searchText("Search in files"), "")
 	if s.replace {
+		lines[l.query+1] = m.searchFieldDivider(w - 1)
 		field(&s.replacement, 1, l.replacement, "Replace", "")
 	}
 	if s.details {
-		field(&s.include, 3, l.include, "", "In")
-		field(&s.exclude, 4, l.exclude, "", "Ex")
+		for y := l.details + 1; y < l.summary; y++ {
+			lines[y] = padding
+		}
+		lines[l.include+1] = m.searchFieldDivider(w - 1)
+		field(&s.include, 3, l.include, "", " ⊕")
+		field(&s.exclude, 4, l.exclude, "", " ⊖")
 	}
 	summary := searchText("%d results in %d files", s.result.Count, len(s.result.Files))
 	switch {
@@ -211,13 +216,13 @@ func (m *Model) clickSearch(x, y int) tea.Cmd {
 		if y >= 0 {
 			return m.focusSearch(4)
 		}
-	case l.query:
-		return m.focusSearch(0)
 	case l.replacement:
 		if y >= 0 {
 			return m.focusSearch(1)
 		}
-
+	}
+	if y >= headerHeight && y < l.details {
+		return m.focusSearch(0)
 	}
 	index := m.sidebarRowAt(y)
 	if index < 0 {

@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -41,13 +43,33 @@ func TestSearchDetailsInlineFieldsAndFocus(t *testing.T) {
 	}
 	layout := m.searchPanelLayout()
 	lines := m.searchLines(nil, 36)
-	if !strings.HasPrefix(plain(lines[layout.include]), "In ") || !strings.HasPrefix(plain(lines[layout.exclude]), "Ex ") {
-		t.Fatal("path field labels must start in the left gutter")
+	if layout.summary-layout.details-1 != 5 {
+		t.Fatal("path filters should share a five-row box")
+	}
+	divider := strings.Repeat("─", 35-searchFieldInset)
+	if ansi.Cut(plain(lines[layout.query+1]), searchFieldInset, 35) != divider || ansi.Cut(plain(lines[layout.include+1]), searchFieldInset, 35) != divider {
+		t.Fatal("paired fields must have a divider across the box")
+	}
+	toggle := uv.NewStyledString(lines[layout.query+1]).Lines(ansi.GraphemeWidth)[0][1]
+	if !sameColor(toggle.Style.Bg, lipgloss.Color(m.colors.Input)) {
+		t.Fatal("replacement toggle should be inside the search box")
+	}
+	for y := layout.details + 1; y < layout.summary; y++ {
+		cells := uv.NewStyledString(lines[y]).Lines(ansi.GraphemeWidth)[0]
+		if !sameColor(cells[1].Style.Bg, lipgloss.Color(m.colors.Input)) {
+			t.Fatalf("path filter box background interrupted on row %d", y)
+		}
+	}
+	if !strings.HasPrefix(plain(lines[layout.include]), " ⊕ ") || !strings.HasPrefix(plain(lines[layout.exclude]), " ⊖ ") {
+		t.Fatal("path filter symbols must be inset inside the box")
 	}
 	m.clickSearch(3, layout.include)
 	m.Update(tea.PasteMsg{Content: "*.go"})
 	if m.search.include.Value() != "*.go" {
 		t.Fatal("include field did not receive input")
+	}
+	if line := plain(m.searchLines(nil, 36)[layout.include]); !strings.HasPrefix(line, " ⊕ *.go") {
+		t.Fatalf("filter symbol needs a space before the input: %q", line)
 	}
 	m.searchKey(tea.KeyPressMsg{Code: tea.KeyTab})
 	if m.search.focus != 4 {
@@ -58,6 +80,26 @@ func TestSearchDetailsInlineFieldsAndFocus(t *testing.T) {
 		t.Fatal("collapsing details lost filters or focus")
 	}
 }
+
+func TestSearchFilterIconsKeepTheInputBackgroundWhenSelected(t *testing.T) {
+	m := replacementWorkspace(t)
+	m.nerd = true
+	m.openSearch()
+	m.toggleSearchDetails()
+	m.search.options.ChangedOnly = true
+	m.search.options.OnlyOpen = true
+	lines := m.searchLines(nil, 36)
+	for _, c := range m.searchPanelControls(36) {
+		switch c.id {
+		case "changed", "open", "ignore":
+			cells := uv.NewStyledString(lines[c.y]).Lines(ansi.GraphemeWidth)[0]
+			if cell := cells[c.x]; !sameColor(cell.Style.Fg, lipgloss.Color(m.colors.Accent)) || !sameColor(cell.Style.Bg, lipgloss.Color(m.colors.Input)) {
+				t.Fatalf("selected %s icon must use the accent on the input background", c.id)
+			}
+		}
+	}
+}
+
 func TestCompleteSearchPanelScopesAndPreserveCase(t *testing.T) {
 	m := replacementWorkspace(t)
 	m.openPreviewFile("file0.go")
@@ -158,6 +200,9 @@ func TestSearchUsesInlineFieldsAndActions(t *testing.T) {
 	m := replacementWorkspace(t)
 	m.openReplace()
 	layout := m.searchPanelLayout()
+	if layout.details-headerHeight != 5 {
+		t.Fatal("expanded search and replacement should share a five-row box")
+	}
 	if layout.replacement != layout.query+2 {
 		t.Fatal("search and replacement inputs need a blank row between them")
 	}
@@ -170,6 +215,12 @@ func TestSearchUsesInlineFieldsAndActions(t *testing.T) {
 		case "case", "word", "regex", "preserve":
 			if !control.embedded {
 				t.Fatal("matching option must be inside its input")
+			}
+			m.hoverX, m.hoverY = m.sideX()+control.x, control.y
+			line := m.searchLines(nil, 36)[control.y]
+			cells := uv.NewStyledString(line).Lines(ansi.GraphemeWidth)[0]
+			if underlined := cells[control.x].Style.Underline != uv.UnderlineNone; underlined != (control.id == "word") {
+				t.Fatalf("hover changed the underline on %q", control.label)
 			}
 		case "details":
 			if control.y <= layout.replacement {

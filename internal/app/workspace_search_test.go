@@ -143,6 +143,29 @@ func TestWorkspaceSearchLayoutScrollAndMouse(t *testing.T) {
 	}
 }
 
+func TestWorkspaceSearchResultHoverWithNoTreeItems(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	m.openSearch()
+	m.search.query.SetValue("package")
+	drain(t, m, m.runSearch())
+	if len(m.items) != 0 || len(m.searchRows()) == 0 {
+		t.Fatal("expected search results without tree items")
+	}
+
+	y := m.searchResultY()
+	m.Update(tea.MouseMotionMsg{X: m.sideX() + 2, Y: y})
+	assertFreshHoverFrame(t, m)
+	if hint := m.hoverHint(); hint != "" {
+		t.Fatalf("unexpected result hover hint: %q", hint)
+	}
+
+	m.Update(tea.MouseMotionMsg{X: m.sideX() + m.searchControlWidth() - 1, Y: y})
+	assertFreshHoverFrame(t, m)
+	if hint := m.hoverHint(); hint != searchText("Remove from Search Results (Delete)") {
+		t.Fatalf("missing remove result hover hint: %q", hint)
+	}
+}
+
 func TestWorkspaceSearchFoldsAndStaleFile(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	m.openSearch()

@@ -61,7 +61,8 @@ func TestSearchInputsUseNativeBarCursor(t *testing.T) {
 		m.focusSearch(tt.focus)
 		m.searchField(tt.focus).SetValue("中a")
 		c := m.View().Cursor
-		if c == nil || c.Shape != tea.CursorBar || c.X != m.sideX()+sidebarSearchFieldInset+1+3 || c.Y != tt.row {
+		x := m.sideX() + searchFieldInset + 3
+		if c == nil || c.Shape != tea.CursorBar || c.X != x || c.Y != tt.row {
 			t.Fatalf("search focus %d: %+v", tt.focus, c)
 		}
 	}
@@ -77,7 +78,7 @@ func TestSearchInputsUseNativeBarCursor(t *testing.T) {
 			row = fileReplaceRow
 		}
 		c := m.View().Cursor
-		if c == nil || c.Shape != tea.CursorBar || c.X != m.fileFindX()+searchFieldInset+4 || c.Y != m.contentRow()+row {
+		if c == nil || c.Shape != tea.CursorBar || c.X != m.fileFindX()+searchFieldInset+3 || c.Y != m.contentRow()+row {
 			t.Fatalf("file find focus %d: %+v", focus, c)
 		}
 	}

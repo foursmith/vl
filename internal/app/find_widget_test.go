@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -75,8 +77,8 @@ func TestSharedFindCompactRowsAndUnselectedCount(t *testing.T) {
 	m.clickSearch(7, m.searchResultY())
 	m.search.replace = false
 	m.openFileFind()
-	if m.fileFindHeight() != 2 {
-		t.Fatal("find should have a separate count row")
+	if m.fileFindHeight() != 3 {
+		t.Fatal("find should include the count in its three rows")
 	}
 	m.document().SelectRange(0, 0)
 	line := plain(m.fileFindLines()[0])
@@ -84,8 +86,21 @@ func TestSharedFindCompactRowsAndUnselectedCount(t *testing.T) {
 		t.Fatalf("unselected count is misleading: %s", line)
 	}
 	m.openFileReplace()
-	if m.fileFindHeight() != 4 {
-		t.Fatal("replacement should leave a row between inputs")
+	if m.fileFindHeight() != 5 {
+		t.Fatal("expanded find should include the count in its five rows")
+	}
+	lines := m.fileFindLines()
+	divider := strings.Repeat("─", m.fileFindWidth()-searchFieldInset)
+	if ansi.Cut(plain(lines[fileFindQueryRow+1]), searchFieldInset, m.fileFindWidth()) != divider {
+		t.Fatal("find and replace must have a divider beside the toggle")
+	}
+	for y, line := range lines {
+		cells := uv.NewStyledString(line).Lines(ansi.GraphemeWidth)[0]
+		for x, cell := range cells {
+			if !sameColor(cell.Style.Bg, lipgloss.Color(m.colors.Input)) {
+				t.Fatalf("find box background interrupted at (%d, %d)", x, y)
+			}
+		}
 	}
 }
 

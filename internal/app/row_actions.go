@@ -127,9 +127,7 @@ func (m *Model) hoverHint() string {
 		return m.tr("Drag to resize sidebar")
 	}
 	if m.modal == "" && m.section == search && m.sidebarAt(m.hoverX) {
-		if hint := m.searchHoverHint(m.hoverX-m.sideX(), m.hoverY); hint != "" {
-			return hint
-		}
+		return m.searchHoverHint(m.hoverX-m.sideX(), m.hoverY)
 	}
 
 	if index := m.hoveredSidebarRow(); index >= 0 {

@@ -33,6 +33,8 @@ const (
 	symbolDiffSplit
 	symbolDiffUnified
 	symbolSearchDetails
+	symbolOpenTabs
+	symbolIgnoreRules
 )
 
 var uiSymbols = [...]struct{ plain, nerd string }{
@@ -65,6 +67,8 @@ var uiSymbols = [...]struct{ plain, nerd string }{
 	symbolDiffSplit:     {"[|]", "\ueb56"},
 	symbolDiffUnified:   {"[=]", "\ueb57"},
 	symbolSearchDetails: {"...", "\uea7c"},
+	symbolOpenTabs:      {"Tab", "\ueb7f"},
+	symbolIgnoreRules:   {"Ignore rules", "\ueadd"},
 }
 
 func (m *Model) symbol(name uiSymbol) string {

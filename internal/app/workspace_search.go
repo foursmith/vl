@@ -22,7 +22,7 @@ type searchState struct {
 	cancel             context.CancelFunc
 	loading            bool
 	workspaceDirty     bool
-	focus              int // 0 query, 1 replacement, 2 results
+	focus              int // 0 query, 1 replacement, 2 results, 3 include, 4 exclude
 	selected, top      int
 	folded             map[string]bool
 	err                string
@@ -35,14 +35,12 @@ type searchMsg struct {
 type searchRow struct{ file, match int }
 
 func newSearch() searchState {
-	q := newInput()
-	q.Prompt = " "
-	r := newInput()
-	r.Prompt = " "
-	include, exclude := newInput(), newInput()
-	include.Prompt = " "
-	exclude.Prompt = " "
-	return searchState{query: q, replacement: r, include: include, exclude: exclude, folded: map[string]bool{}}
+	field := func() textinput.Model {
+		input := newInput()
+		input.Prompt = ""
+		return input
+	}
+	return searchState{query: field(), replacement: field(), include: field(), exclude: field(), folded: map[string]bool{}}
 }
 func (m *Model) openSearch() tea.Cmd {
 	m.notice = ""
