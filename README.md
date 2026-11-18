@@ -2,7 +2,7 @@
 
 A lightweight, VSCode-like Git workbench and Vim-like editor.
 
-It brings Explorer, Changes, History and editor tabs into one workspace, with VS Code
+It brings Explorer, Changes, History, PR and editor tabs into one workspace, with VS Code
 Dark Modern / Light Modern colors and Material Icon Theme associations adapted
 to Nerd Font glyphs.
 
@@ -77,6 +77,9 @@ URLs and clamps scroll offsets beyond the end of a file.
   commits; branch/tag selection; fetch, fast-forward pull, push, stash and discard.
 - **Diff review:** unified and side-by-side views, syntax colors, hunk navigation,
   source-text selection and image comparisons. Commit diffs are read-only.
+- **PR:** the 50 most recent pull requests for the workspace repository,
+  including open, draft, merged and closed PRs, with per-file read-only diffs.
+  Requires GitHub CLI (`gh`) authenticated with `gh auth login`.
 - **History:** paged commits with branch/tag labels and expandable changed-file trees.
   Merge commits compare against their first parent.
 - **Multiple repositories:** Changes and History have independent sections for
@@ -113,7 +116,22 @@ unsaved edits are retained and external modifications are reported.
 ## Using the workspace
 
 Search workspace text with **Ctrl+2** or **Ctrl+Shift+F**.
-Sidebar shortcuts **Ctrl+1/2/3/4** open Explorer, Search, Changes and History.
+Sidebar shortcuts **Ctrl+1/2/3/4/5** open Explorer, Search, Changes, History and PR.
+Explorer is the default. Each workspace remembers its selected sidebar tab.
+The badge below PR shows the number of open pull requests, including drafts.
+The PR list shows open pull requests by default. Use the filter and refresh
+buttons in the repository row to change the state filter or reload the list.
+Scroll to the bottom to load the next page, or press **Enter** on **Load more pull requests…**.
+Loaded pages and the open count are saved locally per filter and shown while
+GitHub refreshes the loaded range. The count and list refresh once per minute.
+Hover over or focus a commit or PR to read its full title in the status bar.
+In History and PR, press **l** or **Enter** on a commit or PR to toggle its
+file tree. Moving onto a file previews its diff and keeps focus in the sidebar.
+Clicking a commit or PR toggles its tree, and clicking a file previews its diff.
+Each workspace keeps its 32 most recently used PR diffs in `vl/pr-patches` under
+the local cache directory. Expanding a PR reuses its cached diff if the source
+and target revisions match. Press **F5** in the PR tab to refresh the list,
+count and current diff. Press **o** on a PR or file to open the PR on GitHub.
 
 Open files with **Ctrl+P**, commands with **Ctrl+Shift+P**, and recent workspaces with **Ctrl+H**.
 The file/command picker accepts `>` for commands, `:line[:column]` for a position

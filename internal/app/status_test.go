@@ -7,12 +7,61 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/ourongxing/vl/internal/config"
+	"github.com/ourongxing/vl/internal/diff"
 	gitservice "github.com/ourongxing/vl/internal/git"
 )
+
+func TestRevisionHoverAndFocusUseStatusNoticeArea(t *testing.T) {
+	const title = "长标题 · Display a full revision title that cannot fit in the sidebar row"
+	for _, tt := range []struct {
+		section section
+		entry   item
+		want    string
+	}{
+		{history, item{commit: &gitservice.Commit{ID: "test", Subject: title}}, title},
+		{pullRequests, item{pullRequest: &gitservice.PullRequest{Number: 42}, label: "#42 " + title}, "#42 " + title},
+	} {
+		m := tabWorkspace(t, 1)
+		t.Cleanup(m.Close)
+		m.openFile("file0.go")
+		m.section = tt.section
+		m.items = []item{tt.entry, {label: "file0.go", pullRequest: tt.entry.pullRequest, pullRequestFile: &diff.FilePatch{Path: "file0.go"}}}
+		m.SetSidebarLayout(28, true)
+		m.Update(tea.WindowSizeMsg{Width: 150, Height: 24})
+		m.View()
+		branch, encoding := statusPart(t, m, "branch"), statusPart(t, m, "encoding")
+
+		m.Update(tea.MouseMotionMsg{X: m.sideX() + 3, Y: headerHeight})
+		lines := strings.Split(m.View().Content, "\n")
+		if got := plain(lines[len(lines)-1]); !strings.Contains(got, tt.want) {
+			t.Fatalf("status bar = %q, want title %q", got, tt.want)
+		}
+		if statusPart(t, m, "notice").text != tt.want || statusPart(t, m, "branch") != branch || statusPart(t, m, "encoding") != encoding {
+			t.Fatal("hover title displaced an existing status segment")
+		}
+		for _, pos := range [][2]int{{m.sideX() + 3, headerHeight + 1}, {m.mainX() + 3, headerHeight}} {
+			m.Update(tea.MouseMotionMsg{X: pos[0], Y: pos[1]})
+			lines = strings.Split(m.View().Content, "\n")
+			if got := plain(lines[len(lines)-1]); strings.Contains(got, title) || !strings.Contains(got, "UTF-8") {
+				t.Fatalf("ordinary status bar was not restored: %q", got)
+			}
+		}
+		m.selected = 0
+		m.Update(tea.KeyPressMsg{Code: tea.KeyF6})
+		if !m.sidebar || statusPart(t, m, "notice").text != tt.want {
+			t.Fatal("focusing the revision did not show its title")
+		}
+		m.Update(tea.KeyPressMsg{Code: tea.KeyF6})
+		if m.sidebar || strings.Contains(plain(m.statusLine()), title) {
+			t.Fatal("revision title remained after focus moved to the editor")
+		}
+	}
+}
 
 func TestStatusBarStylePickerPersistsAndRestores(t *testing.T) {
 	m := tabWorkspace(t, 1)
@@ -125,6 +174,7 @@ func TestPickerCannotDiscardUnsavedDocument(t *testing.T) {
 
 func TestGitHubStatusUsesNormalizedRemoteAndReportsLaunchError(t *testing.T) {
 	m := branchWorkspace(t)
+	m.pullRequestsFetchedAt = time.Now() // Keep the fake remote off the network.
 	if _, err := m.repo.Run(m.ctx, "remote", "add", "origin", "git@github.com:owner/repo.git"); err != nil {
 		t.Fatal(err)
 	}

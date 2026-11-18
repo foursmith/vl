@@ -245,6 +245,18 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 		} else if m.section == search && entry != nil {
 			add(m.tr("Open"), "Enter", bind(m.openSelected))
 			add(m.tr("Dismiss Result"), "dd / Del", bind(func() tea.Cmd { m.dismissSearchResult(m.search.selected); return nil }))
+		} else if m.section == pullRequests {
+			if entry != nil && (entry.repoHeader || entry.pullRequest != nil) {
+				add(m.tr("Open / Expand"), "Enter", bind(m.openSelected))
+				if entry.repoHeader {
+					add(m.tr("Checkout to…"), "", func() tea.Cmd { return m.openBranchPicker(entry.repository, "") })
+					add(m.tr("Filter Pull Requests"), "", m.openPullRequestFilter)
+				}
+				if entry.pullRequest != nil {
+					add(m.tr("Open on GitHub"), "o", func() tea.Cmd { return m.openBrowser(entry.pullRequest.URL) })
+				}
+			}
+			add(m.tr("Refresh"), workbenchKeys.Refresh.Help().Key, m.forceRefreshPullRequests)
 		} else if entry != nil {
 			add(m.tr("Open / Expand"), "Enter", bind(m.openSelected))
 			if entry.repoHeader {
@@ -260,16 +272,7 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 				}
 				add(label, "dd / Del", bind(m.deleteSelectedEntry))
 			}
-			path := entry.file
-			if path == "" {
-				path = entry.folder
-			}
-			if entry.change != nil {
-				path = entry.change.Path
-			}
-			if entry.historyChange != nil {
-				path = entry.historyChange.Path
-			}
+			path := entryPath(entry)
 			if path != "" {
 				actions = append(actions, m.copyPathActions(path)...)
 			}

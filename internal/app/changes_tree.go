@@ -126,6 +126,13 @@ func changeTree(changes []gitservice.Change, repo string, staged bool, collapsed
 }
 
 func (m *Model) folderExpanded(entry item) bool {
+	if m.section == pullRequests {
+		if entry.repoHeader {
+			return !m.changeCollapsed[entry.key]
+		}
+		review := m.pullRequestReviews[entry.pullRequest.URL]
+		return review != nil && !review.collapsed[entry.key]
+	}
 	if m.section == history {
 		if entry.repoHeader {
 			return !m.changeCollapsed[entry.key]

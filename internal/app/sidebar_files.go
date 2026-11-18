@@ -43,6 +43,9 @@ func entryPath(entry *item) string {
 	if entry.historyChange != nil {
 		return entry.historyChange.Path
 	}
+	if entry.pullRequestFile != nil {
+		return entry.pullRequestFile.Path
+	}
 	return entry.file
 }
 
@@ -77,6 +80,9 @@ func (m *Model) loadSidebarFile(entry item) (tea.Cmd, bool) {
 	}
 	if entry.historyChange != nil {
 		return m.requestHistoryDiff(entry), true
+	}
+	if entry.pullRequestFile != nil {
+		return m.requestPullRequestDiff(entry), true
 	}
 	if entry.change == nil {
 		return nil, false

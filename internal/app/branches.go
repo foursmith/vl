@@ -154,6 +154,10 @@ func (m *Model) openGitHub() tea.Cmd {
 		m.notice = m.tr("No GitHub remote found")
 		return nil
 	}
+	return m.openBrowser(target)
+}
+
+func (m *Model) openBrowser(target string) tea.Cmd {
 	open := m.openURL
 	return func() tea.Msg { return browserMsg{target: target, err: open(m.ctx, target)} }
 }

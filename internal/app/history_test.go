@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 	gitservice "github.com/ourongxing/vl/internal/git"
 )
@@ -17,9 +18,9 @@ func TestHistoryFileReviewAndReadOnlyActions(t *testing.T) {
 	}
 	drain(t, m, m.refresh())
 	drain(t, m, m.selectSection(history))
-	drain(t, m, m.preview())
-	if m.historyCommit == "" || historyKey("", m.diffCommit) != m.historyCommit || m.diffPath == "" || m.diffChange != nil {
-		t.Fatal("commit did not open a read-only file preview")
+	drain(t, m, press(m, "enter"))
+	if m.diffOpen || !m.sidebar {
+		t.Fatal("expanding a commit opened a diff or moved focus")
 	}
 	var fileIndex int = -1
 	for i, entry := range m.items {
@@ -30,9 +31,9 @@ func TestHistoryFileReviewAndReadOnlyActions(t *testing.T) {
 	if fileIndex < 0 {
 		t.Fatal("missing nested commit file")
 	}
-	m.selected = fileIndex
-	drain(t, m, m.preview())
-	if m.diffPath != "cmd/main.go" {
+	m.selected = fileIndex - 1
+	drain(t, m, press(m, "j"))
+	if m.diffPath != "cmd/main.go" || !m.sidebar || !m.tabs[m.activeTab].preview {
 		t.Fatal("wrong per-file diff")
 	}
 	if cmd := m.stageHunk(false); cmd != nil {
@@ -73,14 +74,15 @@ func TestHistoryFileReviewAndReadOnlyActions(t *testing.T) {
 func TestHistoryIgnoresLateFileLists(t *testing.T) {
 	m := tabWorkspace(t, 0)
 	m.section = history
-	m.historyCommit = historyKey("", "new")
 	m.historySeq = 2
 	m.historyStates[historyKey("", "new")] = &historyState{seq: 2, loading: true}
-	if cmd := m.applyHistoryFiles(historyFilesMsg{seq: 1, id: "old", files: []gitservice.Change{{Path: "old"}}}); cmd != nil || len(m.historyStates[historyKey("", "new")].files) > 0 {
+	m.applyHistoryFiles(historyFilesMsg{seq: 1, id: "old", files: []gitservice.Change{{Path: "old"}}})
+	if len(m.historyStates[historyKey("", "new")].files) > 0 {
 		t.Fatal("stale commit files applied")
 	}
 	m.selectSection(explorer)
-	if cmd := m.applyHistoryFiles(historyFilesMsg{seq: 2, id: "new"}); cmd != nil {
+	m.applyHistoryFiles(historyFilesMsg{seq: 2, id: "new"})
+	if m.diffOpen || m.historyStates[historyKey("", "new")].loaded {
 		t.Fatal("late history load opened diff outside history")
 	}
 }
@@ -105,14 +107,15 @@ func TestHistoryKeepsMultipleCommitsExpandedWithIndependentLoads(t *testing.T) {
 		return item{}
 	}
 	m.rebuildItems()
-	m.loadHistoryCommit(selectCommit(a.ID), false)
+	m.loadHistoryCommit(selectCommit(a.ID))
 	seqA := m.historyStates[historyKey("", a.ID)].seq
-	m.loadHistoryCommit(selectCommit(b.ID), false)
+	m.loadHistoryCommit(selectCommit(b.ID))
 	seqB := m.historyStates[historyKey("", b.ID)].seq
 	// The earlier request may finish last; both results belong to their own trees.
 	m.applyHistoryFiles(historyFilesMsg{seq: seqB, id: b.ID, files: []gitservice.Change{{Path: "src/b.go", Index: 'M', Worktree: ' '}}})
-	if cmd := m.applyHistoryFiles(historyFilesMsg{seq: seqA, id: a.ID, files: []gitservice.Change{{Path: "src/a.go", Index: 'M', Worktree: ' '}}}); cmd != nil {
-		t.Fatal("background commit result replaced active diff")
+	m.applyHistoryFiles(historyFilesMsg{seq: seqA, id: a.ID, files: []gitservice.Change{{Path: "src/a.go", Index: 'M', Worktree: ' '}}})
+	if m.diffOpen {
+		t.Fatal("loading commit trees opened a diff")
 	}
 	visible := func(id, path string) bool {
 		for _, entry := range m.items {
@@ -172,14 +175,15 @@ func TestHistoryTagBadgesPrecedeLongSubjects(t *testing.T) {
 	}
 }
 
-func TestHistoryKeyboardOpenKeepsFirstLoadedDiff(t *testing.T) {
+func TestHistoryKeyboardOpensCommitAsFolder(t *testing.T) {
 	for _, key := range []string{"enter", "l"} {
 		t.Run(key, func(t *testing.T) {
 			m := tabWorkspace(t, 0)
 			t.Cleanup(m.Close)
 			m.section = history
 			commit := gitservice.Commit{ID: strings.Repeat("a", 40), Subject: "initial"}
-			m.snapshot.Commits = []gitservice.Commit{commit}
+			other := gitservice.Commit{ID: strings.Repeat("b", 40), Subject: "previous"}
+			m.snapshot.Commits = []gitservice.Commit{commit, other}
 			m.rebuildItems()
 			for i, entry := range m.items {
 				if entry.commit != nil {
@@ -187,13 +191,31 @@ func TestHistoryKeyboardOpenKeepsFirstLoadedDiff(t *testing.T) {
 					break
 				}
 			}
+			assertSelected := func(want string) {
+				t.Helper()
+				entry := m.current()
+				if entry == nil || entry.commit == nil || entry.commit.ID != want || len(m.historyStates) != 0 {
+					t.Fatal("moving the selection did not focus the commit without opening it")
+				}
+			}
+			press(m, "j")
+			assertSelected(other.ID)
+			press(m, "k")
+			assertSelected(commit.ID)
+			m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+			assertSelected(other.ID)
+			m.Update(tea.KeyPressMsg{Code: tea.KeyUp})
+			assertSelected(commit.ID)
 			if press(m, key) == nil {
 				t.Fatal("opening an unloaded commit did not request changed files")
 			}
 			state := m.historyStates[historyKey("", commit.ID)]
-			m.Update(historyFilesMsg{seq: state.seq, id: commit.ID, files: []gitservice.Change{{Path: "file.go", Index: 'M'}}})
-			if len(m.tabs) != 1 || m.tabs[0].preview || m.sidebar {
-				t.Fatal("keyboard open did not focus and keep the asynchronously opened diff")
+			m.Update(historyFilesMsg{seq: state.seq, id: commit.ID, files: []gitservice.Change{{Path: "file.go", Index: 'M', Worktree: ' '}}})
+			if len(m.tabs) != 0 || !m.sidebar || m.current().commit == nil || m.current().commit.ID != commit.ID {
+				t.Fatal("expanding the commit opened a diff or moved focus")
+			}
+			if press(m, "j") == nil || len(m.tabs) != 1 || !m.tabs[0].preview || !m.sidebar || m.diffPath != "file.go" {
+				t.Fatal("moving onto the file did not preview it with sidebar focus")
 			}
 		})
 	}

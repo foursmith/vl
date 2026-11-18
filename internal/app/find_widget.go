@@ -248,7 +248,7 @@ func (m *Model) fileFindKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 		}
 		m.blurFileFind()
 		return true, nil
-	case "ctrl+q", "ctrl+p", "ctrl+shift+p", "f1", "ctrl+1", "ctrl+2", "ctrl+3", "ctrl+4", "ctrl+l", "ctrl+g", "f5", "f6", "ctrl+j", "alt+left", "alt+right", "ctrl+shift+f", "ctrl+shift+h":
+	case "ctrl+q", "ctrl+p", "ctrl+shift+p", "f1", "ctrl+1", "ctrl+2", "ctrl+3", "ctrl+4", "ctrl+5", "ctrl+l", "ctrl+g", "f5", "f6", "ctrl+j", "alt+left", "alt+right", "ctrl+shift+f", "ctrl+shift+h":
 		m.blurFileFind()
 		return false, nil
 	case "ctrl+s":

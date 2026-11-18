@@ -14,6 +14,7 @@ import (
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/ourongxing/vl/internal/config"
+	"github.com/ourongxing/vl/internal/diff"
 	"github.com/ourongxing/vl/internal/editor"
 	"github.com/ourongxing/vl/internal/files"
 	gitservice "github.com/ourongxing/vl/internal/git"
@@ -33,25 +34,28 @@ const (
 	explorer
 	history
 	search
+	pullRequests
 )
 
 type item struct {
-	branch        string
-	label, key    string
-	header        bool
-	repository    string
-	repoHeader    bool
-	change        *gitservice.Change
-	staged        bool
-	commit        *gitservice.Commit
-	historyPage   *historyPageState
-	historyID     string
-	historyChange *gitservice.Change
-	file          string
-	folder        string
-	depth         int
-	ignored       bool
-	status        byte
+	branch          string
+	label, key      string
+	header          bool
+	repository      string
+	repoHeader      bool
+	change          *gitservice.Change
+	staged          bool
+	commit          *gitservice.Commit
+	historyPage     *historyPageState
+	historyID       string
+	historyChange   *gitservice.Change
+	pullRequest     *gitservice.PullRequest
+	pullRequestFile *diff.FilePatch
+	file            string
+	folder          string
+	depth           int
+	ignored         bool
+	status          byte
 }
 
 type tab struct {
@@ -91,11 +95,12 @@ type snapshotMsg struct {
 	err      error
 }
 type diffMsg struct {
-	target *diffState
-	seq    int
-	raw    string
-	err    error
-	images *diffImages
+	target    *diffState
+	seq       int
+	raw       string
+	prVersion string
+	err       error
+	images    *diffImages
 }
 type operationMsg struct {
 	title, output string
@@ -167,12 +172,20 @@ type Model struct {
 	emptyDiff               *diffState
 	split                   bool
 	lastFileRepository      string
-	pendingHistory          string
-	keepPendingHistory      bool
-	historyCommit           string
 	historyStates           map[string]*historyState
 	historyPages            map[string]*historyPageState
 	historySeq              int
+	pullRequests            []gitservice.PullRequest
+	openPullRequestCount    int
+	pullRequestsNextCursor  string
+	pullRequestsPageError   error
+	pullRequestsSeq         uint64
+	pullRequestsCancel      context.CancelFunc
+	pullRequestFilter       gitservice.PullRequestFilter
+	pullRequestsError       error
+	pullRequestsFetchedAt   time.Time
+	pullRequestReview       *pullRequestReview
+	pullRequestReviews      map[string]*pullRequestReview
 	pendingSession          *config.Session
 	filePositionStore       *config.FilePositionStore
 	tabs                    []tab
@@ -252,7 +265,8 @@ func newModel(ctx context.Context, repo *gitservice.Repository, nerd, editorOnly
 		m.historyStates = map[string]*historyState{}
 		m.historyPages = map[string]*historyPageState{}
 	}
-	m.section = changes
+	m.section = explorer
+	m.pullRequestFilter = gitservice.PullRequestOpen
 	m.selected = -1
 	m.openURL = platform.OpenURL
 	m.hoverX, m.hoverY = -1, -1
@@ -277,6 +291,7 @@ func (m *Model) tick() tea.Cmd {
 	if m.watcher != nil {
 		delay = 30 * time.Second
 	}
+	delay = m.pullRequestTickDelay(delay)
 	return delayedMessage(m.ctx, delay, func(t time.Time) tea.Msg { return tickMsg(t) })
 }
 
@@ -305,7 +320,7 @@ func (m *Model) rebuildItems() {
 		}
 	}
 	m.items = nil
-	if m.snapshot.NoRepository && (m.section == changes || m.section == history) {
+	if m.snapshot.NoRepository && (m.section == changes || m.section == history || m.section == pullRequests) {
 		m.selected = -1
 		m.sideTop = 0
 		return
@@ -317,6 +332,8 @@ func (m *Model) rebuildItems() {
 		m.items = m.explorerItems()
 	case history:
 		m.items = m.historyRepositoryItems()
+	case pullRequests:
+		m.items = m.pullRequestItems()
 	}
 	if m.selected >= 0 || m.section != explorer {
 		m.selected = min(max(0, m.selected), max(0, len(m.items)-1))
@@ -390,11 +407,11 @@ func (m *Model) selectSectionInRepository(s section, repository string) tea.Cmd 
 			if state.cancel != nil {
 				state.cancel()
 				state.cancel = nil
+				state.expanded = false
 			}
 			state.loading = false
 			state.seq = 0
 		}
-		m.historyCommit = ""
 	}
 	m.section = s
 	m.sidebar = true
@@ -415,6 +432,9 @@ func (m *Model) selectSectionInRepository(s section, repository string) tea.Cmd 
 	if s == explorer {
 		return m.refreshTree()
 	}
+	if s == pullRequests {
+		return m.refreshPullRequests(false)
+	}
 	return nil
 }
 
@@ -422,9 +442,6 @@ func (m *Model) preview() tea.Cmd {
 	entry := m.sidebarEntry()
 	if entry == nil {
 		return nil
-	}
-	if m.section == history && entry.commit != nil {
-		return m.loadHistoryCommit(*entry, false)
 	}
 	cmd, _ := m.loadSidebarFile(*entry)
 	return cmd
@@ -469,6 +486,9 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}
 		if !m.hoverOnly {
 			if cmd := m.loadVisibleHistory(); cmd != nil {
+				next = tea.Batch(next, cmd)
+			}
+			if cmd := m.loadVisiblePullRequests(); cmd != nil {
 				next = tea.Batch(next, cmd)
 			}
 		}
@@ -538,6 +558,12 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		return m, m.finishThemeImport(msg)
 	case historyPageMsg:
 		m.applyHistoryPage(msg)
+	case cachedPullRequestsMsg:
+		return m, m.applyCachedPullRequests(msg)
+	case pullRequestsMsg:
+		m.applyPullRequests(msg)
+	case pullRequestDiffMsg:
+		return m, m.applyPullRequestDiff(msg)
 	case tea.ColorProfileMsg:
 		m.monochrome = msg.Profile <= colorprofile.ASCII
 	case markdownImageLoadedMsg:
@@ -703,10 +729,11 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		m.resize()
 		return m, tea.Raw(ansi.WindowOp(16))
 	case tickMsg:
+		pullRequestRefresh := m.refreshPullRequests(false)
 		if !m.loading && !m.busy {
-			return m, tea.Batch(m.refresh(), m.reloadWatchedFiles(nil), m.tick())
+			return m, tea.Batch(m.refresh(), m.reloadWatchedFiles(nil), pullRequestRefresh, m.tick())
 		}
-		return m, m.tick()
+		return m, tea.Batch(pullRequestRefresh, m.tick())
 	case snapshotMsg:
 		if msg.seq != m.refreshSeq {
 			return m, nil
@@ -716,6 +743,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			m.log(m.tr(msg.err.Error()))
 			return m, nil
 		}
+		wasNoRepository := m.snapshot.NoRepository
 		m.snapshot = msg.snapshot
 		m.reconcileHistoryRepositories()
 		m.syncWatch()
@@ -728,14 +756,15 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		if m.section == explorer {
 			commands = append(commands, m.refreshTree())
 		}
+		commands = append(commands, m.refreshPullRequests(m.section == pullRequests && wasNoRepository))
 		commands = append(commands, m.refreshDiffs(), m.restoreSession())
-		if initial && len(m.tabs) == 0 && (m.section == changes || m.section == history) {
+		if initial && len(m.tabs) == 0 && m.section == changes {
 			commands = append(commands, m.preview())
 		}
 		return m, tea.Batch(commands...)
 
 	case historyFilesMsg:
-		return m, m.applyHistoryFiles(msg)
+		m.applyHistoryFiles(msg)
 	case diffMsg:
 		return m, m.finishDiff(msg)
 
@@ -887,6 +916,9 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 
 func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	m.stopTextDrag()
+	if m.sidebar && (m.section == history || m.section == pullRequests) {
+		m.hoverX, m.hoverY = -1, -1
+	}
 	k := msg.String()
 	if m.fileFindFocused() {
 		if handled, cmd := m.fileFindKey(msg); handled {
@@ -903,12 +935,12 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		m.navigateFileFind(-1)
 		return nil
 	}
-	if m.editorOnly && key.Matches(msg, workbenchKeys.Recent, workbenchKeys.Search, workbenchKeys.Replace, workbenchKeys.Explorer, workbenchKeys.Changes, workbenchKeys.History, workbenchKeys.Sidebar, workbenchKeys.Focus, workbenchKeys.Output, workbenchKeys.DiffLayout) {
+	if m.editorOnly && key.Matches(msg, workbenchKeys.Recent, workbenchKeys.Search, workbenchKeys.Replace, workbenchKeys.Explorer, workbenchKeys.Changes, workbenchKeys.History, workbenchKeys.PullRequests, workbenchKeys.Sidebar, workbenchKeys.Focus, workbenchKeys.Output, workbenchKeys.DiffLayout) {
 		return nil
 	}
 	if m.sidebar && m.section == search {
 		switch k {
-		case "ctrl+q", "ctrl+p", "ctrl+h", "ctrl+shift+p", "f1", "ctrl+1", "ctrl+2", "ctrl+3", "ctrl+4", "ctrl+shift+f", "ctrl+shift+h", "ctrl+l", "f6", "ctrl+s", "ctrl+w", "alt+left", "alt+right", "ctrl+j":
+		case "ctrl+q", "ctrl+p", "ctrl+h", "ctrl+shift+p", "f1", "ctrl+1", "ctrl+2", "ctrl+3", "ctrl+4", "ctrl+5", "ctrl+shift+f", "ctrl+shift+h", "ctrl+l", "f6", "ctrl+s", "ctrl+w", "alt+left", "alt+right", "ctrl+j":
 		default:
 			return m.searchKey(msg)
 		}
@@ -964,6 +996,8 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		return m.selectSection(changes)
 	case key.Matches(msg, workbenchKeys.History):
 		return m.selectSection(history)
+	case key.Matches(msg, workbenchKeys.PullRequests):
+		return m.selectSection(pullRequests)
 	case key.Matches(msg, workbenchKeys.Sidebar):
 		return m.toggleSidebar()
 	case key.Matches(msg, workbenchKeys.Focus):
@@ -981,6 +1015,9 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		m.resize()
 		return nil
 	case key.Matches(msg, workbenchKeys.Refresh):
+		if m.section == pullRequests && !m.snapshot.NoRepository {
+			return m.forceRefreshPullRequests()
+		}
 		if !m.busy {
 			return m.refresh()
 		}
@@ -1011,6 +1048,12 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		return nil
 	}
 	if m.sidebar {
+		if m.section == pullRequests && k != "enter" {
+			if entry := m.current(); k == "o" && entry != nil && entry.pullRequest != nil {
+				return m.openBrowser(entry.pullRequest.URL)
+			}
+			return nil
+		}
 		switch k {
 		case "delete":
 			return m.deleteSelectedEntry()

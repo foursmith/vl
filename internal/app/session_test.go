@@ -7,12 +7,131 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/ourongxing/vl/internal/config"
+	"github.com/ourongxing/vl/internal/diff"
 	gitservice "github.com/ourongxing/vl/internal/git"
 )
+
+func TestSessionRestoresSidebarTab(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	defer m.Close()
+	for _, tc := range []struct {
+		name string
+		tab  section
+	}{
+		{"explorer", explorer}, {"search", search}, {"changes", changes},
+		{"history", history}, {"pull-requests", pullRequests},
+	} {
+		m.section = tc.tab
+		saved := m.Session()
+		if saved.SidebarTab != tc.name {
+			t.Fatalf("saved sidebar tab = %q, want %q", saved.SidebarTab, tc.name)
+		}
+		restored := New(context.Background(), m.repo, false)
+		restored.SetSession(saved)
+		drain(t, restored, restored.restoreSession())
+		if restored.section != tc.tab || restored.Session().SidebarTab != tc.name {
+			t.Fatalf("restoring %q selected %q", tc.name, restored.Session().SidebarTab)
+		}
+		if tc.tab == search && !restored.search.query.Focused() {
+			t.Fatal("restored Search is missing input focus")
+		}
+		restored.Close()
+	}
+	fresh := New(context.Background(), m.repo, false)
+	defer fresh.Close()
+	for _, saved := range []config.Session{{}, {SidebarTab: "unknown-tab"}} {
+		fresh.SetSession(saved)
+		drain(t, fresh, fresh.restoreSession())
+		if fresh.section != explorer {
+			t.Fatal("new or older workspace did not default to Explorer")
+		}
+	}
+}
+
+func TestSessionRestoresPRDiffTabs(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	m := tabWorkspace(t, 1)
+	defer m.Close()
+	pr := gitservice.PullRequest{Number: 19, URL: "https://github.com/example/repo/pull/19", HeadRefOID: "head", BaseRefOID: "base"}
+	raw := "diff --git a/old.go b/old.go\n--- a/old.go\n+++ b/old.go\n@@ -1 +1 @@\n-old\n+new\n" +
+		"diff --git a/next.go b/next.go\n--- a/next.go\n+++ b/next.go\n@@ -1 +1 @@\n-old\n+next\n"
+	patches, err := diff.SplitFiles(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cache := config.NewPullRequestDiffCache(m.repo.Root, pullRequestCacheSize)
+	cache.Save(pr.URL, pr.DiffVersion(), raw)
+	m.openFile("file0.go")
+	for i, patch := range patches {
+		target := diffTarget{path: patch.Path, pr: pr, prVersion: pr.DiffVersion(), preview: i == 1}
+		drain(t, m, m.requestDiff(target, readPullRequestPatch(patch.Raw)))
+	}
+	sessionFile := filepath.Join(t.TempDir(), "session.json")
+	saved := m.Session()
+	if err := config.SaveSession(sessionFile, saved); err != nil {
+		t.Fatal(err)
+	}
+	session, err := config.LoadSession(sessionFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	restore := func(version string) {
+		t.Helper()
+		restored := New(context.Background(), m.repo, false)
+		defer restored.Close()
+		restored.SetSession(session)
+		drain(t, restored, restored.restoreSession())
+		expected := saved
+		expected.Tabs = append([]config.SessionTab(nil), saved.Tabs...)
+		for i := 1; i < len(expected.Tabs); i++ {
+			pr := *expected.Tabs[i].PullRequest
+			pr.Version = version
+			expected.Tabs[i].PullRequest = &pr
+		}
+		if got := restored.Session(); !reflect.DeepEqual(got, expected) || restored.activeTab != 2 || !restored.sidebar {
+			t.Fatalf("restored session = %+v, want %+v", got, expected)
+		}
+		for i, patch := range patches {
+			d := restored.tabs[i+1].diff
+			if d == nil || d.patch.Raw != patch.Raw || d.diffChange != nil || d.read != nil {
+				t.Fatalf("PR tab %d was not restored as a read-only file diff", i)
+			}
+		}
+	}
+	// A cached session can restore even when gh is unavailable.
+	path := t.TempDir()
+	t.Setenv("PATH", path)
+	restore(pr.DiffVersion())
+
+	if runtime.GOOS == "windows" {
+		return
+	}
+	// On a cache miss, both files share a single fetch of the complete PR.
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Setenv("VL_TEST_PR_PATCH", raw)
+	t.Setenv("VL_TEST_PR_CALLS", filepath.Join(path, "calls"))
+	if err := os.WriteFile(filepath.Join(path, "gh"), []byte(`#!/bin/sh
+[ "$1 $2" != "pr view" ] || {
+  printf '%s\n' '{"baseRefOid":"base","headRefOid":"new-head"}'
+  exit 0
+}
+[ "$1 $2" = "pr diff" ] || exit 1
+printf 'fetch\n' >> "$VL_TEST_PR_CALLS"
+printf '%s' "$VL_TEST_PR_PATCH"
+`), 0700); err != nil {
+		t.Fatal(err)
+	}
+	restore("base:new-head")
+	calls, err := os.ReadFile(filepath.Join(path, "calls"))
+	if err != nil || string(calls) != "fetch\n" {
+		t.Fatalf("session cache miss ran gh %q times: %v", calls, err)
+	}
+}
 
 func TestSessionRoundTripMixedTabs(t *testing.T) {
 	m := tabWorkspace(t, 2)
@@ -106,7 +225,7 @@ func TestSessionSkipsMissingTabsAndRetainsEmptySession(t *testing.T) {
 	if err := store.Save(filepath.Join(m.repo.Root, "file0.go"), config.FilePosition{Line: 999, Column: 999}); err != nil {
 		t.Fatal(err)
 	}
-	session := config.Session{Active: 1, Tabs: []config.SessionTab{
+	session := config.Session{Active: 1, SidebarTab: "explorer", Tabs: []config.SessionTab{
 		{Kind: "file", Path: "missing.go"},
 		{Kind: "file", Path: "file0.go", Preview: true},
 		{Kind: "diff", Path: "child/deleted.go", Repository: "missing-child"},

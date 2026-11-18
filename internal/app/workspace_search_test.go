@@ -16,7 +16,7 @@ func TestWorkspaceSearchSecondTabAndNavigation(t *testing.T) {
 	m.openFile("file0.go")
 	original := m.document()
 	nav := m.navigation()
-	if len(nav) != 4 || nav[1].section != search || nav[2].section != changes || nav[3].section != history {
+	if len(nav) != 5 || nav[1].section != search || nav[2].section != changes || nav[3].section != history || nav[4].section != pullRequests {
 		t.Fatal("unexpected sidebar order", nav)
 	}
 	press(m, "ctrl+2")

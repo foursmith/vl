@@ -34,6 +34,9 @@ func (m *Model) diffContext() string {
 	if m.diffCommit != "" {
 		context = m.tr("Commit · ") + shortOID(m.diffCommit) + m.tr(" · Read-only")
 	}
+	if m.diffPR.Number != 0 {
+		context = fmt.Sprintf("PR #%d", m.diffPR.Number) + m.tr(" · Read-only")
+	}
 	fileStatus := ""
 	oldMode, newMode := "", ""
 	for _, parsed := range m.patch.Lines {

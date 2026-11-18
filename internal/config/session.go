@@ -6,20 +6,28 @@ import (
 	"path/filepath"
 )
 
-// Session is the open tab set for one workspace. Document contents stay on disk.
+// Session stores the open editor tabs and selected sidebar tab for a workspace.
 type Session struct {
-	Tabs   []SessionTab `json:"tabs"`
-	Active int          `json:"active"`
+	Tabs       []SessionTab `json:"tabs"`
+	Active     int          `json:"active"`
+	SidebarTab string       `json:"sidebarTab,omitempty"`
 }
 
 type SessionTab struct {
-	Kind       string `json:"kind"`
-	Path       string `json:"path"`
-	Preview    bool   `json:"preview,omitempty"`
-	Repository string `json:"repository,omitempty"`
-	Commit     string `json:"commit,omitempty"`
-	Staged     bool   `json:"staged,omitempty"`
-	Original   string `json:"original,omitempty"`
+	Kind        string              `json:"kind"`
+	Path        string              `json:"path"`
+	Preview     bool                `json:"preview,omitempty"`
+	Repository  string              `json:"repository,omitempty"`
+	Commit      string              `json:"commit,omitempty"`
+	Staged      bool                `json:"staged,omitempty"`
+	Original    string              `json:"original,omitempty"`
+	PullRequest *SessionPullRequest `json:"pullRequest,omitempty"`
+}
+
+type SessionPullRequest struct {
+	Number  int    `json:"number"`
+	URL     string `json:"url"`
+	Version string `json:"version"`
 }
 
 func SessionPath(root string) (string, error) {

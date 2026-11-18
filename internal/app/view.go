@@ -369,6 +369,9 @@ func (m *Model) renderDiff() {
 		if m.diffPath == "" || line == nil {
 			return false
 		}
+		if m.diffPR.Number != 0 && len(m.patch.Hunks) == 0 {
+			return strings.HasPrefix(line.Text, "diff --git ")
+		}
 		if line.Kind == diff.HunkHeader && len(m.patch.Hunks) == 1 && (m.patch.NewFile || m.patch.DeletedFile) {
 			return true
 		}

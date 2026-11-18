@@ -187,6 +187,12 @@ func (m *Model) selectParentFolder() {
 		}
 		ancestor := false
 		switch m.section {
+		case pullRequests:
+			if entry.isPullRequest() {
+				ancestor = parent.repoHeader
+			} else if entry.pullRequest != nil && parent.pullRequest == entry.pullRequest {
+				ancestor = parent.isPullRequest() || parent.folder != "" && strings.HasPrefix(path, parent.folder+"/")
+			}
 		case changes:
 			if entry.header {
 				ancestor = parent.repoHeader

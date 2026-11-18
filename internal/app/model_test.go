@@ -10,6 +10,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/ourongxing/vl/internal/config"
 	"github.com/ourongxing/vl/internal/diff"
 	"github.com/ourongxing/vl/internal/editor"
 	"github.com/ourongxing/vl/internal/files"
@@ -70,8 +71,9 @@ func TestAppEditStageCommitWorkflow(t *testing.T) {
 		t.Fatal(err)
 	}
 	m := New(context.Background(), r, false)
+	m.SetSession(config.Session{SidebarTab: "changes", Active: -1})
 	drain(t, m, m.refresh())
-	if m.current() == nil || m.current().change.Path != "main.go" || len(m.patch.Hunks) != 1 {
+	if current := m.current(); current == nil || current.change == nil || current.change.Path != "main.go" || len(m.patch.Hunks) != 1 {
 		t.Fatal("initial changed file not selected")
 	}
 	drain(t, m, m.editSelected())

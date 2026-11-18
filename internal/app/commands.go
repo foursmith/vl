@@ -51,6 +51,10 @@ func (m *Model) actions() []action {
 		{"view.search", m.tr("Search: Find in Files"), workbenchKeys.Search.Help().Key, "", m.openSearch},
 		{"view.changes", m.tr("View: Changes"), workbenchKeys.Changes.Help().Key, "", func() tea.Cmd { return m.selectSection(changes) }},
 		{"view.history", m.tr("View: Commit History"), workbenchKeys.History.Help().Key, "", func() tea.Cmd { return m.selectSection(history) }},
+		{"view.pullRequests", m.tr("View: Pull Requests"), workbenchKeys.PullRequests.Help().Key, "", func() tea.Cmd { return m.selectSection(pullRequests) }},
+		{"view.pullRequestFilter", m.tr("Filter Pull Requests"), "", "", func() tea.Cmd {
+			return tea.Batch(m.selectSection(pullRequests), m.openPullRequestFilter())
+		}},
 		{"view.diff", m.tr("Diff Editor: Toggle Inline View"), workbenchKeys.DiffLayout.Help().Key, "", func() tea.Cmd { m.split = !m.split; m.renderDiff(); return nil }},
 		{"view.sidebar", m.tr("View: Toggle Sidebar"), workbenchKeys.Sidebar.Help().Key, "", m.toggleSidebar},
 		{"view.sidebarLeft", m.tr("View: Move Sidebar Left"), "", "", func() tea.Cmd { m.SetSidebarLayout(m.sidebarWidth, false); return nil }},
@@ -496,6 +500,9 @@ func (m *Model) openSelected() tea.Cmd {
 	if m.section == history {
 		return m.openHistoryRow(*entry, true)
 	}
+	if m.section == pullRequests {
+		return m.openPullRequestRow(*entry, true)
+	}
 	if m.section == changes && (entry.header || entry.folder != "") {
 		m.changeCollapsed[entry.key] = !m.changeCollapsed[entry.key]
 		m.rebuildItems()
@@ -526,6 +533,10 @@ func (m *Model) editSelected() tea.Cmd {
 	return nil
 }
 func (m *Model) editDiff() tea.Cmd {
+	if m.diffPR.Number != 0 {
+		m.notice = m.tr("PR diffs are read-only")
+		return nil
+	}
 	if m.diffCommit != "" {
 		m.notice = m.tr("Commit diffs are read-only")
 		return nil

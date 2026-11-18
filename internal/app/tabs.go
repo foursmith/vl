@@ -117,7 +117,6 @@ func (m *Model) selectTab(index int) {
 	m.stopTextDrag()
 	m.imagePan = nil
 	m.activeTab = index
-	m.pendingHistory = ""
 	m.diffState = m.emptyDiff
 	if t := &m.tabs[index]; t.diff != nil {
 		m.diffState = t.diff
@@ -142,7 +141,6 @@ func (m *Model) activateTab(index int) {
 
 func (m *Model) focusEditor() {
 	m.sidebar = false
-	m.pendingHistory = ""
 	m.keepTab()
 }
 
@@ -311,6 +309,9 @@ func (m *Model) tabLabel(index int) string {
 	t := m.tabs[index]
 	label := filepath.Base(t.path())
 	if d := t.diff; d != nil {
+		if d.diffPR.Number != 0 {
+			return safe(label) + fmt.Sprintf(" · PR #%d", d.diffPR.Number)
+		}
 		if d.diffCommit != "" {
 			return safe(label) + " · " + shortOID(d.diffCommit)
 		}
@@ -365,7 +366,7 @@ func (m *Model) tabLayout() []tabSlot {
 			extra = 2
 		}
 		maxWidth := 28
-		if m.tabs[all[i].index].diff != nil && m.tabs[all[i].index].diff.diffCommit != "" {
+		if d := m.tabs[all[i].index].diff; d != nil && (d.diffCommit != "" || d.diffPR.Number != 0) {
 			maxWidth = 60
 		}
 		all[i].width = min(maxWidth, max(12, ansi.StringWidth(all[i].label)+extra+7))

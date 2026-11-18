@@ -43,6 +43,8 @@ type diffState struct {
 	diffEmphasis     map[*diff.Line]diffRange
 	diffOpen         bool
 	diffCommit       string
+	diffPR           gitservice.PullRequest
+	diffPRVersion    string
 	diffSeq          int
 	viewport         viewport.Model
 	read             func(context.Context) (string, error)
@@ -98,13 +100,22 @@ type diffTarget struct {
 	staged                   bool
 	preview                  bool
 	change                   *gitservice.Change
+	pr                       gitservice.PullRequest
+	prVersion                string
 }
 
 func (d *diffState) matches(target diffTarget) bool {
-	return d.diffPath == target.path && d.diffRepository == target.repository && d.diffCommit == target.commit && d.diffStaged == target.staged
+	return d.diffPath == target.path && d.diffRepository == target.repository && d.diffCommit == target.commit &&
+		d.diffStaged == target.staged && d.diffPR.URL == target.pr.URL
 }
 
 func (m *Model) requestDiff(target diffTarget, read func(context.Context) (string, error)) tea.Cmd {
+	d := m.openDiffTab(target)
+	d.read = read
+	return m.loadDiff(d, true)
+}
+
+func (m *Model) openDiffTab(target diffTarget) *diffState {
 	index := -1
 	for i, t := range m.tabs {
 		if t.diff != nil && t.diff.matches(target) {
@@ -122,20 +133,29 @@ func (m *Model) requestDiff(target diffTarget, read func(context.Context) (strin
 		m.tabs[index].preview = false
 	}
 	d := m.tabs[index].diff
-	d.diffChange, d.read = target.change, read
+	d.diffPR, d.diffPRVersion = target.pr, target.prVersion
+	d.diffChange = target.change
 	if target.change != nil {
 		d.diffOriginal = target.change.Original
 	}
 	// Commit metadata must not enable worktree staging or editing actions.
-	if target.commit != "" {
+	if target.commit != "" || target.pr.Number != 0 {
 		d.diffChange = nil
 	}
 	// Opening selects a tab; refreshing an existing tab is handled separately.
 	m.selectTab(index)
-	return m.loadDiff(d, true)
+	return d
 }
 
 func (m *Model) loadDiff(d *diffState, reset bool) tea.Cmd {
+	read := d.read
+	return m.loadVersionedDiff(d, reset, func(ctx context.Context) (string, string, error) {
+		raw, err := read(ctx)
+		return raw, "", err
+	})
+}
+
+func (m *Model) loadVersionedDiff(d *diffState, reset bool, read func(context.Context) (string, string, error)) tea.Cmd {
 	if d.diffCancel != nil {
 		d.diffCancel()
 	}
@@ -147,12 +167,12 @@ func (m *Model) loadDiff(d *diffState, reset bool) tea.Cmd {
 		m.setDiffImages(d, nil)
 		d.clearContent()
 	}
-	seq, read := d.diffSeq, d.read
+	seq := d.diffSeq
 	imageRead := m.diffImageReader(d)
 	return func() tea.Msg {
 		defer cancel()
-		raw, err := read(ctx)
-		msg := diffMsg{target: d, seq: seq, raw: raw, err: err}
+		raw, version, err := read(ctx)
+		msg := diffMsg{target: d, seq: seq, raw: raw, prVersion: version, err: err}
 		if err == nil && raw != "" && imageRead != nil {
 			msg.images = imageRead(ctx)
 		}
@@ -166,7 +186,7 @@ func (m *Model) refreshDiffs() tea.Cmd {
 	var commands []tea.Cmd
 	for _, t := range m.tabs {
 		d := t.diff
-		if d == nil || d.diffCommit != "" || d.read == nil {
+		if d == nil || d.diffCommit != "" || d.diffPR.Number != 0 || d.read == nil {
 			continue
 		}
 		if d.diffChange != nil {
@@ -197,9 +217,15 @@ func (m *Model) finishDiff(msg diffMsg) tea.Cmd {
 		return nil
 	}
 	d.diffLoading = false
+	if d.diffPR.Number != 0 {
+		d.read = nil
+	}
 	if msg.err != nil {
 		m.log(m.tr(msg.err.Error()))
 		return nil
+	}
+	if msg.prVersion != "" {
+		d.diffPRVersion = msg.prVersion
 	}
 	if msg.raw == "" {
 		for i, t := range m.tabs {

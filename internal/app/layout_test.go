@@ -11,7 +11,7 @@ import (
 	gitservice "github.com/ourongxing/vl/internal/git"
 )
 
-func TestChangesNavigationShowsFileCount(t *testing.T) {
+func TestNavigationShowsChangesAndOpenPullRequestCounts(t *testing.T) {
 	m := tabWorkspace(t, 0)
 	t.Cleanup(m.Close)
 	for _, tc := range []struct {
@@ -19,21 +19,24 @@ func TestChangesNavigationShowsFileCount(t *testing.T) {
 		want  string
 	}{{0, "    "}, {1, "1   "}, {99, "99  "}, {100, "99+ "}} {
 		m.snapshot.Changes = make([]gitservice.Change, tc.count)
+		m.openPullRequestCount = tc.count
 		lines := m.sidebarLines()
-		if got := plain(lines[1])[8:12]; got != tc.want {
-			t.Errorf("%d changes rendered %q, want %q", tc.count, got, tc.want)
-		}
 		if got := plain(lines[0])[8:13]; got != "G   H" {
 			t.Fatalf("changes count displaced the navigation icons: %q", got)
 		}
 		cells := uv.NewStyledString(lines[1]).Lines(ansi.GraphemeWidth)[0]
-		for x, ch := range tc.want {
-			background := m.colors.Panel
-			if ch != ' ' {
-				background = m.colors.SidebarSelection(true)
+		for _, start := range []int{2 * sidebarNavigationWidth, 4 * sidebarNavigationWidth} {
+			if got := plain(lines[1])[start : start+sidebarNavigationWidth]; got != tc.want {
+				t.Errorf("count %d at column %d rendered %q, want %q", tc.count, start, got, tc.want)
 			}
-			if !sameColor(cells[8+x].Style.Bg, lipgloss.Color(background)) {
-				t.Errorf("%d changes: wrong background at badge column %d", tc.count, x)
+			for x, ch := range tc.want {
+				background := m.colors.Panel
+				if ch != ' ' {
+					background = m.colors.SidebarSelection(true)
+				}
+				if !sameColor(cells[start+x].Style.Bg, lipgloss.Color(background)) {
+					t.Errorf("count %d: wrong background at column %d", tc.count, start+x)
+				}
 			}
 		}
 	}
@@ -51,7 +54,7 @@ func TestNavigationAndTabsShareCompactHeaderWithoutTitleBar(t *testing.T) {
 	sidebar := m.sidebarLines()
 	for i, item := range m.navigation() {
 		x := 4 * i
-		if ansi.Strip(ansi.Cut(sidebar[0], x, x+4)) != item.glyph+"   " {
+		if strings.TrimRight(ansi.Strip(ansi.Cut(sidebar[0], x, x+4)), " ") != item.glyph {
 			t.Fatalf("navigation icon %q did not start at column %d", item.glyph, x)
 		}
 	}

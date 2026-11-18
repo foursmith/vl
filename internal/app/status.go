@@ -181,6 +181,11 @@ func (m *Model) statusLayout() []statusSegment {
 			notice = m.tr("Enter: replace · Ctrl+Alt+Enter: replace all")
 		}
 	}
+	if m.sidebar && m.sidebarVisible && m.modal == "" && m.contextMenu == nil && (m.section == history || m.section == pullRequests) {
+		if title := m.current().revisionTitle(); title != "" {
+			notice = title
+		}
+	}
 	if hint := m.hoverHint(); hint != "" {
 		notice = hint
 	}

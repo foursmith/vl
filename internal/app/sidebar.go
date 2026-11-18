@@ -34,6 +34,7 @@ func (m *Model) navigation() []navigationItem {
 		{sidebarNavigationWidth, sidebarNavigationWidth, m.symbol(symbolSearch), search},
 		{2 * sidebarNavigationWidth, sidebarNavigationWidth, m.symbol(symbolBranch), changes},
 		{3 * sidebarNavigationWidth, sidebarNavigationWidth, m.symbol(symbolHistory), history},
+		{4 * sidebarNavigationWidth, sidebarNavigationWidth, m.symbol(symbolPullRequest), pullRequests},
 	}
 }
 
@@ -64,21 +65,26 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 			}
 		}
 		badge := ""
-		if item.section == changes {
-			switch count := len(m.snapshot.Changes); {
-			case count > 99:
+		count := 0
+		switch item.section {
+		case changes:
+			count = len(m.snapshot.Changes)
+		case pullRequests:
+			if !m.snapshot.NoRepository {
+				count = m.openPullRequestCount
+			}
+		}
+		if count > 0 {
+			badge = strconv.Itoa(count)
+			if count > 99 {
 				badge = "99+"
-			case count > 0:
-				badge = strconv.Itoa(count)
 			}
-			if badge != "" {
-				badgeBackground := m.colors.SidebarSelection(true)
-				badgeForeground := m.colors.SelectionForeground
-				if badgeForeground == "" {
-					badgeForeground = m.colors.SideForeground
-				}
-				badge = theme.Style(theme.Readable(badgeForeground, badgeBackground), badgeBackground).Render(badge)
+			badgeBackground := m.colors.SidebarSelection(true)
+			badgeForeground := m.colors.SelectionForeground
+			if badgeForeground == "" {
+				badgeForeground = m.colors.SideForeground
 			}
+			badge = theme.Style(theme.Readable(badgeForeground, badgeBackground), badgeBackground).Render(badge)
 		}
 		glyph := ansi.Truncate(item.glyph, item.width, "")
 		label := theme.Style(fg, bg).Underline(active && m.monochrome).Render(glyph)
@@ -101,9 +107,16 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 		}
 		return lines[:h]
 	}
+	if m.section == pullRequests && len(m.items) == 0 {
+		for _, message := range m.pullRequestSidebarMessage() {
+			for _, line := range strings.Split(ansi.Wrap(message, max(1, w-2), ""), "\n") {
+				lines = append(lines, row(" "+line, w, m.colors.Muted, m.colors.Panel))
+			}
+		}
+	}
 	hovered := m.hoveredSidebarRow()
 	sticky := m.sidebarStickyRows()
-	for y := headerHeight; y < h; y++ {
+	for y := len(lines); y < h; y++ {
 		i := m.sideTop + y - headerHeight
 		if offset := y - headerHeight; offset < len(sticky) {
 			i = sticky[offset]
@@ -118,13 +131,17 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 			if i == m.selected {
 				bg = m.colors.SidebarSelection(m.sidebar)
 			}
+			state := treeRowState{selected: i == m.selected, hovered: i == hovered}
 			if m.section == explorer || m.section == changes {
-				text, fg = m.treeRow(entry, w, bg, treeRowState{selected: i == m.selected, hovered: i == hovered})
+				text, fg = m.treeRow(entry, w, bg, state)
 				if m.section == changes && (i == hovered || entry.repoHeader) {
-					text = m.changeActionRow(entry, w, fg, bg, treeRowState{selected: i == m.selected, hovered: i == hovered})
+					text = m.sidebarActionRow(entry, w, fg, bg, state, m.changeRowActions(entry, w))
 				}
 			} else {
 				text, fg = m.historyRow(entry, w, bg)
+				if m.section == pullRequests && entry.repoHeader {
+					text = m.sidebarActionRow(entry, w, fg, bg, state, m.pullRequestRowActions(entry, w))
+				}
 			}
 			if i == m.selected && m.monochrome && m.sidebar {
 				text = ">" + ansi.Cut(text, 1, w)
@@ -186,12 +203,7 @@ func (m *Model) treeRow(entry item, w int, bg string, state treeRowState) (strin
 		}
 	}
 	indent := padding + strings.Repeat("  ", min(entry.depth, 10))
-	path := entry.file
-	if entry.change != nil {
-		path = entry.change.Path
-	} else if entry.historyChange != nil {
-		path = entry.historyChange.Path
-	}
+	path := entryPath(&entry)
 	icon := fileicon.For(path, m.nerd)
 	chevron := "  "
 	if entry.folder != "" {
@@ -258,6 +270,17 @@ func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 	if y < headerHeight || i < 0 || i >= len(m.items) {
 		return nil
 	}
+	if m.section == pullRequests {
+		for _, action := range m.pullRequestRowActions(m.items[i], w) {
+			if msg.X >= action.x && msg.X < action.x+action.width {
+				m.lastClickKey = ""
+				if action.id == "filter" {
+					return m.openPullRequestFilter()
+				}
+				return m.forceRefreshPullRequests()
+			}
+		}
+	}
 	entry := m.selectSidebarRow(i)
 	if entry == nil {
 		return nil
@@ -276,12 +299,15 @@ func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 		m.lastClickKey = ""
 		return m.openSelected()
 	}
-	if entry.file != "" || entry.change != nil || entry.historyChange != nil {
+	if entry.file != "" || entry.change != nil || entry.historyChange != nil || entry.pullRequestFile != nil {
 		return m.clickSidebarFile()
 	}
 	m.lastClickKey = ""
 	if m.section == history && entry.commit != nil {
 		return m.openHistoryRow(*entry, false)
+	}
+	if m.section == pullRequests {
+		return m.openPullRequestRow(*entry, false)
 	}
 	if m.section == explorer || entry.folder != "" {
 		return m.openSelected()

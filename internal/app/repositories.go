@@ -166,8 +166,11 @@ func (m *Model) repositoryBranchAt(entry item, x, width int) bool {
 		return false
 	}
 	buttons := 0
-	if m.section == changes {
-		buttons = 9
+	switch m.section {
+	case changes:
+		buttons = 3 * repositoryRowActionWidth
+	case pullRequests:
+		buttons = 2 * repositoryRowActionWidth
 	}
 	branchWidth := ansi.StringWidth(m.repositoryBranchText(entry, width, buttons))
 	return branchWidth > 0 && x >= width-branchWidth && x < width

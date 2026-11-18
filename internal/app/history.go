@@ -29,6 +29,19 @@ type historyState struct {
 	cancel          context.CancelFunc
 }
 
+func (entry *item) revisionTitle() string {
+	if entry == nil {
+		return ""
+	}
+	if entry.commit != nil {
+		return entry.commit.Subject
+	}
+	if entry.isPullRequest() {
+		return entry.label
+	}
+	return ""
+}
+
 func (m *Model) historyExpanded(id string) bool {
 	state := m.historyStates[id]
 	return state != nil && state.expanded
@@ -47,25 +60,16 @@ func (m *Model) historyTree(id string) []item {
 	return rows
 }
 
-func (m *Model) loadHistoryCommit(entry item, keep bool) tea.Cmd {
+func (m *Model) loadHistoryCommit(entry item) tea.Cmd {
 	objectID := entry.commit.ID
 	id := historyKey(entry.repository, objectID)
-	changed := id != m.historyCommit
-	m.historyCommit = id
 	state := m.historyStates[id]
 	if state == nil {
 		state = &historyState{repository: entry.repository, expanded: true, collapsed: map[string]bool{}}
 		m.historyStates[id] = state
 	}
-	m.pendingHistory, m.keepPendingHistory = id, keep
 	m.rebuildItems()
-	if state.loaded {
-		if (keep || changed || !m.diffOpen || m.diffCommit != objectID || m.diffRepository != entry.repository) && m.historyExpanded(id) {
-			return m.openHistoryFirst(id, keep)
-		}
-		return nil
-	}
-	if state.loading {
+	if state.loaded || state.loading {
 		return nil
 	}
 	ctx, cancel := context.WithCancel(m.ctx)
@@ -94,44 +98,27 @@ func (m *Model) loadHistoryCommit(entry item, keep bool) tea.Cmd {
 func (m *Model) requestHistoryDiff(entry item) tea.Cmd {
 	c := *entry.historyChange
 	id := strings.TrimPrefix(entry.historyID, repositoryPrefix(entry.repository))
-	m.historyCommit = entry.historyID
 	return m.requestDiff(diffTarget{path: c.Path, repository: c.Repository, commit: id, change: &c, preview: true}, func(ctx context.Context) (string, error) {
 		return m.repo.CommitFileDiff(ctx, id, c)
 	})
 }
 
-func (m *Model) applyHistoryFiles(msg historyFilesMsg) tea.Cmd {
+func (m *Model) applyHistoryFiles(msg historyFilesMsg) {
 	key := historyKey(msg.repository, msg.id)
 	state := m.historyStates[key]
 	if state == nil || !state.loading || msg.seq != state.seq {
-		return nil
+		return
 	}
 	state.loading = false
 	state.cancel = nil
 	if msg.err != nil {
 		m.log(m.tr(msg.err.Error()))
-		return nil
+		return
 	}
 	state.files, state.loaded = msg.files, true
-	if m.section != history {
-		return nil
+	if m.section == history {
+		m.rebuildItems()
 	}
-	m.rebuildItems()
-	entry := m.current()
-	if m.pendingHistory != key || !m.historyExpanded(key) || key != m.historyCommit || entry == nil || entry.commit == nil || historyKey(entry.repository, entry.commit.ID) != key {
-		return nil
-	}
-	return m.openHistoryFirst(key, m.keepPendingHistory)
-}
-
-func (m *Model) openHistoryFirst(id string, keep bool) tea.Cmd {
-	for _, entry := range m.historyTree(id) {
-		if entry.historyChange != nil {
-			return m.openSidebarEntry(entry, !keep)
-		}
-	}
-	m.notice = m.tr("This commit has no visible file changes")
-	return nil
 }
 
 func (m *Model) openHistoryRow(entry item, keep bool) tea.Cmd {
@@ -153,7 +140,7 @@ func (m *Model) openHistoryRow(entry item, keep bool) tea.Cmd {
 		if state := m.historyStates[key]; state != nil {
 			state.expanded = true
 		}
-		return m.loadHistoryCommit(entry, keep)
+		return m.loadHistoryCommit(entry)
 	}
 	if entry.folder != "" {
 		state := m.historyStates[entry.historyID]
@@ -174,25 +161,22 @@ func (m *Model) historyRow(entry item, w int, bg string) (string, string) {
 	if entry.repoHeader {
 		return m.explorerRow(entry, w, bg)
 	}
-	if entry.commit == nil && entry.historyChange == nil && entry.folder == "" {
-		return row("  "+safe(entry.label), w, m.colors.Muted, bg), m.colors.Muted
+	if entry.isPullRequest() {
+		state := m.pullRequestStatus(entry)
+		badges := ""
+		if state != "" {
+			badges = " [" + state + "]"
+		}
+		return m.historyRevisionRow(entry.label, "", badges, m.pullRequestExpanded(entry), entry.depth, w, bg)
 	}
 	if entry.commit == nil {
-		indent := " "
-		text, fg := m.explorerRow(entry, max(0, w-2-len(indent)), bg)
-		return indent + theme.Style(m.colors.Accent, bg).Render("│ ") + text, fg
+		if entry.historyChange == nil && entry.pullRequestFile == nil && entry.folder == "" {
+			return row("  "+safe(entry.label), w, m.colors.Muted, bg), m.colors.Muted
+		}
+		text, fg := m.explorerRow(entry, max(0, w-3), bg)
+		return " " + theme.Style(m.colors.Accent, bg).Render("│ ") + text, fg
 	}
 	c := entry.commit
-	marker := "●"
-	if !m.nerd {
-		marker = "*"
-	}
-	if m.historyExpanded(historyKey(entry.repository, c.ID)) {
-		marker = "◉"
-		if !m.nerd {
-			marker = "o"
-		}
-	}
 	badges, tags := "", ""
 	for _, ref := range m.repositoryState(entry.repository).Refs {
 		if ref.TargetOID != c.ID {
@@ -204,12 +188,26 @@ func (m *Model) historyRow(entry item, w int, bg string) (string, string) {
 			badges += " [" + safe(ref.Name) + "]"
 		}
 	}
-	indent := strings.Repeat(" ", max(0, 2*entry.depth-1))
+	return m.historyRevisionRow(c.Subject, tags, badges, m.historyExpanded(historyKey(entry.repository, c.ID)), entry.depth, w, bg)
+}
+
+func (m *Model) historyRevisionRow(subject, tags, badges string, expanded bool, depth, w int, bg string) (string, string) {
+	marker := "●"
+	if !m.nerd {
+		marker = "*"
+	}
+	if expanded {
+		marker = "◉"
+		if !m.nerd {
+			marker = "o"
+		}
+	}
+	indent := strings.Repeat(" ", max(0, 2*depth-1))
 	w = max(0, w-len(indent))
 	tagWidth := min(ansi.StringWidth(tags), max(0, w/2))
 	tags = ansi.Truncate(tags, tagWidth, "…")
 	badgeWidth := min(ansi.StringWidth(badges), max(0, (w-tagWidth)/2))
-	label := ansi.Truncate(safe(c.Subject), max(0, w-3-tagWidth-badgeWidth), "…")
+	label := ansi.Truncate(safe(subject), max(0, w-3-tagWidth-badgeWidth), "…")
 	text := theme.TextStyle(m.colors.Accent, bg).Render(marker+" ") + tags + label
 	text += theme.TextStyle(m.colors.Accent, bg).Render(ansi.Truncate(badges, badgeWidth, "…"))
 	return indent + text, m.colors.Foreground
@@ -279,12 +277,6 @@ func (m *Model) reconcileHistoryRepositories() {
 			state.cancel()
 		}
 		delete(m.historyStates, key)
-		if m.historyCommit == key {
-			m.historyCommit = ""
-		}
-		if m.pendingHistory == key {
-			m.pendingHistory = ""
-		}
 	}
 	for i := len(m.tabs) - 1; i >= 0; i-- {
 		if d := m.tabs[i].diff; d != nil && d.diffCommit != "" && !present[d.diffRepository] {

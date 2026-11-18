@@ -249,7 +249,6 @@ func TestRemovedHistoryRepositoryClosesItsTabsAndKeepsOtherReview(t *testing.T) 
 	id := "111111111111"
 	childKey := historyKey("child", id)
 	m.historyStates[childKey] = &historyState{repository: "child"}
-	m.historyCommit, m.pendingHistory = childKey, childKey
 	var removed []*diffState
 	for _, path := range []string{"child/a.go", "child/b.go"} {
 		drain(t, m, m.requestDiff(diffTarget{path: path, repository: "child", commit: id}, func(context.Context) (string, error) { return diffTabText("child"), nil }))
@@ -259,7 +258,7 @@ func TestRemovedHistoryRepositoryClosesItsTabsAndKeepsOtherReview(t *testing.T) 
 	root := m.diffState
 	m.snapshot.Repositories = nil
 	m.reconcileHistoryRepositories()
-	if len(m.tabs) != 1 || m.diffState != root || !strings.Contains(m.patch.Raw, "root") || m.historyStates[childKey] != nil || m.historyCommit != "" || m.pendingHistory != "" {
+	if len(m.tabs) != 1 || m.diffState != root || !strings.Contains(m.patch.Raw, "root") || m.historyStates[childKey] != nil {
 		t.Fatal("repository cleanup affected another review or left orphaned history")
 	}
 	for _, d := range removed {

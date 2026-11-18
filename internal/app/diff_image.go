@@ -18,7 +18,7 @@ type diffImages struct {
 // Capture the source before starting asynchronous work; sidebar and tab changes
 // must never change which revision a pending image belongs to.
 func (m *Model) diffImageReader(d *diffState) func(context.Context) *diffImages {
-	if !imagepreview.Supported(d.diffPath) {
+	if d.diffPR.Number != 0 || !imagepreview.Supported(d.diffPath) {
 		return nil
 	}
 	workspace := m.repo

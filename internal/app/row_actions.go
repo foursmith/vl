@@ -11,6 +11,27 @@ type rowAction struct {
 	x, width                   int
 }
 
+const repositoryRowActionWidth = 3
+
+func (m *Model) layoutRepositoryActions(entry item, w int, actions []rowAction) []rowAction {
+	branchWidth := ansi.StringWidth(m.repositoryBranchText(entry, w, len(actions)*repositoryRowActionWidth))
+	for i := range actions {
+		actions[i].width = repositoryRowActionWidth
+		actions[i].x = w - branchWidth - (len(actions)-i)*repositoryRowActionWidth
+	}
+	return actions
+}
+
+func (m *Model) pullRequestRowActions(entry item, w int) []rowAction {
+	if !entry.repoHeader {
+		return nil
+	}
+	return m.layoutRepositoryActions(entry, w, []rowAction{
+		{id: "filter", glyph: m.symbol(symbolFilter), label: m.tr("Filter Pull Requests") + " · " + m.pullRequestFilterLabel(m.pullRequestFilter)},
+		{id: "refresh", glyph: m.symbol(symbolRefresh), label: m.tr("Refresh") + " · " + workbenchKeys.Refresh.Help().Key},
+	})
+}
+
 func (m *Model) hoveredChangeRow() int {
 	if m.section != changes {
 		return -1
@@ -30,14 +51,12 @@ func (m *Model) changeRowActions(entry item, w int) []rowAction {
 			{id: "commit", glyph: m.symbol(symbolCheck), label: m.tr("Commit Staged"), disabled: m.commitDisabled(entry.repository)},
 			{id: "stage", glyph: m.symbol(symbolAdd), label: m.tr("Stage All Changes"), disabled: m.changeActionDisabled(entry, "stage", scope)},
 		}
-		branchWidth := ansi.StringWidth(m.repositoryBranchText(entry, w, len(actions)*3))
 		for i := range actions {
-			actions[i].width, actions[i].x = 3, w-branchWidth-(len(actions)-i)*3
 			if m.busy {
 				actions[i].disabled = m.tr("Wait for the current Git operation to finish")
 			}
 		}
-		return actions
+		return m.layoutRepositoryActions(entry, w, actions)
 	}
 	if entry.change == nil && !entry.header && entry.folder == "" {
 		return nil
@@ -78,8 +97,7 @@ func (m *Model) changeRowActions(entry item, w int) []rowAction {
 	return actions
 }
 
-func (m *Model) changeActionRow(entry item, w int, fg, bg string, state treeRowState) string {
-	actions := m.changeRowActions(entry, w)
+func (m *Model) sidebarActionRow(entry item, w int, fg, bg string, state treeRowState, actions []rowAction) string {
 	if len(actions) == 0 {
 		text, _ := m.treeRow(entry, w, bg, state)
 		return text
@@ -104,7 +122,7 @@ func (m *Model) changeActionRow(entry item, w int, fg, bg string, state treeRowS
 		text += row(" "+action.glyph+" ", action.width, color, bg)
 	}
 	if entry.repoHeader {
-		branch := m.repositoryBranchText(entry, w, len(actions)*3)
+		branch := m.repositoryBranchText(entry, w, len(actions)*repositoryRowActionWidth)
 		return text + theme.Style(m.colors.Foreground, bg).Bold(true).Render(branch)
 	}
 	full := row("", w, fg, bg)
@@ -126,17 +144,38 @@ func (m *Model) hoverHint() string {
 	if m.resizingSidebar || m.sidebarDividerAt(m.hoverX, m.hoverY) {
 		return m.tr("Drag to resize sidebar")
 	}
+	if m.modal == "" && m.hoverY >= 0 && m.hoverY < headerHeight && m.sidebarAt(m.hoverX) {
+		for _, nav := range m.navigation() {
+			x := m.hoverX - m.sideX()
+			if nav.section == pullRequests && x >= nav.x && x < nav.x+nav.width {
+				return m.tr("Pull Requests") + " · " + workbenchKeys.PullRequests.Help().Key
+			}
+		}
+	}
 	if m.modal == "" && m.section == search && m.sidebarAt(m.hoverX) {
 		return m.searchHoverHint(m.hoverX-m.sideX(), m.hoverY)
 	}
 
 	if index := m.hoveredSidebarRow(); index >= 0 {
+		entry := m.items[index]
+		if m.contextMenu == nil {
+			if title := entry.revisionTitle(); title != "" {
+				return title
+			}
+		}
 		width := m.sideWidth()
 		if !m.sideShown() {
 			width = m.width
 		}
-		if m.repositoryBranchAt(m.items[index], m.hoverX-m.sideX(), width) {
-			return m.tr("Switch branch · %s", m.repositoryName(m.items[index].repository))
+		if m.section == pullRequests {
+			for _, action := range m.pullRequestRowActions(entry, width) {
+				if x := m.hoverX - m.sideX(); x >= action.x && x < action.x+action.width {
+					return action.label
+				}
+			}
+		}
+		if m.repositoryBranchAt(entry, m.hoverX-m.sideX(), width) {
+			return m.tr("Switch branch · %s", m.repositoryName(entry.repository))
 		}
 	}
 	i := m.hoveredChangeRow()

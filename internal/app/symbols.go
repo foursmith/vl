@@ -35,6 +35,8 @@ const (
 	symbolSearchDetails
 	symbolOpenTabs
 	symbolIgnoreRules
+	symbolPullRequest
+	symbolFilter
 )
 
 var uiSymbols = [...]struct{ plain, nerd string }{
@@ -69,6 +71,8 @@ var uiSymbols = [...]struct{ plain, nerd string }{
 	symbolSearchDetails: {"...", "\uea7c"},
 	symbolOpenTabs:      {"Tab", "\ueb7f"},
 	symbolIgnoreRules:   {"Ignore rules", "\ueadd"},
+	symbolPullRequest:   {"PR", "\uea64"},
+	symbolFilter:        {"F", "\ueaf1"},
 }
 
 func (m *Model) symbol(name uiSymbol) string {
