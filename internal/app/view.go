@@ -209,6 +209,10 @@ func (m *Model) View() tea.View {
 		lines = append(lines, line)
 	}
 	lines = append(lines, m.statusLine())
+	cursor := m.editorCursor()
+	if m.pathCompletion != nil {
+		lines = m.pathCompletionOverlay(lines, cursor)
+	}
 	if m.modal != "" {
 		lines = m.overlay(lines)
 	}
@@ -221,7 +225,7 @@ func (m *Model) View() tea.View {
 	v.BackgroundColor = lipgloss.Color(m.colors.Panel)
 	v.MouseMode = tea.MouseModeAllMotion
 	v.ReportFocus = true
-	v.Cursor = m.editorCursor()
+	v.Cursor = cursor
 	if m.inputCaret != nil && m.contextMenu == nil {
 		v.Cursor = m.inputCaret
 	}

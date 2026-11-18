@@ -121,6 +121,7 @@ type Model struct {
 	leaderTarget                       string
 	explorerYankRoot, explorerYankPath string
 	flash                              *flashState
+	pathCompletion                     *pathCompletion
 	vimRegister                        string
 	flashRevision                      uint64
 	displayLanguage                    i18n.Language
@@ -466,6 +467,9 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		m.pickerFilter = pickerFilterCache{}
 	}
 	defer func() {
+		if m.pathCompletion != nil && !m.validPathCompletion() {
+			m.pathCompletion = nil
+		}
 		if cmd := m.scheduleMarkdownImages(); cmd != nil {
 			next = tea.Batch(next, cmd)
 		}
@@ -812,7 +816,13 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			}
 			m.ensureEditor()
 		}
+	case pathEntriesMsg:
+		if m.pathCompletion == msg.request && m.validPathCompletion() {
+			m.pathCompletion.entries = msg.entries
+			m.pathCompletion.filter()
+		}
 	case tea.MouseClickMsg:
+		m.pathCompletion = nil
 		m.welcomeOrbit.dragging = false
 		m.leaderTarget = ""
 		m.navigationState = navigationState{}
@@ -842,6 +852,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}
 		return m, m.click(msg)
 	case tea.MouseWheelMsg:
+		m.pathCompletion = nil
 		m.cancelFlash()
 		if m.modal != "" {
 			if m.isPicker() {
@@ -906,6 +917,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}
 		return m, m.key(msg)
 	case tea.PasteMsg:
+		m.pathCompletion = nil
 		if m.modal == "" && m.fileFindFocused() {
 			return m, m.fileFindInput(msg)
 		}
@@ -936,6 +948,13 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		m.hoverX, m.hoverY = -1, -1
 	}
 	k := msg.String()
+	if handled, cmd := m.pathCompletionKey(k); handled {
+		return cmd
+	}
+	updatePath := msg.Text != "" || k == "backspace" || k == "delete"
+	if !updatePath {
+		m.pathCompletion = nil
+	}
 	if m.fileFindFocused() {
 		if handled, cmd := m.fileFindKey(msg); handled {
 			return cmd
@@ -1160,6 +1179,9 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 			m.tabs[m.activeTab].vim.SyncVisual(d)
 		}
 		m.ensureTextCursor()
+		if updatePath {
+			return m.refreshPathCompletion()
+		}
 		return nil
 	}
 	if k == "enter" {
