@@ -23,7 +23,7 @@ bin/vl /path/to/file.go:30:5  # jump to line 30, column 5 (column is optional)
 
 # Startup overrides; themes and language can also be changed through Ctrl+Shift+P.
 bin/vl -theme light_modern
-bin/vl -theme local:my-theme.json /path/to/repository
+bin/vl -theme "vscode:antfu.theme-vitesse/Vitesse Dark" /path/to/repository
 bin/vl -lang zh-CN /path/to/repository
 bin/vl -icons=false /path/to/repository
 ```
@@ -104,7 +104,7 @@ URLs and clamps scroll offsets beyond the end of a file.
   Normal mode after typing in Insert mode.
 - **Images:** read-only PNG, JPEG, GIF (first frame), WebP and SVG previews, with zoom and pan.
 - **Workspace UI:** sticky code/folder context, resizable left/right sidebar,
-  output panel, English/简体中文, and built-in or local themes.
+  output panel, English/简体中文, and built-in and VS Code color themes.
 
 File and Git metadata changes refresh automatically. Clean files reload;
 unsaved edits are retained and external modifications are reported.
@@ -154,13 +154,16 @@ Use **Ctrl+Shift+P → Preferences: Color Theme** to preview and select a theme,
 **Preferences: Configure Display Language** to switch between English and 简体中文.
 Theme, language and layout preferences persist across restarts and workspace switches.
 
-Dark/light terminal notifications select the remembered matching theme at
-startup and when the terminal appearance changes. macOS system appearance is
-the fallback. A manually selected mismatched theme stays selected.
-Local VS Code JSON/JSONC and TextMate themes belong in `~/.config/vl/themes/`;
-see [theme compatibility](docs/THEME.md).
+The 10 color themes from VS Code's `vscode.theme-defaults` are bundled. Dark/light
+terminal notifications select the remembered matching theme at startup and when the
+terminal appearance changes. macOS system appearance is the fallback. A manually
+selected mismatched theme stays selected.
 
-Preferences use `layout.json` in the OS user configuration directory's `vl` folder.
+Choose **Import Themes from VS Code** at the top of the color theme picker
+to add color themes from VS Code. The picker skips themes that are already
+bundled or imported. See [theme compatibility](docs/THEME.md).
+
+Preferences use `~/.config/vl/vl.json`.
 Runtime state uses `$XDG_STATE_HOME/vl/`, defaulting to `~/.local/state/vl/` when
 the variable is unset, empty or relative. It contains: `recent.json` for recent
 folders, `workspaces/` for tab sessions, and `files/` for cursor and scroll positions.

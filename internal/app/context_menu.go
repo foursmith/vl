@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/ourongxing/vl/internal/theme"
 )
 
 type contextMenu struct {
@@ -169,6 +170,10 @@ func (m *Model) contextMenuOverlay(base []string) []string {
 		}
 		text := prefix + ansi.Truncate(a.label, max(0, l.width-6-ansi.StringWidth(a.key)), "…")
 		text += strings.Repeat(" ", max(1, l.width-3-ansi.StringWidth(text)-ansi.StringWidth(a.key))) + a.key + " "
+		fg = theme.Readable(fg, bg)
+		if a.disabled != "" {
+			text = theme.Style(fg, bg).Italic(true).Render(text)
+		}
 		box = append(box, row("│", 1, m.colors.MenuBorder, m.colors.MenuBackground)+row(text, l.width-2, fg, bg)+row("│", 1, m.colors.MenuBorder, m.colors.MenuBackground))
 	}
 	box = append(box, row("└"+strings.Repeat("─", max(0, l.width-2))+"┘", l.width, m.colors.MenuBorder, m.colors.MenuBackground))
@@ -269,58 +274,74 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 		}
 	} else if x >= m.mainX() && x < m.mainX()+m.mainWidth() && !(m.width < 70 && m.sidebar && m.sidebarVisible) && y >= 0 && y < m.bodyHeight() {
 		if !m.editorOnly && y == tabRow {
-			found := false
-			for _, slot := range m.tabLayout() {
-				if slot.control == 0 && x-m.mainX() >= slot.x && x-m.mainX() < slot.x+slot.width {
-					m.activateTab(slot.index)
-					found = true
-					break
-				}
-			}
-			if !found {
-				return nil
-			}
+			actions = m.tabContextActions(x - m.mainX())
 		} else {
 			m.focusEditor()
-		}
-		if m.activeTab >= 0 && m.activeTab < len(m.tabs) {
-			if !m.editorOnly && y == tabRow {
-				add(m.tr("Close"), workbenchKeys.Close.Help().Key, m.closeTab)
-				add(m.tr("Close Others"), "", m.closeOtherTabs)
-				add(m.tr("Close All"), "", m.closeAllTabs)
-			} else if m.editing() {
-				selected := m.document().SelectedText() != ""
-				reason := m.tr("Select text first")
-				if selected {
-					reason = ""
+			if m.activeTab >= 0 && m.activeTab < len(m.tabs) {
+				if m.editing() {
+					selected := m.document().SelectedText() != ""
+					reason := m.tr("Select text first")
+					if selected {
+						reason = ""
+					}
+					actions = append(actions, action{label: m.tr("Copy"), key: workbenchKeys.Copy.Help().Key, disabled: reason, run: func() tea.Cmd { return m.copy(false) }}, action{label: m.tr("Cut"), key: "Ctrl+X", disabled: reason, run: func() tea.Cmd { return m.copy(true) }})
+					add(m.tr("Paste"), "Ctrl+V", m.paste)
+					add(m.tr("Select All"), "Ctrl+A", func() tea.Cmd { m.document().SelectAll(); return nil })
+					add(m.tr("Undo"), "Ctrl+Z", func() tea.Cmd { m.document().Undo(); m.ensureEditor(); return nil })
+					add(m.tr("Redo"), "Ctrl+Y", func() tea.Cmd { m.document().Redo(); m.ensureEditor(); return nil })
+					add(m.tr("Save"), workbenchKeys.Save.Help().Key, m.save)
+					add(m.tr("Find…"), workbenchKeys.Find.Help().Key, m.openFileFind)
+				} else if m.diffOpen {
+					if index := m.viewport.YOffset() + y - m.contentRow(); index >= 0 && index < len(m.diffRowHunks) {
+						m.diffHunk = m.diffRowHunks[index]
+					}
+					actions = append(actions, m.reviewActions()...)
+					reason := ""
+					if m.diffSelectedText() == "" {
+						reason = m.tr("Select text first")
+					}
+					actions = append(actions, action{label: m.tr("Copy"), key: workbenchKeys.Copy.Help().Key, disabled: reason, run: func() tea.Cmd { return m.copy(false) }})
+					add(m.tr("Toggle Inline View"), workbenchKeys.DiffLayout.Help().Key, func() tea.Cmd { m.split = !m.split; m.renderDiff(); return nil })
+					add(m.tr("Find…"), workbenchKeys.Find.Help().Key, m.openFileFind)
+				} else if m.currentImage() != nil {
+					add(m.tr("Fit to Window"), "0", func() tea.Cmd { m.resetImageZoom(); return nil })
 				}
-				actions = append(actions, action{label: m.tr("Copy"), key: workbenchKeys.Copy.Help().Key, disabled: reason, run: func() tea.Cmd { return m.copy(false) }}, action{label: m.tr("Cut"), key: "Ctrl+X", disabled: reason, run: func() tea.Cmd { return m.copy(true) }})
-				add(m.tr("Paste"), "Ctrl+V", m.paste)
-				add(m.tr("Select All"), "Ctrl+A", func() tea.Cmd { m.document().SelectAll(); return nil })
-				add(m.tr("Undo"), "Ctrl+Z", func() tea.Cmd { m.document().Undo(); m.ensureEditor(); return nil })
-				add(m.tr("Redo"), "Ctrl+Y", func() tea.Cmd { m.document().Redo(); m.ensureEditor(); return nil })
-				add(m.tr("Save"), workbenchKeys.Save.Help().Key, m.save)
-				add(m.tr("Find…"), workbenchKeys.Find.Help().Key, m.openFileFind)
-			} else if m.diffOpen {
-				if index := m.viewport.YOffset() + y - m.contentRow(); index >= 0 && index < len(m.diffRowHunks) {
-					m.diffHunk = m.diffRowHunks[index]
-				}
-				actions = append(actions, m.reviewActions()...)
-				reason := ""
-				if m.diffSelectedText() == "" {
-					reason = m.tr("Select text first")
-				}
-				actions = append(actions, action{label: m.tr("Copy"), key: workbenchKeys.Copy.Help().Key, disabled: reason, run: func() tea.Cmd { return m.copy(false) }})
-				add(m.tr("Toggle Inline View"), workbenchKeys.DiffLayout.Help().Key, func() tea.Cmd { m.split = !m.split; m.renderDiff(); return nil })
-				add(m.tr("Find…"), workbenchKeys.Find.Help().Key, m.openFileFind)
-			} else if m.currentImage() != nil {
-				add(m.tr("Fit to Window"), "0", func() tea.Cmd { m.resetImageZoom(); return nil })
+				actions = append(actions, m.copyPathActions(m.tabs[m.activeTab].path())...)
 			}
-			actions = append(actions, m.copyPathActions(m.tabs[m.activeTab].path())...)
 		}
 	}
 	if len(actions) > 0 {
 		m.contextMenu = &contextMenu{x: x, y: y, actions: actions}
+	}
+	return nil
+}
+
+func (m *Model) tabContextActions(x int) []action {
+	for _, slot := range m.tabLayout() {
+		if slot.control != 0 || x < slot.x || x >= slot.x+slot.width {
+			continue
+		}
+		target := m.tabs[slot.index]
+		targetKey := target.clickKey()
+		bind := func(run func(int) tea.Cmd) func() tea.Cmd {
+			return func() tea.Cmd {
+				for i, t := range m.tabs {
+					if t.clickKey() == targetKey {
+						return run(i)
+					}
+				}
+				m.notice = m.tr("Target changed; reopen the menu")
+				return nil
+			}
+		}
+		actions := []action{
+			{label: m.tr("Close"), key: workbenchKeys.Close.Help().Key, run: bind(func(i int) tea.Cmd {
+				return m.requestCloseTabs(m.tabs[i : i+1])
+			})},
+			{label: m.tr("Close Others"), run: bind(m.closeOtherTabsExcept)},
+			{label: m.tr("Close All"), run: m.closeAllTabs},
+		}
+		return append(actions, m.copyPathActions(target.path())...)
 	}
 	return nil
 }

@@ -62,9 +62,10 @@ func (t *Theme) makePalette() Palette {
 	p.Border = get("panel.border", p.Panel)
 	p.SideBarBorder = t.Color("sideBar.border")
 	p.FocusBorder = get("focusBorder", p.Panel)
+	p.FocusOutline = t.Color("contrastActiveBorder")
 	p.Accent = t.Color("textLink.foreground")
-	p.NavigationForeground = t.Color("activityBar.foreground")
-	p.NavigationInactiveForeground = t.Color("activityBar.inactiveForeground")
+	p.NavigationForeground = t.Color("activityBarTop.foreground")
+	p.NavigationInactiveForeground = t.Color("activityBarTop.inactiveForeground")
 	p.Selection = get("list.activeSelectionBackground", p.Panel)
 	p.SelectionForeground = t.Color("list.activeSelectionForeground")
 	p.InactiveSelection = get("list.inactiveSelectionBackground", p.Panel)
@@ -76,8 +77,10 @@ func (t *Theme) makePalette() Palette {
 	p.Deleted = t.Color("errorForeground")
 	p.AddedBackground = get("diffEditor.insertedLineBackground", p.Background)
 	p.AddedText = get("diffEditor.insertedTextBackground", p.AddedBackground)
+	p.AddedBorder = t.Color("diffEditor.insertedTextBorder")
 	p.DeletedBackground = get("diffEditor.removedLineBackground", p.Background)
 	p.DeletedText = get("diffEditor.removedTextBackground", p.DeletedBackground)
+	p.DeletedBorder = t.Color("diffEditor.removedTextBorder")
 	p.DiffPlaceholder = get("diffEditor.diagonalFill", p.Background)
 	p.GitAdded = t.Color("gitDecoration.addedResourceForeground")
 	p.GitModified = t.Color("gitDecoration.modifiedResourceForeground")
@@ -91,7 +94,7 @@ func (t *Theme) makePalette() Palette {
 	p.Ignored = t.Color("gitDecoration.ignoredResourceForeground")
 	p.Popup = get("quickInput.background", p.Background)
 	p.PopupForeground = t.colorOr("quickInput.foreground", t.Color("foreground"))
-	p.PopupSelection = get("quickInputList.focusBackground", p.Popup)
+	p.PopupSelection = p.selectionTint(get("quickInputList.focusBackground", p.Popup), p.Popup, 1.6)
 	p.PopupSelectionForeground = t.colorOr("quickInputList.focusForeground", p.PopupForeground)
 	// A terminal cannot paint VS Code's widget shadow. This edge is an explicit
 	// terminal adaptation, separate from the raw widget.border registration.
@@ -111,19 +114,39 @@ func (t *Theme) makePalette() Palette {
 	p.BreadcrumbBackground = get("breadcrumb.background", p.Background)
 	p.StickyBackground = get("editorStickyScroll.background", p.Background)
 	p.StickyBorder = t.colorOr("editorStickyScroll.border", p.Border)
-	p.FindMatch = get("editor.findMatchBackground", p.PopupSelection)
-	p.FindMatchHighlight = get("editor.findMatchHighlightBackground", p.PopupSelection)
+	p.FindMatch = t.Color("editor.findMatchBackground")
+	p.FindMatchForeground = t.Color("editor.findMatchForeground")
+	p.FindMatchBorder = t.Color("editor.findMatchBorder")
+	p.FindMatchHighlight = t.Color("editor.findMatchHighlightBackground")
+	p.FindMatchHighlightForeground = t.Color("editor.findMatchHighlightForeground")
+	p.FindMatchHighlightBorder = t.Color("editor.findMatchHighlightBorder")
 	p.CurrentLine = get("editor.lineHighlightBackground", p.Background)
 	if p.CurrentLine == p.Background {
-		// Terminal cells cannot draw an outline without consuming source space.
-		p.CurrentLine = get("editor.lineHighlightBorder", p.Background)
+		p.CurrentLineBorder = t.Color("editor.lineHighlightBorder")
 	}
-	p.FoldBackground = t.colorOr("editor.foldBackground", WithOpacity(p.Accent, .12))
+	p.IndentGuide = t.Color("editorIndentGuide.background1")
+	bracketColors := [...]string{
+		t.Color("editorBracketHighlight.foreground1"),
+		t.Color("editorBracketHighlight.foreground2"),
+		t.Color("editorBracketHighlight.foreground3"),
+		t.Color("editorBracketHighlight.foreground4"),
+		t.Color("editorBracketHighlight.foreground5"),
+		t.Color("editorBracketHighlight.foreground6"),
+	}
+	for i, color := range bracketColors {
+		if len(color) == 7 || len(color) == 9 && color[7:] != "00" {
+			slot := p.bracketColorCount
+			p.bracketColors[slot] = color
+			p.bracketGuides[slot] = t.colorOr(fmt.Sprintf("editorBracketPairGuide.activeBackground%d", i+1), color)
+			p.bracketColorCount++
+		}
+	}
+	p.FoldBackground = t.Color("editor.foldBackground")
 	p.Strong = t.Color("strongForeground")
 	p.Brand = t.Color("disabledForeground")
 	p.MenuBackground = get("menu.background", p.Background)
 	p.MenuForeground = t.colorOr("menu.foreground", t.Color("foreground"))
-	p.MenuSelection = get("menu.selectionBackground", p.MenuBackground)
+	p.MenuSelection = p.selectionTint(get("menu.selectionBackground", p.MenuBackground), p.MenuBackground, 1.6)
 	p.MenuSelectionForeground = t.colorOr("menu.selectionForeground", p.MenuForeground)
 	p.MenuBorder = get("menu.border", p.MenuBackground)
 	p.MenuBorder = distinguish(p.MenuBorder, p.MenuBackground, Composite(p.MenuForeground, p.MenuBackground), 1.6)
@@ -151,6 +174,51 @@ func contrast(a, b string) float64 {
 		x, y = y, x
 	}
 	return (x + .05) / (y + .05)
+}
+
+// Readable retains the composited theme color if it passes the text contrast
+// floor. Otherwise it moves toward the higher-contrast neutral color.
+func Readable(foreground, background string) string {
+	background = normalizeHex(background)
+	if len(background) != 7 {
+		return foreground
+	}
+	foreground = normalizeHex(foreground)
+	if foreground != "" {
+		foreground = opaque(foreground, background)
+		if contrast(foreground, background) >= 4.5 {
+			return foreground
+		}
+	}
+	target := "#FFFFFF"
+	if contrast("#000000", background) > contrast(target, background) {
+		target = "#000000"
+	}
+	if foreground == "" {
+		return target
+	}
+	return distinguish(foreground, background, target, 4.5)
+}
+
+// SidebarSelection converts a theme's focus outline into a selection tint
+// when the terminal row needs a separate background.
+func (p Palette) SidebarSelection(focused bool) string {
+	fill, minimum := p.InactiveSelection, 1.25
+	if focused {
+		fill, minimum = p.Selection, 1.6
+	}
+	return p.selectionTint(fill, p.Panel, minimum)
+}
+
+func (p Palette) selectionTint(fill, surface string, minimum float64) string {
+	if fill != surface && p.FocusOutline == "" {
+		return fill
+	}
+	tint := p.FocusOutline
+	if tint == "" {
+		tint = p.Accent
+	}
+	return distinguish(fill, surface, Readable(tint, surface), minimum)
 }
 
 // VS Code can separate low-contrast widgets with shadows. Terminal cells have

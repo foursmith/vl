@@ -1,26 +1,30 @@
 package config
 
 import (
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 )
 
 // Layout stores user preferences independently of the current terminal size.
 type Layout struct {
-	Language       string `json:"language,omitempty"`
-	LastCommand    string `json:"lastCommand,omitempty"`
-	DarkTheme      string `json:"darkTheme,omitempty"`
-	LightTheme     string `json:"lightTheme,omitempty"`
-	DarkThemeType  string `json:"darkThemeType,omitempty"`
-	LightThemeType string `json:"lightThemeType,omitempty"`
-	ThemeType      string `json:"themeType,omitempty"`
-	Theme          string `json:"theme,omitempty"`
-	ThemePinned    bool   `json:"themePinned,omitempty"`
-	SidebarWidth   int    `json:"sidebarWidth"`
-	SidebarRight   bool   `json:"sidebarRight"`
+	Language     string `json:"language,omitempty"`
+	LastCommand  string `json:"lastCommand,omitempty"`
+	DarkTheme    string `json:"darkTheme,omitempty"`
+	LightTheme   string `json:"lightTheme,omitempty"`
+	Theme        string `json:"theme,omitempty"`
+	ThemePinned  bool   `json:"themePinned,omitempty"`
+	SidebarWidth int    `json:"sidebarWidth"`
+	SidebarRight bool   `json:"sidebarRight"`
 }
 
-func LayoutPath() (string, error) { return configPath("layout.json") }
+func LayoutPath() (string, error) {
+	dir, err := Dir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "vl.json"), nil
+}
 
 func LoadLayout(path string) (Layout, error) {
 	var layout Layout

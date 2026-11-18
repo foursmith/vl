@@ -411,13 +411,13 @@ func (m *Model) diffRow(line *diff.Line, width int, right bool, selected diffRan
 	}
 	label := fmt.Sprintf("%*d%s ", gutter-2, number, marker)
 	code := line.Text[1:]
-	emphasis := ""
+	emphasis, border := "", ""
 	if line.Kind == diff.Added {
-		emphasis = m.colors.AddedText
+		emphasis, border = m.colors.AddedText, m.colors.AddedBorder
 	} else if line.Kind == diff.Deleted {
-		emphasis = m.colors.DeletedText
+		emphasis, border = m.colors.DeletedText, m.colors.DeletedBorder
 	}
-	overlay := diffCodeOverlay{}
+	overlay := diffCodeOverlay{changeBorder: border}
 	if logical, ok := m.reviewLine[line]; ok && right == m.reviewRight && m.review != nil {
 		overlay.offset = m.review.LineOffset(logical)
 		overlay.matches = m.fileSearchRowRanges(m.review, logical)
@@ -425,13 +425,14 @@ func (m *Model) diffRow(line *diff.Line, width int, right bool, selected diffRan
 			overlay.flash = m.flash
 		}
 	}
-	return row(label, gutter, m.colors.LineNumber, m.colors.Background) + diffCode(m.colors, code, m.diffSyntax[line], width-gutter, m.diffLeft, bg, emphasis, m.diffEmphasis[line], selected, overlay)
+	return row(label, gutter, theme.Readable(m.colors.LineNumber, m.colors.Background), m.colors.Background) + diffCode(m.colors, code, m.diffSyntax[line], width-gutter, m.diffLeft, bg, emphasis, m.diffEmphasis[line], selected, overlay)
 }
 
 type diffCodeOverlay struct {
-	matches [][2]int
-	offset  int
-	flash   *flashState
+	matches      [][2]int
+	offset       int
+	flash        *flashState
+	changeBorder string
 }
 
 // Paint token runs only up to the visible right edge, preserving source rune
@@ -450,10 +451,11 @@ func diffCode(colors theme.Palette, code string, spans []highlight.Span, width, 
 	color := colors.Foreground
 	var font theme.FontStyle
 	runBG := bg
+	runUnderline := ""
 	spanIndex, column, visual := 0, 0, 0
 	flush := func() {
 		if run.Len() > 0 {
-			out.WriteString(font.Apply(theme.Style(color, runBG)).Render(run.String()))
+			out.WriteString(theme.CodeStyle(color, runBG, runUnderline, font).Render(run.String()))
 			run.Reset()
 		}
 	}
@@ -484,10 +486,15 @@ func diffCode(colors theme.Palette, code string, spans []highlight.Span, width, 
 				nextBG = theme.Composite(spans[spanIndex].Background, bg)
 			}
 		}
-		if emphasis != "" && runeColumn >= changed.start && runeColumn < changed.end {
-			nextBG = emphasis
+		underline := ""
+		if runeColumn >= changed.start && runeColumn < changed.end {
+			if emphasis != "" {
+				nextBG = emphasis
+			}
+			underline = overlay.changeBorder
 		}
-		if runeColumn >= selected.start && runeColumn < selected.end {
+		isSelected := runeColumn >= selected.start && runeColumn < selected.end
+		if isSelected {
 			if colors.EditorSelection != "" {
 				nextBG = theme.Composite(colors.EditorSelection, nextBG)
 			}
@@ -499,9 +506,10 @@ func diffCode(colors theme.Palette, code string, spans []highlight.Span, width, 
 			matchIndex++
 		}
 		if matchIndex < len(matches) && matches[matchIndex][0] < column {
-			nextBG = colors.FindMatchHighlight
-			if runeColumn >= selected.start && runeColumn < selected.end {
-				nextBG = colors.FindMatch
+			var matchBorder string
+			next, nextBG, matchBorder = colors.FindColors(next, nextBG, isSelected)
+			if matchBorder != "" {
+				underline = matchBorder
 			}
 		}
 		if f := overlay.flash; f != nil && f.matches[overlay.offset+runeColumn] {
@@ -511,10 +519,10 @@ func diffCode(colors theme.Palette, code string, spans []highlight.Span, width, 
 				next, nextBG, nextFont = colors.Background, colors.Accent, theme.Bold
 			}
 		}
-		if next != color || nextBG != runBG || nextFont != font {
+		if next != color || nextBG != runBG || underline != runUnderline || nextFont != font {
 			flush()
 			color, font = next, nextFont
-			runBG = nextBG
+			runBG, runUnderline = nextBG, underline
 		}
 		run.WriteString(ansi.Cut(display, max(0, left-start), min(visual-start, left+width-start)))
 	}

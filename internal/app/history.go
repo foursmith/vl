@@ -199,7 +199,7 @@ func (m *Model) historyRow(entry item, w int, bg string) (string, string) {
 			continue
 		}
 		if ref.Kind == gitservice.Tag {
-			tags += theme.Style(m.colors.GitModified, m.colors.Input).Bold(true).Render(" "+safe(ref.Name)+" ") + " "
+			tags += theme.TextStyle(m.colors.GitModified, m.colors.Input).Bold(true).Render(" "+safe(ref.Name)+" ") + " "
 		} else {
 			badges += " [" + safe(ref.Name) + "]"
 		}
@@ -210,8 +210,8 @@ func (m *Model) historyRow(entry item, w int, bg string) (string, string) {
 	tags = ansi.Truncate(tags, tagWidth, "…")
 	badgeWidth := min(ansi.StringWidth(badges), max(0, (w-tagWidth)/2))
 	label := ansi.Truncate(safe(c.Subject), max(0, w-3-tagWidth-badgeWidth), "…")
-	text := theme.Style(m.colors.Accent, bg).Render(marker+" ") + tags + label
-	text += theme.Style(m.colors.Accent, bg).Render(ansi.Truncate(badges, badgeWidth, "…"))
+	text := theme.TextStyle(m.colors.Accent, bg).Render(marker+" ") + tags + label
+	text += theme.TextStyle(m.colors.Accent, bg).Render(ansi.Truncate(badges, badgeWidth, "…"))
 	return indent + text, m.colors.Foreground
 }
 

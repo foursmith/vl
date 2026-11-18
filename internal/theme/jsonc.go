@@ -2,8 +2,25 @@ package theme
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 )
+
+func readJSONC(name string, value any) error {
+	data, err := readThemeFile(name)
+	if err != nil {
+		return err
+	}
+	return decodeJSONC(data, value)
+}
+
+func decodeJSONC(data []byte, value any) error {
+	clean, err := jsonc(data)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(clean, value)
+}
 
 // Remove JSONC comments and trailing commas without touching string contents.
 // Whitespace preserves line/byte positions for encoding/json error diagnostics.

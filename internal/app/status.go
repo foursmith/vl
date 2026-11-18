@@ -192,7 +192,7 @@ func (m *Model) statusLine() string {
 		if background == "" {
 			background = m.colors.StatusBackground
 		}
-		text += row("", segment.x-x, foreground, m.colors.StatusBackground) + row(" "+segment.text+" ", segment.width, segment.color, background)
+		text += row("", segment.x-x, foreground, m.colors.StatusBackground) + row(" "+segment.text+" ", segment.width, theme.Readable(segment.color, background), background)
 		x = segment.x + segment.width
 	}
 	return row(text, m.width, foreground, m.colors.StatusBackground)

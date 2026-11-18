@@ -98,6 +98,8 @@ func TestInsertRetainsUnchangedHighlightUntilNormal(t *testing.T) {
 	d.SetPosition(1, 0)
 	m.ensureEditor()
 	drain(t, m, m.scheduleHighlight())
+	// This comparison covers token styling, independent of the moving line border.
+	m.colors.CurrentLineBorder = ""
 	editorText := func(line int) string {
 		return ansi.Cut(m.editorLines()[line], 7, m.mainWidth())
 	}

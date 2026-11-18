@@ -165,9 +165,13 @@ func (m *Model) closeAllTabs() tea.Cmd {
 }
 
 func (m *Model) closeOtherTabs() tea.Cmd {
+	return m.closeOtherTabsExcept(m.activeTab)
+}
+
+func (m *Model) closeOtherTabsExcept(index int) tea.Cmd {
 	var close []tab
 	for i, t := range m.tabs {
-		if i != m.activeTab {
+		if i != index {
 			close = append(close, t)
 		}
 	}
@@ -457,7 +461,7 @@ func (m *Model) tabBar() string {
 			if slot.control > 0 {
 				glyph = " " + m.symbol(symbolRight) + " "
 			}
-			text += row(glyph, slot.width, m.colors.Muted, m.colors.TabBarBackground)
+			text += row(glyph, slot.width, theme.Readable(m.colors.Muted, m.colors.TabBarBackground), m.colors.TabBarBackground)
 		} else {
 			active := slot.index == m.activeTab
 			fg, bg := m.colors.TabInactiveForeground, m.colors.TabInactiveBackground
@@ -493,7 +497,7 @@ func (m *Model) tabBar() string {
 			if active {
 				indicator = theme.Style(m.colors.TabActiveBorderTop, bg).Render("▎")
 			}
-			content := indicator + row(glyph, 2, color, bg) + theme.Style(fg, bg).Italic(preview).Underline(m.monochrome && active).Render(label) + theme.Style(closeColor, bg).Render(" "+m.symbol(symbolClose)+" ") + divider
+			content := indicator + row(glyph, 2, color, bg) + theme.TextStyle(fg, bg).Italic(preview).Underline(m.monochrome && active).Render(label) + theme.TextStyle(closeColor, bg).Render(" "+m.symbol(symbolClose)+" ") + divider
 			text += row(content, slot.width, fg, bg)
 		}
 		x = slot.x + slot.width

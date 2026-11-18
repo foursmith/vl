@@ -100,8 +100,8 @@ func (m *Model) styleInput() {
 	state := textinput.StyleState{
 		Text:        theme.Style(m.colors.InputForeground, m.colors.Input),
 		Prompt:      theme.Style(m.colors.InputForeground, m.colors.Input),
-		Placeholder: theme.Style(m.colors.InputPlaceholder, m.colors.Input),
-		Suggestion:  theme.Style(m.colors.InputPlaceholder, m.colors.Input),
+		Placeholder: theme.TextStyle(m.colors.InputPlaceholder, m.colors.Input),
+		Suggestion:  theme.TextStyle(m.colors.InputPlaceholder, m.colors.Input),
 	}
 	m.input.SetStyles(textinput.Styles{
 		Focused: state, Blurred: state,
@@ -136,33 +136,78 @@ func (m *Model) ThemeNotificationRestoreSequence() string {
 	return ""
 }
 
-type localThemesMsg struct {
+type importedThemesMsg struct {
 	seq    uint64
 	themes []*theme.Theme
 	err    error
 }
 
-func (m *Model) loadLocalThemes() tea.Cmd {
-	m.localThemesSeq++
-	seq := m.localThemesSeq
-	return func() tea.Msg {
-		dir, err := theme.LocalDir()
+const themeImportID = "theme.import"
+
+type themesImportedMsg struct {
+	count int
+	err   error
+}
+
+func (m *Model) importThemes() tea.Cmd {
+	if m.themeImporting {
+		return nil
+	}
+	m.themeImporting = true
+	m.refreshThemeChoices()
+	return tea.Batch(m.applyTheme(m.committedTheme()), func() tea.Msg {
+		dir, err := theme.ImportDir()
 		if err != nil {
-			return localThemesMsg{seq: seq, err: err}
+			return themesImportedMsg{err: err}
 		}
-		themes, err := theme.Discover(dir)
-		return localThemesMsg{seq: seq, themes: themes, err: err}
+		sources, err := theme.VSCodeExtensionDirs()
+		if err != nil {
+			return themesImportedMsg{err: err}
+		}
+		count, err := theme.ImportVSCode(dir, sources)
+		return themesImportedMsg{count: count, err: err}
+	})
+}
+
+func (m *Model) finishThemeImport(msg themesImportedMsg) tea.Cmd {
+	m.themeImporting = false
+	m.refreshThemeChoices()
+	switch {
+	case msg.err == nil:
+		m.notice = m.tr("Imported %d VS Code color themes", msg.count)
+	case msg.count > 0:
+		m.notice = m.tr("Imported %d VS Code color themes with errors: %s", msg.count, m.tr(msg.err.Error()))
+	default:
+		m.notice = m.tr("Import VS Code themes: %s", m.tr(msg.err.Error()))
+	}
+	return m.loadImportedThemes()
+}
+
+func (m *Model) loadImportedThemes() tea.Cmd {
+	m.importedThemesSeq++
+	seq := m.importedThemesSeq
+	return func() tea.Msg {
+		dir, err := theme.ImportDir()
+		if err != nil {
+			return importedThemesMsg{seq: seq, err: err}
+		}
+		themes, err := theme.DiscoverImports(dir)
+		return importedThemesMsg{seq: seq, themes: themes, err: err}
 	}
 }
 
-func (m *Model) applyLocalThemes(msg localThemesMsg) {
-	if msg.seq != m.localThemesSeq {
+func (m *Model) applyImportedThemes(msg importedThemesMsg) {
+	if msg.seq != m.importedThemesSeq {
 		return
 	}
-	m.localThemes = msg.themes
+	m.importedThemes = msg.themes
 	if msg.err != nil {
-		m.notice = m.tr("Load local themes: %s", m.tr(msg.err.Error()))
+		m.notice = m.tr("Load imported themes: %s", m.tr(msg.err.Error()))
 	}
+	m.refreshThemeChoices()
+}
+
+func (m *Model) refreshThemeChoices() {
 	if m.modal != "themes" {
 		return
 	}
@@ -184,42 +229,47 @@ func (m *Model) applyLocalThemes(msg localThemesMsg) {
 func (m *Model) themeChoices() []action {
 	current := m.committedTheme()
 
-	var choices []action
-	available := make([]*theme.Theme, 0, len(theme.BuiltinIDs)+len(m.localThemes))
+	importAction := action{id: themeImportID, label: m.tr("+ Import Themes from VS Code"), run: m.importThemes}
+	if m.themeImporting {
+		importAction.key = m.tr("Importing…")
+	}
+	choices := []action{importAction}
+	available := make([]*theme.Theme, 0, len(theme.BuiltinIDs)+len(m.importedThemes))
 	for _, id := range theme.BuiltinIDs {
 		available = append(available, theme.Builtin(id))
 	}
-	available = append(available, m.localThemes...)
-	// Keep the active local theme selectable while the first directory scan runs.
-	if strings.HasPrefix(current.ID, "local:") && !slices.ContainsFunc(available, func(t *theme.Theme) bool { return t.ID == current.ID }) {
+	available = append(available, m.importedThemes...)
+	// Keep the active theme selectable during discovery.
+	if !slices.ContainsFunc(available, func(t *theme.Theme) bool { return t.ID == current.ID }) {
 		available = append(available, current)
 	}
 	slices.SortStableFunc(available, func(a, b *theme.Theme) int {
-		if a.IsLight() != b.IsLight() {
-			if a.IsLight() {
-				return 1
-			}
-			return -1
-		}
 		if n := strings.Compare(strings.ToLower(a.Name), strings.ToLower(b.Name)); n != 0 {
 			return n
 		}
 		return strings.Compare(a.ID, b.ID)
 	})
-	for _, selected := range available {
-		kind := m.tr("Dark")
-		if selected.IsLight() {
-			kind = m.tr("Light")
+	groups := []struct{ kind, label string }{
+		{"vs-dark", m.tr("Dark Themes")},
+		{"vs", m.tr("Light Themes")},
+		{"hc-black", m.tr("Dark High Contrast Themes")},
+		{"hc-light", m.tr("Light High Contrast Themes")},
+	}
+	for _, group := range groups {
+		start := len(choices)
+		for _, selected := range available {
+			if selected.Type != group.kind {
+				continue
+			}
+			if len(choices) == start {
+				choices = append(choices, action{label: group.label})
+			}
+			choice := action{id: selected.ID, label: selected.Name, run: func() tea.Cmd { return m.chooseTheme(selected) }}
+			if current.ID == selected.ID {
+				choice.key = m.tr("Current")
+			}
+			choices = append(choices, choice)
 		}
-		label := kind + " · " + selected.Name
-		if strings.HasPrefix(selected.ID, "local:") {
-			label += m.tr(" · Local")
-		}
-		choice := action{id: selected.ID, label: label, run: func() tea.Cmd { return m.chooseTheme(selected) }}
-		if current.ID == selected.ID {
-			choice.key = m.tr("Current")
-		}
-		choices = append(choices, choice)
 	}
 	return choices
 }
@@ -235,7 +285,7 @@ func (m *Model) openThemePicker() tea.Cmd {
 			break
 		}
 	}
-	return tea.Batch(restore, cmd, m.loadLocalThemes())
+	return tea.Batch(restore, cmd, m.loadImportedThemes())
 }
 
 // Preferences remain unchanged until Enter; only presentation follows the
@@ -255,7 +305,14 @@ func (m *Model) previewSelectedTheme() tea.Cmd {
 	if len(rows) == 0 {
 		return nil
 	}
-	return rows[m.pickerIndex].run()
+	a := rows[m.pickerIndex]
+	if a.id == themeImportID {
+		return m.applyTheme(m.committedTheme())
+	}
+	if a.run == nil {
+		return nil
+	}
+	return a.run()
 }
 
 func (m *Model) cancelThemePreview() tea.Cmd {
@@ -267,22 +324,23 @@ func (m *Model) cancelThemePreview() tea.Cmd {
 	return m.applyTheme(preview)
 }
 
-func (m *Model) restoreThemeSlot(id, kind string, light bool) {
+func (m *Model) restoreThemeSlot(id string, light bool) bool {
 	if id == "" {
-		return
+		return false
 	}
-	selected, err := theme.Load(id, kind)
+	selected, err := theme.Load(id)
 	if err != nil {
 		m.notice = m.tr("Load remembered theme: %s", m.tr(err.Error()))
-		return
+		return false
 	}
 	if selected.IsLight() != light {
 		m.notice = m.tr("Remembered theme has changed appearance: %s", id)
-		return
+		return false
 	}
 	if light {
 		m.lightTheme = selected
 	} else {
 		m.darkTheme = selected
 	}
+	return true
 }

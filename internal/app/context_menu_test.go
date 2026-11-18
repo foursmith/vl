@@ -177,14 +177,22 @@ func TestContextMenuTargetsClickedTabAndConfirmsDirtyClose(t *testing.T) {
 	first := m.document()
 	first.Insert("dirty")
 	m.openFile("file1.go")
+	second := m.document()
+	m.sidebar = true
 	slot := m.tabLayout()[0]
 	m.Update(tea.MouseClickMsg{X: m.mainX() + slot.x + 2, Y: tabRow, Button: tea.MouseRight})
-	if m.document() != first {
-		t.Fatal("menu targets active rather than clicked tab")
+	if m.document() != second || !m.sidebar {
+		t.Fatal("opening a tab menu changed the active tab or focus")
 	}
 	chooseContextAction(t, m, "Close")
-	if m.contextMenu != nil || m.modal != "close" || len(m.tabs) != 2 {
-		t.Fatal("dirty close bypassed confirmation")
+	if m.contextMenu != nil || m.modal != "close" || len(m.closeQueue) != 1 || m.closeQueue[0] != first || len(m.tabs) != 2 {
+		t.Fatal("close did not confirm closing the clicked dirty tab")
+	}
+	m.chooseClose("cancel")
+	m.Update(tea.MouseClickMsg{X: m.mainX() + slot.x + 2, Y: tabRow, Button: tea.MouseRight})
+	chooseContextAction(t, m, "Close Others")
+	if len(m.tabs) != 1 || m.document() != first {
+		t.Fatal("close others did not keep the clicked tab")
 	}
 }
 

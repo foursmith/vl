@@ -3,7 +3,12 @@
 // NODE_PATH=/path/to/node_modules bun internal/theme/tools/generate-defaults.cjs VSCODE_SOURCE GIT_PACKAGE_JSON
 const ts = require('typescript'), fs = require('fs'), path = require('path');
 const root = process.argv[2], gitPackage = process.argv[3] || path.join(root, 'extensions/git/package.json');
-const paths = [...fs.readdirSync(path.join(root, 'src/vs/platform/theme/common/colors')).filter(x => x.endsWith('.ts')).map(x => 'src/vs/platform/theme/common/colors/' + x), 'src/vs/workbench/common/theme.ts', 'src/vs/editor/common/core/editorColorRegistry.ts'];
+const paths = [
+    ...fs.readdirSync(path.join(root, 'src/vs/platform/theme/common/colors')).filter(x => x.endsWith('.ts')).map(x => 'src/vs/platform/theme/common/colors/' + x),
+    'src/vs/workbench/common/theme.ts',
+    'src/vs/editor/common/core/editorColorRegistry.ts',
+    'src/vs/editor/contrib/folding/browser/foldingDecorations.ts',
+];
 const symbols = new Map(), registered = new Map(), aliases = new Map();
 for (const filename of paths) {
     const source = ts.createSourceFile(filename, fs.readFileSync(path.join(root, filename), 'utf8'), ts.ScriptTarget.Latest, true);

@@ -48,18 +48,7 @@ func TestRGBAIsRetainedUntilActualSurface(t *testing.T) {
 	}
 }
 
-func TestExtensionTypeWinsAndIncludesDoNotSetThemeType(t *testing.T) {
-	dir := t.TempDir()
-	writeTheme(t, dir, "package.json", `{"contributes":{"themes":[{"label":"Extension Label","path":"theme.json","uiTheme":"vs"}]}}`)
-	filename := writeTheme(t, dir, "theme.json", `{"name":"Different File Name","type":"dark","colors":{}}`)
-	th := mustLoad(t, filename)
-	if !th.IsLight() || th.UIThemeOverride != "" || th.Name != "Extension Label" {
-		t.Fatal("extension contribution did not own the theme type")
-	}
-	explicit, err := Load(filename, "vs-dark")
-	if err != nil || explicit.IsLight() || explicit.UIThemeOverride != "vs-dark" {
-		t.Fatalf("explicit type override: %v", err)
-	}
+func TestIncludeDoesNotSetThemeType(t *testing.T) {
 	other := t.TempDir()
 	writeTheme(t, other, "base.json", `{"type":"light","colors":{}}`)
 	root := writeTheme(t, other, "root.json", `{"include":"base.json"}`)
@@ -72,8 +61,21 @@ func TestEditorDecorationPalette(t *testing.T) {
 	for _, id := range []string{"dark_plus", "light_plus"} {
 		th := Builtin(id)
 		p := th.Palette()
-		if p.CurrentLine == p.Background {
+		if p.CurrentLine == p.Background && p.CurrentLineBorder == "" {
 			t.Fatalf("%s current line is invisible", id)
+		}
+	}
+}
+
+func TestReadableContrastUsesTheFinalSurface(t *testing.T) {
+	for _, pair := range [][2]string{{"#F8F8F8", "#F3F3F3"}, {"#FFFFFF66", "#007ACC"}, {"#0F4A85", "#0F4A85"}, {"#000000", "#FFFFFF"}} {
+		fg, bg := pair[0], pair[1]
+		got := Readable(fg, bg)
+		if contrast(got, bg) < 4.5 {
+			t.Errorf("%s on %s resolves below the contrast floor: %s", fg, bg, got)
+		}
+		if original := Composite(fg, bg); contrast(original, bg) >= 4.5 && original != got {
+			t.Errorf("already readable color changed from %s to %s", original, got)
 		}
 	}
 }

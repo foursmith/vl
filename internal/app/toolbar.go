@@ -86,13 +86,13 @@ func (m *Model) contentToolbar() string {
 	button := m.diffModeButton()
 	stats := ""
 	if m.patch.Added > 0 {
-		stats += theme.Style(m.colors.GitAdded, m.colors.Background).Render(fmt.Sprintf("+%d", m.patch.Added))
+		stats += theme.TextStyle(m.colors.GitAdded, m.colors.Background).Render(fmt.Sprintf("+%d", m.patch.Added))
 	}
 	if m.patch.Deleted > 0 {
 		if stats != "" {
 			stats += " "
 		}
-		stats += theme.Style(m.colors.Deleted, m.colors.Background).Render(fmt.Sprintf("−%d", m.patch.Deleted))
+		stats += theme.TextStyle(m.colors.Deleted, m.colors.Background).Render(fmt.Sprintf("−%d", m.patch.Deleted))
 	}
 	if stats != "" {
 		stats += "  "

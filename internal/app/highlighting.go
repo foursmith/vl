@@ -101,12 +101,14 @@ func (m *Model) finishHighlight(msg highlightResultMsg) {
 		t.highlightText, t.spans = msg.request.text, msg.spans
 		t.highlightSource = t.doc.Lines()
 		t.renderedRows = nil
+		t.guides = nil
 	}
 }
 
 func (t *tab) clearHighlight() {
 	t.highlightJob.stop()
 	t.highlightText, t.highlightSource, t.spans, t.renderedRows = "", nil, nil, nil
+	t.guides = nil
 }
 
 type editorHighlightRows struct {

@@ -64,7 +64,7 @@ func (m *Model) confirmationLayout() dialogLayout {
 	center := func(text, fg string) string {
 		text = ansi.Truncate(text, w-4, "…")
 		padding := max(0, (w-2-ansi.StringWidth(text))/2)
-		return row(strings.Repeat(" ", padding)+text, w-2, fg, m.colors.Popup)
+		return row(strings.Repeat(" ", padding)+text, w-2, theme.Readable(fg, m.colors.Popup), m.colors.Popup)
 	}
 	var message []string
 	detail := m.confirmationDetail
@@ -110,10 +110,10 @@ func (m *Model) confirmationLayout() dialogLayout {
 	text := strings.Repeat(" ", start)
 	for i, action := range actions {
 		label := action.label
-		fg, bg := m.colors.Foreground, m.colors.Border
+		fg, bg := m.colors.InputForeground, m.colors.Input
 		selected := i == m.confirmationButton
 		if selected {
-			fg, bg = m.colors.SelectionForeground, m.colors.Selection
+			fg, bg = m.colors.PopupSelectionForeground, m.colors.PopupSelection
 		}
 		if selected && m.monochrome {
 			label = "> " + label
@@ -122,7 +122,7 @@ func (m *Model) confirmationLayout() dialogLayout {
 		left := max(0, (buttonWidth-ansi.StringWidth(label))/2)
 		label = strings.Repeat(" ", left) + label
 		label += strings.Repeat(" ", max(0, buttonWidth-ansi.StringWidth(label)))
-		text += theme.Style(fg, bg).Bold(selected).Underline(selected).Render(label)
+		text += theme.TextStyle(fg, bg).Bold(selected).Underline(selected).Render(label)
 		l.buttons = append(l.buttons, dialogButton{x: 1 + start + i*(buttonWidth+gap), y: 1 + len(l.content), width: buttonWidth})
 		if i < len(actions)-1 {
 			text += strings.Repeat(" ", gap)

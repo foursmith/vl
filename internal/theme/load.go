@@ -2,110 +2,73 @@ package theme
 
 import (
 	"bytes"
-	"embed"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
-	"sync"
 )
-
-//go:embed themes/*.json
-var files embed.FS
 
 // Theme is immutable after loading and can be shared by background syntax jobs.
 // Type uses VS Code's extension uiTheme identifiers: vs, vs-dark, hc-light, hc-black.
 type Theme struct {
-	ID, Name, Type  string
-	UIThemeOverride string
-	colors          map[string]string
-	tokens          []rawToken
-	syntax          *scopeTrie
-	palette         Palette
+	ID, Name, Type, VSCodeID string
+	colors                   map[string]string
+	syntax                   *scopeTrie
+	palette                  Palette
 }
 
 type rawToken struct {
-	Scope    json.RawMessage `json:"scope"`
+	Scope    json.RawMessage `json:"scope,omitempty"`
 	Settings struct {
-		Foreground    string  `json:"foreground"`
-		Background    string  `json:"background"`
-		Selection     string  `json:"selection"`
-		LineHighlight string  `json:"lineHighlight"`
-		FontStyle     *string `json:"fontStyle"`
+		Foreground    string  `json:"foreground,omitempty"`
+		Background    string  `json:"background,omitempty"`
+		Selection     string  `json:"selection,omitempty"`
+		LineHighlight string  `json:"lineHighlight,omitempty"`
+		FontStyle     *string `json:"fontStyle,omitempty"`
 	} `json:"settings"`
 }
 
 type themeDocument struct {
 	Name        string                     `json:"name"`
-	Type        string                     `json:"type"`
 	Include     string                     `json:"include"`
 	Colors      map[string]json.RawMessage `json:"colors"`
 	TokenColors json.RawMessage            `json:"tokenColors"`
 	Settings    []rawToken                 `json:"settings"`
 }
 
-var builtins sync.Map
-var BuiltinIDs = []string{"dark_modern", "dark_plus", "dark_vs", "light_modern", "light_plus", "light_vs"}
-
-func Builtin(id string) *Theme {
-	if t, ok := builtins.Load(id); ok {
-		return t.(*Theme)
-	}
-	kind := "vs-dark"
-	if strings.HasPrefix(id, "light_") {
-		kind = "vs"
-	}
-	t, err := load("themes/"+id+".json", kind, files.ReadFile, path.Join)
-	if err != nil {
-		panic(err)
-	}
-	t.ID = id
-	actual, _ := builtins.LoadOrStore(id, t)
-	return actual.(*Theme)
+// themeData is the self-contained format saved by the VS Code importer.
+type themeData struct {
+	ID          string            `json:"id"`
+	Name        string            `json:"name"`
+	Type        string            `json:"type"`
+	Colors      map[string]string `json:"colors"`
+	TokenColors []rawToken        `json:"tokenColors"`
 }
 
-// Load accepts a builtin identifier or a local VS Code JSON/JSONC/tmTheme file.
-// uiTheme may come from the extension's contributes.themes[].uiTheme. A theme's
-// type is a standalone-file fallback; an explicit uiTheme or extension contribution wins.
-func Load(name, uiTheme string) (*Theme, error) {
-	switch uiTheme {
-	case "", "vs", "vs-dark", "hc-light", "hc-black":
-	default:
-		return nil, fmt.Errorf("unknown uiTheme %q", uiTheme)
-	}
+func (d themeData) theme(id string) *Theme {
+	t := &Theme{ID: id, VSCodeID: d.ID, Name: d.Name, Type: d.Type, colors: d.Colors}
+	t.palette = t.makePalette()
+	t.syntax = compileTokens(d.TokenColors)
+	return t
+}
 
-	if strings.HasPrefix(name, localPrefix) {
-		dir, err := LocalDir()
-		if err != nil {
-			return nil, err
-		}
-		return loadLocal(dir, name, uiTheme)
+func validUITheme(kind string) bool {
+	switch kind {
+	case "vs", "vs-dark", "hc-black", "hc-light":
+		return true
+	default:
+		return false
 	}
-	for _, id := range BuiltinIDs {
-		if name == id {
-			return Builtin(id), nil
-		}
+}
+
+// Load resolves a bundled or previously imported theme by ID.
+func Load(id string) (*Theme, error) {
+	if _, ok := builtinThemes[id]; ok {
+		return Builtin(id), nil
 	}
-	filename, err := filepath.Abs(name)
-	if err != nil {
-		return nil, err
-	}
-	explicitType := uiTheme
-	metadata := extensionTheme(filename)
-	if uiTheme == "" {
-		uiTheme = metadata.UITheme
-	}
-	result, err := load(filename, uiTheme, readThemeFile, filepath.Join)
-	if err == nil {
-		result.UIThemeOverride = explicitType
-	}
-	if err == nil && metadata.Label != "" {
-		result.Name = metadata.Label
-	}
-	return result, err
+	return loadImportedID(id)
 }
 
 func readThemeFile(name string) ([]byte, error) {
@@ -114,19 +77,30 @@ func readThemeFile(name string) ([]byte, error) {
 		return nil, err
 	}
 	defer f.Close()
-	b, err := io.ReadAll(io.LimitReader(f, (8<<20)+1))
-	if len(b) > 8<<20 {
+	return readThemeData(f, name)
+}
+
+const maxThemeBytes = 8 << 20
+
+func readThemeData(r io.Reader, name string) ([]byte, error) {
+	b, err := io.ReadAll(io.LimitReader(r, maxThemeBytes+1))
+	if len(b) > maxThemeBytes {
 		return nil, fmt.Errorf("theme exceeds 8 MiB: %s", name)
 	}
 	return b, err
 }
 
-func load(filename, kind string, read func(string) ([]byte, error), join func(...string) string) (*Theme, error) {
-	honorDeclaredType := kind == ""
-	if kind == "" {
-		kind = "vs-dark"
+func sourcePath(name, ref string) string {
+	return path.Join(path.Dir(name), strings.ReplaceAll(ref, "\\", "/"))
+}
+
+// loadSource resolves VS Code includes and TextMate files at the import boundary.
+// The contribution (or bundled metadata) supplies uiTheme.
+func loadSource(filename, kind string, read func(string) ([]byte, error)) (themeData, error) {
+	if !validUITheme(kind) {
+		return themeData{}, fmt.Errorf("unknown uiTheme %q", kind)
 	}
-	t := &Theme{ID: filename, Type: kind, colors: map[string]string{}}
+	resolved := themeData{Type: kind, Colors: make(map[string]string)}
 	visiting := map[string]bool{}
 	var visit func(string, int) error
 	visit = func(name string, depth int) error {
@@ -139,46 +113,30 @@ func load(filename, kind string, read func(string) ([]byte, error), join func(..
 		if err != nil {
 			return err
 		}
-		var d themeDocument
+		var d *themeDocument
 		if bytes.HasPrefix(bytes.TrimSpace(data), []byte("<")) {
-			d, err = readPlist(data)
+			var parsed themeDocument
+			parsed, err = readPlist(data)
+			d = &parsed
 		} else {
-			var clean []byte
-			clean, err = jsonc(data)
-			if err == nil {
-				if len(bytes.TrimSpace(clean)) == 0 || bytes.TrimSpace(clean)[0] != '{' {
-					return fmt.Errorf("theme must be an object: %s", name)
-				}
-				err = json.Unmarshal(clean, &d)
-			}
+			err = decodeJSONC(data, &d)
 		}
 		if err != nil {
 			return fmt.Errorf("theme %s: %w", name, err)
 		}
+		if d == nil {
+			return fmt.Errorf("theme must be an object: %s", name)
+		}
 		if d.Include != "" {
-			if err = visit(join(path.Dir(strings.ReplaceAll(name, "\\", "/")), d.Include), depth+1); err != nil {
+			if err = visit(sourcePath(name, d.Include), depth+1); err != nil {
 				return err
 			}
 		}
 		if d.Name != "" {
-			t.Name = d.Name
-		}
-		if honorDeclaredType && depth == 0 && d.Type != "" {
-			switch d.Type {
-			case "light", "vs":
-				t.Type = "vs"
-			case "dark", "vs-dark":
-				t.Type = "vs-dark"
-			case "hc", "hc-black":
-				t.Type = "hc-black"
-			case "hcLight", "hc-light":
-				t.Type = "hc-light"
-			default:
-				return fmt.Errorf("unknown theme type %q", d.Type)
-			}
+			resolved.Name = d.Name
 		}
 		if d.Settings != nil {
-			t.addLegacy(d.Settings)
+			resolved.addTextMateSettings(d.Settings)
 			return nil
 		}
 		for key, raw := range d.Colors {
@@ -187,70 +145,63 @@ func load(filename, kind string, read func(string) ([]byte, error), join func(..
 				continue
 			}
 			if value == "default" {
-				delete(t.colors, key)
+				delete(resolved.Colors, key)
 			} else if color := normalizeHex(value); color != "" {
-				t.colors[key] = color
+				resolved.Colors[key] = color
 			}
 		}
 		if len(d.TokenColors) > 0 && string(d.TokenColors) != "null" {
 			var ref string
 			if json.Unmarshal(d.TokenColors, &ref) == nil {
-				data, err := read(join(path.Dir(strings.ReplaceAll(name, "\\", "/")), ref))
+				data, err := read(sourcePath(name, ref))
 				if err != nil {
 					return err
 				}
-				legacy, err := readPlist(data)
+				tokens, err := readPlist(data)
 				if err != nil {
 					return fmt.Errorf("tokenColors %s: %w", ref, err)
 				}
-				t.addLegacy(legacy.Settings)
+				resolved.addTextMateSettings(tokens.Settings)
 			} else {
 				var entries []rawToken
 				if err = json.Unmarshal(d.TokenColors, &entries); err != nil {
 					return fmt.Errorf("tokenColors: %w", err)
 				}
-				t.tokens = append(t.tokens, entries...)
+				resolved.TokenColors = append(resolved.TokenColors, entries...)
 			}
 		}
 		return nil
 	}
 	if err := visit(filename, 0); err != nil {
-		return nil, err
+		return themeData{}, err
 	}
-	switch t.Type {
-	case "vs", "vs-dark", "hc-black", "hc-light":
-	default:
-		return nil, fmt.Errorf("unknown uiTheme %q", t.Type)
+	if resolved.Name == "" {
+		resolved.Name = path.Base(filename)
 	}
-	if t.Name == "" {
-		t.Name = path.Base(filename)
-	}
-	t.palette = t.makePalette()
-	t.syntax = compileTokens(t.tokens)
-	return t, nil
+	return resolved, nil
 }
 
 func (t *Theme) IsLight() bool    { return t.Type == "vs" || t.Type == "hc-light" }
 func (t *Theme) Palette() Palette { return t.palette }
 
-// Legacy TextMate settings are converted before normal VS Code color defaults.
-func (t *Theme) addLegacy(tokens []rawToken) {
+// TextMate settings supply editor colors as well as scoped token rules.
+func (d *themeData) addTextMateSettings(tokens []rawToken) {
 	for _, entry := range tokens {
 		if len(entry.Scope) == 0 || string(entry.Scope) == `""` || string(entry.Scope) == "null" {
 			if c := normalizeHex(entry.Settings.Foreground); c != "" {
-				t.colors["editor.foreground"] = c
+				d.Colors["editor.foreground"] = c
 			}
 			if c := normalizeHex(entry.Settings.Background); c != "" {
-				t.colors["editor.background"] = c
+				d.Colors["editor.background"] = c
 			}
 			if c := normalizeHex(entry.Settings.Selection); c != "" {
-				t.colors["editor.selectionBackground"] = c
+				d.Colors["editor.selectionBackground"] = c
 			}
 			if c := normalizeHex(entry.Settings.LineHighlight); c != "" {
-				t.colors["editor.lineHighlightBackground"] = c
+				d.Colors["editor.lineHighlightBackground"] = c
 			}
 		} else {
-			t.tokens = append(t.tokens, entry)
+			d.TokenColors = append(d.TokenColors, entry)
 		}
 	}
 }

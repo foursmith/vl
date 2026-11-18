@@ -28,7 +28,7 @@ func sameColor(a, b color.Color) bool {
 func TestTerminalPaddingFollowsThemeChrome(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	for _, id := range []string{"dark_modern", "light_modern", "dark_vs"} {
-		m.setTestTheme(id, "")
+		m.setTestTheme(id)
 		m.width, m.height = 120, 36
 		for _, open := range []bool{false, true} {
 			if open {
@@ -72,6 +72,66 @@ func TestEditorCanvasAndCurrentLineBackgrounds(t *testing.T) {
 				t.Fatalf("row %d cell %d (%q) has background %v, want %s", y, x, cell.Content, cell.Style.Bg, want)
 			}
 		}
+	}
+}
+
+func TestEditorCurrentLineBorderUsesAdjacentRows(t *testing.T) {
+	m := New(context.Background(), &gitservice.Repository{Root: "/tmp/repo"}, false)
+	m.colors = theme.Builtin("hc_black").Palette()
+	doc := &editor.Document{Path: "/tmp/repo/test.txt", Text: "above\n当前\nbelow", Anchor: -1}
+	m.tabs = []tab{{doc: doc}}
+	m.activeTab = 0
+	m.ensureEditor()
+	border := lipgloss.Color(theme.Composite(m.colors.CurrentLineBorder, m.colors.Background))
+	for _, cursorRow := range []int{1, 1, 0} {
+		doc.SetPosition(cursorRow, 0)
+		for y, rendered := range m.editorLines() {
+			if got := ansi.StringWidth(rendered); got != m.mainWidth() {
+				t.Fatalf("row %d has width %d, want %d", y, got, m.mainWidth())
+			}
+			for x, cell := range uv.NewStyledString(rendered).Lines(ansi.GraphemeWidth)[0] {
+				want := x >= 7 && (y == cursorRow || y == cursorRow-1)
+				if got := cell.Style.Underline == uv.UnderlineSingle && sameColor(cell.Style.UnderlineColor, border); got != want {
+					t.Fatalf("cursor row %d, rendered row %d, cell %d (%q) has border=%t, want %t", cursorRow, y, x, cell.Content, got, want)
+				}
+			}
+		}
+	}
+}
+
+func TestEditorCurrentLineHighlightYieldsToSelection(t *testing.T) {
+	for _, id := range []string{"hc_black", "dark_2026"} {
+		t.Run(id, func(t *testing.T) {
+			m := New(context.Background(), &gitservice.Repository{Root: "/tmp/repo"}, false)
+			m.colors = theme.Builtin(id).Palette()
+			doc := &editor.Document{Path: "/tmp/repo/test.txt", Text: "above\ncurrent\nbelow", Anchor: -1}
+			m.tabs = []tab{{doc: doc}}
+			m.activeTab = 0
+			m.ensureEditor()
+			doc.SetPosition(1, 0)
+			before := m.editorLines()
+
+			doc.SelectVisual(doc.Cursor, doc.Cursor, false)
+			during := m.editorLines()
+			for y, rendered := range during[:2] {
+				cells := uv.NewStyledString(rendered).Lines(ansi.GraphemeWidth)[0]
+				for x, cell := range cells {
+					want := m.colors.Background
+					if y == 1 && x == 7 {
+						want = theme.Composite(m.colors.EditorSelection, want)
+					}
+					if cell.Style.Underline != uv.UnderlineNone || !sameColor(cell.Style.Bg, lipgloss.Color(want)) {
+						t.Fatalf("selected row %d cell %d has unexpected style %+v", y, x, cell.Style)
+					}
+				}
+			}
+
+			doc.ClearSelection()
+			after := m.editorLines()
+			if after[0] != before[0] || after[1] != before[1] {
+				t.Fatal("clearing the selection did not restore the current-line highlight")
+			}
+		})
 	}
 }
 
@@ -120,7 +180,8 @@ func TestEditorRunsKeepSyntaxSelectionCursorAndFocus(t *testing.T) {
 	for _, cell := range first {
 		if cell.Content == "a" {
 			selected = true
-			if !sameColor(cell.Style.Fg, lipgloss.Color(theme.Builtin("dark_modern").Palette().GitAdded)) || !sameColor(cell.Style.Bg, lipgloss.Color(theme.Builtin("dark_modern").Palette().EditorSelection)) {
+			p := theme.Builtin("dark_modern").Palette()
+			if !sameColor(cell.Style.Fg, lipgloss.Color(theme.Readable(p.GitAdded, p.EditorSelection))) || !sameColor(cell.Style.Bg, lipgloss.Color(p.EditorSelection)) {
 				t.Fatal("run rendering lost syntax or selection color")
 			}
 			if cell.Style.Attrs&uv.AttrItalic == 0 {

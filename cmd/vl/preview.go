@@ -40,7 +40,7 @@ func runPreview(args []string, stdout, stderr io.Writer) int {
 	flags.BoolVar(&opt.lineNumbers, "line-numbers", false, "show source line numbers")
 	flags.BoolVar(&opt.wrap, "wrap", false, "wrap long lines at --width instead of clipping")
 	color := flags.String("color", "auto", "syntax colors: auto, always, or never")
-	themeName := flags.String("theme", "", "syntax theme ID or theme file (default: VL's saved theme)")
+	themeName := flags.String("theme", "", "syntax theme ID (default: VL's saved theme)")
 	flags.Usage = func() {
 		fmt.Fprintln(stderr, "Usage: vl preview [options] file")
 		flags.PrintDefaults()
@@ -101,13 +101,13 @@ func runPreview(args []string, stdout, stderr io.Writer) int {
 
 func loadPreviewTheme(override string) (*theme.Theme, error) {
 	if override != "" {
-		return theme.Load(override, "")
+		return theme.Load(override)
 	}
 	path, err := config.LayoutPath()
 	if err == nil {
 		layout, err := config.LoadLayout(path)
 		if err == nil && layout.Theme != "" {
-			if selected, err := theme.Load(layout.Theme, layout.ThemeType); err == nil {
+			if selected, err := theme.Load(layout.Theme); err == nil {
 				return selected, nil
 			}
 		}

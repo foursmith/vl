@@ -1,8 +1,6 @@
 package app
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -15,15 +13,8 @@ import (
 
 func TestComponentsDoNotBorrowEditorOrPickerColors(t *testing.T) {
 	m := tabWorkspace(t, 1)
-	filename := filepath.Join(t.TempDir(), "roles.json")
-	raw := `{"colors":{"editor.foreground":"#111111","quickInput.foreground":"#222222","quickInput.background":"#101010","menu.foreground":"#334455","menu.background":"#111213","menu.selectionForeground":"#556677","menu.selectionBackground":"#141516","statusBar.foreground":"#778899","statusBar.background":"#171819","statusBar.noFolderBackground":"#FF0000","tab.activeForeground":"#99AABB","strongForeground":"#FFFFFF"}}`
-	if err := os.WriteFile(filename, []byte(raw), 0600); err != nil {
-		t.Fatal(err)
-	}
-	th, err := theme.Load(filename, "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	raw := `{"colors":{"editor.foreground":"#111111","quickInput.foreground":"#222222","quickInput.background":"#101010","menu.foreground":"#7799BB","menu.background":"#111213","menu.selectionForeground":"#8596A7","menu.selectionBackground":"#141516","statusBar.foreground":"#778899","statusBar.background":"#171819","statusBar.noFolderBackground":"#FF0000","tab.activeForeground":"#99AABB","strongForeground":"#FFFFFF"}}`
+	th, _ := fixtureTheme(t, "vs-dark", raw)
 	m.SetColorTheme(th)
 	m.openFile("file0.go")
 	m.sidebar = true // keyboard focus does not change the single active editor group
@@ -63,7 +54,7 @@ func TestComponentsDoNotBorrowEditorOrPickerColors(t *testing.T) {
 	}
 	l := m.contextMenuLayout()
 	painted := m.contextMenuOverlay(base)
-	for i, want := range []string{"#556677", "#334455"} {
+	for i, want := range []string{"#8596A7", "#7799BB"} {
 		cells := uv.NewStyledString(painted[l.y+i+1]).Lines(ansi.GraphemeWidth)[0]
 		if !sameColor(cells[l.x+2].Style.Fg, lipgloss.Color(want)) {
 			t.Fatal("context menu borrowed quick input/editor foreground")
@@ -74,16 +65,71 @@ func TestComponentsDoNotBorrowEditorOrPickerColors(t *testing.T) {
 func TestTokenAlphaUsesActualDiffAndSelectionSurfaces(t *testing.T) {
 	colors := theme.Builtin("dark_modern").Palette()
 	colors.Background = "#000000"
-	spans := []highlight.Span{{Start: 0, End: 1, Color: "#FFFFFF80", Background: "#00FF0080"}}
+	spans := []highlight.Span{{Start: 0, End: 1, Color: "#FFFFFFC0", Background: "#00004080"}}
 	rendered := diffCode(colors, "x", spans, 1, 0, colors.Background, "", diffRange{}, diffRange{})
 	cell := uv.NewStyledString(rendered).Lines(ansi.GraphemeWidth)[0][0]
-	if !sameColor(cell.Style.Bg, lipgloss.Color("#008000")) || !sameColor(cell.Style.Fg, lipgloss.Color("#80C080")) {
+	if !sameColor(cell.Style.Bg, lipgloss.Color("#000020")) || !sameColor(cell.Style.Fg, lipgloss.Color("#C0C0C8")) {
 		t.Fatal("token alpha was composed before token/line background")
 	}
-	colors.EditorSelection = "#FF000080"
+	colors.EditorSelection = "#80000080"
 	rendered = diffCode(colors, "x", spans, 1, 0, colors.Background, "", diffRange{}, diffRange{0, 1})
 	cell = uv.NewStyledString(rendered).Lines(ansi.GraphemeWidth)[0][0]
-	if !sameColor(cell.Style.Bg, lipgloss.Color("#804000")) || !sameColor(cell.Style.Fg, lipgloss.Color("#C0A080")) {
+	if !sameColor(cell.Style.Bg, lipgloss.Color("#400010")) || !sameColor(cell.Style.Fg, lipgloss.Color("#D0C0C4")) {
 		t.Fatal("selection/token foreground ignored actual compositing order")
+	}
+}
+
+func TestHighContrastDecorationsRemainVisible(t *testing.T) {
+	for _, id := range []string{"hc_black", "hc_light"} {
+		t.Run(id, func(t *testing.T) {
+			m := tabWorkspace(t, 1)
+			t.Cleanup(m.Close)
+			drain(t, m, m.SetColorTheme(theme.Builtin(id)))
+			drain(t, m, m.openFile("file0.go"))
+			firstLine := func() []uv.Cell {
+				return uv.NewStyledString(m.editorLines()[0]).Lines(ansi.GraphemeWidth)[0]
+			}
+			cells := firstLine()
+			code := cells[7]
+			border := lipgloss.Color(theme.Composite(m.colors.CurrentLineBorder, m.colors.Background))
+			if cells[6].Style.Underline != uv.UnderlineNone || code.Style.Underline != uv.UnderlineSingle || !sameColor(code.Style.UnderlineColor, border) {
+				t.Fatal("current-line border did not start at the first text cell")
+			}
+			if !sameColor(code.Style.Bg, lipgloss.Color(m.colors.Background)) || sameColor(code.Style.Fg, code.Style.Bg) {
+				t.Fatalf("current-line border erased the syntax token: %+v", code)
+			}
+
+			setTestFind(m, "package")
+			drain(t, m, m.findNext())
+			match := firstLine()[7]
+			if match.Style.Underline == 0 || sameColor(match.Style.Fg, match.Style.Bg) {
+				t.Fatalf("search hit lost its underline or text: %+v", match)
+			}
+
+			m.pickerIndex = 0
+			choice := action{label: "Same label"}
+			focused, regular := m.pickerRow(choice, 0, 30, -1), m.pickerRow(choice, 1, 30, -1)
+			readCell := func(s string, x int) uv.Cell {
+				return uv.NewStyledString(s).Lines(ansi.GraphemeWidth)[0][x]
+			}
+			if plain(focused) != plain(regular) || sameColor(readCell(focused, 0).Style.Bg, readCell(regular, 0).Style.Bg) {
+				t.Fatal("picker focus should use a distinct background with the same label")
+			}
+			m.contextMenu = &contextMenu{actions: []action{choice, choice}}
+			l := m.contextMenuLayout()
+			menu := m.contextMenuOverlay(m.mainLines())
+			focusedCell, regularCell := readCell(menu[l.y+1], l.x+1), readCell(menu[l.y+2], l.x+1)
+			if focusedCell.Content != " " || sameColor(focusedCell.Style.Bg, regularCell.Style.Bg) {
+				t.Fatal("context menu focus should use a distinct background with an empty prefix")
+			}
+
+			p := m.colors
+			diff := diffCode(p, "changed", nil, 7, 0, p.AddedBackground, p.AddedText, diffRange{0, 7},
+				diffRange{}, diffCodeOverlay{changeBorder: p.AddedBorder})
+			change := uv.NewStyledString(diff).Lines(ansi.GraphemeWidth)[0][0]
+			if change.Style.Underline == 0 || sameColor(change.Style.Fg, change.Style.Bg) {
+				t.Fatalf("inline addition lost its underline or text: %+v", change)
+			}
+		})
 	}
 }

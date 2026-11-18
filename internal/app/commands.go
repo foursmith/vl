@@ -162,8 +162,19 @@ func (m *Model) filterActions() []action {
 		return m.palette
 	}
 	var result []action
+	var heading action
+	pendingHeading := false
 	for _, a := range m.palette {
-		if strings.Contains(strings.ToLower(a.label), query) || a.id != a.label && strings.Contains(strings.ToLower(a.id), query) {
+		if m.pickerHeading(a) {
+			heading, pendingHeading = a, true
+			continue
+		}
+		if strings.Contains(strings.ToLower(a.label), query) || a.id != a.label && strings.Contains(strings.ToLower(a.id), query) ||
+			strings.Contains(strings.ToLower(heading.label), query) {
+			if pendingHeading {
+				result = append(result, heading)
+				pendingHeading = false
+			}
 			result = append(result, a)
 		}
 	}

@@ -80,6 +80,7 @@ type tab struct {
 	highlighter      *highlight.Session
 	renderKey        editorRenderKey
 	renderedRows     map[int]string
+	guides           *editorGuides
 	markdown         markdownLayout
 	markdownImages   *markdownImageCache
 	topImageOffset   int
@@ -128,8 +129,9 @@ type Model struct {
 	monochrome              bool
 	colorTheme              *theme.Theme
 	themeBeforePreview      *theme.Theme
-	localThemes             []*theme.Theme
-	localThemesSeq          uint64
+	importedThemes          []*theme.Theme
+	importedThemesSeq       uint64
+	themeImporting          bool
 	darkTheme               *theme.Theme
 	lightTheme              *theme.Theme
 	themePinned             bool
@@ -528,8 +530,10 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		if msg.err != nil {
 			m.notice = m.tr("Save preferences: %s", m.tr(msg.err.Error()))
 		}
-	case localThemesMsg:
-		m.applyLocalThemes(msg)
+	case importedThemesMsg:
+		m.applyImportedThemes(msg)
+	case themesImportedMsg:
+		return m, m.finishThemeImport(msg)
 	case historyPageMsg:
 		m.applyHistoryPage(msg)
 	case tea.ColorProfileMsg:

@@ -1,8 +1,7 @@
 package app
 
 import (
-	"os"
-	"path/filepath"
+	"strings"
 	"testing"
 
 	"charm.land/lipgloss/v2"
@@ -12,17 +11,34 @@ import (
 	"github.com/ourongxing/vl/internal/theme"
 )
 
+func TestSelectedFolderKeepsChevronWithoutAnExtraArrow(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	t.Cleanup(m.Close)
+	m.sidebar = true
+	m.items = []item{{folder: "src", label: "src"}}
+	m.expanded["src"] = true
+	m.selected = 0
+
+	m.SetColorTheme(theme.Builtin("dark_modern"))
+	selected := func() string { return plain(m.sidebarLinesWidth(34)[headerHeight]) }
+	if got := selected(); !strings.HasPrefix(got, " "+m.treeChevron(true)) {
+		t.Fatalf("ordinary selection should use the existing highlight: %q", got)
+	}
+
+	m.SetColorTheme(theme.Builtin("hc_black"))
+	if got := selected(); !strings.HasPrefix(got, " "+m.treeChevron(true)) {
+		t.Fatalf("high-contrast selection should also keep just the chevron: %q", got)
+	}
+	cells := uv.NewStyledString(m.sidebarLinesWidth(34)[headerHeight]).Lines(ansi.GraphemeWidth)[0]
+	if sameColor(cells[0].Style.Bg, lipgloss.Color(m.colors.Panel)) {
+		t.Fatal("high-contrast selection is indistinguishable from the sidebar")
+	}
+}
+
 func decorationTheme(t *testing.T) *theme.Theme {
 	t.Helper()
-	name := filepath.Join(t.TempDir(), "tree.json")
 	raw := `{"colors":{"editor.background":"#000","sideBar.background":"#000","sideBar.foreground":"#bfbaaa","list.activeSelectionBackground":"#181818","list.activeSelectionForeground":"#dbd7ca","list.inactiveSelectionBackground":"#121212","list.inactiveSelectionForeground":"#bbb8aa","gitDecoration.addedResourceForeground":"#4d9375","gitDecoration.modifiedResourceForeground":"#6394bf","gitDecoration.deletedResourceForeground":"#cb7676","gitDecoration.untrackedResourceForeground":"#5eaab5","gitDecoration.renamedResourceForeground":"#73c991","gitDecoration.conflictingResourceForeground":"#d4976c","gitDecoration.stageModifiedResourceForeground":"#445566","gitDecoration.stageDeletedResourceForeground":"#778899","gitDecoration.submoduleResourceForeground":"#999aaa","gitDecoration.ignoredResourceForeground":"#dedcd550"}}`
-	if err := os.WriteFile(name, []byte(raw), 0600); err != nil {
-		t.Fatal(err)
-	}
-	th, err := theme.Load(name, "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	th, _ := fixtureTheme(t, "vs-dark", raw)
 	return th
 }
 func treeCells(m *Model, e item, state treeRowState) []uv.Cell {
@@ -62,7 +78,7 @@ func TestExplorerAndChangesUseDifferentDecorationRoles(t *testing.T) {
 				if section == explorer {
 					wantMarker = "#4A6F8F"
 				} // iconlabel.css opacity: .75
-				if !sameColor(cell.Style.Fg, lipgloss.Color(wantMarker)) {
+				if !sameColor(cell.Style.Fg, lipgloss.Color(theme.Readable(wantMarker, m.colors.Panel))) {
 					t.Fatal("status marker lost Git decoration")
 				}
 			}
@@ -100,7 +116,7 @@ func TestTreeSelectionAndIgnoredIcons(t *testing.T) {
 							want = "#AAA79D"
 						}
 					}
-					if !sameColor(cell.Style.Fg, lipgloss.Color(want)) {
+					if !sameColor(cell.Style.Fg, lipgloss.Color(theme.Readable(want, bg))) {
 						t.Fatalf("selection section=%v focus=%v got=%v want=%s", section, focus, cell.Style.Fg, want)
 					}
 				}
@@ -111,7 +127,7 @@ func TestTreeSelectionAndIgnoredIcons(t *testing.T) {
 	e.ignored = true
 	icon := fileicon.For(e.file, m.nerd)
 	for _, cell := range treeCells(m, e, treeRowState{}) {
-		if cell.Content == "z" && !sameColor(cell.Style.Fg, lipgloss.Color("#464543")) {
+		if cell.Content == "z" && !sameColor(cell.Style.Fg, lipgloss.Color(theme.Readable("#464543", m.colors.Panel))) {
 			t.Fatal("ignored filename is not muted")
 		}
 		if cell.Content == icon.Glyph && !sameColor(cell.Style.Fg, lipgloss.Color(icon.Color)) {

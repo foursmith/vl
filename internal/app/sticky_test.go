@@ -7,8 +7,10 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/ourongxing/vl/internal/theme"
 )
 
 func TestStickyCodeScopesIgnoreCommentsAndStrings(t *testing.T) {
@@ -47,6 +49,8 @@ func TestStickyEditorPaintingHitTestingAndInvalidation(t *testing.T) {
 	d.Edit("func outer() {\n if ready {\n" + strings.Repeat("  work()\n", 30) + " }\n}\n")
 	d.SetPosition(15, 0)
 	m.tabs[0].top = 10
+	m.colors.StickyBorder = "#8844CC"
+	border := lipgloss.Color(theme.Composite(m.colors.StickyBorder, m.colors.StickyBackground))
 	rows := m.editorLines()
 	if !strings.Contains(ansi.Strip(rows[0]), "func outer") || !strings.Contains(ansi.Strip(rows[1]), "if ready") {
 		t.Fatal("missing nested context", rows[:2])
@@ -54,7 +58,7 @@ func TestStickyEditorPaintingHitTestingAndInvalidation(t *testing.T) {
 	for _, painted := range [][]string{rows, m.editorLines()} {
 		for y, row := range painted {
 			for _, cell := range uv.NewStyledString(row).Lines(ansi.GraphemeWidth)[0] {
-				if (cell.Style.Underline != 0) != (y == 1) {
+				if (cell.Style.Underline == uv.UnderlineSingle && sameColor(cell.Style.UnderlineColor, border)) != (y == 1) {
 					t.Fatal("sticky separator missing or leaked into another row", y)
 				}
 			}

@@ -86,7 +86,7 @@ func (m *Model) welcomeLines() []string {
 		padding := max(1, width-ansi.StringWidth(a.label)-ansi.StringWidth(a.key))
 		lines[y+logoRows+m.welcomeGap(logoRows)+i] = strings.Repeat(" ", x) +
 			theme.Style(m.colors.Muted, m.colors.Background).Render(a.label) + strings.Repeat(" ", padding) +
-			theme.Style(m.colors.Foreground, m.colors.Border).Render(a.key)
+			theme.TextStyle(m.colors.InputForeground, m.colors.Input).Render(a.key)
 	}
 	return lines
 }

@@ -55,7 +55,7 @@ func (m *Model) pickerOverlay(base []string) []string {
 		if m.modal == "recent" && m.input.Value() == "" {
 			message = m.tr("No recent workspaces")
 		}
-		box = append(box, border.Render("│")+row("  "+message, w, m.colors.Muted, bg)+border.Render("│"))
+		box = append(box, border.Render("│")+row("  "+message, w, theme.Readable(m.colors.Muted, bg), bg)+border.Render("│"))
 	}
 	box = append(box, border.Render("╰"+strings.Repeat("─", w)+"╯"))
 	return m.composeOverlay(base, box, l.x, l.y)
@@ -79,6 +79,9 @@ func (m *Model) clickPicker(msg tea.MouseClickMsg) tea.Cmd {
 			return nil
 		}
 		if index := l.indexAt(msg.X, msg.Y); index >= 0 {
+			if m.pickerHeading(rows[index]) {
+				return nil
+			}
 			m.selectPickerIndex(index)
 			return m.selectPickerChoice()
 		}
@@ -97,6 +100,9 @@ func (m *Model) selectPickerChoice() tea.Cmd {
 		return nil
 	}
 	a := rows[m.pickerIndex]
+	if a.run == nil {
+		return nil
+	}
 	if a.disabled != "" {
 		m.notice = a.disabled
 		return nil
@@ -105,6 +111,9 @@ func (m *Model) selectPickerChoice() tea.Cmd {
 		m.lastCommand = a.id
 	}
 	if m.modal == "themes" {
+		if a.id == themeImportID {
+			return a.run()
+		}
 		m.themeBeforePreview = nil
 	}
 	m.modal = ""

@@ -75,6 +75,26 @@ func row(text string, width int, fg, bg string) string {
 	return out.String()
 }
 
+func underlineRow(rendered, color string, startColumn int) string {
+	var out strings.Builder
+	var pen uv.Style
+	underline := lipgloss.Color(color)
+	column := 0
+	for _, cell := range uv.NewStyledString(rendered).Lines(ansi.GraphemeWidth)[0] {
+		style := cell.Style
+		if column >= startColumn && style.Underline == uv.UnderlineNone {
+			style.Underline = uv.UnderlineSingle
+			style.UnderlineColor = underline
+		}
+		out.WriteString(style.Diff(&pen))
+		out.WriteString(cell.Content)
+		pen = style
+		column += cell.Width
+	}
+	out.WriteString("\x1b[0m")
+	return out.String()
+}
+
 func (m *Model) outputHeight() int {
 	if m.outputVisible && m.height >= 18 {
 		return 7
@@ -479,9 +499,12 @@ type editorRenderKey struct {
 	line, selectionStart, selectionEnd, width, left int
 	sticky                                          [maxStickyRows]int
 	stickyCount                                     int
+	bracket                                         bracketGuide
 }
 
 func (m *Model) editorLines() []string {
+	const gutterWidth = 7
+	textWidth := max(1, m.mainWidth()-gutterWidth)
 	t := &m.tabs[m.activeTab]
 	d := t.doc
 	source := d.Lines()
@@ -489,12 +512,21 @@ func (m *Model) editorLines() []string {
 	tableRows := t.tableRows()
 	line, _ := d.Position()
 	a, b := d.Selection()
+	guides := t.editorGuides(source)
+	flash := m.flash
+	if !m.flashValid() {
+		flash = nil
+	}
+	var bracket bracketGuide
+	if a == b && flash == nil {
+		bracket = guides.activeBracket(d.Cursor, m.colors)
+	}
 	sticky := m.editorStickyRows()
 	findOptions := m.findOptions
 	if m.findHidden {
 		findOptions = searchservice.Options{}
 	}
-	key := editorRenderKey{findOptions: findOptions, flashRevision: m.flashRevision, stickyCount: len(sticky), text: d.Text, line: line, selectionStart: a, selectionEnd: b, width: m.mainWidth(), left: t.left}
+	key := editorRenderKey{findOptions: findOptions, flashRevision: m.flashRevision, stickyCount: len(sticky), text: d.Text, line: line, selectionStart: a, selectionEnd: b, width: m.mainWidth(), left: t.left, bracket: bracket}
 	copy(key.sticky[:], sticky)
 	if t.renderedRows == nil || t.renderKey != key {
 		t.renderKey = key
@@ -506,11 +538,8 @@ func (m *Model) editorLines() []string {
 			delete(t.renderedRows, i)
 		}
 	}
-	flash := m.flash
-	if !m.flashValid() {
-		flash = nil
-	}
 	var lines []string
+	currentRow := -1
 	for y := 0; y < m.contentHeight(); y++ {
 		i, image, imageOffset := t.editorDisplayAt(top + y)
 		if y < len(sticky) {
@@ -522,12 +551,16 @@ func (m *Model) editorLines() []string {
 			if imageOffset <= len(mdRows) {
 				content = mdRows[imageOffset-1]
 			}
-			lines = append(lines, row("", 7, m.colors.Foreground, m.colors.Background)+row(content, w-7, m.colors.Foreground, m.colors.Background))
+			lines = append(lines, row("", gutterWidth, m.colors.Foreground, m.colors.Background)+row(content, w-gutterWidth, m.colors.Foreground, m.colors.Background))
 			continue
 		}
 		if i >= len(source) {
 			lines = append(lines, row("", m.mainWidth(), m.colors.Foreground, m.colors.Background))
 			continue
+		}
+		highlightCurrentLine := i == line && a == b
+		if highlightCurrentLine && y >= len(sticky) {
+			currentRow = y
 		}
 		if rendered, ok := t.renderedRows[i]; ok {
 			lines = append(lines, rendered)
@@ -539,7 +572,7 @@ func (m *Model) editorLines() []string {
 			gutterBG = m.colors.StickyBackground
 		}
 		bg := gutterBG
-		if i == line {
+		if highlightCurrentLine {
 			bg = m.colors.CurrentLine
 		}
 		foldedLines := 0
@@ -552,20 +585,20 @@ func (m *Model) editorLines() []string {
 			}
 		}
 		var text, run strings.Builder
-		runFG, runBG := "", ""
+		runFG, runBG, runUnderline := "", "", ""
 		var runFont theme.FontStyle
 		flush := func() {
 			if run.Len() == 0 {
 				return
 			}
-			style := runFont.Apply(theme.Style(runFG, runBG))
+			style := theme.CodeStyle(runFG, runBG, runUnderline, runFont)
 			text.WriteString(style.Render(run.String()))
 			run.Reset()
 		}
-		appendRun := func(s, fg, bg string, font theme.FontStyle) {
-			if fg != runFG || bg != runBG || font != runFont {
+		appendRun := func(s, fg, bg, underline string, font theme.FontStyle) {
+			if fg != runFG || bg != runBG || underline != runUnderline || font != runFont {
 				flush()
-				runFG, runBG, runFont = fg, bg, font
+				runFG, runBG, runUnderline, runFont = fg, bg, underline, font
 			}
 			run.WriteString(s)
 		}
@@ -581,7 +614,7 @@ func (m *Model) editorLines() []string {
 			input = input[start:]
 			visual, runeIndex = start, start
 		}
-		right := t.left + max(1, m.mainWidth()-7)
+		right := t.left + textWidth
 		iter := graphemes.FromString(input)
 		for iter.Next() {
 			cluster := iter.Value()
@@ -614,14 +647,17 @@ func (m *Model) editorLines() []string {
 					cellBG = theme.Composite(spans[spanIndex].Background, bg)
 				}
 			}
+			if depth, ok := guides.depths[offset+j]; ok {
+				if color := m.colors.BracketColor(depth); color != "" {
+					fg = color
+				}
+			}
 			for matchIndex < len(matches) && matches[matchIndex][1] <= j {
 				matchIndex++
 			}
 			searchMatch := matchIndex < len(matches) && matches[matchIndex][0] < runeIndex
-			if searchMatch {
-				cellBG = m.colors.FindMatchHighlight
-			}
-			if offset+j >= a && offset+j < b {
+			selected := offset+j >= a && offset+j < b
+			if selected {
 				if m.colors.EditorSelection != "" {
 					cellBG = theme.Composite(m.colors.EditorSelection, cellBG)
 				}
@@ -629,8 +665,9 @@ func (m *Model) editorLines() []string {
 					fg = m.colors.EditorSelectionForeground
 				}
 			}
-			if searchMatch && offset+j >= a && offset+j < b {
-				cellBG = m.colors.FindMatch
+			underline := ""
+			if searchMatch {
+				fg, cellBG, underline = m.colors.FindColors(fg, cellBG, selected)
 			}
 			if flash != nil && flash.matches[offset+j] {
 				cellBG = m.colors.PopupSelection
@@ -642,15 +679,15 @@ func (m *Model) editorLines() []string {
 				}
 			}
 			if gap := min(start, right) - max(gapStart, t.left); gap > 0 {
-				appendRun(strings.Repeat(" ", gap), fg, cellBG, font)
+				appendRun(strings.Repeat(" ", gap), fg, cellBG, underline, font)
 			}
 			if start >= right {
 				break
 			}
-			appendRun(s, fg, cellBG, font)
+			appendRun(s, fg, cellBG, underline, font)
 		}
 		selectedEOL := offset+d.LineRuneCount(i) >= a && offset+d.LineRuneCount(i) < b
-		if selectedEOL && visual >= t.left && visual < t.left+max(1, m.mainWidth()-7) {
+		if selectedEOL && visual >= t.left && visual < right {
 			selectionBG := bg
 			if m.colors.EditorSelection != "" {
 				selectionBG = theme.Composite(m.colors.EditorSelection, bg)
@@ -659,11 +696,11 @@ func (m *Model) editorLines() []string {
 			if m.colors.EditorSelectionForeground != "" {
 				fg = m.colors.EditorSelectionForeground
 			}
-			appendRun(" ", fg, selectionBG, 0)
+			appendRun(" ", fg, selectionBG, "", 0)
 		}
 		flush()
 		if foldedLines > 0 {
-			text.WriteString(theme.Style(m.colors.Accent, bg).Render(" … " + m.tr("%d lines", foldedLines)))
+			text.WriteString(theme.TextStyle(m.colors.Accent, bg).Render(" … " + m.tr("%d lines", foldedLines)))
 		}
 		numberColor := m.colors.LineNumber
 		if i == line {
@@ -674,27 +711,31 @@ func (m *Model) editorLines() []string {
 			marker = ">"
 			numberColor = m.colors.Accent
 		}
-		gutter := theme.Style(numberColor, gutterBG).Render(fmt.Sprintf("%5d%s ", i+1, marker))
-		rendered := row(gutter+row(text.String(), max(1, m.mainWidth()-7), m.colors.Foreground, bg), m.mainWidth(), m.colors.Foreground, m.colors.Background)
+		gutter := theme.TextStyle(numberColor, gutterBG).Render(fmt.Sprintf("%5d%s", i+1, marker))
+		gutter += row("", 1, numberColor, gutterBG)
+		rendered := row(gutter+row(text.String(), textWidth, m.colors.Foreground, bg), m.mainWidth(), m.colors.Foreground, m.colors.Background)
+		rowBracket := bracketGuide{}
+		if y >= len(sticky) {
+			rowBracket = bracket
+		}
+		rendered = guides.decorate(rendered, i, gutterWidth, t.left, rowBracket, m.colors)
 		if len(sticky) > 0 && y == len(sticky)-1 {
-			// Underline the final pinned row without taking a row from the editor.
-			var out strings.Builder
-			var pen uv.Style
-			for _, cell := range uv.NewStyledString(rendered).Lines(ansi.GraphemeWidth)[0] {
-				style := cell.Style
-				style.Underline = uv.UnderlineSingle
-				style.UnderlineColor = lipgloss.Color(theme.Composite(m.colors.StickyBorder, m.colors.StickyBackground))
-				out.WriteString(style.Diff(&pen))
-				out.WriteString(cell.Content)
-				pen = style
-			}
-			out.WriteString("\x1b[0m")
-			rendered = out.String()
+			rendered = underlineRow(rendered, theme.Composite(m.colors.StickyBorder, m.colors.StickyBackground), 0)
 		}
 		t.renderedRows[i] = rendered
 		lines = append(lines, rendered)
 	}
 
+	if currentRow >= 0 && m.colors.CurrentLineBorder != "" {
+		border := theme.Composite(m.colors.CurrentLineBorder, m.colors.Background)
+		lines[currentRow] = underlineRow(lines[currentRow], border, gutterWidth)
+		// The previous text row's underline draws the top edge without moving content.
+		if currentRow > len(sticky) {
+			if _, image, _ := t.editorDisplayAt(top + currentRow - 1); image == nil {
+				lines[currentRow-1] = underlineRow(lines[currentRow-1], border, gutterWidth)
+			}
+		}
+	}
 	return lines
 }
 

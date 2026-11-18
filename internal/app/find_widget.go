@@ -329,7 +329,7 @@ func (m *Model) searchFieldLine(input *textinput.Model, active bool, textEnd, bo
 		shown.Blur()
 	}
 	text := ansi.Truncate(m.inputView(shown, x+searchFieldInset, y), max(0, textEnd-searchFieldInset-1), "")
-	return row(label, searchFieldInset, m.colors.Muted, background) + row(text, boxEnd-searchFieldInset, m.colors.InputForeground, m.colors.Input)
+	return row(label, searchFieldInset, theme.Readable(m.colors.Muted, background), background) + row(text, boxEnd-searchFieldInset, m.colors.InputForeground, m.colors.Input)
 }
 func (m *Model) paintSearchControls(lines []string, w int, controls []searchPanelControl, originX, originY int, background string) {
 	for _, c := range controls {
@@ -351,16 +351,16 @@ func (m *Model) paintSearchControls(lines []string, w int, controls []searchPane
 		if c.quiet && hovered {
 			fg = m.colors.SideForeground
 		}
-		label := theme.Style(fg, bg).Underline(hovered && !c.quiet || c.id == "word").Render(c.label)
+		label := theme.TextStyle(fg, bg).Underline(hovered && !c.quiet || c.id == "word").Render(c.label)
 		selected := c.id == "case" && m.search.options.Case || c.id == "word" && m.search.options.Word || c.id == "regex" && m.search.options.Regex || c.id == "preserve" && m.search.options.PreserveCase
 		selected = selected || c.id == "changed" && m.search.options.ChangedOnly || c.id == "open" && m.search.options.OnlyOpen || c.id == "ignore" && !m.search.options.IncludeIgnored
 		if selected {
 			if c.embedded {
 				fg = m.colors.Accent
 				bg = theme.Composite(theme.WithOpacity(fg, .18), bg)
-				label = theme.Style(fg, bg).Underline(hovered || c.id == "word").Render(c.label)
+				label = theme.TextStyle(fg, bg).Underline(hovered || c.id == "word").Render(c.label)
 			} else {
-				label = theme.Style(m.colors.Panel, m.colors.Accent).Bold(true).Render(c.label)
+				label = theme.TextStyle(m.colors.Panel, m.colors.Accent).Bold(true).Render(c.label)
 			}
 		}
 		lines[c.y] = row(ansi.Cut(lines[c.y], 0, c.x), c.x, m.colors.SideForeground, background) + row(label, c.width, fg, bg) + ansi.Cut(lines[c.y], c.x+c.width, w)

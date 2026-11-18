@@ -1,7 +1,9 @@
 # VS Code color themes
 
-Builtin themes use unmodified VS Code theme files. The reference
-is the installed VS Code build `08d4889f9ec4a1685d257b9b95de036c8e1ce1e5`.
+The 10 bundled JSON files in `internal/theme/themes/` come from
+`contributes.themes[].path` in the `vscode.theme-defaults` extension of VS Code 1.135.0
+(`08d4889f9ec4a1685d257b9b95de036c8e1ce1e5`). The corresponding contribution
+IDs, labels, and theme types are recorded in `internal/theme/builtin.go`.
 
 ## Source files
 
@@ -41,58 +43,41 @@ On exit, errors and repository switches we disable only subscriptions we enabled
 preserving modes already set by the caller.
 
 Ctrl+Shift+P contains one **Preferences: Color Theme** command. It opens a separate searchable
-theme picker with the current selection marked and dark themes before light themes.
+theme picker with the current selection marked. Themes are grouped into dark,
+light, dark high contrast, and light high contrast.
 Arrow keys preview the highlighted theme immediately. Enter confirms it and
 remembers it for that appearance; Escape or switching to another picker restores
 the committed theme. Preview does not change either saved theme. External changes
 can update the committed theme while previewing; cancellation restores that latest
-selection. Builtin themes are Dark Modern, Dark+, Dark (Visual Studio), Light Modern,
-Light+, and Light (Visual Studio). CLI identifiers are `dark_modern`, `dark_plus`,
-`dark_vs`, `light_modern`, `light_plus`, and `light_vs`.
+selection. The 10 themes from `vscode.theme-defaults` are bundled. Use a
+builtin ID such as `dark_modern`, `light_2026`, or `hc_light` to
+select one from the command line.
 
-Place local VS Code themes in `~/.config/vl/themes/` on every platform,
-including macOS. JSON, JSONC, and XML `.tmTheme` files appear in
-**Ctrl+Shift+P → Preferences: Color Theme**, labelled Local and Light/Dark. Subdirectories
-are scanned, so relative include files or a full extension directory can stay
-together. Non-theme JSON files such as `package.json` are skipped. A bad theme
-reports an error without preventing valid themes from appearing. Reopen the
-theme picker after adding or updating a theme; discovery runs in the
-background, outside rendering.
+## Import from VS Code
 
-Selections from this directory are saved as stable relative identifiers such as
-`local:my-theme.json` or `local:my-pack/themes/day.json`. Display names may change
-without losing the saved selection. Builtin IDs remain separate even if a local
-file has the same name. You can also select a local ID or an external file at
-startup:
+Choose **Import Themes from VS Code** at the top of **Preferences: Color Theme**.
+vl finds the local VS Code installation and scans its built-in and installed
+extensions for color themes. It reads the extension contribution's label,
+`id`, and `uiTheme`. A contribution without an `id` uses its label as its ID.
+Imported IDs include the extension identity, for example
+`vscode:antfu.theme-vitesse/Vitesse Dark`. You can pass that ID to `-theme`.
 
-```sh
-vl -theme local:my-theme.json
-vl -theme /path/to/theme.json
-# If a detached theme has no type declaration:
-vl -theme local:day.json -theme-type vs
-```
+The importer resolves JSON/JSONC includes and TextMate references into
+self-contained JSON files under `~/.config/vl/themes/vscode/`. Includes apply
+first. The child overrides color keys and appends token rules. Missing includes,
+cycles, and excessive nesting are reported. Each contribution's `uiTheme`
+sets its color category. Saved themes load directly from the import catalog.
 
-JSON/JSONC comments, trailing commas, relative recursive `include`, and
-`tokenColors` arrays are supported. `tokenColors` may also reference a relative
-XML `.tmTheme` file. Legacy JSON `settings` and standalone XML `.tmTheme` files
-are converted to the same internal theme representation. Includes apply first;
-the child overrides color keys and appends token rules. A color value `default`
-removes an inherited override. Invalid files and missing includes return errors;
-cyclic includes and excessive nesting are rejected.
+Importing skips bundled themes and existing imported IDs. The picker
+refreshes after import and preserves the current selection. If some themes fail
+to import, vl reports the error and keeps the successful imports.
 
-The loader checks ancestor extension `package.json` manifests for a matching
-`contributes.themes[].path`, label, and `uiTheme`. The extension contribution
-owns the name/category; a standalone root JSON `type` declaration (`light`,
-`dark`, `hc`, `hcLight`) is an import convenience only when no contribution or
-explicit override exists. Includes do not change category. Without either source
-the fallback is `vs-dark`. `-theme-type` supplies an explicit extension type
-(`vs`, `vs-dark`, `hc-light`, `hc-black`) for a detached file. There is no automatic
-scan of installed extensions or Marketplace download.
+## Saved selections
 
-The committed selection (`theme`, `themeType`) and remembered pair (`darkTheme`,
-`lightTheme`, with optional `darkThemeType` / `lightThemeType` overrides) are saved
-in `layout.json` alongside sidebar preferences. Confirming a theme writes this
-snapshot immediately, independently of terminal notification support. A
+The committed selection (`theme`) and remembered pair (`darkTheme`,
+`lightTheme`) are saved by ID in `~/.config/vl/vl.json` alongside sidebar
+preferences. Confirming a theme writes this snapshot immediately, independently
+of terminal notification support. A
 mismatched manual selection is saved with `themePinned`. A startup or live
 appearance change that selects a different theme also writes the snapshot.
 Previewing a theme in the picker is temporary until confirmed. Missing
@@ -182,7 +167,7 @@ their text and line ending; paired replacements emphasize the changed range.
 ## TextMate syntax
 
 The editor and diff share `internal/highlight`, backed by `textmate-go v0.3.0`.
-The six unmodified theme JSON files above are embedded under
+The bundled theme JSON files and their dependencies are embedded under
 `internal/theme/themes`; their `include` chain is resolved in order.
 TextMate scope stacks match inherited `tokenColors` using a dot-scope trie
 following [vscode-textmate's theme resolver](https://github.com/microsoft/vscode-textmate/blob/main/src/theme.ts):
@@ -217,9 +202,20 @@ cold lazy compilation to finish without discarding multiline context. Files abov
 rather than using incomplete state. Diff sides tokenize separately and reset
 state between hunks because the patch omits the intervening source.
 
-This implements TextMate syntax highlighting, not language-server semantic
-highlighting or bracket-pair colorization.
+The editor uses TextMate syntax highlighting. Within the syntax highlighting
+size limit, recognized files show guides at their indentation levels. Once
+syntax highlighting is ready, the innermost bracket pair at the cursor gets a
+vertical guide between the two bracket rows. Matched brackets use foreground
+colors based on nesting depth. TextMate scopes exclude brackets in strings
+and comments.
 
-The current line uses `editor.lineHighlightBackground`, falling back to
-`editor.lineHighlightBorder` as a cell background when the theme has no visible
-line fill. Terminal cells cannot draw a line outline without consuming source space.
+The current line uses `editor.lineHighlightBackground`. When the theme supplies
+a border instead, the editor draws horizontal rules across the text area along
+the current line and the preceding visible text line. The gutter and row spacing
+stay fixed.
+The current-line highlight is hidden while text is selected.
+Search and diff use colored underlines for their border colors. Sidebar
+navigation uses the horizontal activity bar's foreground roles and a selection
+tint when needed. The picker and context menu use the focused row's background
+color, with a marker in monochrome mode. Code and control text use a 4.5:1
+contrast floor against the final cell background.

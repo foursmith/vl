@@ -72,17 +72,14 @@ func (m *Model) Layout() config.Layout {
 	selected := m.committedTheme()
 	dark, light := m.darkTheme, m.lightTheme
 	return config.Layout{
-		SidebarWidth:   m.sidebarWidth,
-		SidebarRight:   m.sidebarRight,
-		Theme:          selected.ID,
-		ThemePinned:    m.themePinned,
-		DarkTheme:      dark.ID,
-		LightTheme:     light.ID,
-		DarkThemeType:  dark.UIThemeOverride,
-		LightThemeType: light.UIThemeOverride,
-		ThemeType:      selected.UIThemeOverride,
-		LastCommand:    m.lastCommand,
-		Language:       string(m.displayLanguage),
+		SidebarWidth: m.sidebarWidth,
+		SidebarRight: m.sidebarRight,
+		Theme:        selected.ID,
+		ThemePinned:  m.themePinned,
+		DarkTheme:    dark.ID,
+		LightTheme:   light.ID,
+		LastCommand:  m.lastCommand,
+		Language:     string(m.displayLanguage),
 	}
 }
 
@@ -90,19 +87,20 @@ func (m *Model) SetLayout(layout config.Layout) {
 	m.SetDisplayLanguage(layout.Language)
 	m.lastCommand = layout.LastCommand
 	m.SetSidebarLayout(layout.SidebarWidth, layout.SidebarRight)
-	m.restoreThemeSlot(layout.DarkTheme, layout.DarkThemeType, false)
-	m.restoreThemeSlot(layout.LightTheme, layout.LightThemeType, true)
+	restoredDark := m.restoreThemeSlot(layout.DarkTheme, false)
+	restoredLight := m.restoreThemeSlot(layout.LightTheme, true)
 	m.themePinned = false
 	if layout.Theme == "" {
 		return
 	}
 	switch {
-	case layout.Theme == layout.DarkTheme && layout.ThemeType == layout.DarkThemeType:
+	case layout.Theme == layout.DarkTheme:
 		m.applyTheme(m.darkTheme)
-	case layout.Theme == layout.LightTheme && layout.ThemeType == layout.LightThemeType:
+		m.themePinned = layout.ThemePinned && restoredDark
+	case layout.Theme == layout.LightTheme:
 		m.applyTheme(m.lightTheme)
+		m.themePinned = layout.ThemePinned && restoredLight
 	}
-	m.themePinned = layout.ThemePinned && layout.Theme == m.colorTheme.ID && layout.ThemeType == m.colorTheme.UIThemeOverride
 }
 
 func (m *Model) dragSidebar(x int) {

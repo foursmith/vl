@@ -1,29 +1,51 @@
 {
   "revision": "08d4889f9ec4a1685d257b9b95de036c8e1ce1e5",
   "sources": {
-    "activityBar.foreground": "src/vs/workbench/common/theme.ts",
-    "activityBar.inactiveForeground": "src/vs/workbench/common/theme.ts",
+    "activityBarTop.foreground": "src/vs/workbench/common/theme.ts",
+    "activityBarTop.inactiveForeground": "src/vs/workbench/common/theme.ts",
+    "breadcrumb.background": "src/vs/platform/theme/common/colors/editorColors.ts",
+    "breadcrumb.foreground": "src/vs/platform/theme/common/colors/editorColors.ts",
     "contrastActiveBorder": "src/vs/platform/theme/common/colors/baseColors.ts",
     "contrastBorder": "src/vs/platform/theme/common/colors/baseColors.ts",
     "descriptionForeground": "src/vs/platform/theme/common/colors/baseColors.ts",
     "diffEditor.diagonalFill": "src/vs/platform/theme/common/colors/editorColors.ts",
     "diffEditor.insertedLineBackground": "src/vs/platform/theme/common/colors/editorColors.ts",
     "diffEditor.insertedTextBackground": "src/vs/platform/theme/common/colors/editorColors.ts",
+    "diffEditor.insertedTextBorder": "src/vs/platform/theme/common/colors/editorColors.ts",
     "diffEditor.removedLineBackground": "src/vs/platform/theme/common/colors/editorColors.ts",
     "diffEditor.removedTextBackground": "src/vs/platform/theme/common/colors/editorColors.ts",
+    "diffEditor.removedTextBorder": "src/vs/platform/theme/common/colors/editorColors.ts",
     "disabledForeground": "src/vs/platform/theme/common/colors/baseColors.ts",
     "dropdown.background": "src/vs/platform/theme/common/colors/inputColors.ts",
     "dropdown.foreground": "src/vs/platform/theme/common/colors/inputColors.ts",
     "editor.background": "src/vs/platform/theme/common/colors/editorColors.ts",
+    "editor.findMatchBackground": "src/vs/platform/theme/common/colors/editorColors.ts",
+    "editor.findMatchBorder": "src/vs/platform/theme/common/colors/editorColors.ts",
+    "editor.findMatchForeground": "src/vs/platform/theme/common/colors/editorColors.ts",
+    "editor.findMatchHighlightBackground": "src/vs/platform/theme/common/colors/editorColors.ts",
+    "editor.findMatchHighlightBorder": "src/vs/platform/theme/common/colors/editorColors.ts",
+    "editor.findMatchHighlightForeground": "src/vs/platform/theme/common/colors/editorColors.ts",
+    "editor.foldBackground": "src/vs/editor/contrib/folding/browser/foldingDecorations.ts",
     "editor.foreground": "src/vs/platform/theme/common/colors/editorColors.ts",
     "editor.lineHighlightBackground": "src/vs/editor/common/core/editorColorRegistry.ts",
     "editor.lineHighlightBorder": "src/vs/editor/common/core/editorColorRegistry.ts",
     "editor.selectionBackground": "src/vs/platform/theme/common/colors/editorColors.ts",
     "editor.selectionForeground": "src/vs/platform/theme/common/colors/editorColors.ts",
     "editorActiveLineNumber.foreground": "src/vs/editor/common/core/editorColorRegistry.ts",
+    "editorBracketHighlight.foreground1": "src/vs/editor/common/core/editorColorRegistry.ts",
+    "editorBracketHighlight.foreground2": "src/vs/editor/common/core/editorColorRegistry.ts",
+    "editorBracketHighlight.foreground3": "src/vs/editor/common/core/editorColorRegistry.ts",
+    "editorBracketHighlight.foreground4": "src/vs/editor/common/core/editorColorRegistry.ts",
+    "editorBracketHighlight.foreground5": "src/vs/editor/common/core/editorColorRegistry.ts",
+    "editorBracketHighlight.foreground6": "src/vs/editor/common/core/editorColorRegistry.ts",
     "editorGroupHeader.tabsBackground": "src/vs/workbench/common/theme.ts",
+    "editorIndentGuide.background": "src/vs/editor/common/core/editorColorRegistry.ts",
+    "editorIndentGuide.background1": "src/vs/editor/common/core/editorColorRegistry.ts",
     "editorLineNumber.activeForeground": "src/vs/editor/common/core/editorColorRegistry.ts",
     "editorLineNumber.foreground": "src/vs/editor/common/core/editorColorRegistry.ts",
+    "editorStickyScroll.background": "src/vs/platform/theme/common/colors/editorColors.ts",
+    "editorStickyScroll.border": "src/vs/platform/theme/common/colors/editorColors.ts",
+    "editorWhitespace.foreground": "src/vs/editor/common/core/editorColorRegistry.ts",
     "editorWidget.background": "src/vs/platform/theme/common/colors/editorColors.ts",
     "editorWidget.foreground": "src/vs/platform/theme/common/colors/editorColors.ts",
     "errorForeground": "src/vs/platform/theme/common/colors/baseColors.ts",
@@ -67,6 +89,7 @@
     "statusBar.foreground": "src/vs/workbench/common/theme.ts",
     "strongForeground": "src/vs/platform/theme/common/colors/baseColors.ts",
     "tab.activeBackground": "src/vs/workbench/common/theme.ts",
+    "tab.activeBorderTop": "src/vs/workbench/common/theme.ts",
     "tab.activeForeground": "src/vs/workbench/common/theme.ts",
     "tab.border": "src/vs/workbench/common/theme.ts",
     "tab.inactiveBackground": "src/vs/workbench/common/theme.ts",
@@ -75,13 +98,13 @@
     "widget.border": "src/vs/platform/theme/common/colors/editorColors.ts"
   },
   "colors": {
-    "activityBar.foreground": {
+    "activityBarTop.foreground": {
       "variants": {
         "dark": {
-          "hex": "#FFFFFF"
+          "hex": "#E7E7E7"
         },
         "light": {
-          "hex": "#FFFFFF"
+          "hex": "#424242"
         },
         "hcDark": {
           "hex": "#FFFFFF"
@@ -91,24 +114,24 @@
         }
       }
     },
-    "activityBar.inactiveForeground": {
+    "activityBarTop.inactiveForeground": {
       "variants": {
         "dark": {
           "op": "transparent",
           "args": [
             {
-              "ref": "activityBar.foreground"
+              "ref": "activityBarTop.foreground"
             },
-            0.4
+            0.6
           ]
         },
         "light": {
           "op": "transparent",
           "args": [
             {
-              "ref": "activityBar.foreground"
+              "ref": "activityBarTop.foreground"
             },
-            0.4
+            0.75
           ]
         },
         "hcDark": {
@@ -118,6 +141,18 @@
           "ref": "editor.foreground"
         }
       }
+    },
+    "breadcrumb.background": {
+      "ref": "editor.background"
+    },
+    "breadcrumb.foreground": {
+      "op": "transparent",
+      "args": [
+        {
+          "ref": "foreground"
+        },
+        0.8
+      ]
     },
     "contrastActiveBorder": {
       "variants": {
@@ -213,6 +248,18 @@
         "hcLight": null
       }
     },
+    "diffEditor.insertedTextBorder": {
+      "variants": {
+        "dark": null,
+        "light": null,
+        "hcDark": {
+          "hex": "#33FF2EFF"
+        },
+        "hcLight": {
+          "hex": "#374E06"
+        }
+      }
+    },
     "diffEditor.removedLineBackground": {
       "variants": {
         "dark": {
@@ -235,6 +282,18 @@
         },
         "hcDark": null,
         "hcLight": null
+      }
+    },
+    "diffEditor.removedTextBorder": {
+      "variants": {
+        "dark": null,
+        "light": null,
+        "hcDark": {
+          "hex": "#FF008F"
+        },
+        "hcLight": {
+          "hex": "#AD0707"
+        }
       }
     },
     "disabledForeground": {
@@ -299,6 +358,80 @@
         "hcLight": {
           "hex": "#FFFFFF"
         }
+      }
+    },
+    "editor.findMatchBackground": {
+      "variants": {
+        "light": {
+          "hex": "#A8AC94"
+        },
+        "dark": {
+          "hex": "#515C6A"
+        },
+        "hcDark": null,
+        "hcLight": null
+      }
+    },
+    "editor.findMatchBorder": {
+      "variants": {
+        "light": null,
+        "dark": null,
+        "hcDark": {
+          "ref": "contrastActiveBorder"
+        },
+        "hcLight": {
+          "ref": "contrastActiveBorder"
+        }
+      }
+    },
+    "editor.findMatchForeground": null,
+    "editor.findMatchHighlightBackground": {
+      "variants": {
+        "light": {
+          "hex": "#EA5C0055"
+        },
+        "dark": {
+          "hex": "#EA5C0055"
+        },
+        "hcDark": null,
+        "hcLight": null
+      }
+    },
+    "editor.findMatchHighlightBorder": {
+      "variants": {
+        "light": null,
+        "dark": null,
+        "hcDark": {
+          "ref": "contrastActiveBorder"
+        },
+        "hcLight": {
+          "ref": "contrastActiveBorder"
+        }
+      }
+    },
+    "editor.findMatchHighlightForeground": null,
+    "editor.foldBackground": {
+      "variants": {
+        "light": {
+          "op": "transparent",
+          "args": [
+            {
+              "ref": "editor.selectionBackground"
+            },
+            0.3
+          ]
+        },
+        "dark": {
+          "op": "transparent",
+          "args": [
+            {
+              "ref": "editor.selectionBackground"
+            },
+            0.3
+          ]
+        },
+        "hcDark": null,
+        "hcLight": null
       }
     },
     "editor.foreground": {
@@ -378,6 +511,63 @@
         }
       }
     },
+    "editorBracketHighlight.foreground1": {
+      "variants": {
+        "dark": {
+          "hex": "#FFD700"
+        },
+        "light": {
+          "hex": "#0431FAFF"
+        },
+        "hcDark": {
+          "hex": "#FFD700"
+        },
+        "hcLight": {
+          "hex": "#0431FAFF"
+        }
+      }
+    },
+    "editorBracketHighlight.foreground2": {
+      "variants": {
+        "dark": {
+          "hex": "#DA70D6"
+        },
+        "light": {
+          "hex": "#319331FF"
+        },
+        "hcDark": {
+          "hex": "#DA70D6"
+        },
+        "hcLight": {
+          "hex": "#319331FF"
+        }
+      }
+    },
+    "editorBracketHighlight.foreground3": {
+      "variants": {
+        "dark": {
+          "hex": "#179FFF"
+        },
+        "light": {
+          "hex": "#7B3814FF"
+        },
+        "hcDark": {
+          "hex": "#87CEFA"
+        },
+        "hcLight": {
+          "hex": "#7B3814FF"
+        }
+      }
+    },
+    "editorBracketHighlight.foreground4": {
+      "hex": "#00000000"
+    },
+    "editorBracketHighlight.foreground5": {
+      "hex": "#00000000"
+    },
+    "editorBracketHighlight.foreground6": {
+      "hex": "#00000000"
+    },
     "editorGroupHeader.tabsBackground": {
       "variants": {
         "dark": {
@@ -389,6 +579,12 @@
         "hcDark": null,
         "hcLight": null
       }
+    },
+    "editorIndentGuide.background": {
+      "ref": "editorWhitespace.foreground"
+    },
+    "editorIndentGuide.background1": {
+      "ref": "editorIndentGuide.background"
     },
     "editorLineNumber.activeForeground": {
       "ref": "editorActiveLineNumber.foreground"
@@ -406,6 +602,37 @@
         },
         "hcLight": {
           "hex": "#292929"
+        }
+      }
+    },
+    "editorStickyScroll.background": {
+      "ref": "editor.background"
+    },
+    "editorStickyScroll.border": {
+      "variants": {
+        "dark": null,
+        "light": null,
+        "hcDark": {
+          "ref": "contrastBorder"
+        },
+        "hcLight": {
+          "ref": "contrastBorder"
+        }
+      }
+    },
+    "editorWhitespace.foreground": {
+      "variants": {
+        "dark": {
+          "hex": "#E3E4E229"
+        },
+        "light": {
+          "hex": "#33333333"
+        },
+        "hcDark": {
+          "hex": "#E3E4E229"
+        },
+        "hcLight": {
+          "hex": "#CCCCCC"
         }
       }
     },
@@ -945,6 +1172,16 @@
     },
     "tab.activeBackground": {
       "ref": "editor.background"
+    },
+    "tab.activeBorderTop": {
+      "variants": {
+        "dark": null,
+        "light": null,
+        "hcDark": null,
+        "hcLight": {
+          "hex": "#B5200D"
+        }
+      }
     },
     "tab.activeForeground": {
       "variants": {

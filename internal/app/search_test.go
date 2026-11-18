@@ -11,7 +11,19 @@ import (
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/ourongxing/vl/internal/editor"
+	"github.com/ourongxing/vl/internal/theme"
 )
+
+func hasFindBackground(p theme.Palette, cell uv.Cell) bool {
+	for _, bg := range []string{p.Background, p.CurrentLine} {
+		_, passive, _ := p.FindColors(p.Foreground, bg, false)
+		_, current, _ := p.FindColors(p.Foreground, theme.Composite(p.EditorSelection, bg), true)
+		if sameColor(cell.Style.Bg, lipgloss.Color(passive)) || sameColor(cell.Style.Bg, lipgloss.Color(current)) {
+			return true
+		}
+	}
+	return false
+}
 
 func setTestFind(m *Model, query string) {
 	m.search.query.SetValue(query)
@@ -49,7 +61,7 @@ func TestSearchHighlightsAllAndClearsUntilNext(t *testing.T) {
 		count := 0
 		for _, row := range m.editorLines()[:2] {
 			for _, cell := range uv.NewStyledString(row).Lines(ansi.GraphemeWidth)[0] {
-				if sameColor(cell.Style.Bg, lipgloss.Color(m.colors.FindMatch)) || sameColor(cell.Style.Bg, lipgloss.Color(m.colors.FindMatchHighlight)) {
+				if hasFindBackground(m.colors, cell) {
 					count++
 				}
 			}
@@ -188,7 +200,7 @@ func TestWorkspaceResultReusesFileSearchHighlightsAndNavigation(t *testing.T) {
 			for _, line := range m.editorLines() {
 				for _, cells := range uv.NewStyledString(line).Lines(ansi.GraphemeWidth) {
 					for _, cell := range cells {
-						if sameColor(cell.Style.Bg, lipgloss.Color(m.colors.FindMatch)) || sameColor(cell.Style.Bg, lipgloss.Color(m.colors.FindMatchHighlight)) {
+						if hasFindBackground(m.colors, cell) {
 							total++
 						}
 					}

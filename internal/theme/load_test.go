@@ -18,11 +18,16 @@ func writeTheme(t *testing.T, dir, name, content string) string {
 }
 func mustLoad(t *testing.T, path string) *Theme {
 	t.Helper()
-	th, err := Load(path, "")
+	return mustLoadKind(t, path, "vs-dark")
+}
+
+func mustLoadKind(t *testing.T, path, kind string) *Theme {
+	t.Helper()
+	data, err := loadSource(filepath.ToSlash(path), kind, readThemeFile)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return th
+	return data.theme(path)
 }
 
 func TestJSONCIncludesColorsAndTokens(t *testing.T) {
@@ -33,11 +38,11 @@ func TestJSONCIncludesColorsAndTokens(t *testing.T) {
  {"scope":"string", "settings":{"foreground":"#112233"}}]}`)
 	name := writeTheme(t, dir, "theme.jsonc", `{
  // https://example.com/a//b and trailing commas are valid JSONC
- "name":"URL // /* name */", "type":"light", "include":"./base.json",
+ "name":"URL // /* name */", "type":"dark", "include":"./base.json",
  "colors":{"sideBar.background":"default", "editor.selectionBackground":"#f008",},
  "tokenColors":[{"scope":["comment"],"settings":{"foreground":"#fed", "fontStyle":"",}},],
  }`)
-	th := mustLoad(t, name)
+	th := mustLoadKind(t, name, "vs")
 	if !th.IsLight() || th.Name != "URL // /* name */" {
 		t.Fatalf("metadata: %+v", th)
 	}
@@ -55,15 +60,15 @@ func TestJSONCIncludesColorsAndTokens(t *testing.T) {
 
 func TestInvalidThemesAreErrors(t *testing.T) {
 	dir := t.TempDir()
-	for _, input := range []string{`[]`, `null`, `{"tokenColors":12}`, `{/*`, `{"colors":[]}`, `{"type":"unknown"}`, `{"include":"missing.json"}`} {
+	for _, input := range []string{`[]`, `null`, `{"tokenColors":12}`, `{/*`, `{"colors":[]}`, `{"include":"missing.json"}`} {
 		name := writeTheme(t, dir, "invalid.json", input)
-		if _, err := Load(name, ""); err == nil {
+		if _, err := loadSource(filepath.ToSlash(name), "vs-dark", readThemeFile); err == nil {
 			t.Errorf("accepted %s", input)
 		}
 	}
 	writeTheme(t, dir, "a.json", `{"include":"b.json"}`)
 	name := writeTheme(t, dir, "b.json", `{"include":"a.json"}`)
-	if _, err := Load(name, ""); err == nil || !strings.Contains(err.Error(), "cycle") {
+	if _, err := loadSource(filepath.ToSlash(name), "vs-dark", readThemeFile); err == nil || !strings.Contains(err.Error(), "cycle") {
 		t.Fatalf("include cycle: %v", err)
 	}
 }
@@ -88,12 +93,18 @@ func TestTextMateFileAndExternalTokenColors(t *testing.T) {
 }
 
 func TestBuiltinsUseIndependentUIAndSyntax(t *testing.T) {
+	if len(BuiltinIDs) != 10 {
+		t.Fatalf("expected the 10 VS Code default themes, got %d", len(BuiltinIDs))
+	}
 	for _, id := range BuiltinIDs {
 		th := Builtin(id)
-		if th.Name == "" || th.Palette().Foreground == "" || th.IsLight() != strings.HasPrefix(id, "light_") {
+		spec := builtinThemes[id]
+		if th.Name == "" || th.Palette().Foreground == "" || th.Type != spec.kind ||
+			th.VSCodeID != spec.vscodeID || !isBundledTheme(defaultExtensionID, th.VSCodeID) {
 			t.Fatalf("invalid builtin: %s", id)
 		}
 	}
+
 	if Builtin("dark_modern").Palette().Background == Builtin("dark_plus").Palette().Background {
 		t.Fatal("Dark+ borrowed Modern UI overrides")
 	}
@@ -123,8 +134,7 @@ func TestScopeRulesMatchVSCodeReference(t *testing.T) {
 	if err = json.Unmarshal(b, &fixture); err != nil {
 		t.Fatal(err)
 	}
-	th := &Theme{tokens: fixture.TokenColors, palette: Palette{Foreground: "#BBBBBB", Background: "#1E1E1E"}}
-	th.syntax = compileTokens(th.tokens)
+	th := &Theme{syntax: compileTokens(fixture.TokenColors), palette: Palette{Foreground: "#BBBBBB", Background: "#1E1E1E"}}
 	for _, tc := range fixture.Cases {
 		style := th.Resolve(tc.Scopes)
 		if style.Color != tc.Color || style.Font != tc.Font {
@@ -133,23 +143,9 @@ func TestScopeRulesMatchVSCodeReference(t *testing.T) {
 	}
 }
 
-func TestExtensionContributionSuppliesType(t *testing.T) {
-	dir := t.TempDir()
-	writeTheme(t, dir, "package.json", `{"contributes":{"themes":[{"label":"Local Day","uiTheme":"vs","path":"./theme.json"}]}}`)
-	name := writeTheme(t, dir, "theme.json", `{"colors":{}}`)
-	th := mustLoad(t, name)
-	if !th.IsLight() || th.Name != "Local Day" || th.Palette().Background != "#FFFFFF" {
-		t.Fatalf("extension metadata lost: %+v", th)
-	}
-	explicit, err := Load(name, "vs-dark")
-	if err != nil || explicit.IsLight() {
-		t.Fatalf("explicit type: %v %v", explicit, err)
-	}
-}
-
 func TestTransparentFocusBorderDoesNotHideActiveText(t *testing.T) {
 	dir := t.TempDir()
-	file := writeTheme(t, dir, "transparent-focus.json", `{"colors":{"sideBar.background":"#121212","focusBorder":"#00000000","activityBar.foreground":"#4d9375","list.highlightForeground":"#abcdef","textLink.foreground":"#123456"}}`)
+	file := writeTheme(t, dir, "transparent-focus.json", `{"colors":{"sideBar.background":"#121212","focusBorder":"#00000000","activityBar.foreground":"#FFFFFF","activityBarTop.foreground":"#4d9375","list.highlightForeground":"#abcdef","textLink.foreground":"#123456"}}`)
 	p := mustLoad(t, file).Palette()
 	if p.FocusBorder != p.Panel || p.NavigationForeground != "#4D9375" || p.Accent != "#123456" {
 		t.Fatalf("focus border leaked into active text: %+v", p)
@@ -171,7 +167,7 @@ func TestTerminalPopupSeparatesVitesseBlackSurfaces(t *testing.T) {
 func TestQuickInputUsesWidgetAndListFallbacks(t *testing.T) {
 	dir := t.TempDir()
 	file := writeTheme(t, dir, "fallback.json", `{"type":"light","colors":{"editor.foreground":"#000","foreground":"#123456","editorWidget.foreground":"#234567","list.activeSelectionForeground":"#FFFFFF","list.activeSelectionBackground":"#0060C0"}}`)
-	p := mustLoad(t, file).Palette()
+	p := mustLoadKind(t, file, "vs").Palette()
 	if p.PopupForeground != "#234567" || p.PopupSelectionForeground != "#FFFFFF" {
 		t.Fatal("quick input fallback confused editor, widget, or focused list foreground")
 	}

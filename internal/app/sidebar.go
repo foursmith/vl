@@ -46,18 +46,22 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 	}
 	h := m.bodyHeight()
 	var nav strings.Builder
+	inactive := theme.Readable(m.colors.NavigationInactiveForeground, m.colors.Panel)
 	x := 0
 	for _, item := range m.navigation() {
 		nav.WriteString(row("", item.x-x, m.colors.SideForeground, m.colors.Panel))
 		active := item.section == m.section
-		fg := m.colors.NavigationInactiveForeground
+		fg, bg := inactive, m.colors.Panel
 		if active {
-			fg = m.colors.NavigationForeground
+			fg = theme.Readable(m.colors.NavigationForeground, bg)
+			if !m.monochrome && fg == inactive {
+				bg = m.colors.SidebarSelection(true)
+				fg = theme.Readable(m.colors.NavigationForeground, bg)
+			}
 		}
-		label := item.glyph + " "
-		label = ansi.Truncate(label, item.width, "")
-		label += strings.Repeat(" ", max(0, item.width-ansi.StringWidth(label)))
-		nav.WriteString(theme.Style(fg, m.colors.Panel).Underline(m.monochrome && active).Render(label))
+		glyph := ansi.Truncate(item.glyph, item.width, "")
+		label := theme.Style(fg, bg).Underline(active && m.monochrome).Render(glyph)
+		nav.WriteString(row(label, item.width, fg, bg))
 		x = item.x + item.width
 	}
 	if m.section == search {
@@ -88,10 +92,7 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 				bg = m.colors.Hover
 			}
 			if i == m.selected {
-				bg = m.colors.Selection
-				if !m.sidebar {
-					bg = m.colors.InactiveSelection
-				}
+				bg = m.colors.SidebarSelection(m.sidebar)
 			}
 			if m.section == explorer || m.section == changes {
 				text, fg = m.treeRow(entry, w, bg, treeRowState{selected: i == m.selected, hovered: i == hovered})
@@ -101,11 +102,11 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 			} else {
 				text, fg = m.historyRow(entry, w, bg)
 			}
-			if m.monochrome && i == m.selected && m.sidebar {
+			if i == m.selected && m.monochrome && m.sidebar {
 				text = ">" + ansi.Cut(text, 1, w)
 			}
 		}
-		lines = append(lines, row(text, w, fg, bg))
+		lines = append(lines, row(text, w, theme.Readable(fg, bg), bg))
 	}
 	return lines[:h]
 }
@@ -125,7 +126,8 @@ func (m *Model) treeRow(entry item, w int, bg string, state treeRowState) (strin
 		return row(theme.Style(m.colors.SideForeground, bg).Bold(true).Render(text), w, m.colors.SideForeground, bg), m.colors.SideForeground
 	}
 	if entry.header {
-		return row(" "+strings.Repeat("  ", entry.depth)+m.treeChevron(m.folderExpanded(entry))+" "+entry.label, w, m.colors.Muted, bg), m.colors.Muted
+		fg := theme.Readable(m.colors.Muted, bg)
+		return row(" "+strings.Repeat("  ", entry.depth)+m.treeChevron(m.folderExpanded(entry))+" "+entry.label, w, fg, bg), fg
 	}
 	decoration := m.gitDecorationColor(entry)
 	fg := m.colors.SideForeground
@@ -190,9 +192,9 @@ func (m *Model) treeRow(entry item, w int, bg string, state treeRowState) (strin
 		} else if m.section == explorer {
 			markerColor = theme.DecorationBadge(markerColor, bg)
 		}
-		text += strings.Repeat(" ", max(1, w-2-ansi.StringWidth(text))) + theme.Style(markerColor, bg).Render(marker)
+		text += strings.Repeat(" ", max(1, w-2-ansi.StringWidth(text))) + theme.TextStyle(markerColor, bg).Render(marker)
 	}
-	return text, fg
+	return text, theme.Readable(fg, bg)
 }
 
 func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {

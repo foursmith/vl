@@ -27,8 +27,7 @@ func main() {
 	}
 	displayLanguage := flag.String("lang", "", "display language: en or zh-CN (default: saved preference, or en)")
 	icons := flag.Bool("icons", true, "use Nerd Font glyphs adapted from Material Icon Theme; set -icons=false for plain text")
-	colorTheme := flag.String("theme", "", "color theme: builtin ID (dark_modern, dark_plus, dark_vs, light_modern, light_plus, light_vs), local:filename from ~/.config/vl/themes, or a theme file")
-	themeType := flag.String("theme-type", "", "local theme uiTheme from its extension: vs, vs-dark, hc-light, hc-black (default: theme type, or vs-dark)")
+	colorTheme := flag.String("theme", "", "bundled or imported color theme ID (for example, dark_modern or light_2026)")
 	version := flag.Bool("version", false, "print version")
 	flag.Usage = func() {
 		fmt.Fprintln(flag.CommandLine.Output(), "Usage: vl [options] [folder|file[:line[:column]]]\n       vl preview [options] file\n\nA VSCode-like Git diff viewer with basic text editing.\nA file opens in editor-only mode. Line and column numbers start at 1.\nWithout a path, opens the most recent workspace.")
@@ -45,13 +44,9 @@ func main() {
 		os.Exit(2)
 	}
 	var selectedTheme *theme.Theme
-	if *themeType != "" && *colorTheme == "" {
-		fmt.Fprintln(os.Stderr, "-theme-type requires a theme file")
-		os.Exit(2)
-	}
 	if *colorTheme != "" {
 		var err error
-		selectedTheme, err = theme.Load(*colorTheme, *themeType)
+		selectedTheme, err = theme.Load(*colorTheme)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Load theme:", err)
 			os.Exit(2)

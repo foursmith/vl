@@ -91,7 +91,8 @@ func TestSymbolModesPreserveLayoutAcrossWidthsAndHoverTargets(t *testing.T) {
 
 func TestSidebarNavigationUsesActiveColorWithoutChangeDecoration(t *testing.T) {
 	m := tabWorkspace(t, 0)
-	for _, colors := range []theme.Palette{theme.Builtin("dark_modern").Palette(), theme.Builtin("light_modern").Palette()} {
+	for _, id := range []string{"dark_modern", "light_modern", "light_plus", "hc_black", "hc_light"} {
+		colors := theme.Builtin(id).Palette()
 		m.colors = colors
 		for _, nerd := range []bool{false, true} {
 			m.nerd = nerd
@@ -109,9 +110,15 @@ func TestSidebarNavigationUsesActiveColorWithoutChangeDecoration(t *testing.T) {
 							want = colors.NavigationForeground
 						}
 						cells := uv.NewStyledString(ansi.Cut(nav, item.x, item.x+item.width)).Lines(ansi.GraphemeWidth)[0]
+						bg := colors.Panel
+						if item.section == active &&
+							theme.Readable(colors.NavigationForeground, colors.Panel) == theme.Readable(colors.NavigationInactiveForeground, colors.Panel) {
+							bg = colors.SidebarSelection(true)
+						}
 						for _, cell := range cells {
-							if !sameColor(cell.Style.Fg, lipgloss.Color(theme.Composite(want, colors.Panel))) || cell.Style.Underline != 0 {
-								t.Fatalf("theme=%s icons=%v dirty=%v active=%d tab=%d: wrong navigation style", colors.Panel, nerd, dirty, active, item.section)
+							if !sameColor(cell.Style.Fg, lipgloss.Color(theme.Readable(want, bg))) ||
+								!sameColor(cell.Style.Bg, lipgloss.Color(bg)) || cell.Style.Underline != 0 {
+								t.Fatalf("theme=%s icons=%v dirty=%v active=%d tab=%d: wrong navigation style", id, nerd, dirty, active, item.section)
 							}
 						}
 					}

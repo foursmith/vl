@@ -21,8 +21,10 @@ func (m *Model) breadcrumb(path string, width int) string {
 	}
 	path = filepath.ToSlash(path)
 	icon := fileicon.For(path, m.nerd)
-	separator := theme.Style(m.colors.BreadcrumbForeground, m.colors.BreadcrumbBackground).Render(" " + m.symbol(symbolRight) + " ")
-	iconText := row(icon.Glyph, 2, icon.Color, m.colors.BreadcrumbBackground)
+	bg := m.colors.BreadcrumbBackground
+	fg := theme.Readable(m.colors.BreadcrumbForeground, bg)
+	separator := theme.Style(fg, bg).Render(" " + m.symbol(symbolRight) + " ")
+	iconText := row(icon.Glyph, 2, icon.Color, bg)
 	name := safe(filepath.Base(path))
 	tail := iconText + name
 	dir := filepath.ToSlash(filepath.Dir(path))
@@ -47,7 +49,7 @@ func (m *Model) breadcrumb(path string, width int) string {
 			content = iconText + ansi.Truncate(name, max(0, available-ansi.StringWidth(iconText)), "…")
 		}
 	}
-	return row(" "+content, width, m.colors.BreadcrumbForeground, m.colors.BreadcrumbBackground)
+	return row(" "+content, width, fg, bg)
 }
 
 // Cache the current file's language for the footer.

@@ -18,7 +18,7 @@ func TestPreviewWindow(t *testing.T) {
 		t.Fatal(err)
 	}
 	var out, stderr bytes.Buffer
-	status := runPreview([]string{"--skip=1", "--lines=2", "--width=8", "--tab-size=2", "--color=always", "--", path}, &out, &stderr)
+	status := runPreview([]string{"--skip=1", "--lines=2", "--width=8", "--tab-size=2", "--color=always", "--theme=dark_modern", "--", path}, &out, &stderr)
 	if status != 0 {
 		t.Fatalf("status %d: %s", status, stderr.String())
 	}

@@ -39,16 +39,23 @@ func (m *Model) searchResultRow(index, w int, r searchRow) string {
 	s := &m.search
 	f := s.result.Files[r.file]
 	bg := m.colors.Panel
+	fg := m.colors.SideForeground
 	hovered := m.hoveredSidebarRow()
 	if index == hovered {
 		bg = m.colors.Hover
 	}
-	if index == s.selected && s.focus == 2 {
-		bg = m.colors.InactiveSelection
+	selected := index == s.selected && s.focus == 2
+	if selected {
+		bg = m.colors.SidebarSelection(m.sidebar)
 		if m.sidebar {
-			bg = m.colors.Selection
+			if m.colors.SelectionForeground != "" {
+				fg = m.colors.SelectionForeground
+			}
+		} else if m.colors.InactiveSelectionForeground != "" {
+			fg = m.colors.InactiveSelectionForeground
 		}
 	}
+	fg = theme.Readable(fg, bg)
 	action := index == hovered || (s.focus == 2 && index == s.selected)
 	end := max(0, w-2)
 	var text string
@@ -60,34 +67,34 @@ func (m *Model) searchResultRow(index, w int, r searchRow) string {
 		}
 		icon := fileicon.For(f.Path, m.nerd)
 		prefix := " " + m.treeChevron(!s.folded[f.Path]) + " " + row(icon.Glyph, 2, icon.Color, bg)
-		badge := theme.Style(m.colors.Foreground, m.colors.DiffPlaceholder).Render(fmt.Sprintf(" %d ", len(f.Matches)))
+		badge := theme.TextStyle(m.colors.Foreground, m.colors.DiffPlaceholder).Render(fmt.Sprintf(" %d ", len(f.Matches)))
 		budget := max(0, end-ansi.StringWidth(prefix)-ansi.StringWidth(badge)-1)
 		name := ansi.Truncate(safe(filepath.Base(f.Path)), budget, "…")
-		label := prefix + theme.Style(m.colors.Foreground, bg).Bold(true).Render(name)
+		label := prefix + theme.Style(fg, bg).Bold(true).Render(name)
 		remaining := budget - ansi.StringWidth(name)
 		if parent != "" && remaining > 2 {
-			label += theme.Style(m.colors.Muted, bg).Render(" " + ansi.Truncate(safe(parent), remaining-1, "…"))
+			label += theme.TextStyle(m.colors.Muted, bg).Render(" " + ansi.Truncate(safe(parent), remaining-1, "…"))
 		}
-		text = row(label, max(0, end-ansi.StringWidth(badge)), m.colors.Foreground, bg) + badge
+		text = row(label, max(0, end-ansi.StringWidth(badge)), fg, bg) + badge
 	} else {
 		number := fmt.Sprintf("%d", f.Matches[r.match].Line)
-		prefix := "   " + theme.Style(m.colors.Muted, bg).Render(number) + "  "
-		content := m.searchSnippet(f, r.match, max(0, end-ansi.StringWidth(prefix)), bg)
-		text = row(prefix+content, end, m.colors.Foreground, bg)
+		prefix := "   " + theme.TextStyle(m.colors.Muted, bg).Render(number) + "  "
+		content := m.searchSnippet(f, r.match, max(0, end-ansi.StringWidth(prefix)), fg, bg)
+		text = row(prefix+content, end, fg, bg)
 	}
 	button := ""
 	if action {
 		button = m.symbol(symbolClose)
 	}
-	text += row("", 1, m.colors.Foreground, bg) + row(button, 1, m.colors.Foreground, bg)
-	if m.monochrome && m.sidebar && index == s.selected && s.focus == 2 {
+	text += row("", 1, fg, bg) + row(button, 1, fg, bg)
+	if selected && m.monochrome && m.sidebar {
 		text = ">" + ansi.Cut(text, 1, w)
 	}
-	return row(text, w, m.colors.Foreground, bg)
+	return row(text, w, fg, bg)
 }
 
 // Render one source line, keeping its first match visible in a narrow sidebar.
-func (m *Model) searchSnippet(f searchservice.File, index, width int, bg string) string {
+func (m *Model) searchSnippet(f searchservice.File, index, width int, fg, bg string) string {
 	if width <= 0 {
 		return ""
 	}
@@ -127,6 +134,8 @@ func (m *Model) searchSnippet(f searchservice.File, index, width int, bg string)
 	}
 	var b strings.Builder
 	b.WriteString(prefix)
+	matchFG, matchBG, matchBorder := m.colors.FindColors(fg, bg, true)
+	plain, hitStyle := theme.Style(fg, bg), theme.CodeStyle(matchFG, matchBG, matchBorder, 0)
 	pos := left
 	for j := index; j < len(f.Matches) && f.Matches[j].Line == hit.Line; j++ {
 		match := f.Matches[j]
@@ -137,11 +146,11 @@ func (m *Model) searchSnippet(f searchservice.File, index, width int, bg string)
 		if z < a {
 			continue
 		}
-		b.WriteString(theme.Style(m.colors.Foreground, bg).Render(safe(f.Text[pos:a])))
-		b.WriteString(theme.Style(m.colors.Foreground, m.colors.FindMatch).Render(safe(f.Text[a:z])))
+		b.WriteString(plain.Render(safe(f.Text[pos:a])))
+		b.WriteString(hitStyle.Render(safe(f.Text[a:z])))
 		pos = z
 	}
-	b.WriteString(theme.Style(m.colors.Foreground, bg).Render(safe(f.Text[pos:right])))
+	b.WriteString(plain.Render(safe(f.Text[pos:right])))
 	suffix := ""
 	if right < end {
 		suffix = "…"

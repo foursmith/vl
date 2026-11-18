@@ -7,12 +7,13 @@ import (
 	"path/filepath"
 )
 
-func configPath(name string) (string, error) {
-	dir, err := os.UserConfigDir()
+// Dir is vl's preferences directory on every platform.
+func Dir() (string, error) {
+	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, "vl", name), nil
+	return filepath.Join(home, ".config", "vl"), nil
 }
 
 func loadJSON(path string, value any) error {

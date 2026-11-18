@@ -6,6 +6,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/ourongxing/vl/internal/theme"
 )
 
 type searchPanelGeometry struct {
@@ -173,7 +174,7 @@ func (m *Model) searchLines(nav string, w int) []string {
 			summary = filtered
 		}
 	}
-	lines[l.summary] = row(indent+ansi.Truncate(strings.TrimSpace(safe(summary)), max(0, w-searchFieldInset-1), "…"), w, m.colors.Muted, m.colors.Panel)
+	lines[l.summary] = row(indent+ansi.Truncate(strings.TrimSpace(safe(summary)), max(0, w-searchFieldInset-1), "…"), w, theme.Readable(m.colors.Muted, m.colors.Panel), m.colors.Panel)
 	for i := range lines {
 		lines[i] = row(lines[i], w, m.colors.SideForeground, m.colors.Panel)
 	}
