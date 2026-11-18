@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 )
 
@@ -62,18 +63,18 @@ func (l sidebarList) move(action string, count int) bool {
 	return true
 }
 
-func (m *Model) sidebarNavigationKey(k string) (bool, tea.Cmd) {
+func (m *Model) sidebarNavigationKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 	l := m.sidebarList()
-	key := ""
+	entryKey := ""
 	if entry := m.sidebarEntry(); entry != nil {
-		key = entry.key
+		entryKey = entry.key
 	}
-	scope := fmt.Sprintf("sidebar:%d:%s:%d:%s", m.section, m.repo.Root, *l.selected, key)
+	scope := fmt.Sprintf("sidebar:%d:%s:%d:%s", m.section, m.repo.Root, *l.selected, entryKey)
 	if m.section == search {
 		scope += fmt.Sprintf(":%d", m.search.seq)
 	}
-	action, count, handled := m.navigationState.key(scope, k)
-	if m.section == search && (action == "dd" || k == "delete") {
+	action, count, handled := m.navigationState.key(scope, msg.String())
+	if m.section == search && (action == "dd" || key.Matches(msg, sidebarKeys.Delete)) {
 		m.dismissSearchResult(*l.selected)
 		return true, nil
 	}

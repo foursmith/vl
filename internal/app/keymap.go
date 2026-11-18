@@ -38,6 +38,42 @@ var workbenchKeys = struct {
 	ContextMenu:    binding("Shift+F10", "Context menu", "shift+f10"),
 }
 
+// These workbench shortcuts take priority over both search input surfaces.
+var searchWorkbenchKeys = []key.Binding{
+	workbenchKeys.Quit, workbenchKeys.Files, workbenchKeys.Commands,
+	workbenchKeys.Explorer, workbenchKeys.Search, workbenchKeys.Changes, workbenchKeys.History, workbenchKeys.PullRequests,
+	workbenchKeys.Replace, workbenchKeys.Sidebar, workbenchKeys.Focus,
+}
+
+var searchKeys = struct {
+	Options, ToggleReplace, Previous, NextField, PreviousField key.Binding
+	Replace, ReplaceAll, FocusQuery                            key.Binding
+}{
+	Options:       binding("Ctrl+Shift+J", "Search options", "ctrl+shift+j", "alt+e"),
+	ToggleReplace: binding("Alt+H", "Toggle Replace", "alt+h"),
+	Previous:      binding("Shift+F3", "Previous Match", "shift+f3"),
+	NextField:     binding("Tab", "Next field", "tab"),
+	PreviousField: binding("Shift+Tab", "Previous field", "shift+tab"),
+	Replace:       binding("Ctrl+Enter", "Replace match", "ctrl+enter"),
+	ReplaceAll:    binding("Ctrl+Alt+Enter", "Replace all matches", "ctrl+alt+enter"),
+	FocusQuery:    binding("/", "Focus search query", "/", "i"),
+}
+
+func shortcutHint(label string, binding key.Binding) string {
+	return label + " (" + binding.Help().Key + ")"
+}
+
+var sidebarKeys = struct {
+	Open, Edit, Delete, SplitFolders, Paste, OpenPullRequest key.Binding
+}{
+	Open:            binding("Enter", "Open selected item", "enter"),
+	Edit:            binding("e", "Edit selected file", "e"),
+	Delete:          binding("Del", "Delete selected item", "delete"),
+	SplitFolders:    binding("L", "Split Folders", "L", "shift+l"),
+	Paste:           binding("p", "Paste", "p"),
+	OpenPullRequest: binding("o", "Open on GitHub", "o"),
+}
+
 var pickerKeys = struct{ Up, Down, PageUp, PageDown, First, Last, Accept key.Binding }{
 	Up:       binding("↑", "Previous", "up"),
 	Down:     binding("↓", "Next", "down"),

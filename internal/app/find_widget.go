@@ -7,6 +7,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -184,8 +185,6 @@ func (m *Model) fileFindInput(msg tea.Msg) tea.Cmd {
 	if m.search.focus == 0 {
 		m.editorDocument().ClearSelection()
 		m.navigateFileFind(0)
-	}
-	if m.search.focus == 0 {
 		return tea.Batch(cmd, m.refreshWorkspaceSearch())
 	}
 	return cmd
@@ -208,34 +207,33 @@ func (m *Model) toggleFileReplacement() tea.Cmd {
 	return m.focusFileFind(0)
 }
 func (m *Model) fileFindKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
-	k := msg.String()
-	switch k {
-	case "esc":
+	switch {
+	case key.Matches(msg, workbenchKeys.Escape):
 		m.closeFileFind()
 		return true, nil
-	case "ctrl+f":
+	case key.Matches(msg, workbenchKeys.Find):
 		return true, m.focusFileFind(0)
-	case "ctrl+shift+j", "alt+e":
+	case key.Matches(msg, searchKeys.Options):
 		return true, m.openSearchOptions()
-	case "alt+h":
+	case key.Matches(msg, searchKeys.ToggleReplace):
 		return true, m.toggleFileReplacement()
-	case "f3", "down":
+	case key.Matches(msg, workbenchKeys.FindNext, pickerKeys.Down):
 		m.navigateFileFind(1)
 		return true, nil
-	case "shift+f3", "up":
+	case key.Matches(msg, searchKeys.Previous, pickerKeys.Up):
 		m.navigateFileFind(-1)
 		return true, nil
-	case "tab", "shift+tab":
+	case key.Matches(msg, searchKeys.NextField, searchKeys.PreviousField):
 		if m.search.replace && m.editing() {
 			return true, m.focusFileFind(1 - m.search.focus)
 		}
 		m.blurFileFind()
 		return true, nil
-	case "ctrl+enter":
+	case key.Matches(msg, searchKeys.Replace):
 		return true, m.replaceFileFind(false)
-	case "ctrl+alt+enter":
+	case key.Matches(msg, searchKeys.ReplaceAll):
 		return true, m.replaceFileFind(true)
-	case "enter":
+	case key.Matches(msg, pickerKeys.Accept):
 		if m.search.focus == 1 {
 			return true, m.replaceFileFind(false)
 		}
@@ -248,10 +246,10 @@ func (m *Model) fileFindKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 		}
 		m.blurFileFind()
 		return true, nil
-	case "ctrl+q", "ctrl+p", "ctrl+shift+p", "f1", "ctrl+1", "ctrl+2", "ctrl+3", "ctrl+4", "ctrl+5", "ctrl+l", "f5", "f2", "ctrl+shift+f", "ctrl+shift+h":
+	case key.Matches(msg, searchWorkbenchKeys...), key.Matches(msg, workbenchKeys.Refresh):
 		m.blurFileFind()
 		return false, nil
-	case "ctrl+s":
+	case key.Matches(msg, workbenchKeys.Save):
 		return false, nil
 	}
 	return true, m.fileFindInput(msg)
@@ -283,17 +281,17 @@ func (m *Model) fileFindControls(w int) []searchPanelControl {
 	}
 	ids := []string{"case", "word", "regex", "previous", "next"}
 	labels := []string{"Aa", "ab", ".*", "↑", "↓"}
-	hints := []string{"Match Case", "Match Whole Word", "Use Regular Expression", "Previous Match (Shift+F3)", "Next Match (F3 / n)"}
+	hints := []string{"Match Case", "Match Whole Word", "Use Regular Expression", shortcutHint(searchKeys.Previous.Help().Desc, searchKeys.Previous), "Next Match (" + workbenchKeys.FindNext.Help().Key + " / n)"}
 	ids = append(ids, "close")
 	labels = append(labels, "×")
-	hints = append(hints, searchText("Close Find (Esc)"))
+	hints = append(hints, shortcutHint("Close Find", workbenchKeys.Escape))
 	add(fileFindQueryRow, w-1, ids, labels, hints)
 	if m.editing() {
 		toggleRow := fileFindQueryRow
 		if m.search.replace {
 			toggleRow++
 		}
-		controls = append(controls, searchPanelControl{id: "replacement", label: m.treeChevron(m.search.replace), hint: "Toggle Replace (Alt+H)", x: 1, y: toggleRow, width: 1, quiet: true})
+		controls = append(controls, searchPanelControl{id: "replacement", label: m.treeChevron(m.search.replace), hint: shortcutHint(searchKeys.ToggleReplace.Help().Desc, searchKeys.ToggleReplace), x: 1, y: toggleRow, width: 1, quiet: true})
 	}
 	if m.search.replace && m.editing() {
 		right := w - 1
@@ -302,7 +300,7 @@ func (m *Model) fileFindControls(w int) []searchPanelControl {
 				right = min(right, control.x+1)
 			}
 		}
-		add(fileReplaceRow, right, []string{"preserve", "replaceAll"}, []string{"AB", "↵"}, []string{"Preserve Case", "Replace All in This File (Ctrl+Alt+Enter)"})
+		add(fileReplaceRow, right, []string{"preserve", "replaceAll"}, []string{"AB", "↵"}, []string{"Preserve Case", shortcutHint("Replace All in This File", searchKeys.ReplaceAll)})
 	}
 	return slices.DeleteFunc(controls, func(c searchPanelControl) bool { return c.y >= m.fileFindHeight() })
 }

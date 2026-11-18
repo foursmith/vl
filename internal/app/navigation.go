@@ -70,8 +70,9 @@ func (n *navigationState) key(scope, k string) (string, int, bool) {
 	return k, count, true
 }
 
-func (m *Model) navigationKey(k string) (bool, tea.Cmd) {
+func (m *Model) navigationKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 	if !m.sidebar && m.currentImage() != nil {
+		k := msg.String()
 		digit := len(k) == 1 && k[0] >= '0' && k[0] <= '9' && (k != "0" || m.navigationState.count > 0)
 		switch k {
 		case "h", "j", "k", "l", "left", "right", "up", "down":
@@ -98,5 +99,5 @@ func (m *Model) navigationKey(k string) (bool, tea.Cmd) {
 		m.navigationState = navigationState{}
 		return false, nil
 	}
-	return m.sidebarNavigationKey(k)
+	return m.sidebarNavigationKey(msg)
 }

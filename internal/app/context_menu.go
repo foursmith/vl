@@ -224,19 +224,19 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 		}
 		if entry != nil {
 			if label := m.sidebarOpenLabel(*entry); label != "" {
-				add(label, "Enter", bind(m.openSelected))
+				add(label, sidebarKeys.Open.Help().Key, bind(m.openSelected))
 			}
 		}
 		if m.section == explorer {
 			if entry != nil {
 				if entry.folder != "" && strings.Contains(entry.label, "/") {
-					add(m.tr("Split Folders"), "L", bind(m.splitFolderChain))
+					add(m.tr("Split Folders"), sidebarKeys.SplitFolders.Help().Key, bind(m.splitFolderChain))
 				}
 				if !entry.header {
 					add(m.tr("Copy"), "yy", bind(m.yankEntry))
 				}
 			}
-			add(m.tr("Paste"), "p", bind(m.pasteEntryPrompt))
+			add(m.tr("Paste"), sidebarKeys.Paste.Help().Key, bind(m.pasteEntryPrompt))
 			add(m.tr("New File…"), "", bind(func() tea.Cmd { return m.newEntry(false) }))
 			add(m.tr("New Folder…"), "", bind(func() tea.Cmd { return m.newEntry(true) }))
 			add(m.tr("Refresh"), workbenchKeys.SidebarRefresh.Help().Key, m.refreshView)
@@ -266,14 +266,14 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 				})
 			}
 		} else if m.section == search && entry != nil {
-			add(m.tr("Dismiss Result"), "dd / Del", bind(func() tea.Cmd { m.dismissSearchResult(m.search.selected); return nil }))
+			add(m.tr("Dismiss Result"), "dd / "+sidebarKeys.Delete.Help().Key, bind(func() tea.Cmd { m.dismissSearchResult(m.search.selected); return nil }))
 		} else if m.section == pullRequests {
 			if entry != nil {
 				if entry.repoHeader {
 					add(m.tr("Filter Pull Requests"), "", m.openPullRequestFilter)
 				}
 				if entry.pullRequest != nil {
-					add(m.tr("Open on GitHub"), "o", func() tea.Cmd { return m.openBrowser(entry.pullRequest.URL) })
+					add(m.tr("Open on GitHub"), sidebarKeys.OpenPullRequest.Help().Key, func() tea.Cmd { return m.openBrowser(entry.pullRequest.URL) })
 				}
 			}
 			add(m.tr("Refresh"), workbenchKeys.SidebarRefresh.Help().Key, m.refreshView)
@@ -284,7 +284,7 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 				if entry.folder != "" {
 					label = m.tr("Delete Folder…")
 				}
-				add(label, "dd / Del", bind(m.deleteSelectedEntry))
+				add(label, "dd / "+sidebarKeys.Delete.Help().Key, bind(m.deleteSelectedEntry))
 			}
 			path := entryPath(entry)
 			if path != "" {

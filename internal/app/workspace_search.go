@@ -6,6 +6,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	searchservice "github.com/foursmith/vl/internal/search"
@@ -183,25 +184,19 @@ func (m *Model) selectedSearchRow() (searchRow, bool) {
 
 func (m *Model) searchKey(msg tea.KeyPressMsg) tea.Cmd {
 	s := &m.search
-	k := msg.String()
-	switch k {
-	case "ctrl+shift+j", "alt+e":
+	switch {
+	case key.Matches(msg, searchKeys.Options):
 		return m.toggleSearchDetails()
-	case "alt+h":
+	case key.Matches(msg, searchKeys.ToggleReplace):
 		return m.toggleSearchReplace()
-	case "ctrl+enter":
+	case key.Matches(msg, searchKeys.Replace, searchKeys.ReplaceAll):
 		if s.replace {
-			return m.replaceSearch(false)
+			return m.replaceSearch(key.Matches(msg, searchKeys.ReplaceAll))
 		}
 		return nil
-	case "ctrl+alt+enter":
-		if s.replace {
-			return m.replaceSearch(true)
-		}
-		return nil
-	case "ctrl+f", "ctrl+shift+f":
+	case key.Matches(msg, workbenchKeys.Find):
 		return m.focusSearch(0)
-	case "tab", "shift+tab":
+	case key.Matches(msg, searchKeys.NextField, searchKeys.PreviousField):
 		order := []int{0}
 		if s.replace {
 			order = append(order, 1)
@@ -219,13 +214,13 @@ func (m *Model) searchKey(msg tea.KeyPressMsg) tea.Cmd {
 			}
 		}
 		step := 1
-		if k == "shift+tab" {
+		if key.Matches(msg, searchKeys.PreviousField) {
 			step = -1
 		}
 		return m.focusSearch(order[(index+step+len(order))%len(order)])
-	case "esc":
+	case key.Matches(msg, workbenchKeys.Escape):
 		return m.focusSearch(2)
-	case "enter":
+	case key.Matches(msg, sidebarKeys.Open):
 		if s.focus == 2 {
 			return m.openSelected()
 		}
@@ -234,7 +229,7 @@ func (m *Model) searchKey(msg tea.KeyPressMsg) tea.Cmd {
 		}
 		m.focusSearch(2)
 		return m.runSearch()
-	case "down", "up":
+	case key.Matches(msg, pickerKeys.Down, pickerKeys.Up):
 		if s.focus != 2 {
 			return m.focusSearch(2)
 		}
@@ -242,13 +237,13 @@ func (m *Model) searchKey(msg tea.KeyPressMsg) tea.Cmd {
 	if s.focus != 2 {
 		return m.searchInput(msg)
 	}
-	if k == "/" || k == "i" {
+	if key.Matches(msg, searchKeys.FocusQuery) {
 		return m.focusSearch(0)
 	}
-	if k == "shift+f10" {
+	if key.Matches(msg, workbenchKeys.ContextMenu) {
 		return m.openSidebarContextMenu()
 	}
-	_, cmd := m.sidebarNavigationKey(k)
+	_, cmd := m.sidebarNavigationKey(msg)
 	return cmd
 }
 

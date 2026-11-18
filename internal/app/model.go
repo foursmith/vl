@@ -960,10 +960,10 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 			return cmd
 		}
 	}
-	if !m.sidebar && m.fileFindHeight() > 0 && k == "alt+h" {
+	if !m.sidebar && m.fileFindHeight() > 0 && key.Matches(msg, searchKeys.ToggleReplace) {
 		return m.toggleFileReplacement()
 	}
-	if !m.sidebar && k == "shift+f3" {
+	if !m.sidebar && key.Matches(msg, searchKeys.Previous) {
 		if !m.findWidget.workspaceMatch {
 			m.presentFileFind()
 		}
@@ -973,12 +973,10 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	if m.editorOnly && key.Matches(msg, workbenchKeys.Recent, workbenchKeys.Search, workbenchKeys.Replace, workbenchKeys.Explorer, workbenchKeys.Changes, workbenchKeys.History, workbenchKeys.PullRequests, workbenchKeys.Sidebar, workbenchKeys.Focus, workbenchKeys.DiffLayout) {
 		return nil
 	}
-	if m.sidebar && m.section == search {
-		switch k {
-		case "ctrl+q", "ctrl+p", "ctrl+h", "ctrl+shift+p", "f1", "ctrl+1", "ctrl+2", "ctrl+3", "ctrl+4", "ctrl+5", "ctrl+shift+f", "ctrl+shift+h", "ctrl+l", "f2", "ctrl+s", "ctrl+w":
-		default:
-			return m.searchKey(msg)
-		}
+	if m.sidebar && m.section == search &&
+		!key.Matches(msg, searchWorkbenchKeys...) &&
+		!key.Matches(msg, workbenchKeys.Recent, workbenchKeys.Save, workbenchKeys.Close) {
+		return m.searchKey(msg)
 	}
 	if m.editing() && m.sidebar {
 		m.tabs[m.activeTab].vim.CancelPending()
@@ -994,7 +992,7 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 			return cmd
 		}
 	}
-	if m.sidebar && m.section == explorer && k == "p" {
+	if m.sidebar && m.section == explorer && key.Matches(msg, sidebarKeys.Paste) {
 		m.navigationState = navigationState{}
 		return m.pasteEntryPrompt()
 	}
@@ -1004,7 +1002,7 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 			return cmd
 		}
 	}
-	if handled, cmd := m.navigationKey(k); handled {
+	if handled, cmd := m.navigationKey(msg); handled {
 		return cmd
 	}
 	if key.Matches(msg, workbenchKeys.ContextMenu) {
@@ -1076,20 +1074,20 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		return nil
 	}
 	if m.sidebar {
-		if m.section == pullRequests && k != "enter" {
-			if entry := m.current(); k == "o" && entry != nil && entry.pullRequest != nil {
+		if m.section == pullRequests && !key.Matches(msg, sidebarKeys.Open) {
+			if entry := m.current(); key.Matches(msg, sidebarKeys.OpenPullRequest) && entry != nil && entry.pullRequest != nil {
 				return m.openBrowser(entry.pullRequest.URL)
 			}
 			return nil
 		}
-		switch k {
-		case "delete":
+		switch {
+		case key.Matches(msg, sidebarKeys.Delete):
 			return m.deleteSelectedEntry()
-		case "enter":
+		case key.Matches(msg, sidebarKeys.Open):
 			return m.openSelected()
-		case "L", "shift+l":
+		case key.Matches(msg, sidebarKeys.SplitFolders):
 			return m.splitFolderChain()
-		case "e":
+		case key.Matches(msg, sidebarKeys.Edit):
 			return m.editSelected()
 		}
 		if m.section != changes {

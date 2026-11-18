@@ -176,9 +176,9 @@ func (m *Model) statusLayout() []statusSegment {
 	rightX := m.width - rightWidth
 	notice := m.notice
 	if m.sidebar && m.section == search && notice == "" {
-		notice = m.tr("Tab: fields/results · Ctrl+Shift+J: options")
+		notice = m.tr("%s: fields/results · %s: options", searchKeys.NextField.Help().Key, searchKeys.Options.Help().Key)
 		if m.search.replace && m.search.focus == 1 {
-			notice = m.tr("Enter: replace · Ctrl+Alt+Enter: replace all")
+			notice = m.tr("%s: replace · %s: replace all", sidebarKeys.Open.Help().Key, searchKeys.ReplaceAll.Help().Key)
 		}
 	}
 	if m.sidebar && m.sidebarVisible && m.modal == "" && m.contextMenu == nil && (m.section == history || m.section == pullRequests) {
