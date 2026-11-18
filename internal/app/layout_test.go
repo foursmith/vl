@@ -5,8 +5,39 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
+	gitservice "github.com/ourongxing/vl/internal/git"
 )
+
+func TestChangesNavigationShowsFileCount(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	t.Cleanup(m.Close)
+	for _, tc := range []struct {
+		count int
+		want  string
+	}{{0, "    "}, {1, "1   "}, {99, "99  "}, {100, "99+ "}} {
+		m.snapshot.Changes = make([]gitservice.Change, tc.count)
+		lines := m.sidebarLines()
+		if got := plain(lines[1])[8:12]; got != tc.want {
+			t.Errorf("%d changes rendered %q, want %q", tc.count, got, tc.want)
+		}
+		if got := plain(lines[0])[8:13]; got != "G   H" {
+			t.Fatalf("changes count displaced the navigation icons: %q", got)
+		}
+		cells := uv.NewStyledString(lines[1]).Lines(ansi.GraphemeWidth)[0]
+		for x, ch := range tc.want {
+			background := m.colors.Panel
+			if ch != ' ' {
+				background = m.colors.SidebarSelection(true)
+			}
+			if !sameColor(cells[8+x].Style.Bg, lipgloss.Color(background)) {
+				t.Errorf("%d changes: wrong background at badge column %d", tc.count, x)
+			}
+		}
+	}
+}
 
 func TestNavigationAndTabsShareCompactHeaderWithoutTitleBar(t *testing.T) {
 	m := tabWorkspace(t, 1)

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"strconv"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -62,10 +63,27 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 				fg = theme.Readable(m.colors.NavigationForeground, bg)
 			}
 		}
+		badge := ""
+		if item.section == changes {
+			switch count := len(m.snapshot.Changes); {
+			case count > 99:
+				badge = "99+"
+			case count > 0:
+				badge = strconv.Itoa(count)
+			}
+			if badge != "" {
+				badgeBackground := m.colors.SidebarSelection(true)
+				badgeForeground := m.colors.SelectionForeground
+				if badgeForeground == "" {
+					badgeForeground = m.colors.SideForeground
+				}
+				badge = theme.Style(theme.Readable(badgeForeground, badgeBackground), badgeBackground).Render(badge)
+			}
+		}
 		glyph := ansi.Truncate(item.glyph, item.width, "")
 		label := theme.Style(fg, bg).Underline(active && m.monochrome).Render(glyph)
 		nav.WriteString(row(label, item.width, fg, bg))
-		navBottom.WriteString(row("", item.width, fg, bg))
+		navBottom.WriteString(row(badge, item.width, fg, bg))
 	}
 	lines := []string{
 		row(nav.String(), w, m.colors.SideForeground, m.colors.Panel),
