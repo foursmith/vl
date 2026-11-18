@@ -31,14 +31,18 @@ jobs:
             version=${GITHUB_REF_NAME#v}
           fi
           bash scripts/package-release.sh "$version"
-          (cd dist && sha256sum -c SHA256SUMS)
+          (cd dist && sha256sum -c checksums.txt)
 
           stage=$(mktemp -d)
           trap 'rm -rf "$stage"' EXIT
           for platform in darwin-amd64 darwin-arm64 linux-amd64 linux-arm64 windows-amd64 windows-arm64; do
             destination="$stage/$platform"
             mkdir "$destination"
-            archive="dist/vl_${version}_${platform}"
+            arch=${platform#*-}
+            if [[ $arch == amd64 ]]; then
+              arch=x86_64
+            fi
+            archive="dist/vl_${version}_${platform%-*}_${arch}"
             binary="$destination/vl"
             if [[ $platform == windows-* ]]; then
               unzip -q "$archive.zip" -d "$destination"
@@ -64,7 +68,9 @@ jobs:
           path: |
             dist/*.tar.gz
             dist/*.zip
-            dist/SHA256SUMS
+            dist/install.sh
+            dist/install.ps1
+            dist/checksums.txt
           if-no-files-found: error
 
   draft:
@@ -86,7 +92,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           tag=$GITHUB_REF_NAME
-          sha256sum -c SHA256SUMS
+          sha256sum -c checksums.txt
           if draft=$(gh release view "$tag" --json isDraft --jq .isDraft); then
             test "$draft" = true
           else
@@ -96,4 +102,4 @@ jobs:
             fi
             gh release create "$tag" "${args[@]}"
           fi
-          gh release upload "$tag" vl_*.tar.gz vl_*.zip SHA256SUMS --clobber
+          gh release upload "$tag" vl_*.tar.gz vl_*.zip install.sh install.ps1 checksums.txt --clobber

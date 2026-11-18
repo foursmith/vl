@@ -2,11 +2,12 @@
 
 The [Release workflow](../.github/workflows/release.yml) builds every target in
 one Linux job. It runs `make check` and cross-compiles with CGO disabled for
-macOS, Linux and Windows, each on `amd64` and `arm64`. The macOS and Linux
+macOS, Linux and Windows, each on `x86_64` and `arm64`. The macOS and Linux
 archives contain `vl` in `.tar.gz` files. Windows archives contain `vl.exe` in
 `.zip` files. Each archive also contains the project license and third-party
-notices and licenses. The workflow checks all six archives,
-runs the Linux x86-64 binary, and uploads the archives and `SHA256SUMS`.
+notices and licenses. Archive names follow `vl_<version>_<os>_<arch>`.
+The workflow checks all six archives, runs the Linux x86-64 binary, and uploads
+the archives, `install.sh`, `install.ps1`, and `checksums.txt`.
 
 ## Rehearse
 
@@ -19,7 +20,7 @@ To generate the same set of files locally with Bash, `tar`, `zip` and `shasum` a
 ```sh
 make check
 make package VERSION=0.0.0-dev
-(cd dist && shasum -a 256 -c SHA256SUMS)
+(cd dist && shasum -a 256 -c checksums.txt)
 ```
 
 ## Prepare and publish a release
@@ -34,9 +35,9 @@ make package VERSION=0.0.0-dev
    ```
 
 2. Wait for the Release workflow to succeed. Open the draft in GitHub Releases
-   and check that all six archives and `SHA256SUMS` are attached. The tag sets
-   the value printed by `vl -version`, without the leading `v`. Tags such as
-   `v0.1.0-rc.1` create prerelease drafts.
+   and check that all six archives, both installers, and `checksums.txt` are attached.
+   The tag sets the value printed by `vl -version`, without the leading `v`.
+   Tags such as `v0.1.0-rc.1` create prerelease drafts.
 3. Review the generated notes, update them for users, and publish the draft
    from GitHub. If uploading fails, rerun the failed job before publishing. It
    can refresh the assets on an existing draft.

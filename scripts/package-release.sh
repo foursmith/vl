@@ -11,48 +11,61 @@ export CGO_ENABLED=0
 stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
 
-cp LICENSE THIRD_PARTY_NOTICES.md "$stage/"
-cp -R third_party "$stage/"
 goroot=$(go env GOROOT)
 go_license="$goroot/LICENSE"
 if [[ ! -f $go_license ]]; then
     # Homebrew installs the license alongside libexec.
     go_license="$goroot/../LICENSE"
 fi
-mkdir -p "$stage/licenses/go" "$stage/archives"
-cp "$go_license" "$goroot/PATENTS" "$stage/licenses/go/"
+mkdir "$stage/archives"
 
 archives=()
 for platform in darwin-amd64 darwin-arm64 linux-amd64 linux-arm64 windows-amd64 windows-arm64; do
     export GOOS=${platform%-*} GOARCH=${platform#*-}
+    package="$stage/$platform"
+    mkdir -p "$package/licenses/go"
+    cp LICENSE THIRD_PARTY_NOTICES.md "$package/"
+    cp -R third_party "$package/"
+    cp "$go_license" "$goroot/PATENTS" "$package/licenses/go/"
+
     binary=vl
     if [[ $GOOS == windows ]]; then
         binary=vl.exe
     fi
-    make build VERSION="$version" OUTPUT="$stage/$binary"
+    make build VERSION="$version" OUTPUT="$package/$binary"
 
     go list -deps -f '{{with .Module}}{{if not .Main}}{{.Path}}{{"\t"}}{{.Dir}}{{end}}{{end}}' ./cmd/vl |
         sort -u > "$stage/modules"
     while IFS=$'\t' read -r module directory; do
         [[ -n $module ]] || continue
-        destination="$stage/licenses/$module"
+        destination="$package/licenses/$module"
         mkdir -p "$destination"
         find "$directory" -maxdepth 1 -type f \( -iname 'license*' -o -iname 'copying*' -o -iname '*notice*' -o -name PATENTS \) \
-            -exec cp {} "$destination/" \;
+            -exec sh -c 'destination=$1; shift; cp "$@" "$destination/"' sh "$destination" {} +
     done < "$stage/modules"
 
     contents=("$binary" LICENSE THIRD_PARTY_NOTICES.md third_party licenses)
-    archive="vl_${version}_${platform}"
+    arch=$GOARCH
+    if [[ $arch == amd64 ]]; then
+        arch=x86_64
+    fi
+    archive="vl_${version}_${GOOS}_${arch}"
     if [[ $GOOS == windows ]]; then
         archive+=.zip
-        (cd "$stage" && zip -qr "archives/$archive" "${contents[@]}")
+        (cd "$package" && zip -qr "$stage/archives/$archive" "${contents[@]}")
     else
         archive+=.tar.gz
-        COPYFILE_DISABLE=1 tar -czf "$stage/archives/$archive" -C "$stage" "${contents[@]}"
+        COPYFILE_DISABLE=1 tar -czf "$stage/archives/$archive" -C "$package" "${contents[@]}"
     fi
     archives+=("$archive")
 done
 
-(cd "$stage/archives" && shasum -a 256 "${archives[@]}" > SHA256SUMS)
+sh -n install.sh
+cp install.sh install.ps1 "$stage/archives/"
+assets=("${archives[@]}" install.sh install.ps1)
+(cd "$stage/archives" && shasum -a 256 "${assets[@]}" > checksums.txt)
 mkdir -p dist
-mv "$stage/archives/"* dist/
+for asset in "${assets[@]}"; do
+    mv "$stage/archives/$asset" dist/
+done
+mv "$stage/archives/checksums.txt" dist/

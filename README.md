@@ -21,12 +21,6 @@ the bits I actually use. One ~10 MB binary, ready to run.
 
 ## Install
 
-Download the archive for your system from [GitHub Releases](https://github.com/foursmith/vl/releases).
-Archives are available for macOS, Linux and Windows on `arm64` and `amd64`
-(x64). Extract the archive and put `vl` (`vl.exe` on Windows) on your `PATH`.
-
-Maintainers can find the release steps in [the release guide](docs/RELEASE.md).
-
 ### Go
 
 Requires Go 1.27.3 or newer.
@@ -36,6 +30,22 @@ go install github.com/foursmith/vl/cmd/vl@latest
 ```
 
 Add Go's bin directory to your `PATH` if needed.
+
+### macOS and Linux
+
+```sh
+curl -fsSL https://github.com/foursmith/vl/releases/latest/download/install.sh | sh
+```
+
+Installs to `~/.local/bin`. Add that directory to your `PATH` if needed.
+
+### Windows (PowerShell)
+
+```powershell
+Invoke-RestMethod -UseBasicParsing https://github.com/foursmith/vl/releases/latest/download/install.ps1 | Invoke-Expression
+```
+
+Installs to `%LOCALAPPDATA%\vl\bin` and adds it to your user `PATH`.
 
 ### Build from source
 
@@ -48,6 +58,21 @@ make build
 ```
 
 Run `./bin/vl` from the checkout or copy it into a directory on your `PATH`.
+
+### Homebrew
+
+Homebrew support is pending.
+
+<details>
+<summary>Homebrew install commands</summary>
+
+```sh
+brew tap foursmith/tap
+brew trust --formula foursmith/tap/vl
+brew install vl
+```
+
+</details>
 
 ## Usage
 
