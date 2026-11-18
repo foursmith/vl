@@ -21,6 +21,13 @@ the bits I actually use. One ~10 MB binary, ready to run.
 
 ## Install
 
+### Homebrew
+
+```sh
+brew tap foursmith/tap
+brew install foursmith/tap/vl
+```
+
 ### Go
 
 Requires Go 1.27.3 or newer.
@@ -59,13 +66,6 @@ make build
 
 Run `./bin/vl` from the checkout or copy it into a directory on your `PATH`.
 
-### Homebrew
-
-```sh
-brew tap foursmith/tap
-brew install foursmith/tap/vl
-```
-
 ## Usage
 
 ### Setup
@@ -78,8 +78,8 @@ brew install foursmith/tap/vl
 ### Modes
 
 - **Workbench mode.** Run `vl .` to browse files, search the workspace, and review Git changes.
-- **Preview mode.** Run `vl preview path/to/file` to print syntax-highlighted code in your terminal.
 - **Editor mode.** Run `vl path/to/file` to open a single file in the Vim-like editor.
+- **Preview mode.** Run `vl preview path/to/file` to print syntax-highlighted code in your terminal.
 
 See [Keyboard shortcuts](docs/KEYBINDINGS.md) for the workbench and
 [Where vl differs from Vim](docs/VIM.md#where-vl-differs-from-vim) for editor keys.
