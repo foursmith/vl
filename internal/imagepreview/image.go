@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/xo/okage/svg"
+	_ "golang.org/x/image/webp"
 )
 
 const MaxBytes = 32 << 20
@@ -30,7 +31,7 @@ type Image struct {
 
 func Supported(path string) bool {
 	switch strings.ToLower(filepath.Ext(path)) {
-	case ".png", ".jpg", ".jpeg", ".gif", ".svg":
+	case ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp":
 		return true
 	}
 	return false

@@ -37,15 +37,6 @@ func (im *Image) ViewRegion(columns, rows, cellWidth, cellHeight int, zoom, cent
 		Rows:    min(rows, max(1, int(math.Ceil(visibleHeight*scale/float64(cellHeight)))))}
 }
 
-// KittyRegionRows includes the pixel upload before the first placeholder row.
-func (im *Image) KittyRegionRows(id int, region Region) ([]string, error) {
-	upload, rows, err := im.KittyRegion(id, region)
-	if err == nil {
-		rows[0] = upload + rows[0]
-	}
-	return rows, err
-}
-
 // KittyRegion separates the pixel transfer from the virtual placement's text.
 // Upload once via terminal I/O; redraw placeholders without retransmitting PNGs.
 func (im *Image) KittyRegion(id int, region Region) (string, []string, error) {

@@ -11,12 +11,13 @@ import (
 )
 
 // Mouse columns are terminal cells; selection columns are source rune offsets.
-func textColumn(text string, goal int) int {
+func textColumn(text string, goal int, gaps tablePadding) int {
 	goal = max(0, goal)
 	visual, col := 0, 0
 	iter := graphemes.FromString(text)
 	for iter.Next() {
 		cluster := iter.Value()
+		visual += gaps[iter.Start()]
 		width := ansi.StringWidth(displayCluster(cluster, visual))
 		if visual+width > goal {
 			break
@@ -33,8 +34,8 @@ func (m *Model) positionEditor(x, y int, extend bool) {
 	if t.vim.VisualMode {
 		t.vim.Reset(d)
 	}
-	line := min(len(d.Lines())-1, max(0, m.editorRowAt(y-m.contentRow())))
-	col := textColumn(d.Lines()[line], x-m.mainX()-7+t.left)
+	line := min(len(d.Lines())-1, max(0, m.editorRowAt(y-m.contentRow(), true)))
+	col := textColumn(d.Lines()[line], x-m.mainX()-7+t.left, t.tableRows()[line])
 	anchor := d.Anchor
 	if anchor < 0 {
 		anchor = d.Cursor
@@ -92,7 +93,7 @@ func (m *Model) positionDiff(x, y int, extend bool) {
 	code := codeLine(m.selectionLine(i, s.right))
 	gutter := min(width, m.diffGutter)
 	goal := min(max(0, local-gutter), width-gutter) + m.diffLeft
-	p := textPoint{i, textColumn(code, goal)}
+	p := textPoint{i, textColumn(code, goal, nil)}
 	if !extend {
 		s.anchor, s.active = p, true
 	}

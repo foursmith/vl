@@ -54,15 +54,8 @@ func (s *Session) Lines(ctx context.Context, path, text string, colors *theme.Th
 		s.spans = nil
 	}
 	source := strings.Split(text, "\n")
-	start := 0
-	for start < len(source) && start < len(s.source) && source[start] == s.source[start] {
-		start++
-	}
-	oldEnd, newEnd := len(s.source), len(source)
-	for oldEnd > start && newEnd > start && s.source[oldEnd-1] == source[newEnd-1] {
-		oldEnd--
-		newEnd--
-	}
+	start, suffix := UnchangedEdges(s.source, source)
+	oldEnd, newEnd := len(s.source)-suffix, len(source)-suffix
 	if err := s.doc.ReplaceLines(start, oldEnd, source[start:newEnd]); err != nil {
 		return nil
 	}
@@ -101,4 +94,17 @@ func (s *Session) Lines(ctx context.Context, path, text string, colors *theme.Th
 		lines[i] = spans
 	}
 	return lines
+}
+
+// UnchangedEdges counts matching lines at the beginning and end of two
+// snapshots. The two ranges never overlap.
+func UnchangedEdges(before, after []string) (prefix, suffix int) {
+	limit := min(len(before), len(after))
+	for prefix < limit && before[prefix] == after[prefix] {
+		prefix++
+	}
+	for suffix < limit-prefix && before[len(before)-1-suffix] == after[len(after)-1-suffix] {
+		suffix++
+	}
+	return prefix, suffix
 }

@@ -144,7 +144,7 @@ func TestTextSelectionUsesDisplayCellsAndScrollOffsets(t *testing.T) {
 		{"中文x", 1, 0}, {"中文x", 2, 1}, {"中文x", 4, 2},
 		{"a\tb", 3, 1}, {"a\tb", 4, 2}, {"e\u0301x", 1, 2},
 	} {
-		if got := textColumn(tc.text, tc.cell); got != tc.col {
+		if got := textColumn(tc.text, tc.cell, nil); got != tc.col {
 			t.Fatalf("%q cell %d: rune %d, want %d", tc.text, tc.cell, got, tc.col)
 		}
 	}

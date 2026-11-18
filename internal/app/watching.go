@@ -157,11 +157,11 @@ func (m *Model) finishReload(msg fileReloadMsg) {
 		}
 		line, col := t.doc.Position()
 		msg.fresh.SetPosition(line, col)
-		t.highlightJob.stop()
+		t.clearHighlight()
 		t.doc = msg.fresh
-		t.highlightText, t.spans, t.renderedRows = "", nil, nil
 		t.diskNotice = ""
 		t.reloadWhenClean = false
+		m.syncMarkdownImageRows(t)
 		m.clampEditorScroll(t)
 		m.syncWatch()
 		return

@@ -64,24 +64,32 @@ func (m *Model) imagePreviewLines(im *imageState, w, h int) []string {
 	region := im.ViewRegion(max(1, w-4), max(1, h-2), m.cellWidth, m.cellHeight, im.zoom, im.centerX, im.centerY)
 	cols, rows := region.Columns, region.Rows
 	lines := make([]string, h)
-	if im.content == nil || im.region != region {
-		im.upload = nil
-		upload, content, err := im.KittyRegion(im.id, region)
-		if err != nil {
-			lines[h/2] = "  " + safe(m.tr(err.Error()))
-			im.content = nil
-			im.width, im.height, im.rows = w, h, lines
-			return lines
-		}
-		im.content, im.region = content, region
-		im.upload = &imageUpload{target: im, payload: upload}
+	content, err := im.regionRows(region)
+	if err != nil {
+		lines[h/2] = "  " + safe(m.tr(err.Error()))
+		im.width, im.height, im.rows = w, h, lines
+		return lines
 	}
 	x, y := (w-cols)/2, (h-rows)/2
-	for r, line := range im.content {
+	for r, line := range content {
 		lines[y+r] = strings.Repeat(" ", x) + line
 	}
 	im.width, im.height, im.rows = w, h, lines
 	return lines
+}
+
+func (im *imageState) regionRows(region imagepreview.Region) ([]string, error) {
+	if im.content != nil && im.region == region {
+		return im.content, nil
+	}
+	im.content, im.upload = nil, nil
+	upload, content, err := im.KittyRegion(im.id, region)
+	if err != nil {
+		return nil, err
+	}
+	im.content, im.region = content, region
+	im.upload = &imageUpload{target: im, payload: upload}
+	return content, nil
 }
 
 type imageReloadMsg struct {
@@ -145,6 +153,13 @@ func (m *Model) allocateImageID() int {
 func (m *Model) retireImage(t *tab) {
 	if t.image != nil {
 		m.imageRetired = append(m.imageRetired, t.image.id)
+	}
+	if t.markdownImages != nil {
+		for _, im := range t.markdownImages.files {
+			if im != nil {
+				m.imageRetired = append(m.imageRetired, im.id)
+			}
+		}
 	}
 	if t.diff != nil {
 		m.setDiffImages(t.diff, nil)

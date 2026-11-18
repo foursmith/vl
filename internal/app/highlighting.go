@@ -45,14 +45,13 @@ func (m *Model) scheduleHighlight() tea.Cmd {
 	}
 	t := &m.tabs[m.activeTab]
 	text := t.doc.Text
-	if t.highlightText == text {
+	if t.vim.InsertMode || t.highlightText == text {
 		t.highlightJob.stop()
 		return nil
 	}
 	if len(text) > highlight.MaxBytes || text == "" {
-		t.highlightJob.stop()
-		t.highlightText, t.spans = text, nil
-		t.highlighter = nil
+		t.clearHighlight()
+		t.highlightText, t.highlighter = text, nil
 		return nil
 	}
 	if t.highlightJob.pending && t.highlightJob.text == text {
@@ -100,6 +99,41 @@ func (m *Model) finishHighlight(msg highlightResultMsg) {
 	if t := m.highlightTarget(msg.request); t != nil {
 		t.highlightJob.stop()
 		t.highlightText, t.spans = msg.request.text, msg.spans
+		t.highlightSource = t.doc.Lines()
 		t.renderedRows = nil
 	}
+}
+
+func (t *tab) clearHighlight() {
+	t.highlightJob.stop()
+	t.highlightText, t.highlightSource, t.spans, t.renderedRows = "", nil, nil, nil
+}
+
+type editorHighlightRows struct {
+	spans                      [][]highlight.Span
+	prefix, suffixStart, shift int
+}
+
+func (t *tab) highlightRows(source []string) editorHighlightRows {
+	if t.highlightText == t.doc.Text {
+		return editorHighlightRows{spans: t.spans, prefix: len(source), suffixStart: len(source)}
+	}
+	prefix, suffix := highlight.UnchangedEdges(t.highlightSource, source)
+	return editorHighlightRows{
+		spans: t.spans, prefix: prefix, suffixStart: len(source) - suffix,
+		shift: len(t.highlightSource) - len(source),
+	}
+}
+
+func (h editorHighlightRows) at(line int) []highlight.Span {
+	if line >= h.prefix {
+		if line < h.suffixStart {
+			return nil
+		}
+		line += h.shift
+	}
+	if line >= 0 && line < len(h.spans) {
+		return h.spans[line]
+	}
+	return nil
 }

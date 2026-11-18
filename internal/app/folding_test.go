@@ -137,7 +137,7 @@ func TestEditorPythonFoldAndScroll(t *testing.T) {
 	}
 	m.Update(tea.WindowSizeMsg{Width: 100, Height: 15})
 	m.Update(tea.MouseWheelMsg{X: m.mainX() + 8, Y: 5, Button: tea.MouseWheelDown})
-	if state.top != 5 || m.editorRowAt(0) != 5 {
+	if state.top != 5 || m.editorRowAt(0, true) != 5 {
 		t.Fatal("wheel did not advance by visible lines")
 	}
 	for range 30 {

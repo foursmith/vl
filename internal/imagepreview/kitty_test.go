@@ -17,11 +17,11 @@ func TestKittyUploadCarriesRealPixelsInBoundedChunks(t *testing.T) {
 		}
 	}
 	im := testRaster(pixels)
-	lines, err := im.KittyRegionRows(0x12000056, im.ViewRegion(16, 6, 8, 16, 1, .5, .5))
+	upload, lines, err := im.KittyRegion(0x12000056, im.ViewRegion(16, 6, 8, 16, 1, .5, .5))
 	if err != nil {
 		t.Fatal(err)
 	}
-	chunks := kittyChunks.FindAllStringSubmatch(lines[0], -1)
+	chunks := kittyChunks.FindAllStringSubmatch(upload, -1)
 	if len(chunks) < 2 {
 		t.Fatal("test image did not exercise chunking")
 	}
@@ -36,7 +36,7 @@ func TestKittyUploadCarriesRealPixelsInBoundedChunks(t *testing.T) {
 			t.Fatalf("missing %s: %s", option, first)
 		}
 	}
-	decoded := decodeKittyRows(t, lines)
+	decoded := decodeKittyUpload(t, upload)
 	if decoded.Bounds() != pixels.Bounds() {
 		t.Fatalf("lost image resolution: %v", decoded.Bounds())
 	}
@@ -80,11 +80,11 @@ func TestSVGRenderAndHighResolutionPlacement(t *testing.T) {
 		t.Fatal("SVG text was not rendered")
 	}
 	region := im.ViewRegion(80, 20, 8, 16, 1, .5, .5)
-	lines, err := im.KittyRegionRows(42, region)
+	upload, _, err := im.KittyRegion(42, region)
 	if err != nil {
 		t.Fatal(err)
 	}
-	raster := decodeKittyRows(t, lines)
+	raster := decodeKittyUpload(t, upload)
 	if raster.Bounds().Dx() <= 40 || raster.Bounds().Dy() <= 20 {
 		t.Fatalf("SVG did not rerender at display resolution: %v", raster.Bounds())
 	}

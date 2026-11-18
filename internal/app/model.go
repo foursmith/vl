@@ -74,11 +74,15 @@ type tab struct {
 	scrollText       string
 	scrollWidth      int
 	highlightText    string
+	highlightSource  []string
 	spans            [][]highlight.Span
 	highlightJob     highlightJob
 	highlighter      *highlight.Session
 	renderKey        editorRenderKey
 	renderedRows     map[int]string
+	markdown         markdownLayout
+	markdownImages   *markdownImageCache
+	topImageOffset   int
 }
 type snapshotMsg struct {
 	seq      int
@@ -251,7 +255,7 @@ func newModel(ctx context.Context, repo *gitservice.Repository, nerd, editorOnly
 }
 
 func (m *Model) Init() tea.Cmd {
-	commands := []tea.Cmd{m.tick(), m.startWatcher(), m.probeImages(), m.pollSystemAppearance(false), tea.Raw(ansi.RequestModeLightDark)}
+	commands := []tea.Cmd{m.scheduleMarkdownImages(), m.tick(), m.startWatcher(), m.probeImages(), m.pollSystemAppearance(false), tea.Raw(ansi.RequestModeLightDark)}
 	if !m.editorOnly {
 		commands = append(commands, m.refresh())
 	}
@@ -433,6 +437,12 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		m.pickerFilter = pickerFilterCache{}
 	}
 	defer func() {
+		if cmd := m.scheduleMarkdownImages(); cmd != nil {
+			next = tea.Batch(next, cmd)
+		}
+		if m.editing() {
+			m.syncMarkdownImageRows(&m.tabs[m.activeTab])
+		}
 		if cmd := m.flushRetiredImages(); cmd != nil {
 			next = tea.Batch(next, cmd)
 		}
@@ -517,6 +527,8 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		m.applyHistoryPage(msg)
 	case tea.ColorProfileMsg:
 		m.monochrome = msg.Profile <= colorprofile.ASCII
+	case markdownImageLoadedMsg:
+		m.finishMarkdownImage(msg)
 	case uv.KittyGraphicsEvent:
 		m.imageCapability(msg)
 	case imageProbeTimeoutMsg:
@@ -818,7 +830,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 				delta = -3
 			}
 			t := &m.tabs[m.activeTab]
-			t.top = t.sourceRow(t.visibleRow(t.top) + delta)
+			t.setEditorDisplayTop(t.editorDisplayTop() + delta)
 			m.clampEditorScroll(t)
 		} else {
 			var cmd tea.Cmd
@@ -1126,7 +1138,7 @@ func (m *Model) reloadCleanTabs() {
 			}
 		}
 		if t.doc != nil && !t.doc.Dirty() {
-			t.highlightJob.stop()
+			t.clearHighlight()
 			d, err := editor.Open(t.doc.Path)
 			if err != nil {
 				m.log(m.tr("Closed %s: %s", filepath.Base(t.doc.Path), m.tr(err.Error())))
@@ -1135,8 +1147,6 @@ func (m *Model) reloadCleanTabs() {
 			line, col := t.doc.Position()
 			d.SetPosition(line, col)
 			t.doc = d
-			t.highlightText = ""
-			t.spans = nil
 		}
 		if wasActive {
 			newActive = len(kept)

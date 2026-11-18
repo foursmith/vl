@@ -152,6 +152,10 @@ func (m *Model) rebuildFlash() {
 	if f.query != "" {
 		d := f.doc
 		seen := map[int]bool{}
+		var tableRows map[int]tablePadding
+		if m.editing() {
+			tableRows = m.tabs[m.activeTab].tableRows()
+		}
 		_, _, _, gutter := m.textViewport()
 		for y := 0; y < m.contentHeight(); y++ {
 			row := m.textRowAt(y)
@@ -165,6 +169,7 @@ func (m *Model) rebuildFlash() {
 			iter := graphemes.FromString(text)
 			runes, cells := 0, 0
 			for iter.Next() {
+				cells += tableRows[row][iter.Start()]
 				boundaries = append(boundaries, boundary{iter.Start(), runes, cells})
 				runes += utf8.RuneCountInString(iter.Value())
 				cells += ansi.StringWidth(displayCluster(iter.Value(), cells))
@@ -176,7 +181,7 @@ func (m *Model) rebuildFlash() {
 				}
 				endByte := start.bytes + len(f.query)
 				j := sort.Search(len(boundaries), func(n int) bool { return boundaries[n].bytes >= endByte })
-				if j >= len(boundaries) || boundaries[j].bytes != endByte || boundaries[j].cells > f.left+max(1, f.width-gutter) {
+				if j >= len(boundaries) || boundaries[j].bytes != endByte || boundaries[j].cells-tableRows[row][endByte] > f.left+max(1, f.width-gutter) {
 					continue
 				}
 				target := flashTarget{offset: d.LineOffset(row) + start.runes, end: d.LineOffset(row) + boundaries[j].runes}

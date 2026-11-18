@@ -1,9 +1,14 @@
 package app
 
 import (
+	"context"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/ourongxing/vl/internal/highlight"
 )
 
@@ -75,5 +80,47 @@ func TestClosingTabCancelsHighlightJob(t *testing.T) {
 	m.finishHighlight(highlightResultMsg{request, nil})
 	if len(m.tabs) != 0 {
 		t.Fatal("background result reopened a closed tab")
+	}
+}
+
+func TestInsertRetainsUnchangedHighlightUntilNormal(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "notes.md")
+	source := "# Heading\n\n```go\nvar x = 1\n```\n"
+	if err := os.WriteFile(path, []byte(source), 0600); err != nil {
+		t.Fatal(err)
+	}
+	m, err := NewEditor(context.Background(), path, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer m.Close()
+	d := m.document()
+	d.SetPosition(1, 0)
+	m.ensureEditor()
+	drain(t, m, m.scheduleHighlight())
+	editorText := func(line int) string {
+		return ansi.Cut(m.editorLines()[line], 7, m.mainWidth())
+	}
+	heading, code := editorText(0), editorText(3)
+	if len(m.tabs[0].spans[0]) == 0 || len(m.tabs[0].spans[3]) == 0 {
+		t.Fatal("fixture did not start with highlighting")
+	}
+
+	drain(t, m, press(m, "i"))
+	_, cmd := m.Update(tea.PasteMsg{Content: "typing\n"})
+	drain(t, m, cmd)
+	if tab := &m.tabs[0]; !tab.vim.InsertMode || tab.highlightJob.pending || tab.highlightText != source {
+		t.Fatal("inserting text started another highlight pass")
+	}
+	if got := editorText(0); got != heading {
+		t.Fatalf("highlight above edit changed: %q, want %q", got, heading)
+	}
+	if got := editorText(4); got != code {
+		t.Fatalf("highlight below inserted line did not follow it: %q, want %q", got, code)
+	}
+
+	drain(t, m, press(m, "esc"))
+	if tab := &m.tabs[0]; tab.vim.InsertMode || tab.highlightText != d.Text {
+		t.Fatal("returning to Normal did not publish updated highlighting")
 	}
 }

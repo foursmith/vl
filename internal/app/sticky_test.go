@@ -60,7 +60,7 @@ func TestStickyEditorPaintingHitTestingAndInvalidation(t *testing.T) {
 			}
 		}
 	}
-	if m.editorRowAt(0) != 0 || m.editorRowAt(1) != 1 || m.editorRowAt(2) != 12 {
+	if m.editorRowAt(0, true) != 0 || m.editorRowAt(1, true) != 1 || m.editorRowAt(2, true) != 12 {
 		t.Fatal("paint and hit test disagree")
 	}
 	m.positionEditor(m.mainX()+9, editorContentRow+2, false)
@@ -137,7 +137,7 @@ func TestStickyRowsKeepKeyboardTargetsVisibleAndRespectSmallWindows(t *testing.T
 	d.SetPosition(11, 0)
 	m.ensureEditor()
 	line, _ := d.Position()
-	if m.editorRowAt(line-m.tabs[0].top) != line {
+	if m.editorRowAt(line-m.tabs[0].top, true) != line {
 		t.Fatal("cursor hidden behind sticky code")
 	}
 	for _, height := range []int{4, 5, 8, 20} {

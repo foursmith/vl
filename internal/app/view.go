@@ -238,17 +238,15 @@ func (m *Model) editorCursor() *tea.Cursor {
 		return nil
 	}
 	t := &m.tabs[m.activeTab]
-	line, _ := t.doc.Position()
-	y := t.visibleRow(line) - t.visibleRow(t.top)
+	line, col := t.doc.Position()
+	y := t.editorDisplayRow(line) - t.editorDisplayTop()
 	sticky := m.editorStickyRows()
 	if index := slices.Index(sticky, line); index >= 0 {
 		y = index
 	} else if y < len(sticky) {
 		return nil
 	}
-	start := t.doc.ByteOffset(t.doc.LineOffset(line))
-	end := t.doc.ByteOffset(t.doc.Cursor)
-	x := 7 + ansi.StringWidth(expandTabs(t.doc.Text[start:end])) - t.left
+	x := 7 + t.editorColumn(line, col) - t.left
 	if x < 7 || x >= m.mainWidth() || y < 0 || y >= m.contentHeight() || m.fileFindAt(m.mainX()+x, m.contentRow()+y) {
 		return nil
 	}
@@ -411,20 +409,16 @@ func (m *Model) ensureEditor() {
 	t := &m.tabs[m.activeTab]
 	line, col := t.doc.Position()
 	t.revealFold(line)
-	t.doc.Lines()
-	if line < t.top {
-		t.top = line
-	}
-	if t.visibleRow(line) >= t.visibleRow(t.top)+m.contentHeight() {
-		t.top = t.sourceRow(t.visibleRow(line) - m.contentHeight() + 1)
+	m.syncMarkdownImageRows(t)
+	cursorRow, top := t.editorDisplayRow(line), t.editorDisplayTop()
+	if cursorRow < top {
+		t.setEditorDisplayTop(cursorRow)
+	} else if cursorRow >= top+m.contentHeight() {
+		t.setEditorDisplayTop(cursorRow - m.contentHeight() + 1)
 	}
 	m.clampEditorScroll(t)
 	m.revealEditorRow(line)
-	visual := col
-	if !t.doc.PlainASCII(line) {
-		start, end := t.doc.ByteOffset(t.doc.LineOffset(line)), t.doc.ByteOffset(t.doc.Cursor)
-		visual = ansi.StringWidth(expandTabs(t.doc.Text[start:end]))
-	}
+	visual := t.editorColumn(line, col)
 	w := max(1, m.mainWidth()-7)
 	if visual < t.left {
 		t.left = visual
@@ -437,8 +431,11 @@ func (m *Model) ensureEditor() {
 
 // Keep the final line within the last full screen, including after edits/resizes.
 func (m *Model) clampEditorScroll(t *tab) {
-	lines := t.visibleRow(len(t.doc.Lines())-1) + 1
-	t.top = t.sourceRow(min(max(0, t.visibleRow(t.top)), max(0, lines-m.contentHeight())))
+	lines := t.editorDisplayRow(len(t.doc.Lines())-1) + 1
+	if _, block, _ := t.editorDisplayAt(lines); block != nil {
+		lines = block.first + block.region.Rows
+	}
+	t.setEditorDisplayTop(min(t.editorDisplayTop(), max(0, lines-m.contentHeight())))
 }
 
 // displayCluster is shared by painting, cursor scrolling and mouse hit testing.
@@ -489,6 +486,8 @@ func (m *Model) editorLines() []string {
 	t := &m.tabs[m.activeTab]
 	d := t.doc
 	source := d.Lines()
+	highlights := t.highlightRows(source)
+	tableRows := t.tableRows()
 	line, _ := d.Position()
 	a, b := d.Selection()
 	sticky := m.editorStickyRows()
@@ -502,8 +501,9 @@ func (m *Model) editorLines() []string {
 		t.renderKey = key
 		t.renderedRows = make(map[int]string, m.contentHeight())
 	}
+	top := t.editorDisplayTop()
 	for i := range t.renderedRows {
-		if !slices.Contains(sticky, i) && (t.visibleRow(i) < t.visibleRow(t.top)+len(sticky) || t.visibleRow(i) >= t.visibleRow(t.top)+m.contentHeight()) {
+		if !slices.Contains(sticky, i) && (t.editorDisplayRow(i) < top+len(sticky) || t.editorDisplayRow(i) >= top+m.contentHeight()) {
 			delete(t.renderedRows, i)
 		}
 	}
@@ -513,9 +513,18 @@ func (m *Model) editorLines() []string {
 	}
 	var lines []string
 	for y := 0; y < m.contentHeight(); y++ {
-		i := t.sourceRow(t.visibleRow(t.top) + y)
+		i, image, imageOffset := t.editorDisplayAt(top + y)
 		if y < len(sticky) {
 			i = sticky[y]
+		} else if image != nil {
+			w := m.mainWidth()
+			mdRows, _ := image.image.regionRows(image.region)
+			content := ""
+			if imageOffset <= len(mdRows) {
+				content = mdRows[imageOffset-1]
+			}
+			lines = append(lines, row("", 7, m.colors.Foreground, m.colors.Background)+row(content, w-7, m.colors.Foreground, m.colors.Background))
+			continue
 		}
 		if i >= len(source) {
 			lines = append(lines, row("", m.mainWidth(), m.colors.Foreground, m.colors.Background))
@@ -563,23 +572,28 @@ func (m *Model) editorLines() []string {
 		}
 		matches := m.fileSearchRowRanges(d, i)
 		matchIndex := 0
+		spans := highlights.at(i)
 		spanIndex := 0
 		visual, runeIndex := 0, 0
 		input := source[i]
-		if d.PlainASCII(i) {
+		padding := tableRows[i]
+		if len(padding) == 0 && d.PlainASCII(i) {
 			start := min(t.left, len(input))
 			input = input[start:]
 			visual, runeIndex = start, start
 		}
+		right := t.left + max(1, m.mainWidth()-7)
 		iter := graphemes.FromString(input)
 		for iter.Next() {
 			cluster := iter.Value()
 			j := runeIndex
 			runeIndex += utf8.RuneCountInString(cluster)
-			start := visual
-			if start >= t.left+max(1, m.mainWidth()-7) {
+			gapStart := visual
+			if gapStart >= right {
 				break
 			}
+			visual += padding[iter.Start()]
+			start := visual
 			s := displayCluster(cluster, visual)
 			visual += ansi.StringWidth(s)
 			if visual <= t.left {
@@ -591,17 +605,14 @@ func (m *Model) editorLines() []string {
 			fg := m.colors.Foreground
 			cellBG := bg
 			var font theme.FontStyle
-			if t.highlightText == d.Text && i < len(t.spans) {
-				spans := t.spans[i]
-				for spanIndex < len(spans) && j >= spans[spanIndex].End {
-					spanIndex++
-				}
-				if spanIndex < len(spans) && j >= spans[spanIndex].Start {
-					fg = spans[spanIndex].Color
-					font = spans[spanIndex].Font
-					if spans[spanIndex].Background != "" {
-						cellBG = theme.Composite(spans[spanIndex].Background, bg)
-					}
+			for spanIndex < len(spans) && j >= spans[spanIndex].End {
+				spanIndex++
+			}
+			if spanIndex < len(spans) && j >= spans[spanIndex].Start {
+				fg = spans[spanIndex].Color
+				font = spans[spanIndex].Font
+				if spans[spanIndex].Background != "" {
+					cellBG = theme.Composite(spans[spanIndex].Background, bg)
 				}
 			}
 			for matchIndex < len(matches) && matches[matchIndex][1] <= j {
@@ -630,6 +641,12 @@ func (m *Model) editorLines() []string {
 					cellBG = m.colors.Accent
 					font = theme.Bold
 				}
+			}
+			if gap := min(start, right) - max(gapStart, t.left); gap > 0 {
+				appendRun(strings.Repeat(" ", gap), fg, cellBG, font)
+			}
+			if start >= right {
+				break
 			}
 			appendRun(s, fg, cellBG, font)
 		}

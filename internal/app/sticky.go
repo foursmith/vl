@@ -127,13 +127,17 @@ func stickyRows(scopes []codeScope, top, limit int) []int {
 	return rows
 }
 
-func (m *Model) editorRowAt(y int) int {
+func (m *Model) editorRowAt(y int, includeImageRows bool) int {
 	sticky := m.editorStickyRows()
 	if y >= 0 && y < len(sticky) {
 		return sticky[y]
 	}
 	t := &m.tabs[m.activeTab]
-	return t.sourceRow(t.visibleRow(t.top) + y)
+	line, image, _ := t.editorDisplayAt(t.editorDisplayTop() + y)
+	if image != nil && !includeImageRows {
+		return -1
+	}
+	return line
 }
 
 func (m *Model) sidebarStickyRows() []int {

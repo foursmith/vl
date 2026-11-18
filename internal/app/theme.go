@@ -81,8 +81,7 @@ func (m *Model) applyTheme(selected *theme.Theme) tea.Cmd {
 			}
 			d.diffSyntax = nil
 		}
-		t.highlightJob.stop()
-		t.highlightText, t.spans, t.renderedRows = "", nil, nil
+		t.clearHighlight()
 	}
 	return tea.Batch(m.scheduleHighlight(), m.highlightDiff())
 }

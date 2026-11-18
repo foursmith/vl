@@ -289,6 +289,9 @@ func (m *Model) removeTabAt(index int) {
 
 func (t *tab) close() {
 	t.highlightJob.stop()
+	if t.markdownImages != nil && t.markdownImages.cancel != nil {
+		t.markdownImages.cancel()
+	}
 	if t.diff != nil {
 		t.diff.close()
 	}

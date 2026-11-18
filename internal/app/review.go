@@ -218,7 +218,7 @@ func (m *Model) reviewToRow(row int) {
 func (m *Model) textViewport() (top, left, width, gutter int) {
 	if m.editing() {
 		t := &m.tabs[m.activeTab]
-		return t.top, t.left, m.mainWidth(), 7
+		return t.editorDisplayTop(), t.left, m.mainWidth(), 7
 	}
 	width = m.mainWidth()
 	if m.diffLayout.split {
@@ -229,7 +229,7 @@ func (m *Model) textViewport() (top, left, width, gutter int) {
 
 func (m *Model) textRowAt(y int) int {
 	if m.editing() {
-		return m.editorRowAt(y)
+		return m.editorRowAt(y, false)
 	}
 	row := m.viewport.YOffset() + y
 	i := sort.SearchInts(m.reviewRows, row)

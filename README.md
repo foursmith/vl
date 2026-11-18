@@ -74,7 +74,10 @@ colons take precedence over location suffixes.
 - **Text editing:** grapheme-aware movement, selection, system clipboard, undo/redo,
   shared find/replace with match counts and next/previous navigation, line jumps, syntax highlighting and save. Vim is the only interaction
   mode, with Normal/Insert/Visual editing, Flash jumps, Surround and repeat commands.
-- **Images:** read-only PNG, JPEG, GIF (first frame) and SVG previews, with zoom and pan.
+- **Markdown:** visually aligned tables and inline local or HTTP(S) images. The
+  Markdown source stays editable. Syntax highlighting refreshes on returning to
+  Normal mode after typing in Insert mode.
+- **Images:** read-only PNG, JPEG, GIF (first frame), WebP and SVG previews, with zoom and pan.
 - **Workspace UI:** sticky code/folder context, resizable left/right sidebar,
   output panel, English/简体中文, and built-in or local themes.
 
@@ -153,7 +156,7 @@ State is read only from the configured state directory.
   Sticky code context uses lexical braces/indentation rather than a language server.
 - Image rendering requires the [Kitty graphics protocol](https://sw.kovidgoyal.net/kitty/graphics-protocol/)
   with Unicode placeholders and a compatible terminal with 256-color support.
-  Unsupported terminals show an explanation. Image files are limited to 32 MiB
+  Standalone previews explain when terminal graphics are unavailable. Image files are limited to 32 MiB
   and 16 megapixels. SVG external image references are skipped.
 - Below 70 columns, sidebar and content share one surface; use Enter and Esc/F6
   to switch. Narrow diffs fall back to unified layout; added/deleted files always

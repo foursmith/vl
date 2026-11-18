@@ -35,14 +35,21 @@ func (m *Model) visibleImageSurfaces(visit func(*imageState, int, int)) {
 // immutable upload identities; Filter checks them again immediately before I/O.
 func (m *Model) prepareImageUploads() tea.Cmd {
 	var commands []tea.Cmd
-	m.visibleImageSurfaces(func(im *imageState, w, h int) {
-		m.imagePreviewLines(im, w, h)
+	queue := func(im *imageState) {
 		upload := im.upload
 		if upload == nil || upload.sent || upload.queued {
 			return
 		}
 		upload.queued = true
 		commands = append(commands, func() tea.Msg { return imageUploadMsg{upload} })
+	}
+	m.visibleImageSurfaces(func(im *imageState, w, h int) {
+		m.imagePreviewLines(im, w, h)
+		queue(im)
+	})
+	m.visibleMarkdownImages(func(block *markdownImageBlock) {
+		block.image.regionRows(block.region)
+		queue(block.image)
 	})
 	return tea.Batch(commands...)
 }
@@ -55,6 +62,7 @@ func (m *Model) imageUploadMessage(msg imageUploadMsg) tea.Msg {
 	}
 	visible := false
 	m.visibleImageSurfaces(func(im *imageState, _, _ int) { visible = visible || im == upload.target })
+	m.visibleMarkdownImages(func(block *markdownImageBlock) { visible = visible || block.image == upload.target })
 	if !visible {
 		return nil
 	}

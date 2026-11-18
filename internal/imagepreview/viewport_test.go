@@ -13,19 +13,19 @@ import (
 
 func decodeRegion(t *testing.T, im *Image, region Region) image.Image {
 	t.Helper()
-	lines, err := im.KittyRegionRows(42, region)
+	upload, _, err := im.KittyRegion(42, region)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return decodeKittyRows(t, lines)
+	return decodeKittyUpload(t, upload)
 }
 
 var kittyChunks = regexp.MustCompile("\x1b_G([^;]*);([^\x1b]*)\x1b\\\\")
 
-func decodeKittyRows(t *testing.T, lines []string) image.Image {
+func decodeKittyUpload(t *testing.T, upload string) image.Image {
 	t.Helper()
 	var payload strings.Builder
-	for _, chunk := range kittyChunks.FindAllStringSubmatch(lines[0], -1) {
+	for _, chunk := range kittyChunks.FindAllStringSubmatch(upload, -1) {
 		payload.WriteString(chunk[2])
 	}
 	data, err := base64.StdEncoding.DecodeString(payload.String())
