@@ -61,18 +61,10 @@ Run `./bin/vl` from the checkout or copy it into a directory on your `PATH`.
 
 ### Homebrew
 
-Homebrew support is pending.
-
-<details>
-<summary>Homebrew install commands</summary>
-
 ```sh
 brew tap foursmith/tap
-brew trust --formula foursmith/tap/vl
-brew install vl
+brew install foursmith/tap/vl
 ```
-
-</details>
 
 ## Usage
 
