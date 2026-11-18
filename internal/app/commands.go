@@ -7,8 +7,8 @@ import (
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
-	"github.com/ourongxing/vl/internal/diff"
-	gitservice "github.com/ourongxing/vl/internal/git"
+	"github.com/foursmith/vl/internal/diff"
+	gitservice "github.com/foursmith/vl/internal/git"
 )
 
 type action struct {

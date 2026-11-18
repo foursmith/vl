@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/ourongxing/vl/internal/editor"
+	"github.com/foursmith/vl/internal/editor"
 )
 
 func TestVimMappedSaveAndClose(t *testing.T) {

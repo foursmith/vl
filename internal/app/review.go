@@ -8,8 +8,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/vl/internal/diff"
-	"github.com/ourongxing/vl/internal/editor"
+	"github.com/foursmith/vl/internal/diff"
+	"github.com/foursmith/vl/internal/editor"
 )
 
 // Diff contributes source text and a mapping to painted rows. The editor's Vim

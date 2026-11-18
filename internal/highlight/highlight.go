@@ -8,7 +8,7 @@ import (
 	textmate "github.com/eugenioenko/textmate-go"
 	"github.com/eugenioenko/textmate-go/grammars"
 
-	"github.com/ourongxing/vl/internal/theme"
+	"github.com/foursmith/vl/internal/theme"
 )
 
 type Span struct {

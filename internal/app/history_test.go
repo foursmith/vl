@@ -6,7 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	gitservice "github.com/ourongxing/vl/internal/git"
+	gitservice "github.com/foursmith/vl/internal/git"
 )
 
 func TestHistoryFileReviewAndReadOnlyActions(t *testing.T) {

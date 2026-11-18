@@ -9,8 +9,8 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/vl/internal/highlight"
-	"github.com/ourongxing/vl/internal/theme"
+	"github.com/foursmith/vl/internal/highlight"
+	"github.com/foursmith/vl/internal/theme"
 )
 
 func TestPreviewWindow(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 	"runtime/debug"
 	"testing"
 
-	"github.com/ourongxing/vl/internal/config"
+	"github.com/foursmith/vl/internal/config"
 )
 
 func TestStartupPathUsesExplicitPathOrMostRecentWorkspace(t *testing.T) {

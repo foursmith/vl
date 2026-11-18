@@ -11,9 +11,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ourongxing/vl/internal/config"
-	"github.com/ourongxing/vl/internal/diff"
-	gitservice "github.com/ourongxing/vl/internal/git"
+	"github.com/foursmith/vl/internal/config"
+	"github.com/foursmith/vl/internal/diff"
+	gitservice "github.com/foursmith/vl/internal/git"
 )
 
 func TestSessionRestoresSidebarTab(t *testing.T) {

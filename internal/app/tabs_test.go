@@ -11,8 +11,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/vl/internal/files"
-	gitservice "github.com/ourongxing/vl/internal/git"
+	"github.com/foursmith/vl/internal/files"
+	gitservice "github.com/foursmith/vl/internal/git"
 )
 
 func TestTabHeaderDecorationsPreserveDirtyAndDiffState(t *testing.T) {

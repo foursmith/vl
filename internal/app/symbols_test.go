@@ -10,8 +10,8 @@ import (
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
-	gitservice "github.com/ourongxing/vl/internal/git"
-	"github.com/ourongxing/vl/internal/theme"
+	gitservice "github.com/foursmith/vl/internal/git"
+	"github.com/foursmith/vl/internal/theme"
 )
 
 func TestControlSymbolsHaveNarrowGlyphsAndASCIIFallbacks(t *testing.T) {

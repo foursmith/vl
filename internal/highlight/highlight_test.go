@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ourongxing/vl/internal/theme"
+	"github.com/foursmith/vl/internal/theme"
 )
 
 func TestGoHighlightPreservesRuneOffsets(t *testing.T) {

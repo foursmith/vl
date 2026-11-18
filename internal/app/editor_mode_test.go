@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/ourongxing/vl/internal/config"
+	"github.com/foursmith/vl/internal/config"
 )
 
 func TestEditorModeIsolatedAndFullWidth(t *testing.T) {

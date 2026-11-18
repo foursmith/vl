@@ -8,7 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	searchservice "github.com/ourongxing/vl/internal/search"
+	searchservice "github.com/foursmith/vl/internal/search"
 )
 
 func TestWorkspaceSearchSecondTabAndNavigation(t *testing.T) {

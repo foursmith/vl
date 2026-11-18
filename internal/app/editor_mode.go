@@ -4,8 +4,8 @@ import (
 	"context"
 	"path/filepath"
 
-	"github.com/ourongxing/vl/internal/editor"
-	gitservice "github.com/ourongxing/vl/internal/git"
+	"github.com/foursmith/vl/internal/editor"
+	gitservice "github.com/foursmith/vl/internal/git"
 )
 
 // NewEditor opens a single text file without repository discovery or workspace state.

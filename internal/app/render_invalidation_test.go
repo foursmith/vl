@@ -7,7 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	uv "github.com/charmbracelet/ultraviolet"
-	"github.com/ourongxing/vl/internal/imagepreview"
+	"github.com/foursmith/vl/internal/imagepreview"
 )
 
 func pendingImageUpload(t testing.TB, m *Model) imageUploadMsg {

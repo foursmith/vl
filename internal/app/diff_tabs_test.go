@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-	gitservice "github.com/ourongxing/vl/internal/git"
+	gitservice "github.com/foursmith/vl/internal/git"
 )
 
 func diffTabText(label string) string {

@@ -8,10 +8,10 @@ import (
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/vl/internal/editor"
-	gitservice "github.com/ourongxing/vl/internal/git"
-	"github.com/ourongxing/vl/internal/highlight"
-	"github.com/ourongxing/vl/internal/theme"
+	"github.com/foursmith/vl/internal/editor"
+	gitservice "github.com/foursmith/vl/internal/git"
+	"github.com/foursmith/vl/internal/highlight"
+	"github.com/foursmith/vl/internal/theme"
 )
 
 func sameColor(a, b color.Color) bool {

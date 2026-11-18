@@ -8,7 +8,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/ourongxing/vl/internal/theme"
+	"github.com/foursmith/vl/internal/theme"
 )
 
 func TestSessionMatchesFreshHighlightAcrossEdits(t *testing.T) {

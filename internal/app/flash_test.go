@@ -6,7 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/vl/internal/editor"
+	"github.com/foursmith/vl/internal/editor"
 )
 
 func flashModel(t *testing.T, text string) *Model {

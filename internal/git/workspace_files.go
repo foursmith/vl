@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ourongxing/vl/internal/files"
+	"github.com/foursmith/vl/internal/files"
 )
 
 // WorkspaceFiles contains workspace-relative paths and the directory roots

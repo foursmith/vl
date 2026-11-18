@@ -3,7 +3,7 @@ package app
 import (
 	"errors"
 
-	"github.com/ourongxing/vl/internal/config"
+	"github.com/foursmith/vl/internal/config"
 )
 
 func documentPosition(t tab) config.FilePosition {

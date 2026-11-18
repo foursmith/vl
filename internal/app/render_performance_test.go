@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/ourongxing/vl/internal/imagepreview"
+	"github.com/foursmith/vl/internal/imagepreview"
 )
 
 func performanceImageModel(t testing.TB) *Model {

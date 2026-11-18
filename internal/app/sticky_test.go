@@ -10,7 +10,7 @@ import (
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/vl/internal/theme"
+	"github.com/foursmith/vl/internal/theme"
 )
 
 func TestStickyCodeScopesIgnoreCommentsAndStrings(t *testing.T) {

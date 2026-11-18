@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	gitservice "github.com/ourongxing/vl/internal/git"
+	gitservice "github.com/foursmith/vl/internal/git"
 )
 
 type PullRequestDiffCache struct {

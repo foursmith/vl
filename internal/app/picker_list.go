@@ -7,8 +7,8 @@ import (
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/vl/internal/fileicon"
-	"github.com/ourongxing/vl/internal/theme"
+	"github.com/foursmith/vl/internal/fileicon"
+	"github.com/foursmith/vl/internal/theme"
 )
 
 func (m *Model) pickerHeading(a action) bool {

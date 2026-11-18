@@ -4,7 +4,7 @@ import (
 	"math"
 	"strings"
 
-	"github.com/ourongxing/vl/internal/theme"
+	"github.com/foursmith/vl/internal/theme"
 )
 
 type welcomePoint struct{ x, y, z float64 }

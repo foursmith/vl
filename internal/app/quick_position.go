@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/ourongxing/vl/internal/editor"
+	"github.com/foursmith/vl/internal/editor"
 )
 
 // An exact filename wins over the suffix syntax, including names containing ':'.

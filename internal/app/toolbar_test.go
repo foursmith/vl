@@ -6,7 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/vl/internal/diff"
+	"github.com/foursmith/vl/internal/diff"
 )
 
 func TestNewFileDiffUsesCompactContextAndContent(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
-	gitservice "github.com/ourongxing/vl/internal/git"
+	gitservice "github.com/foursmith/vl/internal/git"
 )
 
 func TestNavigationShowsChangesAndOpenPullRequestCounts(t *testing.T) {

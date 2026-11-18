@@ -26,6 +26,12 @@ Download the archive for your system from [GitHub Releases](https://github.com/f
 Archives are available for macOS, Linux and Windows on `arm64` and `amd64`
 (x64). Extract the archive and put `vl` (`vl.exe` on Windows) on your `PATH`.
 
+Install with Go 1.27.3 or newer.
+
+```sh
+go install github.com/foursmith/vl/cmd/vl@latest
+```
+
 Running vl requires an interactive UTF-8 terminal. Building from source requires Go **1.27.3+**.
 Folder workspaces also require Git on `PATH`.
 Image comparisons of stored Git revisions require Git **2.42+**.

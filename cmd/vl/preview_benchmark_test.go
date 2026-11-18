@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ourongxing/vl/internal/theme"
+	"github.com/foursmith/vl/internal/theme"
 )
 
 func BenchmarkPreview(b *testing.B) {

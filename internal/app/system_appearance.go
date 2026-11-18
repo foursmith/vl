@@ -4,7 +4,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/ourongxing/vl/internal/platform"
+	"github.com/foursmith/vl/internal/platform"
 )
 
 type systemAppearanceMsg struct{ light, known bool }

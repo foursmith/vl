@@ -12,8 +12,8 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/ourongxing/vl/internal/config"
-	gitservice "github.com/ourongxing/vl/internal/git"
+	"github.com/foursmith/vl/internal/config"
+	gitservice "github.com/foursmith/vl/internal/git"
 )
 
 func TestPullRequestsTabUsesWorkspaceAndPreservesSelection(t *testing.T) {

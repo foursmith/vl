@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	patchdiff "github.com/ourongxing/vl/internal/diff"
+	patchdiff "github.com/foursmith/vl/internal/diff"
 )
 
 func repository(t *testing.T) *Repository {

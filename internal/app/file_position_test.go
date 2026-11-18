@@ -9,9 +9,9 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/ourongxing/vl/internal/config"
-	"github.com/ourongxing/vl/internal/files"
-	gitservice "github.com/ourongxing/vl/internal/git"
+	"github.com/foursmith/vl/internal/config"
+	"github.com/foursmith/vl/internal/files"
+	gitservice "github.com/foursmith/vl/internal/git"
 )
 
 func TestFilePositionsSurvivePreviewReplacementCloseAndRestart(t *testing.T) {

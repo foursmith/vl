@@ -1,4 +1,4 @@
-module github.com/ourongxing/vl
+module github.com/foursmith/vl
 
 go 1.27.3
 

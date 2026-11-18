@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/ourongxing/vl/internal/imagepreview"
+	"github.com/foursmith/vl/internal/imagepreview"
 	"github.com/yuin/goldmark/util"
 )
 

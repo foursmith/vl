@@ -9,9 +9,9 @@ import (
 	"unicode/utf8"
 
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/vl/internal/fileicon"
-	searchservice "github.com/ourongxing/vl/internal/search"
-	"github.com/ourongxing/vl/internal/theme"
+	"github.com/foursmith/vl/internal/fileicon"
+	searchservice "github.com/foursmith/vl/internal/search"
+	"github.com/foursmith/vl/internal/theme"
 )
 
 // Keep files in a directory together, ahead of its descendants.

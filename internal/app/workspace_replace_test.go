@@ -8,7 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/vl/internal/editor"
+	"github.com/foursmith/vl/internal/editor"
 )
 
 func replacementWorkspace(t *testing.T) *Model {

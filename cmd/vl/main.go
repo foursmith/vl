@@ -13,12 +13,12 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/colorprofile"
-	"github.com/ourongxing/vl/internal/app"
-	"github.com/ourongxing/vl/internal/config"
-	"github.com/ourongxing/vl/internal/editor"
-	"github.com/ourongxing/vl/internal/git"
-	"github.com/ourongxing/vl/internal/i18n"
-	"github.com/ourongxing/vl/internal/theme"
+	"github.com/foursmith/vl/internal/app"
+	"github.com/foursmith/vl/internal/config"
+	"github.com/foursmith/vl/internal/editor"
+	"github.com/foursmith/vl/internal/git"
+	"github.com/foursmith/vl/internal/i18n"
+	"github.com/foursmith/vl/internal/theme"
 )
 
 var buildVersion = "0.1.0-dev"

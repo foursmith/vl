@@ -1,7 +1,7 @@
 package app
 
 import (
-	"github.com/ourongxing/vl/internal/watcher"
+	"github.com/foursmith/vl/internal/watcher"
 	"os"
 	"path/filepath"
 	"strings"

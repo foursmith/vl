@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	gitservice "github.com/ourongxing/vl/internal/git"
-	"github.com/ourongxing/vl/internal/imagepreview"
+	gitservice "github.com/foursmith/vl/internal/git"
+	"github.com/foursmith/vl/internal/imagepreview"
 )
 
 type diffImages struct {

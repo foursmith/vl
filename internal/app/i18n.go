@@ -2,7 +2,7 @@ package app
 
 import (
 	tea "charm.land/bubbletea/v2"
-	"github.com/ourongxing/vl/internal/i18n"
+	"github.com/foursmith/vl/internal/i18n"
 )
 
 func (m *Model) tr(message string, args ...any) string {

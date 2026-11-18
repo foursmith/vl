@@ -12,9 +12,9 @@ import (
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/clipperhouse/uax29/v2/graphemes"
-	"github.com/ourongxing/vl/internal/diff"
-	searchservice "github.com/ourongxing/vl/internal/search"
-	"github.com/ourongxing/vl/internal/theme"
+	"github.com/foursmith/vl/internal/diff"
+	searchservice "github.com/foursmith/vl/internal/search"
+	"github.com/foursmith/vl/internal/theme"
 )
 
 func safe(text string) string {

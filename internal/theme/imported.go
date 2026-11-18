@@ -10,7 +10,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/ourongxing/vl/internal/config"
+	"github.com/foursmith/vl/internal/config"
 )
 
 const importedPrefix = "vscode:"

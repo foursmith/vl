@@ -11,7 +11,7 @@ import (
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/ourongxing/vl/internal/imagepreview"
+	"github.com/foursmith/vl/internal/imagepreview"
 )
 
 type imageState struct {

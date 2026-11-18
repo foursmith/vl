@@ -15,9 +15,9 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/colorprofile"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/vl/internal/config"
-	"github.com/ourongxing/vl/internal/highlight"
-	"github.com/ourongxing/vl/internal/theme"
+	"github.com/foursmith/vl/internal/config"
+	"github.com/foursmith/vl/internal/highlight"
+	"github.com/foursmith/vl/internal/theme"
 )
 
 type previewOptions struct {

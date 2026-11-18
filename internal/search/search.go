@@ -13,7 +13,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	gitservice "github.com/ourongxing/vl/internal/git"
+	gitservice "github.com/foursmith/vl/internal/git"
 )
 
 type Options struct {

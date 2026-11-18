@@ -5,8 +5,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/ourongxing/vl/internal/editor"
-	searchservice "github.com/ourongxing/vl/internal/search"
+	"github.com/foursmith/vl/internal/editor"
+	searchservice "github.com/foursmith/vl/internal/search"
 )
 
 // searchRanges returns non-overlapping literal matches in rune coordinates.

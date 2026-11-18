@@ -5,9 +5,9 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/ourongxing/vl/internal/editor"
-	"github.com/ourongxing/vl/internal/highlight"
-	"github.com/ourongxing/vl/internal/theme"
+	"github.com/foursmith/vl/internal/editor"
+	"github.com/foursmith/vl/internal/highlight"
+	"github.com/foursmith/vl/internal/theme"
 )
 
 type highlightJob struct {

@@ -8,7 +8,7 @@ import (
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
-	searchservice "github.com/ourongxing/vl/internal/search"
+	searchservice "github.com/foursmith/vl/internal/search"
 )
 
 type searchState struct {

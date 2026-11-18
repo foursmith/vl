@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/ourongxing/vl/internal/diff"
-	"github.com/ourongxing/vl/internal/editor"
+	"github.com/foursmith/vl/internal/diff"
+	"github.com/foursmith/vl/internal/editor"
 )
 
 func reviewWorkspace(t *testing.T, split bool) *Model {

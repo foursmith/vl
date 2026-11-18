@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/ourongxing/vl/internal/editor"
-	searchservice "github.com/ourongxing/vl/internal/search"
+	"github.com/foursmith/vl/internal/editor"
+	searchservice "github.com/foursmith/vl/internal/search"
 )
 
 // Validate all targets before writing. Edits to open documents remain undoable.
