@@ -65,3 +65,8 @@ SVG preview uses [github.com/xo/okage v0.9.0](https://github.com/xo/okage),
 a pure-Go port of tiny-skia and resvg. The root BSD-3-Clause license and the SVG
 renderer MIT license are preserved under [third_party/okage](third_party/okage/).
 Upstream component notices remain in the pinned Go module.
+
+## Source Code Pro
+
+The Home wordmark's 3D mesh is based on the uppercase V and L from
+[Source Code Pro Bold 2.042](https://github.com/adobe-fonts/source-code-pro/releases/tag/2.042R-u%2F1.062R-i%2F1.026R-vf).

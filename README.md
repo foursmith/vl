@@ -2,6 +2,18 @@
 
 A lightweight, VSCode-like Git workbench and Vim-like editor.
 
+```
+░▒▒▒▒░       ▒▒▒▒▒   ▒▒▒▒▒
+░▒▓▓▓▓      ▓▓▓▓▓▓   ▒▓▓▓▓
+░░▒▓▓▓▓    ▒▓▓▓▓▓▓   ▒▓▓▓▓
+░░░▒▓▓▓▒  ░▓▓▓▓▓▓░   ▒▓▓▓▓
+ ░░░▒▓▓▓░░▓▓▓▓▓▓░    ▓▓▓▓▓
+  ░░░▓▓▓▓▓▓▓▓▓▓▒     ▓▓▓▓▓░░░░░░░░░
+   ░░░▓▓▓▓▓▓▓▓▒      ▓▓▓▓▓▓▓▓▓▓▓▓▓▒
+    ░░▒▒▒▒▒▒▓▒       ▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+     ░▒▒▒▒▒▒▓        ▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+```
+
 It brings Explorer, Changes, History, PR and editor tabs into one workspace, with VS Code
 Dark Modern / Light Modern colors and Material Icon Theme associations adapted
 to Nerd Font glyphs.

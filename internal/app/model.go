@@ -231,6 +231,7 @@ type Model struct {
 	hoverX, hoverY          int
 	hoverOnly               bool
 	hoverRender             hoverRenderCache
+	welcomeOrbit            welcomeOrbit
 	pickerFilter            pickerFilterCache
 	workspaceSeq            int
 	workspaces              []string
@@ -459,7 +460,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		beforeText = beforeDocument.Text
 	}
 	_, motion := msg.(tea.MouseMotionMsg)
-	m.hoverOnly = motion && !m.resizingSidebar && m.textDrag == nil && m.diffDrag == nil && m.imagePan == nil
+	m.hoverOnly = motion && !m.resizingSidebar && !m.welcomeOrbit.dragging && m.textDrag == nil && m.diffDrag == nil && m.imagePan == nil
 	if !m.hoverOnly {
 		m.hoverRender = hoverRenderCache{}
 		m.pickerFilter = pickerFilterCache{}
@@ -647,6 +648,14 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			d.diffSyntax = msg.spans
 		}
 	case tea.MouseMotionMsg:
+		if m.welcomeOrbit.dragging {
+			if msg.Button == tea.MouseLeft {
+				m.dragWelcomeArt(msg.X, msg.Y)
+			} else {
+				m.welcomeOrbit.dragging = false
+			}
+			return m, nil
+		}
 		if m.imagePan != nil {
 			if msg.Button == tea.MouseLeft && m.modal == "" {
 				m.dragImage(msg.X, msg.Y)
@@ -669,6 +678,13 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			}
 		}
 	case tea.MouseReleaseMsg:
+		if m.welcomeOrbit.dragging {
+			if msg.Button == tea.MouseLeft || msg.Button == tea.MouseNone {
+				m.dragWelcomeArt(msg.X, msg.Y)
+			}
+			m.welcomeOrbit.dragging = false
+			return m, nil
+		}
 		if m.imagePan != nil {
 			if msg.Button == tea.MouseLeft || msg.Button == tea.MouseNone {
 				m.dragImage(msg.X, msg.Y)
@@ -687,6 +703,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			m.resizingSidebar = false
 		}
 	case tea.BlurMsg:
+		m.welcomeOrbit.dragging = false
 		m.leaderTarget = ""
 		m.imagePan = nil
 		m.stopTextDrag()
@@ -796,6 +813,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			m.ensureEditor()
 		}
 	case tea.MouseClickMsg:
+		m.welcomeOrbit.dragging = false
 		m.leaderTarget = ""
 		m.navigationState = navigationState{}
 		m.cancelFlash()
@@ -877,6 +895,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			return m, cmd
 		}
 	case tea.KeyPressMsg:
+		m.welcomeOrbit.dragging = false
 		if m.flash != nil {
 			return m, m.flashKey(msg)
 		}
@@ -947,6 +966,9 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	}
 	if handled, cmd := m.leaderKey(k); handled {
 		return cmd
+	}
+	if m.rotateWelcomeArt(k) {
+		return nil
 	}
 	if !m.sidebar && m.editorDocument() != nil {
 		if handled, cmd := m.vimKey(k); handled {

@@ -46,7 +46,7 @@ func TestWelcomeClicksUseRenderedCoordinates(t *testing.T) {
 			m := tabWorkspace(t, 0)
 			m.SetSidebarLayout(35, right)
 			x, y, _, logoRows := m.welcomeLayout()
-			m.Update(tea.MouseClickMsg{X: m.mainX() + x + 1, Y: editorContentRow + y + logoRows + 1 + i, Button: tea.MouseLeft})
+			m.Update(tea.MouseClickMsg{X: m.mainX() + x + 1, Y: editorContentRow + y + logoRows + m.welcomeGap(logoRows) + i, Button: tea.MouseLeft})
 			switch a.command {
 			case "commands":
 				if m.modal != "quick" || !m.commandPicker() {
@@ -62,6 +62,30 @@ func TestWelcomeClicksUseRenderedCoordinates(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestWelcomeArtDragRotatesUntilRelease(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	m.Update(tea.WindowSizeMsg{Width: 132, Height: 34})
+	_, y, _, height := m.welcomeLayout()
+	x := m.mainX() + m.mainWidth()/2
+	y += m.contentRow() + height/2
+	before := m.View().Content
+	m.Update(tea.MouseClickMsg{X: x, Y: y, Button: tea.MouseLeft})
+	m.Update(tea.MouseMotionMsg{X: x + 12, Y: y + 3, Button: tea.MouseLeft})
+	rotated := m.View().Content
+	if !m.welcomeOrbit.dragging || m.welcomeOrbit.yaw == 0 || m.welcomeOrbit.pitch == 0 || rotated == before {
+		t.Fatal("drag did not render a new orbit angle")
+	}
+	m.Update(tea.MouseReleaseMsg{X: x + 12, Y: y + 3, Button: tea.MouseLeft})
+	m.Update(tea.MouseMotionMsg{X: x + 18, Y: y + 5, Button: tea.MouseNone})
+	if m.welcomeOrbit.dragging || m.View().Content != rotated {
+		t.Fatal("art continued to rotate after release")
+	}
+	m.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
+	if m.View().Content == rotated {
+		t.Fatal("focused art did not rotate with the keyboard")
 	}
 }
 
