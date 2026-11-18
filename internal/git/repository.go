@@ -265,7 +265,8 @@ func (r *Repository) Stage(ctx context.Context, c Change) (string, error) {
 	}
 
 	args := []string{"add", "--all", "--", c.Path}
-	if c.Original != "" {
+	// An index rename can leave the original path absent from both the index and worktree.
+	if c.Original != "" && (c.Worktree == 'R' || c.Worktree == 'C') {
 		args = append(args, c.Original)
 	}
 	return r.Run(ctx, args...)

@@ -245,6 +245,38 @@ func TestLiteralPathsRenameAndUnbornRepository(t *testing.T) {
 	}
 }
 
+func TestStageRenameThenDelete(t *testing.T) {
+	r := committedRepository(t)
+	ctx := context.Background()
+	oldPath := "file.txt"
+	newPath := "renamed.txt"
+	if err := os.Rename(filepath.Join(r.Root, oldPath), filepath.Join(r.Root, newPath)); err != nil {
+		t.Fatal(err)
+	}
+	// Intent to add lets Git detect the rename in the worktree.
+	run(t, r, "add", "-N", "--", newPath)
+	stage := func(index, worktree byte) {
+		t.Helper()
+		raw := run(t, r, "status", "--porcelain=v1", "-z", "--renames")
+		changes, err := ParseStatus(raw)
+		want := Change{Path: newPath, Original: oldPath, Index: index, Worktree: worktree}
+		if err != nil || len(changes) != 1 || changes[0] != want {
+			t.Fatalf("status = %+v, %v, want %+v", changes, err, want)
+		}
+		if _, err := r.Stage(ctx, changes[0]); err != nil {
+			t.Fatal(err)
+		}
+	}
+	stage(' ', 'R')
+	if err := os.Remove(filepath.Join(r.Root, newPath)); err != nil {
+		t.Fatal(err)
+	}
+	stage('R', 'D')
+	if got := run(t, r, "status", "--porcelain=v1", "-z"); got != "D  "+oldPath+"\x00" {
+		t.Fatalf("status after staging deletion = %q", got)
+	}
+}
+
 func TestStatusParserAndObjectValidation(t *testing.T) {
 	for _, raw := range []string{"x\x00", "R  file\x00"} {
 		if _, err := ParseStatus(raw); err == nil {
