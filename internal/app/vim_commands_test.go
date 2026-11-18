@@ -1,9 +1,11 @@
 package app
 
 import (
-	"github.com/ourongxing/vl/internal/editor"
 	"os"
 	"testing"
+
+	tea "charm.land/bubbletea/v2"
+	"github.com/ourongxing/vl/internal/editor"
 )
 
 func TestVimMappedSaveAndClose(t *testing.T) {
@@ -70,10 +72,16 @@ func TestVimMappedFocusAndClearSearch(t *testing.T) {
 	if d.Anchor != -1 || m.findOptions.Query != "one" {
 		t.Fatal("clear highlights lost search pattern or selection")
 	}
+	d.SetPosition(0, 0)
 	press(m, "c")
 	press(m, "w")
-	if !m.sidebar || !m.sidebarVisible || d.Text != "one two" {
-		t.Fatal("cw did not focus sidebar")
+	if m.sidebar || !m.tabs[0].vim.InsertMode || d.Text != " two" {
+		t.Fatal("cw did not change the word in the editor")
+	}
+	press(m, "esc")
+	m.Update(tea.KeyPressMsg{Code: tea.KeyF6})
+	if !m.sidebar || !m.sidebarVisible {
+		t.Fatal("F6 did not focus sidebar")
 	}
 }
 func TestVimUnnamedRegister(t *testing.T) {
@@ -93,6 +101,15 @@ func TestVimUnnamedRegister(t *testing.T) {
 	m.activeTab = 1
 	if handled, cmd := m.vimKey("P"); !handled || cmd != nil || target.Text != "one\nthree" {
 		t.Fatalf("put across tabs: %q", target.Text)
+	}
+}
+
+func TestVimReplaceWithSpace(t *testing.T) {
+	m := flashModel(t, "abc")
+	press(m, "r")
+	press(m, " ")
+	if m.document().Text != " bc" || m.leaderActive() {
+		t.Fatalf("text %q, leader active %t", m.document().Text, m.leaderActive())
 	}
 }
 

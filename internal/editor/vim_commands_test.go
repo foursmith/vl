@@ -31,14 +31,69 @@ func TestVimUserMappings(t *testing.T) {
 		})
 	}
 }
-func TestVimFocusAction(t *testing.T) {
-	d := &Document{Text: "one two", Anchor: -1}
-	v := &Vim{}
-	vimKeys(d, v, "c", "w")
-	if v.TakeAction() != "focus" || v.InsertMode || d.Text != "one two" {
-		t.Fatal("cw did not become focus mapping")
+func TestVimChangeWord(t *testing.T) {
+	for _, tt := range []struct {
+		name, text, want, register string
+		column                     int
+		keys                       []string
+	}{
+		{"word", "one two", " two", "one", 0, []string{"c", "w"}},
+		{"last character", "one two", "on two", "e", 2, []string{"c", "w"}},
+		{"whitespace", "one  two", "onetwo", "  ", 3, []string{"c", "w"}},
+		{"count", "a two three", " three", "a two", 0, []string{"c", "2", "w"}},
+		{"grapheme", "e\u0301 two", " two", "e\u0301", 0, []string{"c", "w"}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			d := &Document{Text: tt.text, Anchor: -1}
+			d.SetPosition(0, tt.column)
+			v := &Vim{}
+			if copied := vimKeys(d, v, tt.keys...); copied != tt.register || !v.InsertMode || d.Text != tt.want || d.Cursor != tt.column {
+				t.Fatalf("text %q cursor %d insert %v register %q", d.Text, d.Cursor, v.InsertMode, copied)
+			}
+		})
 	}
 }
+
+func TestVimReplaceCharacter(t *testing.T) {
+	for _, tt := range []struct {
+		name, text, want string
+		keys             []string
+		cursor           int
+	}{
+		{"digit", "abc", "2bc", []string{"r", "2"}, 0},
+		{"counted graphemes", "e\u0301👩‍💻c", "中中c", []string{"2", "r", "中"}, 1},
+		{"count exceeds line", "ab\nc", "ab\nc", []string{"3", "r", "X"}, 0},
+		{"line break", "abc", "\nc", []string{"2", "r", "enter"}, 1},
+		{"escape", "abc", "abc", []string{"r", "esc"}, 0},
+		{"repeat", "abc", "XXc", []string{"r", "X", "l", "."}, 1},
+		{"undo", "abc", "abc", []string{"2", "r", "X", "u"}, 0},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			d := &Document{Text: tt.text, Anchor: -1}
+			v := &Vim{}
+			if copied := vimKeys(d, v, tt.keys...); d.Text != tt.want || d.Cursor != tt.cursor || v.InsertMode || v.CommandPending() || copied != "" {
+				t.Fatalf("text %q cursor %d mode %s register %q", d.Text, d.Cursor, v.Label(), copied)
+			}
+		})
+	}
+}
+
+func TestVimSubstituteCharacters(t *testing.T) {
+	d := &Document{Text: "e\u0301👩‍💻cd", Anchor: -1}
+	v := &Vim{}
+	if copied := vimKeys(d, v, "2", "s"); copied != "e\u0301👩‍💻" || d.Text != "cd" || !v.InsertMode {
+		t.Fatalf("text %q mode %s register %q", d.Text, v.Label(), copied)
+	}
+	vimKeys(d, v, "X", "esc", "l", ".")
+	if d.Text != "XX" || v.InsertMode {
+		t.Fatalf("repeat: text %q mode %s", d.Text, v.Label())
+	}
+	vimKeys(d, v, "2", "u")
+	if d.Text != "e\u0301👩‍💻cd" {
+		t.Fatalf("undo: text %q", d.Text)
+	}
+}
+
 func TestVimRegisterYank(t *testing.T) {
 	for _, tt := range []struct {
 		keys []string

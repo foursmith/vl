@@ -4,7 +4,50 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/clipperhouse/uax29/v2/graphemes"
 )
+
+func characterRangeEnd(d *Document, count int) (int, bool) {
+	row, _ := d.Position()
+	end := d.Cursor
+	lineEnd := d.LineOffset(row) + d.LineRuneCount(row)
+	for range count {
+		if end == lineEnd {
+			return end, false
+		}
+		end = d.next(end)
+	}
+	return end, true
+}
+
+func replaceCharacter(d *Document, key string, count int) {
+	end, full := characterRangeEnd(d, count)
+	if !full {
+		return
+	}
+	switch key {
+	case "space":
+		key = " "
+	case "tab":
+		key = "\t"
+	case "enter":
+		key, count = "\n", 1
+	default:
+		iter := graphemes.FromString(key)
+		if !iter.Next() || iter.End() != len(key) {
+			return
+		}
+	}
+	start := d.Cursor
+	d.BeginEditGroup()
+	d.SelectRange(start, end)
+	d.Insert(strings.Repeat(key, count))
+	if key != "\n" {
+		d.Cursor = d.snap(start+(count-1)*utf8.RuneCountInString(key), false)
+	}
+	d.EndEditGroup()
+}
 
 func (v *Vim) handleOperator(d *Document, op, key string, count int) string {
 	switch op {
@@ -31,10 +74,6 @@ func (v *Vim) handleOperator(d *Document, op, key string, count int) string {
 		d.SetPosition(first, 0)
 		return v.operateLines(d, op, last-first+1)
 	default:
-		if op == "c" && key == "w" {
-			v.action = "focus"
-			return ""
-		}
 		return v.operateMotion(d, op, key, count)
 	}
 	return ""
@@ -42,6 +81,14 @@ func (v *Vim) handleOperator(d *Document, op, key string, count int) string {
 
 func (v *Vim) operateMotion(d *Document, op, key string, count int) string {
 	start := d.Cursor
+	if op == "c" && key == "w" && start < d.runeCount {
+		r, _ := utf8.DecodeRuneInString(d.Text[d.ByteOffset(start):])
+		if !unicode.IsSpace(r) {
+			// Include the current word, even when the cursor is on its last character.
+			v.moveWord(d, "cw", count)
+			return v.operate(d, op, start, d.next(d.Cursor), false)
+		}
+	}
 	if !v.motion(d, key, count) {
 		return ""
 	}

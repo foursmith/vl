@@ -54,19 +54,8 @@ func (m *Model) vimKey(k string) (bool, tea.Cmd) {
 	if text != "" {
 		m.vimRegister = text
 	}
-	action := v.TakeAction()
-	switch action {
-	case "fold:a", "fold:c", "fold:o", "fold:M", "fold:R", "fold:C", "fold:O":
-		if m.editing() {
-			m.editorFold(action[len("fold:"):])
-		}
-	case "focus":
-		if m.editorOnly {
-			return true, nil
-		}
-		m.sidebar = true
-		m.sidebarVisible = true
-		m.resize()
+	if action := v.TakeFoldAction(); action != "" && m.editing() {
+		m.editorFold(action)
 	}
 	return true, nil
 }

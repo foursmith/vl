@@ -6,9 +6,9 @@ import (
 	"unicode/utf8"
 )
 
-func (v *Vim) TakeAction() string {
-	action := v.action
-	v.action = ""
+func (v *Vim) TakeFoldAction() string {
+	action := v.foldAction
+	v.foldAction = ""
 	return action
 }
 
@@ -17,7 +17,7 @@ func (v *Vim) handleCommand(d *Document, key string) bool {
 	case "`":
 		v.clearPending()
 		v.clamp(d)
-		v.word(d, "b", []rune(d.Text))
+		v.moveWord(d, "b", 1)
 		if v.VisualMode {
 			v.SyncVisual(d)
 		}
@@ -164,9 +164,9 @@ func (v *Vim) JumpTo(d *Document, offset int) {
 	}
 }
 
-// AcceptsLeader distinguishes command input from Insert and Surround input.
+// AcceptsLeader reserves Space for commands that take literal input.
 // Workspace commands are parsed by the app, not by the text editing engine.
-func (v *Vim) AcceptsLeader() bool { return !v.InsertMode && v.surround == nil }
+func (v *Vim) AcceptsLeader() bool { return !v.InsertMode && v.surround == nil && v.pending != "r" }
 
 // Read-only documents share motions, text objects, selection and yank commands.
 // Reject mutations before interpreting them so they cannot enter Insert or
@@ -184,7 +184,7 @@ func (v *Vim) readOnlyKey(key string) bool {
 	switch key {
 	case "i", "a", "o":
 		return v.VisualMode
-	case "I", "A", "O", "x", "D", "C", "d", "c", "p", "P", "u", "U", ".", "tab", "shift+tab", ">", "<", "`", "S":
+	case "I", "A", "O", "x", "D", "C", "d", "c", "p", "P", "u", "U", ".", "tab", "shift+tab", ">", "<", "`", "r", "s", "S":
 		return false
 	}
 	return true

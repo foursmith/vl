@@ -66,19 +66,26 @@ func (v *Vim) motion(d *Document, key string, n int) bool {
 	case "G":
 		d.SetPosition(n-1, 0)
 	case "w", "b", "e":
-		runes := []rune(d.Text)
-		for range n {
-			before := d.Cursor
-			v.word(d, key, runes)
-			if d.Cursor == before {
-				break
-			}
-		}
+		v.moveWord(d, key, n)
 	default:
 		return false
 	}
 	return true
 }
+
+func (v *Vim) moveWord(d *Document, key string, count int) {
+	runes := []rune(d.Text)
+	for range count {
+		before := d.Cursor
+		v.word(d, key, runes)
+		if key == "cw" {
+			key = "e"
+		} else if d.Cursor == before {
+			break
+		}
+	}
+}
+
 func wordClass(r rune) int {
 	if unicode.IsSpace(r) {
 		return 0
@@ -115,8 +122,8 @@ func (v *Vim) word(d *Document, key string, runes []rune) {
 		for d.Cursor > 0 && class(d.previous(d.Cursor)) == c {
 			d.Cursor = d.previous(d.Cursor)
 		}
-	case "e":
-		if d.Cursor < end {
+	case "e", "cw":
+		if key == "e" && d.Cursor < end {
 			d.Cursor = d.next(d.Cursor)
 		}
 		for d.Cursor < end && class(d.Cursor) == 0 {

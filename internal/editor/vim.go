@@ -13,7 +13,7 @@ type Vim struct {
 	visualAnchor           int
 	pending                string
 	count, prefixCount     int
-	action                 string
+	foldAction             string
 	record                 *vimRecording
 	lastChange             *vimChange
 	surround               *vimSurround
@@ -201,7 +201,7 @@ func (v *Vim) handleKey(d *Document, key string) (bool, string) {
 func (v *Vim) handleNormal(d *Document, key string) (bool, string) {
 	v.clamp(d)
 	d.Anchor = -1
-	if appendVimCount(&v.count, key) {
+	if v.pending != "r" && appendVimCount(&v.count, key) {
 		return true, ""
 	}
 	if v.pending != "" {
@@ -210,7 +210,7 @@ func (v *Vim) handleNormal(d *Document, key string) (bool, string) {
 		return true, copied
 	}
 	switch key {
-	case "d", "c", "y", "g", "z":
+	case "d", "c", "y", "g", "z", "r":
 		v.beginPending(key, max(1, v.count))
 		return true, ""
 	}
@@ -254,15 +254,13 @@ func (v *Vim) handleNormal(d *Document, key string) (bool, string) {
 			d.Insert("\n")
 			d.SetPosition(row, 0)
 		}
-	case "x":
-		start := d.Cursor
-		end := d.LineOffset(row) + d.LineRuneCount(row)
-		for range n {
-			if d.Cursor < end {
-				d.Cursor = d.next(d.Cursor)
-			}
+	case "x", "s":
+		end, _ := characterRangeEnd(d, n)
+		op := "d"
+		if key == "s" {
+			op = "c"
 		}
-		copied = v.operate(d, "d", start, d.Cursor, false)
+		copied = v.operate(d, op, d.Cursor, end, false)
 	case "D", "C":
 		end := d.LineOffset(row) + d.LineRuneCount(row)
 		op := "d"
@@ -290,6 +288,9 @@ func (v *Vim) handleNormalPending(d *Document, key string) string {
 	op, count := v.pending, v.pendingCount()
 	v.clearPending()
 	switch op {
+	case "r":
+		replaceCharacter(d, key, count)
+		return ""
 	case "g":
 		if key == "g" {
 			d.SetPosition(count-1, 0)
@@ -298,7 +299,7 @@ func (v *Vim) handleNormalPending(d *Document, key string) string {
 	case "z":
 		switch key {
 		case "a", "c", "o", "M", "R", "C", "O":
-			v.action = "fold:" + key
+			v.foldAction = key
 		}
 		return ""
 	}

@@ -236,11 +236,15 @@ func TestFlashRemovedAliases(t *testing.T) {
 					press(m, prefix)
 				}
 				press(m, key)
-				if m.flash != nil || m.document().Text != "alpha beta" {
+				want := "alpha beta"
+				if prefix == "" && key == "s" {
+					want = "lpha beta"
+				}
+				if m.flash != nil || m.document().Text != want {
 					t.Fatal("removed alias is active")
 				}
-				// Surround prefixes do not restore s as a Flash alias.
-				if (prefix == "c" || prefix == "d" || prefix == "y") && key == "s" {
+				// Leave Insert or a pending Surround command before opening Flash.
+				if key == "s" && prefix != "v" {
 					press(m, "esc")
 				}
 				press(m, "f")
