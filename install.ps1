@@ -55,13 +55,31 @@ try {
     $unpacked = Join-Path $stage 'unpacked'
     Expand-Archive -LiteralPath $archivePath -DestinationPath $unpacked
     $binary = Join-Path $unpacked 'vl.exe'
+    if (-not [IO.File]::Exists($binary)) {
+        throw "The release archive does not contain vl.exe: $archive"
+    }
+    try {
+        $binaryVersion = & $binary -version
+        if ($LASTEXITCODE -ne 0 -or ($binaryVersion -join "`n").Trim() -ne "vl $version") {
+            throw "Expected 'vl $version', received '$binaryVersion' (exit code $LASTEXITCODE)."
+        }
+    } catch {
+        throw "Cannot run the downloaded vl.exe: $($_.Exception.Message)"
+    }
     if ([IO.File]::Exists($target)) {
         [IO.File]::Replace($binary, $target, (Join-Path $stage 'previous-vl.exe'))
     } else {
         [IO.File]::Move($binary, $target)
     }
+    if (-not [IO.File]::Exists($target)) {
+        throw "Installation failed: vl.exe is missing at $target"
+    }
 } finally {
-    Remove-Item -LiteralPath $stage -Recurse -Force
+    try {
+        Remove-Item -LiteralPath $stage -Recurse -Force
+    } catch {
+        Write-Warning "Could not remove installer temporary directory ${stage}: $($_.Exception.Message)"
+    }
 }
 
 $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
@@ -69,7 +87,23 @@ if (($userPath -split ';') -notcontains $installDir) {
     $userPath = ($userPath, $installDir | Where-Object { $_ }) -join ';'
     [Environment]::SetEnvironmentVariable('Path', $userPath, 'User')
 }
-if (($env:Path -split ';') -notcontains $installDir) {
-    $env:Path = ($env:Path, $installDir | Where-Object { $_ }) -join ';'
+if (($env:Path -split ';')[0] -ne $installDir) {
+    $env:Path = ($installDir, $env:Path | Where-Object { $_ }) -join ';'
+}
+$command = Get-Command vl -ErrorAction SilentlyContinue
+if (-not $command -or $command.CommandType -ne 'Application' -or $command.Source -ne $target) {
+    throw "Installed vl.exe at $target, but PowerShell cannot resolve 'vl' to it. Check PATH, PATHEXT (.EXE), and any alias or function named vl."
+}
+try {
+    $installedVersion = vl -version
+    if ($LASTEXITCODE -ne 0 -or ($installedVersion -join "`n").Trim() -ne "vl $version") {
+        throw "Expected 'vl $version', received '$installedVersion' (exit code $LASTEXITCODE)."
+    }
+} catch {
+    throw "Installed vl.exe at $target, but 'vl -version' failed: $($_.Exception.Message)"
 }
 Write-Host "Installed vl $version to $target"
+Write-Host "Verified: vl -version -> $installedVersion"
+Write-Host 'Run vl in this PowerShell session to get started.'
+Write-Host 'For other terminal sessions, fully exit and reopen the terminal application to reload PATH.'
+Write-Host ("Or run directly: & '" + $target.Replace("'", "''") + "'")
