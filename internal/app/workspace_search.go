@@ -259,7 +259,7 @@ func (m *Model) openSearchRight() tea.Cmd {
 	}
 	path := m.search.result.Files[r.file].Path
 	if !m.search.folded[path] {
-		return m.openSidebarFile(false)
+		return m.openSelected()
 	}
 	m.search.folded[path] = false
 	m.ensureSidebar()

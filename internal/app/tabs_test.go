@@ -247,7 +247,7 @@ func TestExplorerSingleAndDoubleClick(t *testing.T) {
 	}
 	m.rebuildItems()
 	click := func(index int) {
-		m.click(tea.MouseClickMsg{X: 5, Y: headerHeight + index, Button: tea.MouseLeft})
+		m.click(tea.MouseClickMsg{X: 5, Y: headerHeight + 1 + index, Button: tea.MouseLeft})
 	}
 	click(0)
 	click(1)

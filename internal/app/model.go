@@ -222,7 +222,7 @@ type Model struct {
 	closeQueue              []*editor.Document
 	lastClickKey            string
 	lastClickTime           time.Time
-	changeCollapsed         map[string]bool
+	sidebarCollapsed        map[string]bool
 	branchStart             string
 	branchRepository        string
 	commitRepository        string
@@ -260,7 +260,7 @@ func newModel(ctx context.Context, repo *gitservice.Repository, nerd, editorOnly
 	if !editorOnly {
 		m.expanded = map[string]bool{}
 		m.uncompressed = map[string]bool{}
-		m.changeCollapsed = map[string]bool{}
+		m.sidebarCollapsed = map[string]bool{}
 		m.commitDrafts = map[string]string{}
 		m.historyStates = map[string]*historyState{}
 		m.historyPages = map[string]*historyPageState{}

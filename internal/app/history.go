@@ -121,46 +121,19 @@ func (m *Model) applyHistoryFiles(msg historyFilesMsg) {
 	}
 }
 
-func (m *Model) openHistoryRow(entry item, keep bool) tea.Cmd {
-	if entry.historyPage != nil {
-		return m.loadHistoryPage(entry.historyPage)
-	}
-	if entry.repoHeader {
-		m.changeCollapsed[entry.key] = !m.changeCollapsed[entry.key]
-		m.rebuildItems()
-		return nil
-	}
-	if entry.commit != nil {
-		key := historyKey(entry.repository, entry.commit.ID)
-		if m.historyExpanded(key) {
-			m.historyStates[key].expanded = false
+func (m *Model) toggleHistoryCommit(entry item) tea.Cmd {
+	key := historyKey(entry.repository, entry.commit.ID)
+	if state := m.historyStates[key]; state != nil {
+		state.expanded = !state.expanded
+		if !state.expanded {
 			m.rebuildItems()
 			return nil
 		}
-		if state := m.historyStates[key]; state != nil {
-			state.expanded = true
-		}
-		return m.loadHistoryCommit(entry)
 	}
-	if entry.folder != "" {
-		state := m.historyStates[entry.historyID]
-		if state == nil {
-			return nil
-		}
-		state.collapsed[entry.key] = !state.collapsed[entry.key]
-		m.rebuildItems()
-		return nil
-	}
-	if entry.historyChange == nil {
-		return nil
-	}
-	return m.openSidebarEntry(entry, !keep)
+	return m.loadHistoryCommit(entry)
 }
 
 func (m *Model) historyRow(entry item, w int, bg string) (string, string) {
-	if entry.repoHeader {
-		return m.explorerRow(entry, w, bg)
-	}
 	if entry.isPullRequest() {
 		state := m.pullRequestStatus(entry)
 		badges := ""
@@ -173,7 +146,7 @@ func (m *Model) historyRow(entry item, w int, bg string) (string, string) {
 		if entry.historyChange == nil && entry.pullRequestFile == nil && entry.folder == "" {
 			return row("  "+safe(entry.label), w, m.colors.Muted, bg), m.colors.Muted
 		}
-		text, fg := m.explorerRow(entry, max(0, w-3), bg)
+		text, fg := m.treeRow(entry, max(0, w-3), bg, treeRowState{})
 		return " " + theme.Style(m.colors.Accent, bg).Render("│ ") + text, fg
 	}
 	c := entry.commit
@@ -221,7 +194,7 @@ func (m *Model) historyRepositoryItems() []item {
 	for _, repo := range append([]string{""}, m.snapshot.Repositories...) {
 		header := m.repositoryHeader(repo, historyRepositoryKey(repo))
 		result = append(result, header)
-		if m.changeCollapsed[header.key] {
+		if m.sidebarCollapsed[header.key] {
 			continue
 		}
 		data := m.repositoryState(repo)

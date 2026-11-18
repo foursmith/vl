@@ -106,7 +106,7 @@ func TestHistoryChildOnlyCommitDiffAndRefresh(t *testing.T) {
 	}
 	drain(t, m, m.selectSection(history))
 	entry := selectHistoryCommit(t, m, "child space", id)
-	drain(t, m, m.openHistoryRow(entry, true))
+	drain(t, m, m.activateSidebarEntry(entry, false))
 	drain(t, m, press(m, "j"))
 	if !m.sidebar || m.diffCommit != id || m.diffPath != "child space/README.md" || !strings.Contains(m.patch.Raw, "+# child history only") {
 		t.Fatalf("child history diff: %s %s\n%s", m.diffCommit, m.diffPath, m.patch.Raw)
@@ -117,7 +117,7 @@ func TestHistoryChildOnlyCommitDiffAndRefresh(t *testing.T) {
 	if cmd := m.editDiff(); cmd != nil {
 		t.Fatal("history diff allowed editing")
 	}
-	m.changeCollapsed[repositoryKey("child space")] = true
+	m.sidebarCollapsed[repositoryKey("child space")] = true
 	for i, e := range m.items {
 		if e.repoHeader && e.repository == "child space" {
 			m.selected = i
@@ -125,7 +125,7 @@ func TestHistoryChildOnlyCommitDiffAndRefresh(t *testing.T) {
 		}
 	}
 	drain(t, m, m.openSelected())
-	if !m.changeCollapsed[historyRepositoryKey("child space")] {
+	if !m.sidebarCollapsed[historyRepositoryKey("child space")] {
 		t.Fatal("history repository did not collapse")
 	}
 	for _, e := range m.items {
@@ -133,10 +133,10 @@ func TestHistoryChildOnlyCommitDiffAndRefresh(t *testing.T) {
 			t.Fatal("collapsed child history remains visible")
 		}
 	}
-	m.changeCollapsed[historyRepositoryKey("child space")] = false
+	m.sidebarCollapsed[historyRepositoryKey("child space")] = false
 	m.rebuildItems()
 	// Commit expansion survives repository folding, independently of Changes.
-	if !m.historyExpanded(historyKey("child space", id)) || !m.changeCollapsed[repositoryKey("child space")] {
+	if !m.historyExpanded(historyKey("child space", id)) || !m.sidebarCollapsed[repositoryKey("child space")] {
 		t.Fatal("repository folds leaked across tabs")
 	}
 	for _, width := range []int{30, 48, 80, 120} {
@@ -220,7 +220,7 @@ func TestHistoryEmptyAndNestedRepositorySections(t *testing.T) {
 	for _, entry := range m.items {
 		if entry.label == "No commits yet" {
 			m.sidebar = true
-			if cmd := m.openHistoryRow(entry, true); cmd != nil || !m.sidebar {
+			if cmd := m.activateSidebarEntry(entry, false); cmd != nil || !m.sidebar {
 				t.Fatal("empty history note stole focus")
 			}
 		}
@@ -251,7 +251,7 @@ func TestHistoryCollapsedRepositoryDoesNotOpenLatePreview(t *testing.T) {
 			break
 		}
 	}
-	m.openHistoryRow(*m.current(), true)
+	m.openSelected()
 	m.applyHistoryFiles(historyFilesMsg{repository: "child", id: id, seq: seq, files: []gitservice.Change{{Repository: "child", Path: "child/file.go", Index: 'M', Worktree: ' '}}})
 	if m.diffOpen || !m.current().repoHeader || m.current().repository != "child" {
 		t.Fatal("late result opened preview inside collapsed repository")

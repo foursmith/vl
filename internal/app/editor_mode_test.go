@@ -148,7 +148,7 @@ func TestEditorInsideRepositoryNeedsNoGitState(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer m.Close()
-	if !m.snapshot.NoRepository || m.historyStates != nil || m.historyPages != nil || m.commitDrafts != nil || m.changeCollapsed != nil || m.expanded != nil {
+	if !m.snapshot.NoRepository || m.historyStates != nil || m.historyPages != nil || m.commitDrafts != nil || m.sidebarCollapsed != nil || m.expanded != nil {
 		t.Fatal("editor initialized workspace/Git state")
 	}
 	m.openPalette()

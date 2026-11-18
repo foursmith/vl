@@ -220,10 +220,10 @@ func TestExplorerDirectoryReplacementAndCollapse(t *testing.T) {
 	m.expanded["replaced"] = true
 	m.section = explorer
 	m.rebuildItems()
-	if len(m.items) != 3 || m.items[0].folder != "replaced" {
+	if len(m.items) != 4 || m.items[1].folder != "replaced" {
 		t.Fatalf("file-to-directory replacement: %+v", m.items)
 	}
-	m.selected = 0
+	m.selected = 1
 	m.openSelected()
 	if m.expanded["replaced"] {
 		t.Fatal("folder did not collapse")

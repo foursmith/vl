@@ -25,13 +25,6 @@ func (m *Model) sortSearchFiles() {
 	})
 }
 
-func (m *Model) searchControlWidth() int {
-	if !m.sideShown() {
-		return m.width
-	}
-	return m.sideWidth()
-}
-
 func (m *Model) searchRowAction(index int) bool {
 	return index == m.hoveredSidebarRow() || (m.search.focus == 2 && index == m.search.selected)
 }

@@ -15,7 +15,7 @@ func clickSearchControl(t *testing.T, m *Model, id string) tea.Cmd {
 	if m.modal != "" {
 		m.updateModal(tea.KeyPressMsg{Code: tea.KeyEscape})
 	}
-	for _, c := range m.searchPanelControls(m.searchControlWidth()) {
+	for _, c := range m.searchPanelControls(m.sidebarContentWidth()) {
 		if c.id == id {
 			return m.clickSearch(c.x, c.y)
 		}
@@ -157,20 +157,20 @@ func TestSearchPanelFieldFocusMouseAndSmallSizes(t *testing.T) {
 		for _, height := range []int{8, 10, 12, 24} {
 			for _, width := range []int{30, 69, 70, 120} {
 				m.Update(tea.WindowSizeMsg{Width: width, Height: height})
-				lines := m.sidebarLinesWidth(m.searchControlWidth())
+				lines := m.sidebarLinesWidth(m.sidebarContentWidth())
 				if len(lines) != m.bodyHeight() {
 					t.Fatal("panel height overflow")
 				}
 				for _, line := range lines {
-					if ansi.StringWidth(line) != m.searchControlWidth() {
+					if ansi.StringWidth(line) != m.sidebarContentWidth() {
 						t.Fatal("panel width overflow")
 					}
 				}
 				if len(strings.Split(m.View().Content, "\n")) != height {
 					t.Fatal("frame height overflow")
 				}
-				for _, c := range m.searchPanelControls(m.searchControlWidth()) {
-					if c.y >= m.bodyHeight() || c.x < 0 || c.x+c.width > m.searchControlWidth() {
+				for _, c := range m.searchPanelControls(m.sidebarContentWidth()) {
+					if c.y >= m.bodyHeight() || c.x < 0 || c.x+c.width > m.sidebarContentWidth() {
 						t.Fatal("invisible control", c)
 					}
 				}

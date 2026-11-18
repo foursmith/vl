@@ -192,9 +192,9 @@ func TestWorkspaceReplaceControlsAndLayout(t *testing.T) {
 		m.SetSidebarLayout(36, right)
 		for _, width := range []int{30, 69, 70, 120} {
 			m.Update(tea.WindowSizeMsg{Width: width, Height: 20})
-			lines := m.sidebarLinesWidth(m.searchControlWidth())
+			lines := m.sidebarLinesWidth(m.sidebarContentWidth())
 			for _, line := range lines {
-				if ansi.StringWidth(line) != m.searchControlWidth() {
+				if ansi.StringWidth(line) != m.sidebarContentWidth() {
 					t.Fatal("bad replacement panel width")
 				}
 			}
@@ -210,7 +210,7 @@ func TestWorkspaceReplaceControlsAndLayout(t *testing.T) {
 		}
 	}
 	// Click the replace-all button using its rendered geometry.
-	for _, c := range m.searchPanelControls(m.searchControlWidth()) {
+	for _, c := range m.searchPanelControls(m.sidebarContentWidth()) {
 		if c.id == "replaceAll" {
 			drain(t, m, m.clickSearch(c.x, c.y))
 			break
@@ -219,7 +219,7 @@ func TestWorkspaceReplaceControlsAndLayout(t *testing.T) {
 	if m.search.result.Count != 0 || len(m.tabs) != 0 {
 		t.Fatal("replace all button failed")
 	}
-	for _, c := range m.searchPanelControls(m.searchControlWidth()) {
+	for _, c := range m.searchPanelControls(m.sidebarContentWidth()) {
 		if c.id == "replaceToggle" {
 			m.clickSearch(c.x, c.y)
 			break

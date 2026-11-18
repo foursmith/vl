@@ -132,16 +132,16 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 				bg = m.colors.SidebarSelection(m.sidebar)
 			}
 			state := treeRowState{selected: i == m.selected, hovered: i == hovered}
-			if m.section == explorer || m.section == changes {
+			switch {
+			case entry.repoHeader:
+				text, fg = m.repositoryRow(entry, w, bg)
+			case m.section == explorer || m.section == changes:
 				text, fg = m.treeRow(entry, w, bg, state)
-				if m.section == changes && (i == hovered || entry.repoHeader) {
-					text = m.sidebarActionRow(entry, w, fg, bg, state, m.changeRowActions(entry, w))
+				if m.section == changes && i == hovered {
+					text = m.changeActionRow(entry, text, w, fg, bg, state, m.changeRowActions(entry, w))
 				}
-			} else {
+			default:
 				text, fg = m.historyRow(entry, w, bg)
-				if m.section == pullRequests && entry.repoHeader {
-					text = m.sidebarActionRow(entry, w, fg, bg, state, m.pullRequestRowActions(entry, w))
-				}
 			}
 			if i == m.selected && m.monochrome && m.sidebar {
 				text = ">" + ansi.Cut(text, 1, w)
@@ -154,18 +154,7 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 
 type treeRowState struct{ selected, hovered bool }
 
-func (m *Model) explorerRow(entry item, w int, bg string) (string, string) {
-	return m.treeRow(entry, w, bg, treeRowState{})
-}
-
 func (m *Model) treeRow(entry item, w int, bg string, state treeRowState) (string, string) {
-	if entry.repoHeader {
-		prefix := m.repositoryHeaderPrefix(entry)
-		branch := m.repositoryBranchText(entry, w, 0)
-		nameWidth := max(0, w-ansi.StringWidth(prefix)-ansi.StringWidth(branch))
-		text := prefix + row(safe(entry.label), nameWidth, m.colors.SideForeground, bg) + branch
-		return row(theme.Style(m.colors.SideForeground, bg).Bold(true).Render(text), w, m.colors.SideForeground, bg), m.colors.SideForeground
-	}
 	if entry.header {
 		fg := theme.Readable(m.colors.Muted, bg)
 		return row(strings.Repeat("  ", entry.depth)+m.treeChevron(m.folderExpanded(entry))+" "+entry.label, w, fg, bg), fg
@@ -262,17 +251,18 @@ func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 	if m.section == search {
 		return m.clickSearch(msg.X, y)
 	}
-	w := m.sideWidth()
-	if !m.sideShown() {
-		w = m.width
-	}
+	w := m.sidebarContentWidth()
 	i := m.sidebarRowAt(y)
 	if y < headerHeight || i < 0 || i >= len(m.items) {
 		return nil
 	}
-	if m.section == pullRequests {
-		for _, action := range m.pullRequestRowActions(m.items[i], w) {
-			if msg.X >= action.x && msg.X < action.x+action.width {
+	var actions []rowAction
+	var layout repositoryRowLayout
+	if m.items[i].repoHeader {
+		layout = m.layoutRepositoryRow(m.items[i], w)
+		actions = layout.actions
+		if m.section == pullRequests {
+			if action := rowActionAt(actions, msg.X); action != nil {
 				m.lastClickKey = ""
 				if action.id == "filter" {
 					return m.openPullRequestFilter()
@@ -280,39 +270,24 @@ func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 				return m.forceRefreshPullRequests()
 			}
 		}
+	} else if m.section == changes && i == m.hoveredSidebarRow() {
+		actions = m.changeRowActions(m.items[i], w)
 	}
 	entry := m.selectSidebarRow(i)
 	if entry == nil {
 		return nil
 	}
-	if m.repositoryBranchAt(*entry, msg.X, w) {
+	if entry.repoHeader && layout.branchAt(msg.X) {
 		m.lastClickKey = ""
-		return m.openBranchPicker(m.items[i].repository, "")
+		return m.openBranchPicker(entry.repository, "")
 	}
 	if m.section == changes {
-		if cmd, handled := m.clickChangeAction(i, msg.X, w); handled {
+		if action := rowActionAt(actions, msg.X); action != nil {
 			m.lastClickKey = ""
-			return cmd
+			return m.runChangeRowAction(i, action.id)
 		}
 	}
-	if entry.header {
-		m.lastClickKey = ""
-		return m.openSelected()
-	}
-	if entry.file != "" || entry.change != nil || entry.historyChange != nil || entry.pullRequestFile != nil {
-		return m.clickSidebarFile()
-	}
-	m.lastClickKey = ""
-	if m.section == history && entry.commit != nil {
-		return m.openHistoryRow(*entry, false)
-	}
-	if m.section == pullRequests {
-		return m.openPullRequestRow(*entry, false)
-	}
-	if m.section == explorer || entry.folder != "" {
-		return m.openSelected()
-	}
-	return m.preview()
+	return m.clickSidebarEntry()
 }
 
 func (m *Model) gitDecorationColor(entry item) string {

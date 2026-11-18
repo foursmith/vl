@@ -131,18 +131,18 @@ func TestHistoryKeepsMultipleCommitsExpandedWithIndependentLoads(t *testing.T) {
 	for i, entry := range m.items {
 		if entry.historyID == historyKey("", a.ID) && entry.folder == "src" {
 			m.selected = i
-			m.openHistoryRow(entry, true)
+			m.activateSidebarEntry(entry, false)
 			break
 		}
 	}
 	if visible(a.ID, "src/a.go") || !visible(b.ID, "src/b.go") {
 		t.Fatal("directory folding leaked across commits")
 	}
-	m.openHistoryRow(selectCommit(a.ID), true)
+	m.activateSidebarEntry(selectCommit(a.ID), false)
 	if m.historyExpanded(historyKey("", a.ID)) || !m.historyExpanded(historyKey("", b.ID)) {
 		t.Fatal("commit collapse affected its neighbor")
 	}
-	m.openHistoryRow(selectCommit(a.ID), true)
+	m.activateSidebarEntry(selectCommit(a.ID), false)
 	if !m.historyExpanded(historyKey("", a.ID)) || m.historyStates[historyKey("", a.ID)].seq != seqA || visible(a.ID, "src/a.go") || !visible(b.ID, "src/b.go") {
 		t.Fatal("reopening lost cached files or independent directory state")
 	}

@@ -268,7 +268,7 @@ func (m *Model) pullRequestExpanded(entry item) bool {
 
 func (m *Model) pullRequestItems() []item {
 	items := []item{m.repositoryHeader("", pullRequestRepositoryKey)}
-	if m.changeCollapsed[pullRequestRepositoryKey] {
+	if m.sidebarCollapsed[pullRequestRepositoryKey] {
 		return items
 	}
 	if len(m.pullRequests) == 0 {
@@ -451,33 +451,13 @@ func (m *Model) touchPullRequestDiffCache(target string) tea.Cmd {
 	}
 }
 
-func (m *Model) openPullRequestRow(entry item, keep bool) tea.Cmd {
-	if entry.key == pullRequestMoreKey {
-		return m.loadMorePullRequests()
-	}
-	if entry.repoHeader {
-		m.changeCollapsed[entry.key] = !m.changeCollapsed[entry.key]
+func (m *Model) togglePullRequest(entry item) tea.Cmd {
+	if review := m.pullRequestReviews[entry.pullRequest.URL]; review != nil && review.expanded {
+		review.expanded = false
 		m.rebuildItems()
 		return nil
 	}
-	if entry.pullRequest == nil {
-		return nil
-	}
-	review := m.pullRequestReviews[entry.pullRequest.URL]
-	if entry.isPullRequest() {
-		if review != nil && review.expanded {
-			review.expanded = false
-			m.rebuildItems()
-			return nil
-		}
-		return m.loadPullRequest(entry)
-	}
-	if entry.folder != "" {
-		review.collapsed[entry.key] = !review.collapsed[entry.key]
-		m.rebuildItems()
-		return nil
-	}
-	return m.openSidebarEntry(entry, !keep)
+	return m.loadPullRequest(entry)
 }
 
 func (m *Model) applyPullRequestDiff(msg pullRequestDiffMsg) tea.Cmd {

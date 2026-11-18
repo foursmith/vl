@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 	gitservice "github.com/ourongxing/vl/internal/git"
+	"github.com/ourongxing/vl/internal/theme"
 )
 
 func repositoryKey(path string) string { return "repository:" + path }
@@ -36,7 +37,7 @@ func (m *Model) changeRepositoryItems() []item {
 	for _, repo := range repositories {
 		key := repositoryKey(repo)
 		result = append(result, m.repositoryHeader(repo, key))
-		if m.changeCollapsed[key] {
+		if m.sidebarCollapsed[key] {
 			continue
 		}
 		for _, staged := range []bool{true, false} {
@@ -50,7 +51,7 @@ func (m *Model) changeRepositoryItems() []item {
 			}
 			key := changeKey(repo, staged, "group", "")
 			result = append(result, item{label: fmt.Sprintf("%s  %d", label, count), key: key, header: true, staged: staged, repository: repo, depth: 1})
-			if !m.changeCollapsed[key] {
+			if !m.sidebarCollapsed[key] {
 				for i := range rows {
 					rows[i].depth++
 				}
@@ -149,31 +150,40 @@ func (m *Model) repositoryHeaderPrefix(entry item) string {
 	return prefix
 }
 
-func (m *Model) repositoryBranchText(entry item, width, buttons int) string {
-	if entry.branch == "" {
-		return ""
-	}
-	budget := max(0, min(18, width-ansi.StringWidth(m.repositoryHeaderPrefix(entry))-2-buttons-1))
-	branch := ansi.Truncate(" "+safe(entry.branch), budget, "…")
-	if branch == "" {
-		return ""
-	}
-	return branch + " "
+type repositoryRowLayout struct {
+	prefix, branch string
+	actions        []rowAction
+	labelWidth     int
+	branchStart    int
+	width          int
 }
 
-func (m *Model) repositoryBranchAt(entry item, x, width int) bool {
-	if !entry.repoHeader {
-		return false
+func (m *Model) layoutRepositoryRow(entry item, width int) repositoryRowLayout {
+	layout := repositoryRowLayout{prefix: m.repositoryHeaderPrefix(entry), width: width, actions: m.repositoryRowActions(entry)}
+	buttonWidth := len(layout.actions) * sidebarRowActionWidth
+	if entry.branch != "" {
+		budget := max(0, min(18, width-ansi.StringWidth(layout.prefix)-2-buttonWidth-1))
+		if branch := ansi.Truncate(" "+safe(entry.branch), budget, "…"); branch != "" {
+			layout.branch = branch + " "
+		}
 	}
-	buttons := 0
-	switch m.section {
-	case changes:
-		buttons = 3 * repositoryRowActionWidth
-	case pullRequests:
-		buttons = 2 * repositoryRowActionWidth
-	}
-	branchWidth := ansi.StringWidth(m.repositoryBranchText(entry, width, buttons))
-	return branchWidth > 0 && x >= width-branchWidth && x < width
+	layout.branchStart = width - ansi.StringWidth(layout.branch)
+	layout.labelWidth = layout.branchStart - buttonWidth
+	layoutRowActions(layout.actions, layout.branchStart)
+	return layout
+}
+
+func (layout repositoryRowLayout) branchAt(x int) bool {
+	return x >= layout.branchStart && x < layout.width
+}
+
+func (m *Model) repositoryRow(entry item, width int, bg string) (string, string) {
+	layout := m.layoutRepositoryRow(entry, width)
+	fg := m.colors.SideForeground
+	label := row(layout.prefix+safe(entry.label), layout.labelWidth, fg, bg)
+	return theme.Style(fg, bg).Bold(true).Render(label) +
+		m.renderRowActions(layout.actions, bg) +
+		theme.Style(m.colors.Foreground, bg).Bold(true).Render(layout.branch), fg
 }
 
 // File ownership uses a directory boundary and the deepest known repository.

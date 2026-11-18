@@ -222,13 +222,19 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 				return nil
 			}
 		}
+		if entry != nil {
+			if label := m.sidebarOpenLabel(*entry); label != "" {
+				add(label, "Enter", bind(m.openSelected))
+			}
+		}
 		if m.section == explorer {
 			if entry != nil {
-				add(m.tr("Open"), "Enter", bind(m.openSelected))
 				if entry.folder != "" && strings.Contains(entry.label, "/") {
 					add(m.tr("Split Folders"), "L", bind(m.splitFolderChain))
 				}
-				add(m.tr("Copy"), "yy", bind(m.yankEntry))
+				if !entry.header {
+					add(m.tr("Copy"), "yy", bind(m.yankEntry))
+				}
 			}
 			add(m.tr("Paste"), "p", bind(m.pasteEntryPrompt))
 			add(m.tr("New File…"), "", bind(func() tea.Cmd { return m.newEntry(false) }))
@@ -236,20 +242,14 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 			add(m.tr("Refresh"), workbenchKeys.Refresh.Help().Key, m.refresh)
 			add(m.tr("Collapse Folders"), "", m.collapseFolders)
 		} else if m.section == changes && entry != nil {
-			for _, a := range m.changeRowActions(*entry, m.sideWidth()) {
+			for _, a := range m.changeRowActions(*entry, m.sidebarContentWidth()) {
 				actions = append(actions, action{label: a.label, disabled: a.disabled, run: bind(func() tea.Cmd { return m.runChangeRowAction(m.selected, a.id) })})
 			}
-			if entry.change != nil {
-				add(m.tr("Open Changes"), "Enter", bind(m.openSelected))
-			}
 		} else if m.section == search && entry != nil {
-			add(m.tr("Open"), "Enter", bind(m.openSelected))
 			add(m.tr("Dismiss Result"), "dd / Del", bind(func() tea.Cmd { m.dismissSearchResult(m.search.selected); return nil }))
 		} else if m.section == pullRequests {
-			if entry != nil && (entry.repoHeader || entry.pullRequest != nil) {
-				add(m.tr("Open / Expand"), "Enter", bind(m.openSelected))
+			if entry != nil {
 				if entry.repoHeader {
-					add(m.tr("Checkout to…"), "", func() tea.Cmd { return m.openBranchPicker(entry.repository, "") })
 					add(m.tr("Filter Pull Requests"), "", m.openPullRequestFilter)
 				}
 				if entry.pullRequest != nil {
@@ -257,12 +257,6 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 				}
 			}
 			add(m.tr("Refresh"), workbenchKeys.Refresh.Help().Key, m.forceRefreshPullRequests)
-		} else if entry != nil {
-			add(m.tr("Open / Expand"), "Enter", bind(m.openSelected))
-			if entry.repoHeader {
-				repo := entry.repository
-				add(m.tr("Checkout to…"), "", func() tea.Cmd { return m.openBranchPicker(repo, "") })
-			}
 		}
 		if entry != nil {
 			if m.selectedEntryPath() != "" {
@@ -319,6 +313,23 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 		m.contextMenu = &contextMenu{x: x, y: y, actions: actions}
 	}
 	return nil
+}
+
+func (m *Model) sidebarOpenLabel(entry item) string {
+	switch m.sidebarActivation(entry) {
+	case toggleFolder, toggleCommit, togglePR:
+		return m.tr("Open / Expand")
+	case loadMoreCommits:
+		return m.tr("Load more commits…")
+	case loadMorePRs:
+		return m.tr("Load more pull requests…")
+	case openFileRow:
+		if entry.change != nil {
+			return m.tr("Open Changes")
+		}
+		return m.tr("Open")
+	}
+	return ""
 }
 
 func (m *Model) tabContextActions(x int) []action {

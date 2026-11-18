@@ -21,6 +21,12 @@ func (m *Model) sideWidth() int {
 	}
 	return m.clampSidebarWidth(w)
 }
+func (m *Model) sidebarContentWidth() int {
+	if !m.sideShown() {
+		return m.width
+	}
+	return m.sideWidth()
+}
 func (m *Model) sideX() int {
 	if m.sideShown() && m.sidebarRight {
 		return m.mainWidth() + 1

@@ -52,7 +52,7 @@ func TestFolderHoverActionsIncludeCollapsedDescendantsAndKeepOtherPaths(t *testi
 	}
 	drain(t, m, m.refresh())
 	drain(t, m, m.selectSection(changes))
-	m.changeCollapsed[changeKey("", false, "directory", "cmd")] = true
+	m.sidebarCollapsed[changeKey("", false, "directory", "cmd")] = true
 	m.rebuildItems()
 	drain(t, m, clickScopeAction(t, m, "cmd", false, false, "stage"))
 	for _, c := range m.snapshot.Changes {

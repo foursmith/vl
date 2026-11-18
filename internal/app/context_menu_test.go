@@ -33,7 +33,7 @@ func TestContextMenuSplitsCompactFolders(t *testing.T) {
 			drain(t, m, chooseContextAction(t, m, "Split Folders"))
 			assertSplit := func() {
 				t.Helper()
-				for path, depth := range map[string]int{"parent": 0, "parent/chain": 1, "parent/chain/leaf": 2} {
+				for path, depth := range map[string]int{"parent": 1, "parent/chain": 2, "parent/chain/leaf": 3} {
 					found := false
 					for _, entry := range m.items {
 						if entry.folder == path && entry.label == filepath.Base(path) && entry.depth == depth {
@@ -70,7 +70,7 @@ func TestContextMenuSplitsCompactFolders(t *testing.T) {
 			assertSplit()
 			drain(t, m, m.collapseFolders())
 			for _, entry := range m.items {
-				if entry.depth != 0 || entry.folder == "parent/chain/leaf" {
+				if entry.depth > 1 || entry.folder == "parent/chain/leaf" {
 					t.Fatal("collapse all exposed children or recompressed the split chain")
 				}
 			}
@@ -265,7 +265,7 @@ func TestExplorerShiftLSplitsCompactFolder(t *testing.T) {
 	}
 	_, cmd := m.Update(tea.KeyPressMsg{Code: 'l', Mod: tea.ModShift})
 	drain(t, m, cmd)
-	if entry := m.current(); entry == nil || entry.label != "child" || entry.depth != 1 || m.expanded["parent/child"] {
+	if entry := m.current(); entry == nil || entry.label != "child" || entry.depth != 2 || m.expanded["parent/child"] {
 		t.Fatal("Shift+L did not split the compact folder while preserving the selected leaf")
 	}
 }

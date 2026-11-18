@@ -52,7 +52,7 @@ func statusPriority(status byte) int {
 }
 
 func (m *Model) repositoryChangesTree(repo string, staged bool) ([]item, int) {
-	if m.changeCollapsed[changeKey(repo, staged, "group", "")] {
+	if m.sidebarCollapsed[changeKey(repo, staged, "group", "")] {
 		count := 0
 		for _, c := range m.snapshot.Changes {
 			if c.Repository == repo && (staged && c.Staged() || !staged && c.Unstaged()) {
@@ -61,7 +61,7 @@ func (m *Model) repositoryChangesTree(repo string, staged bool) ([]item, int) {
 		}
 		return nil, count
 	}
-	return changeTree(m.snapshot.Changes, repo, staged, m.changeCollapsed, changePrefix(repo, staged))
+	return changeTree(m.snapshot.Changes, repo, staged, m.sidebarCollapsed, changePrefix(repo, staged))
 }
 
 func changeTree(changes []gitservice.Change, repo string, staged bool, collapsed map[string]bool, prefix string) ([]item, int) {
@@ -123,25 +123,4 @@ func changeTree(changes []gitservice.Change, repo string, staged bool, collapsed
 	}
 	visit(root, 0)
 	return rows, count
-}
-
-func (m *Model) folderExpanded(entry item) bool {
-	if m.section == pullRequests {
-		if entry.repoHeader {
-			return !m.changeCollapsed[entry.key]
-		}
-		review := m.pullRequestReviews[entry.pullRequest.URL]
-		return review != nil && !review.collapsed[entry.key]
-	}
-	if m.section == history {
-		if entry.repoHeader {
-			return !m.changeCollapsed[entry.key]
-		}
-		state := m.historyStates[entry.historyID]
-		return state != nil && !state.collapsed[entry.key]
-	}
-	if m.section == changes {
-		return !m.changeCollapsed[entry.key]
-	}
-	return m.expanded[entry.folder]
 }

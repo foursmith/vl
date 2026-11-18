@@ -158,6 +158,30 @@ func (m *Model) sidebarSelectionY() int {
 	return l.start + max(0, *l.selected-*l.top)
 }
 
+func (m *Model) sidebarCollapsedFolders(entry item) map[string]bool {
+	switch {
+	case entry.repoHeader || m.section == changes:
+		return m.sidebarCollapsed
+	case m.section == pullRequests && entry.pullRequest != nil:
+		if review := m.pullRequestReviews[entry.pullRequest.URL]; review != nil {
+			return review.collapsed
+		}
+	case m.section == history:
+		if state := m.historyStates[entry.historyID]; state != nil {
+			return state.collapsed
+		}
+	}
+	return nil
+}
+
+func (m *Model) folderExpanded(entry item) bool {
+	if m.section == explorer && !entry.repoHeader {
+		return m.expanded[entry.folder]
+	}
+	collapsed := m.sidebarCollapsedFolders(entry)
+	return collapsed != nil && !collapsed[entry.key]
+}
+
 func (m *Model) selectParentFolder() {
 	if m.section == search {
 		rows := m.searchRows()
@@ -185,28 +209,29 @@ func (m *Model) selectParentFolder() {
 		if parent.repository != entry.repository {
 			continue
 		}
+		inFolder := parent.folder != "" && strings.HasPrefix(path, parent.folder+"/")
 		ancestor := false
 		switch m.section {
 		case pullRequests:
 			if entry.isPullRequest() {
 				ancestor = parent.repoHeader
 			} else if entry.pullRequest != nil && parent.pullRequest == entry.pullRequest {
-				ancestor = parent.isPullRequest() || parent.folder != "" && strings.HasPrefix(path, parent.folder+"/")
+				ancestor = parent.isPullRequest() || inFolder
 			}
 		case changes:
 			if entry.header {
 				ancestor = parent.repoHeader
 			} else if parent.staged == entry.staged {
-				ancestor = parent.header && !parent.repoHeader || parent.folder != "" && strings.HasPrefix(path, parent.folder+"/")
+				ancestor = parent.header && !parent.repoHeader || inFolder
 			}
 		case history:
 			if entry.commit != nil {
 				ancestor = parent.repoHeader
 			} else {
-				ancestor = parent.commit != nil && historyKey(parent.repository, parent.commit.ID) == entry.historyID || parent.historyID == entry.historyID && parent.folder != "" && strings.HasPrefix(path, parent.folder+"/")
+				ancestor = parent.commit != nil && historyKey(parent.repository, parent.commit.ID) == entry.historyID || parent.historyID == entry.historyID && inFolder
 			}
 		default:
-			ancestor = parent.folder != "" && strings.HasPrefix(path, parent.folder+"/")
+			ancestor = parent.repoHeader || inFolder
 		}
 		if ancestor {
 			m.selected = i

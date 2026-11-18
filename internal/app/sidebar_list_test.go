@@ -113,13 +113,13 @@ func TestSidebarClickIdentityIncludesSource(t *testing.T) {
 	t.Cleanup(m.Close)
 	m.items = []item{{key: "same", file: "file0.go"}}
 	m.selected = 0
-	m.clickSidebarFile()
+	m.clickSidebarEntry()
 	if len(m.tabs) != 1 || !m.tabs[0].preview {
 		t.Fatal("file click did not preview")
 	}
 	m.section, m.sidebar = changes, true
 	m.items = []item{{key: "same", change: &gitservice.Change{Path: "file0.go"}}}
-	m.clickSidebarFile()
+	m.clickSidebarEntry()
 	if len(m.tabs) != 1 || !m.tabs[0].preview || !m.sidebar {
 		t.Fatal("click in a different source was treated as a double click")
 	}

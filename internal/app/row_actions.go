@@ -3,7 +3,6 @@ package app
 import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/ourongxing/vl/internal/theme"
 )
 
 type rowAction struct {
@@ -11,52 +10,41 @@ type rowAction struct {
 	x, width                   int
 }
 
-const repositoryRowActionWidth = 3
+const sidebarRowActionWidth = 3
 
-func (m *Model) layoutRepositoryActions(entry item, w int, actions []rowAction) []rowAction {
-	branchWidth := ansi.StringWidth(m.repositoryBranchText(entry, w, len(actions)*repositoryRowActionWidth))
+func layoutRowActions(actions []rowAction, end int) {
 	for i := range actions {
-		actions[i].width = repositoryRowActionWidth
-		actions[i].x = w - branchWidth - (len(actions)-i)*repositoryRowActionWidth
+		actions[i].width = sidebarRowActionWidth
+		actions[i].x = end - (len(actions)-i)*sidebarRowActionWidth
 	}
-	return actions
 }
 
-func (m *Model) pullRequestRowActions(entry item, w int) []rowAction {
-	if !entry.repoHeader {
-		return nil
+func (m *Model) repositoryRowActions(entry item) []rowAction {
+	switch m.section {
+	case changes:
+		actions := []rowAction{
+			{id: "refresh", glyph: m.symbol(symbolRefresh), label: m.tr("Refresh")},
+			{id: "commit", glyph: m.symbol(symbolCheck), label: m.tr("Commit Staged"), disabled: m.commitDisabled(entry.repository)},
+			{id: "stage", glyph: m.symbol(symbolAdd), label: m.tr("Stage All Changes"), disabled: m.changeActionDisabled(entry, "stage", m.scopedChanges(entry))},
+		}
+		if m.busy {
+			for i := range actions {
+				actions[i].disabled = m.tr("Wait for the current Git operation to finish")
+			}
+		}
+		return actions
+	case pullRequests:
+		return []rowAction{
+			{id: "filter", glyph: m.symbol(symbolFilter), label: m.tr("Filter Pull Requests") + " · " + m.pullRequestFilterLabel(m.pullRequestFilter)},
+			{id: "refresh", glyph: m.symbol(symbolRefresh), label: m.tr("Refresh") + " · " + workbenchKeys.Refresh.Help().Key},
+		}
 	}
-	return m.layoutRepositoryActions(entry, w, []rowAction{
-		{id: "filter", glyph: m.symbol(symbolFilter), label: m.tr("Filter Pull Requests") + " · " + m.pullRequestFilterLabel(m.pullRequestFilter)},
-		{id: "refresh", glyph: m.symbol(symbolRefresh), label: m.tr("Refresh") + " · " + workbenchKeys.Refresh.Help().Key},
-	})
-}
-
-func (m *Model) hoveredChangeRow() int {
-	if m.section != changes {
-		return -1
-	}
-	i := m.hoveredSidebarRow()
-	if i < 0 || m.items[i].change == nil && m.items[i].folder == "" && !m.items[i].header {
-		return -1
-	}
-	return i
+	return nil
 }
 
 func (m *Model) changeRowActions(entry item, w int) []rowAction {
 	if entry.repoHeader {
-		scope := m.scopedChanges(entry)
-		actions := []rowAction{
-			{id: "refresh", glyph: m.symbol(symbolRefresh), label: m.tr("Refresh")},
-			{id: "commit", glyph: m.symbol(symbolCheck), label: m.tr("Commit Staged"), disabled: m.commitDisabled(entry.repository)},
-			{id: "stage", glyph: m.symbol(symbolAdd), label: m.tr("Stage All Changes"), disabled: m.changeActionDisabled(entry, "stage", scope)},
-		}
-		for i := range actions {
-			if m.busy {
-				actions[i].disabled = m.tr("Wait for the current Git operation to finish")
-			}
-		}
-		return m.layoutRepositoryActions(entry, w, actions)
+		return m.layoutRepositoryRow(entry, w).actions
 	}
 	if entry.change == nil && !entry.header && entry.folder == "" {
 		return nil
@@ -73,10 +61,10 @@ func (m *Model) changeRowActions(entry item, w int) []rowAction {
 		stage = rowAction{id: "unstage", glyph: m.symbol(symbolRemove), label: m.tr("Unstage All Changes")}
 	}
 	actions = append(actions, stage)
+	layoutRowActions(actions, w-sidebarRowActionWidth)
 	scope := m.scopedChanges(entry)
 	for i := range actions {
 		a := &actions[i]
-		a.width, a.x = 3, w-3-(len(actions)-i)*3
 		a.disabled = m.changeActionDisabled(entry, a.id, scope)
 		if entry.change != nil {
 			switch a.id {
@@ -97,20 +85,22 @@ func (m *Model) changeRowActions(entry item, w int) []rowAction {
 	return actions
 }
 
-func (m *Model) sidebarActionRow(entry item, w int, fg, bg string, state treeRowState, actions []rowAction) string {
+func (m *Model) changeActionRow(entry item, text string, w int, fg, bg string, state treeRowState, actions []rowAction) string {
 	if len(actions) == 0 {
-		text, _ := m.treeRow(entry, w, bg, state)
 		return text
 	}
 	start := actions[0].x
-	labelWidth := start + 3
-	labelEntry := entry
-	if entry.repoHeader {
-		labelWidth = start
-		labelEntry.branch = ""
+	label, _ := m.treeRow(entry, start+sidebarRowActionWidth, bg, state)
+	marker := ""
+	if !entry.header {
+		marker = ansi.Cut(row(text, w, fg, bg), w-sidebarRowActionWidth, w)
 	}
-	label, _ := m.treeRow(labelEntry, labelWidth, bg, state)
-	text := row(ansi.Cut(label, 0, start), start, fg, bg)
+	return row(ansi.Cut(label, 0, start), start, fg, bg) +
+		m.renderRowActions(actions, bg) + row(marker, sidebarRowActionWidth, fg, bg)
+}
+
+func (m *Model) renderRowActions(actions []rowAction, bg string) string {
+	var text string
 	hoverX := m.hoverX - m.sideX()
 	for _, action := range actions {
 		color := m.colors.Foreground
@@ -121,15 +111,6 @@ func (m *Model) sidebarActionRow(entry item, w int, fg, bg string, state treeRow
 		}
 		text += row(" "+action.glyph+" ", action.width, color, bg)
 	}
-	if entry.repoHeader {
-		branch := m.repositoryBranchText(entry, w, len(actions)*repositoryRowActionWidth)
-		return text + theme.Style(m.colors.Foreground, bg).Bold(true).Render(branch)
-	}
-	full := row("", w, fg, bg)
-	if !entry.header {
-		full, _ = m.treeRow(entry, w, bg, state)
-	}
-	text += row(ansi.Cut(full, w-3, w), 3, fg, bg)
 	return text
 }
 
@@ -163,32 +144,19 @@ func (m *Model) hoverHint() string {
 				return title
 			}
 		}
-		width := m.sideWidth()
-		if !m.sideShown() {
-			width = m.width
-		}
-		if m.section == pullRequests {
-			for _, action := range m.pullRequestRowActions(entry, width) {
-				if x := m.hoverX - m.sideX(); x >= action.x && x < action.x+action.width {
-					return action.label
-				}
+		width := m.sidebarContentWidth()
+		x := m.hoverX - m.sideX()
+		var actions []rowAction
+		if entry.repoHeader {
+			layout := m.layoutRepositoryRow(entry, width)
+			if layout.branchAt(x) {
+				return m.tr("Switch branch · %s", m.repositoryName(entry.repository))
 			}
+			actions = layout.actions
+		} else if m.section == changes {
+			actions = m.changeRowActions(entry, width)
 		}
-		if m.repositoryBranchAt(entry, m.hoverX-m.sideX(), width) {
-			return m.tr("Switch branch · %s", m.repositoryName(entry.repository))
-		}
-	}
-	i := m.hoveredChangeRow()
-	if i < 0 {
-		return ""
-	}
-	w := m.sideWidth()
-	if !m.sideShown() {
-		w = m.width
-	}
-	hoverX := m.hoverX - m.sideX()
-	for _, action := range m.changeRowActions(m.items[i], w) {
-		if hoverX >= action.x && hoverX < action.x+action.width {
+		if action := rowActionAt(actions, x); action != nil {
 			if action.disabled != "" {
 				return action.disabled
 			}
@@ -198,17 +166,13 @@ func (m *Model) hoverHint() string {
 	return ""
 }
 
-func (m *Model) clickChangeAction(index, x, w int) (tea.Cmd, bool) {
-	if !m.items[index].repoHeader && index != m.hoveredChangeRow() {
-		return nil, false
-	}
-	for _, action := range m.changeRowActions(m.items[index], w) {
-		if x < action.x || x >= action.x+action.width {
-			continue
+func rowActionAt(actions []rowAction, x int) *rowAction {
+	for i := range actions {
+		if action := &actions[i]; x >= action.x && x < action.x+action.width {
+			return action
 		}
-		return m.runChangeRowAction(index, action.id), true
 	}
-	return nil, false
+	return nil
 }
 
 // Shared by inline buttons and the context menu, including all scope safeguards.
@@ -218,7 +182,7 @@ func (m *Model) runChangeRowAction(index int, id string) tea.Cmd {
 	}
 	entry := m.items[index]
 	m.selected, m.sidebar = index, true
-	for _, a := range m.changeRowActions(entry, m.sideWidth()) {
+	for _, a := range m.changeRowActions(entry, m.sidebarContentWidth()) {
 		if a.id == id && a.disabled != "" {
 			m.notice = a.disabled
 			return nil

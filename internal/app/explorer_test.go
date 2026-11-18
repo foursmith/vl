@@ -40,7 +40,7 @@ func TestExplorerShowsDiskFoldersGitDecorationsAndLazyExpansion(t *testing.T) {
 	if m.selected != -1 || m.section != explorer {
 		t.Fatal("explorer should start without selecting a file")
 	}
-	if len(m.items) != 5 || m.items[0].folder != "bin" || !m.items[0].ignored || m.items[1].folder != "cmd" || m.items[1].status != 'U' || !m.items[2].ignored {
+	if len(m.items) != 6 || m.items[1].folder != "bin" || !m.items[1].ignored || m.items[2].folder != "cmd" || m.items[2].status != 'U' || !m.items[3].ignored {
 		t.Fatalf("root entries: %+v", m.items)
 	}
 	for i, entry := range m.items {
@@ -50,12 +50,35 @@ func TestExplorerShowsDiskFoldersGitDecorationsAndLazyExpansion(t *testing.T) {
 		}
 	}
 	drain(t, m, m.openSelected())
-	if !m.expanded["cmd"] || len(m.items) != 6 || m.items[2].file != "cmd/main.go" || m.items[2].status != 'U' {
+	if !m.expanded["cmd"] || len(m.items) != 7 || m.items[3].file != "cmd/main.go" || m.items[3].status != 'U' {
 		t.Fatalf("expanded entries: %+v", m.items)
 	}
 	drain(t, m, m.collapseFolders())
-	if len(m.items) != 5 || len(m.expanded) != 0 {
+	if len(m.items) != 6 || len(m.expanded) != 0 {
 		t.Fatal("collapse did not restore root-only tree")
+	}
+}
+
+func TestExplorerWorkspaceRoot(t *testing.T) {
+	m := explorerWorkspace(t)
+	defer m.Close()
+	root := m.items[0]
+	if !root.header || root.label != filepath.Base(m.repo.Root) || !m.folderExpanded(root) || m.items[1].depth != 1 {
+		t.Fatalf("workspace root: %+v", m.items)
+	}
+	m.selected = 1
+	m.selectParentFolder()
+	if m.selected != 0 || m.selectedEntryPath() != "" {
+		t.Fatal("workspace root should be the parent of top-level entries")
+	}
+	drain(t, m, m.openSelected())
+	drain(t, m, m.refresh())
+	if len(m.items) != 1 || m.selected != 0 || m.folderExpanded(root) {
+		t.Fatalf("collapsed root after refresh: %+v", m.items)
+	}
+	drain(t, m, m.revealDocument("cmd/main.go"))
+	if !m.folderExpanded(root) || m.current() == nil || m.current().file != "cmd/main.go" {
+		t.Fatalf("revealed file: %+v", m.current())
 	}
 }
 
@@ -104,7 +127,7 @@ func TestExplorerStatusAggregationKeepsConflictPriority(t *testing.T) {
 		{Path: "src/nested/typed.go", Index: ' ', Worktree: 'T'},
 	}
 	rows := m.explorerItems()
-	if rows[0].status != '!' || rows[1].status != 'T' || rows[2].status != 'T' {
+	if rows[1].status != '!' || rows[2].status != 'T' || rows[3].status != 'T' {
 		t.Fatalf("status aggregation lost severity: %+v", rows)
 	}
 }

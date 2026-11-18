@@ -110,7 +110,7 @@ func TestChangesGroupRepositoriesWithLocalPathsAndParentSummaries(t *testing.T) 
 			if e.repository != "" || e.change.Path != "child space" {
 				t.Fatal("parent summary moved into child group")
 			}
-			text, _ := m.explorerRow(e, 50, theme.Builtin("dark_modern").Palette().Panel)
+			text, _ := m.treeRow(e, 50, theme.Builtin("dark_modern").Palette().Panel, treeRowState{})
 			if !strings.HasSuffix(plain(text), "S") {
 				t.Fatal("submodule summary lacks S marker")
 			}
@@ -264,7 +264,7 @@ func TestRepositoryFoldNavigationAndScopeStayIndependent(t *testing.T) {
 	if len(scope) != 1 || scope[0].Repository != "child space" {
 		t.Fatal("child group includes parent files")
 	}
-	m.changeCollapsed[m.current().key] = true
+	m.sidebarCollapsed[m.current().key] = true
 	m.rebuildItems()
 	if rows, count := m.repositoryChangesTree("", false); len(rows) == 0 || count != 2 {
 		t.Fatal("child fold affected parent group")
@@ -274,7 +274,7 @@ func TestRepositoryFoldNavigationAndScopeStayIndependent(t *testing.T) {
 		t.Fatal("left did not select repository header")
 	}
 	drain(t, m, m.openSelected())
-	if !m.changeCollapsed[repositoryKey("child space")] {
+	if !m.sidebarCollapsed[repositoryKey("child space")] {
 		t.Fatal("repository did not collapse")
 	}
 	seenParent := false

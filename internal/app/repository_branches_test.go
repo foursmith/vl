@@ -42,17 +42,14 @@ func clickRepositoryBranch(t *testing.T, m *Model, part section, path string) {
 		}
 		m.selected = i
 		m.ensureSidebar()
-		folded := m.changeCollapsed[entry.key]
-		w := m.sideWidth()
-		if !m.sideShown() {
-			w = m.width
-		}
+		folded := m.sidebarCollapsed[entry.key]
+		w := m.sidebarContentWidth()
 		x := w - 2
-		if !m.repositoryBranchAt(entry, x, w) {
+		if !m.layoutRepositoryRow(entry, w).branchAt(x) {
 			t.Fatal("visible branch label has no click target")
 		}
 		drain(t, m, m.click(tea.MouseClickMsg{X: m.sideX() + x, Y: headerHeight + i - m.sideTop, Button: tea.MouseLeft}))
-		if m.modal != "refs" || m.branchRepository != path || m.changeCollapsed[entry.key] != folded {
+		if m.modal != "refs" || m.branchRepository != path || m.sidebarCollapsed[entry.key] != folded {
 			t.Fatal("branch click folded the repository or opened the wrong picker")
 		}
 		return
@@ -158,6 +155,22 @@ func TestRepositoryBranchPickerProtectsTargetBuffersAndStaleRefs(t *testing.T) {
 	pickBranchAction(t, m, "refs/heads/child-topic")
 	if m.snapshot.RepositoryStates["child space"].Branch != "child-topic" || !m.document().Dirty() || m.snapshot.Branch != "main" {
 		t.Fatal("unrelated parent edits blocked or were lost during child checkout")
+	}
+}
+
+func TestExplorerRootBranchSwitchKeepsTreeCollapsed(t *testing.T) {
+	m, _ := repositoryBranchWorkspace(t)
+	defer m.Close()
+	drain(t, m, m.selectSection(explorer))
+	m.selected = 0
+	m.openSelected()
+	clickRepositoryBranch(t, m, explorer, "")
+	if !m.sidebarCollapsed[explorerRootKey] {
+		t.Fatal("branch click expanded the root")
+	}
+	pickBranchAction(t, m, "refs/heads/parent-only")
+	if m.snapshot.Branch != "parent-only" || len(m.items) != 1 || !strings.HasPrefix(m.items[0].branch, "parent-only") {
+		t.Fatalf("checkout did not update the collapsed Explorer root: %+v", m.items)
 	}
 }
 

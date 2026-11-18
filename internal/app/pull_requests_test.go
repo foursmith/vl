@@ -225,14 +225,15 @@ esac
 	drain(t, m, press(m, "ctrl+5"))
 	m.snapshot.Branch = "main"
 	m.rebuildItems()
-	actions := m.pullRequestRowActions(m.items[0], m.sideWidth())
+	layout := m.layoutRepositoryRow(m.items[0], m.sideWidth())
+	actions := layout.actions
 	clickAction := func(action rowAction) tea.Cmd {
 		_, cmd := m.Update(tea.MouseClickMsg{Button: tea.MouseLeft, X: m.sideX() + action.x + 1, Y: headerHeight})
 		return cmd
 	}
 	for _, action := range actions {
 		if !strings.Contains(plain(m.sidebarLines()[headerHeight]), action.glyph) ||
-			m.repositoryBranchAt(m.items[0], action.x+1, m.sideWidth()) {
+			layout.branchAt(action.x+1) {
 			t.Fatal("PR header actions are missing or overlap the branch")
 		}
 	}

@@ -9,6 +9,34 @@ import (
 	gitservice "github.com/ourongxing/vl/internal/git"
 )
 
+func TestHistoryPageRetryUsesSharedSidebarActivation(t *testing.T) {
+	for _, method := range []string{"click", "enter", "context menu"} {
+		t.Run(method, func(t *testing.T) {
+			m := tabWorkspace(t, 0)
+			defer m.Close()
+			page := &historyPageState{commits: []gitservice.Commit{{ID: "head"}}, err: "temporary error"}
+			m.historyPages[""] = page
+			m.section, m.sidebar, m.selected = history, true, 0
+			m.items = []item{{key: "retry", historyPage: page}}
+
+			var cmd tea.Cmd
+			switch method {
+			case "click":
+				cmd = m.clickSidebar(tea.MouseClickMsg{X: m.sideX() + 2, Y: headerHeight, Button: tea.MouseLeft})
+			case "enter":
+				cmd = press(m, "enter")
+			case "context menu":
+				m.openSidebarContextMenu()
+				cmd = chooseContextAction(t, m, "Load more commits…")
+			}
+			if cmd == nil || !page.loading || page.err != "" {
+				t.Fatal("history page retry did not start")
+			}
+			page.cancel()
+		})
+	}
+}
+
 func TestHistoryScrollLoadsOlderCommitsAndRefreshResetsPages(t *testing.T) {
 	m := explorerWorkspace(t)
 	defer m.Close()

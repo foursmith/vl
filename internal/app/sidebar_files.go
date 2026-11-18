@@ -54,15 +54,71 @@ func (m *Model) openSidebarContextMenu() tea.Cmd {
 	return m.openContextMenu(m.sideX()+2, m.sidebarSelectionY())
 }
 
-// Sources load content; this shared path owns preview promotion and editor focus.
-func (m *Model) openSidebarFile(preview bool) tea.Cmd {
-	entry := m.sidebarEntry()
-	if entry == nil {
-		return nil
-	}
-	return m.openSidebarEntry(*entry, preview)
+func (entry item) isSidebarFile() bool {
+	return entry.file != "" || entry.change != nil || entry.historyChange != nil || entry.pullRequestFile != nil
 }
 
+type sidebarActivation uint8
+
+const (
+	noSidebarActivation sidebarActivation = iota
+	toggleFolder
+	loadMoreCommits
+	loadMorePRs
+	toggleCommit
+	togglePR
+	openFileRow
+)
+
+func (m *Model) sidebarActivation(entry item) sidebarActivation {
+	switch {
+	case entry.header || entry.folder != "":
+		return toggleFolder
+	case entry.historyPage != nil:
+		return loadMoreCommits
+	case m.section == pullRequests && entry.key == pullRequestMoreKey:
+		return loadMorePRs
+	case entry.commit != nil:
+		return toggleCommit
+	case entry.isPullRequest():
+		return togglePR
+	case entry.isSidebarFile():
+		return openFileRow
+	}
+	return noSidebarActivation
+}
+
+func (m *Model) activateSidebarEntry(entry item, preview bool) tea.Cmd {
+	switch m.sidebarActivation(entry) {
+	case toggleFolder:
+		return m.toggleSidebarFolder(entry)
+	case loadMoreCommits:
+		return m.loadHistoryPage(entry.historyPage)
+	case loadMorePRs:
+		return m.loadMorePullRequests()
+	case toggleCommit:
+		return m.toggleHistoryCommit(entry)
+	case togglePR:
+		return m.togglePullRequest(entry)
+	case openFileRow:
+		return m.openSidebarEntry(entry, preview)
+	}
+	return nil
+}
+
+func (m *Model) toggleSidebarFolder(entry item) tea.Cmd {
+	if m.section == explorer && !entry.repoHeader {
+		m.expanded[entry.folder] = !m.expanded[entry.folder]
+		return m.refreshTree()
+	}
+	if collapsed := m.sidebarCollapsedFolders(entry); collapsed != nil {
+		collapsed[entry.key] = !collapsed[entry.key]
+		m.rebuildItems()
+	}
+	return nil
+}
+
+// Sources load content; this shared path owns preview promotion and editor focus.
 func (m *Model) openSidebarEntry(entry item, preview bool) tea.Cmd {
 	cmd, opened := m.loadSidebarFile(entry)
 	if opened && !preview {
@@ -93,12 +149,16 @@ func (m *Model) loadSidebarFile(entry item) (tea.Cmd, bool) {
 	}), true
 }
 
-func (m *Model) clickSidebarFile() tea.Cmd {
+func (m *Model) clickSidebarEntry() tea.Cmd {
 	entry := m.sidebarEntry()
 	if entry == nil {
 		return nil
 	}
+	if !entry.isSidebarFile() {
+		m.lastClickKey = ""
+		return m.activateSidebarEntry(*entry, false)
+	}
 	key := fmt.Sprintf("sidebar:%d:%s:%s", m.section, m.repo.Root, entry.key)
 	double := m.doubleClick(key)
-	return m.openSidebarEntry(*entry, !double)
+	return m.activateSidebarEntry(*entry, !double)
 }

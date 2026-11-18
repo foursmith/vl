@@ -15,6 +15,8 @@ type treeMsg struct {
 	err     error
 }
 
+const explorerRootKey = "."
+
 func (m *Model) openFileInExplorer(path string) tea.Cmd {
 	if !m.openDocument(path, false) {
 		return nil
@@ -28,6 +30,7 @@ func (m *Model) revealDocument(path string) tea.Cmd {
 	}
 	m.section = explorer
 	m.sidebarVisible = true
+	delete(m.sidebarCollapsed, explorerRootKey)
 	for parent := filepath.ToSlash(filepath.Dir(path)); parent != "." && parent != "/"; parent = filepath.ToSlash(filepath.Dir(parent)) {
 		m.expanded[parent] = true
 	}
@@ -60,6 +63,10 @@ func (m *Model) refreshTree() tea.Cmd {
 }
 
 func (m *Model) explorerItems() []item {
+	root := m.repositoryHeader("", explorerRootKey)
+	if m.sidebarCollapsed[root.key] {
+		return []item{root}
+	}
 	// Index statuses once instead of scanning every change for every visible entry.
 	statuses := make(map[string]byte, len(m.snapshot.Changes))
 	directories := make(map[string]byte)
@@ -77,9 +84,10 @@ func (m *Model) explorerItems() []item {
 			}
 		}
 	}
-	result := make([]item, 0, len(m.treeEntries))
+	result := make([]item, 1, len(m.treeEntries)+1)
+	result[0] = root
 	for _, entry := range m.treeEntries {
-		row := item{label: entry.Label, key: entry.Path, depth: entry.Depth, ignored: entry.Ignored, status: statuses[entry.Path], staged: staged[entry.Path]}
+		row := item{label: entry.Label, key: entry.Path, depth: entry.Depth + 1, ignored: entry.Ignored, status: statuses[entry.Path], staged: staged[entry.Path]}
 		if entry.Directory {
 			row.folder = entry.Path
 			if statusPriority(directories[entry.Path]) > statusPriority(row.status) {
@@ -117,14 +125,22 @@ func (m *Model) splitFolderChain() tea.Cmd {
 	return m.refreshTree()
 }
 
-func (m *Model) newEntry(directory bool) tea.Cmd {
-	path := ""
+func (m *Model) selectedEntryParent() string {
 	if entry := m.current(); entry != nil {
 		if entry.folder != "" {
-			path = entry.folder + "/"
-		} else if entry.file != "" && filepath.Dir(entry.file) != "." {
-			path = filepath.ToSlash(filepath.Dir(entry.file)) + "/"
+			return entry.folder
 		}
+		if entry.file != "" {
+			return filepath.Dir(entry.file)
+		}
+	}
+	return "."
+}
+
+func (m *Model) newEntry(directory bool) tea.Cmd {
+	path := ""
+	if parent := m.selectedEntryParent(); parent != "." {
+		path = filepath.ToSlash(parent) + "/"
 	}
 	kind, title := "newFile", m.tr("New File")
 	if directory {
@@ -224,14 +240,7 @@ func (m *Model) pasteEntryPrompt() tea.Cmd {
 		m.notice = m.tr("Copy an entry in this workspace with yy first")
 		return nil
 	}
-	parent := "."
-	if entry := m.current(); entry != nil {
-		if entry.folder != "" {
-			parent = entry.folder
-		} else if entry.file != "" {
-			parent = filepath.Dir(entry.file)
-		}
-	}
+	parent := m.selectedEntryParent()
 	name := filepath.Base(m.explorerYankPath)
 	destination := filepath.Join(parent, name)
 	if destination == filepath.FromSlash(m.explorerYankPath) {

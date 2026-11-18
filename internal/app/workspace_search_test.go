@@ -103,7 +103,7 @@ func TestWorkspaceSearchLayoutScrollAndMouse(t *testing.T) {
 			m.sidebar = true
 			m.search.focus = 0
 			m.search.query.Focus()
-			w := m.searchControlWidth()
+			w := m.sidebarContentWidth()
 			view := m.View()
 			if len(strings.Split(view.Content, "\n")) != m.height {
 				t.Fatal("wrong frame height")
@@ -159,7 +159,7 @@ func TestWorkspaceSearchResultHoverWithNoTreeItems(t *testing.T) {
 		t.Fatalf("unexpected result hover hint: %q", hint)
 	}
 
-	m.Update(tea.MouseMotionMsg{X: m.sideX() + m.searchControlWidth() - 1, Y: y})
+	m.Update(tea.MouseMotionMsg{X: m.sideX() + m.sidebarContentWidth() - 1, Y: y})
 	assertFreshHoverFrame(t, m)
 	if hint := m.hoverHint(); hint != searchText("Remove from Search Results (Delete)") {
 		t.Fatalf("missing remove result hover hint: %q", hint)

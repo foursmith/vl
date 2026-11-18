@@ -95,7 +95,7 @@ func TestSidebarRightGeometryAndMouseTargets(t *testing.T) {
 		t.Fatal("right sidebar navigation was routed to editor tabs")
 	}
 	a, y := hoverAction(t, m, "cmd/main.go", "stage")
-	if m.hoveredChangeRow() != m.selected || m.hoverHint() != a.label {
+	if m.hoveredSidebarRow() != m.selected || m.hoverHint() != a.label {
 		t.Fatal("right sidebar hover coordinates missed")
 	}
 	_, cmd := m.Update(tea.MouseClickMsg{X: m.sideX() + a.x + 1, Y: y, Button: tea.MouseLeft})

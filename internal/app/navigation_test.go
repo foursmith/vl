@@ -19,19 +19,21 @@ func TestTreeVimNavigationAndFileOperators(t *testing.T) {
 	if m.selected != len(m.items)-1 {
 		t.Fatal("G")
 	}
-	press(m, "2")
+	press(m, "3")
 	press(m, "G")
-	if m.selected != 1 {
-		t.Fatal("2G")
+	if m.selected != 2 {
+		t.Fatal("3G")
 	}
 	drain(t, m, press(m, "l"))
 	if !m.expanded["cmd"] {
 		t.Fatal("l did not expand folder")
 	}
 	drain(t, m, press(m, "h"))
-	if !m.expanded["cmd"] {
-		t.Fatal("h must not collapse the current folder")
+	if !m.current().header || !m.expanded["cmd"] {
+		t.Fatal("h should select the workspace root and leave cmd expanded")
 	}
+	drain(t, m, press(m, "2"))
+	drain(t, m, press(m, "j"))
 	drain(t, m, press(m, "l"))
 	if m.expanded["cmd"] {
 		t.Fatal("l did not collapse the expanded folder")

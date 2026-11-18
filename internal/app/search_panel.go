@@ -195,7 +195,7 @@ func (m *Model) searchLines(nav []string, w int) []string {
 func (m *Model) clickSearch(x, y int) tea.Cmd {
 	m.sidebar = true
 	l := m.searchPanelLayout()
-	for _, c := range m.searchPanelControls(m.searchControlWidth()) {
+	for _, c := range m.searchPanelControls(m.sidebarContentWidth()) {
 		if y == c.y && x >= c.x && x < c.x+c.width {
 			if c.disabled {
 				return nil
@@ -224,7 +224,7 @@ func (m *Model) clickSearch(x, y int) tea.Cmd {
 	if index < 0 {
 		return nil
 	}
-	if x == m.searchControlWidth()-1 && m.searchRowAction(index) {
+	if x == m.sidebarContentWidth()-1 && m.searchRowAction(index) {
 		m.lastClickKey = ""
 		m.dismissSearchResult(index)
 		return nil
@@ -239,15 +239,15 @@ func (m *Model) clickSearch(x, y int) tea.Cmd {
 		m.clampSearch()
 		return nil
 	}
-	return m.clickSidebarFile()
+	return m.clickSidebarEntry()
 }
 func (m *Model) searchHoverHint(x, y int) string {
-	for _, c := range m.searchPanelControls(m.searchControlWidth()) {
+	for _, c := range m.searchPanelControls(m.sidebarContentWidth()) {
 		if y == c.y && x >= c.x && x < c.x+c.width {
 			return c.hint
 		}
 	}
-	if m.hoveredSidebarRow() >= 0 && x == m.searchControlWidth()-1 {
+	if m.hoveredSidebarRow() >= 0 && x == m.sidebarContentWidth()-1 {
 		return searchText("Remove from Search Results (Delete)")
 	}
 	return ""
