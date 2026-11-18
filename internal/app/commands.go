@@ -185,6 +185,7 @@ func (m *Model) prompt(kind, title, value string) tea.Cmd {
 	m.leaderTarget = ""
 	m.resizingSidebar = false
 	m.modal, m.modalTitle = kind, title
+	m.styleInput()
 	m.dialogTop = 0
 	m.input.SetValue(value)
 	m.input.Placeholder = ""

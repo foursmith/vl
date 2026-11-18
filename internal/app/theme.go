@@ -97,15 +97,19 @@ func (m *Model) applyTheme(selected *theme.Theme) tea.Cmd {
 }
 
 func (m *Model) styleInput() {
+	background := m.colors.Input
+	if m.isPicker() {
+		background = m.colors.Popup
+	}
 	state := textinput.StyleState{
-		Text:        theme.Style(m.colors.InputForeground, m.colors.Input),
-		Prompt:      theme.Style(m.colors.InputForeground, m.colors.Input),
-		Placeholder: theme.TextStyle(m.colors.InputPlaceholder, m.colors.Input),
-		Suggestion:  theme.TextStyle(m.colors.InputPlaceholder, m.colors.Input),
+		Text:        theme.Style(m.colors.InputForeground, background),
+		Prompt:      theme.Style(m.colors.InputForeground, background),
+		Placeholder: theme.TextStyle(m.colors.InputPlaceholder, background),
+		Suggestion:  theme.TextStyle(m.colors.InputPlaceholder, background),
 	}
 	m.input.SetStyles(textinput.Styles{
 		Focused: state, Blurred: state,
-		Cursor: textinput.CursorStyle{Color: lipgloss.Color(theme.Composite(m.colors.InputForeground, m.colors.Input)), Shape: tea.CursorBar, Blink: true},
+		Cursor: textinput.CursorStyle{Color: lipgloss.Color(theme.Composite(m.colors.InputForeground, background)), Shape: tea.CursorBar, Blink: true},
 	})
 }
 
