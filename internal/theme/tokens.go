@@ -36,7 +36,7 @@ type scopeTrie struct {
 // This trie follows microsoft/vscode-textmate's MIT-licensed theme.ts algorithm:
 // inherit rules while descending dot scopes, merge identical selectors, then
 // choose one rule at each scope level by depth and ancestor specificity.
-// See third_party/vscode-textmate-LICENSE and docs/THEME.md.
+// See third_party/vscode-textmate-LICENSE.
 func compileTokens(tokens []rawToken) *scopeTrie {
 	var rules []scopeRule
 	for _, entry := range tokens {

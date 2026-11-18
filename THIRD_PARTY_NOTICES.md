@@ -56,9 +56,9 @@ license and the catalog license and per-grammar notices are preserved under
 [third_party/textmate-go](third_party/textmate-go/). Grammar source revisions and
 license metadata are recorded in the dependency's `grammars/MANIFEST.md`.
 
-The VS Code theme JSON files embedded under `internal/highlight/themes` are
-covered by the Microsoft MIT notice above; their pinned source is in
-[docs/THEME.md](docs/THEME.md).
+The VS Code theme JSON files embedded under `internal/theme/themes` are covered
+by the Microsoft MIT notice above. They come from the
+[VS Code 1.135.0 default themes](https://github.com/microsoft/vscode/tree/08d4889f9ec4a1685d257b9b95de036c8e1ce1e5/extensions/theme-defaults/themes).
 
 ## Source Code Pro
 
