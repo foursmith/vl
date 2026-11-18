@@ -110,7 +110,7 @@ func (m *Model) confirmationLayout() dialogLayout {
 	text := strings.Repeat(" ", start)
 	for i, action := range actions {
 		label := action.label
-		fg, bg := m.colors.InputForeground, m.colors.Input
+		fg, bg := m.colors.InputForeground, m.colors.Popup
 		selected := i == m.confirmationButton
 		if selected {
 			fg, bg = m.colors.PopupSelectionForeground, m.colors.PopupSelection

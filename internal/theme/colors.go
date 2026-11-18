@@ -97,7 +97,7 @@ func (t *Theme) makePalette() Palette {
 	p.GitStageDeleted = t.Color("gitDecoration.stageDeletedResourceForeground")
 	p.GitSubmodule = t.Color("gitDecoration.submoduleResourceForeground")
 	p.Ignored = t.Color("gitDecoration.ignoredResourceForeground")
-	p.Popup = get("quickInput.background", p.Background)
+	p.Popup = p.Panel
 	p.PopupForeground = t.colorOr("quickInput.foreground", t.Color("foreground"))
 	p.PopupSelection = p.selectionTint(get("quickInputList.focusBackground", p.Popup), p.Popup, 1.6)
 	p.PopupSelectionForeground = t.colorOr("quickInputList.focusForeground", p.PopupForeground)
@@ -105,7 +105,7 @@ func (t *Theme) makePalette() Palette {
 	// terminal adaptation, separate from the raw widget.border registration.
 	p.PopupBorder = get("widget.border", p.Popup)
 	p.PopupBorder = distinguish(p.PopupBorder, p.Popup, Composite(p.PopupForeground, p.Popup), 1.6)
-	p.Input = get("input.background", p.Popup)
+	p.Input = get("input.background", get("quickInput.background", p.Background))
 	p.InputForeground = t.Color("input.foreground")
 	p.InputPlaceholder = t.Color("input.placeholderForeground")
 	p.TabBarBackground = get("editorGroupHeader.tabsBackground", p.Background)
@@ -149,7 +149,7 @@ func (t *Theme) makePalette() Palette {
 	p.FoldBackground = t.Color("editor.foldBackground")
 	p.Strong = t.Color("strongForeground")
 	p.Brand = t.Color("disabledForeground")
-	p.MenuBackground = get("menu.background", p.Background)
+	p.MenuBackground = p.Panel
 	p.MenuForeground = t.colorOr("menu.foreground", t.Color("foreground"))
 	p.MenuSelection = p.selectionTint(get("menu.selectionBackground", p.MenuBackground), p.MenuBackground, 1.6)
 	p.MenuSelectionForeground = t.colorOr("menu.selectionForeground", p.MenuForeground)

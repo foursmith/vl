@@ -36,8 +36,11 @@ func clickSearchControl(t *testing.T, m *Model, id string) tea.Cmd {
 
 func TestSearchDetailsInlineFieldsAndFocus(t *testing.T) {
 	m := replacementWorkspace(t)
+	th, _ := fixtureTheme(t, "vs-dark", `{"colors":{"sideBar.background":"#181818","quickInput.background":"#222222"}}`)
+	m.SetColorTheme(th)
 	m.openReplace()
 	m.toggleSearchDetails()
+	m.search.options.Word = true
 	if !m.search.details || m.modal != "" {
 		t.Fatal("details must expand in the panel")
 	}
@@ -50,14 +53,12 @@ func TestSearchDetailsInlineFieldsAndFocus(t *testing.T) {
 	if ansi.Cut(plain(lines[layout.query+1]), searchFieldInset, 35) != divider || ansi.Cut(plain(lines[layout.include+1]), searchFieldInset, 35) != divider {
 		t.Fatal("paired fields must have a divider across the box")
 	}
-	toggle := uv.NewStyledString(lines[layout.query+1]).Lines(ansi.GraphemeWidth)[0][1]
-	if !sameColor(toggle.Style.Bg, lipgloss.Color(m.colors.Popup)) {
-		t.Fatal("replacement toggle should be inside the search box")
-	}
-	for y := layout.details + 1; y < layout.summary; y++ {
+	for y := headerHeight; y < layout.summary; y++ {
 		cells := uv.NewStyledString(lines[y]).Lines(ansi.GraphemeWidth)[0]
-		if !sameColor(cells[1].Style.Bg, lipgloss.Color(m.colors.Popup)) {
-			t.Fatalf("path filter box background interrupted on row %d", y)
+		for x, cell := range cells {
+			if !sameColor(cell.Style.Bg, lipgloss.Color(m.colors.Panel)) {
+				t.Fatalf("search panel background interrupted at (%d, %d): %#v", x, y, cell)
+			}
 		}
 	}
 	if !strings.HasPrefix(plain(lines[layout.details+1]), "╭") || !strings.HasPrefix(plain(lines[layout.summary-1]), "╰") {
@@ -84,7 +85,7 @@ func TestSearchDetailsInlineFieldsAndFocus(t *testing.T) {
 	}
 }
 
-func TestSearchFilterIconsKeepTheInputBackgroundWhenSelected(t *testing.T) {
+func TestSearchFilterIconsKeepTheSidebarBackgroundWhenSelected(t *testing.T) {
 	m := replacementWorkspace(t)
 	m.nerd = true
 	m.openSearch()
@@ -96,8 +97,8 @@ func TestSearchFilterIconsKeepTheInputBackgroundWhenSelected(t *testing.T) {
 		switch c.id {
 		case "changed", "open", "ignore":
 			cells := uv.NewStyledString(lines[c.y]).Lines(ansi.GraphemeWidth)[0]
-			if cell := cells[c.x]; !sameColor(cell.Style.Fg, lipgloss.Color(m.colors.Accent)) || !sameColor(cell.Style.Bg, lipgloss.Color(m.colors.Popup)) {
-				t.Fatalf("selected %s icon must use the accent on the input background", c.id)
+			if cell := cells[c.x]; !sameColor(cell.Style.Fg, lipgloss.Color(m.colors.Accent)) || !sameColor(cell.Style.Bg, lipgloss.Color(m.colors.Panel)) {
+				t.Fatalf("selected %s icon must use the accent on the sidebar background", c.id)
 			}
 		}
 	}

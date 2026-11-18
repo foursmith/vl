@@ -39,7 +39,6 @@ type searchPanelControl struct {
 	x, y, width     int
 	disabled        bool
 	embedded        bool
-	icon            bool
 	quiet           bool
 }
 
@@ -54,7 +53,7 @@ func (m *Model) searchPanelControls(w int) []searchPanelControl {
 		toggleY++
 	}
 	controls = append(controls, searchPanelControl{id: "replaceToggle", label: label, hint: "Toggle Replace (Alt+H)", x: 0, y: toggleY, width: sidebarSearchFieldInset, embedded: true, quiet: true})
-	add := func(y int, icons bool, ids, labels, hints []string) {
+	add := func(y int, ids, labels, hints []string) {
 		right := w - 2
 		for index := len(ids) - 1; index >= 0; index-- {
 			id := ids[index]
@@ -64,24 +63,24 @@ func (m *Model) searchPanelControls(w int) []searchPanelControl {
 				break
 			}
 			disabled := id == "replaceAll" && (m.search.loading || m.search.err != "" || m.search.result.Count == 0)
-			controls = append(controls, searchPanelControl{id: id, label: labels[index], hint: hints[index], x: x, y: y, width: width, disabled: disabled, embedded: true, icon: icons})
+			controls = append(controls, searchPanelControl{id: id, label: labels[index], hint: hints[index], x: x, y: y, width: width, disabled: disabled, embedded: true})
 			right = x - 1
 			if id == "replaceAll" {
 				right--
 			}
 		}
 	}
-	add(l.query, false, []string{"case", "word", "regex"}, []string{"Aa", "ab", ".*"}, []string{"Match Case", "Match Whole Word", "Use Regular Expression"})
+	add(l.query, []string{"case", "word", "regex"}, []string{"Aa", "ab", ".*"}, []string{"Match Case", "Match Whole Word", "Use Regular Expression"})
 	if m.search.replace {
-		add(l.replacement, false, []string{"preserve", "replaceAll"}, []string{"AB", "↵"}, []string{"Preserve Case", "Replace All (Ctrl+Alt+Enter)"})
+		add(l.replacement, []string{"preserve", "replaceAll"}, []string{"AB", "↵"}, []string{"Preserve Case", "Replace All (Ctrl+Alt+Enter)"})
 	}
 	if m.search.details {
 		changed := "Changed"
 		if m.nerd {
 			changed = m.symbol(symbolDiff)
 		}
-		add(l.include, m.nerd, []string{"changed", "open"}, []string{changed, m.symbol(symbolOpenTabs)}, []string{"Only Changed Files", "Only Open Tabs"})
-		add(l.exclude, m.nerd, []string{"ignore"}, []string{m.symbol(symbolIgnoreRules)}, []string{"Respect .gitignore and .ignore"})
+		add(l.include, []string{"changed", "open"}, []string{changed, m.symbol(symbolOpenTabs)}, []string{"Only Changed Files", "Only Open Tabs"})
+		add(l.exclude, []string{"ignore"}, []string{m.symbol(symbolIgnoreRules)}, []string{"Respect .gitignore and .ignore"})
 	}
 	return slices.DeleteFunc(controls, func(c searchPanelControl) bool { return c.y >= m.bodyHeight() })
 }

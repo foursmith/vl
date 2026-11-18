@@ -153,7 +153,9 @@ func (m *Model) runContextMenu() tea.Cmd {
 func (m *Model) contextMenuOverlay(base []string) []string {
 	l := m.contextMenuLayout()
 	menu := m.contextMenu
-	box := []string{row("┌"+strings.Repeat("─", max(0, l.width-2))+"┐", l.width, m.colors.MenuBorder, m.colors.MenuBackground)}
+	border := theme.Style(m.colors.MenuBorder, m.colors.MenuBackground)
+	side := border.Render("│")
+	box := []string{inputBorderRule(border, l.width, "╭", "╮")}
 	for i := 0; i < l.count; i++ {
 		index := menu.top + i
 		a := menu.actions[index]
@@ -174,9 +176,9 @@ func (m *Model) contextMenuOverlay(base []string) []string {
 		if a.disabled != "" {
 			text = theme.Style(fg, bg).Italic(true).Render(text)
 		}
-		box = append(box, row("│", 1, m.colors.MenuBorder, m.colors.MenuBackground)+row(text, l.width-2, fg, bg)+row("│", 1, m.colors.MenuBorder, m.colors.MenuBackground))
+		box = append(box, side+row(text, l.width-2, fg, bg)+side)
 	}
-	box = append(box, row("└"+strings.Repeat("─", max(0, l.width-2))+"┘", l.width, m.colors.MenuBorder, m.colors.MenuBackground))
+	box = append(box, inputBorderRule(border, l.width, "╰", "╯"))
 	return m.composeOverlay(base, box, l.x, l.y)
 }
 

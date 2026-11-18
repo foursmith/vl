@@ -376,11 +376,8 @@ func (m *Model) paintSearchControls(lines []string, w int, controls []searchPane
 		selected = selected || c.id == "changed" && m.search.options.ChangedOnly || c.id == "open" && m.search.options.OnlyOpen || c.id == "ignore" && !m.search.options.IncludeIgnored
 		if selected {
 			fg = m.colors.Accent
-			if !c.icon {
-				bg = theme.Composite(theme.WithOpacity(fg, .18), bg)
-			}
 		}
-		label := theme.TextStyle(fg, bg).Underline(c.id == "word").Reverse(selected && c.icon && m.monochrome).Render(c.label)
+		label := theme.TextStyle(fg, bg).Underline(c.id == "word").Reverse(selected && m.monochrome).Render(c.label)
 		lines[c.y] = row(ansi.Cut(lines[c.y], 0, c.x), c.x, m.colors.SideForeground, background) + row(label, c.width, fg, bg) + ansi.Cut(lines[c.y], c.x+c.width, w)
 	}
 }

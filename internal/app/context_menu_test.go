@@ -120,8 +120,14 @@ func TestContextMenuPreservesSelectionAndConsumesInput(t *testing.T) {
 	if m.document().Text != before {
 		t.Fatal("menu input reached editor")
 	}
-	m.View()
+	lines := strings.Split(m.View().Content, "\n")
 	layout := m.contextMenuLayout()
+	top := plain(ansi.Cut(lines[layout.y], layout.x, layout.x+layout.width))
+	bottom := plain(ansi.Cut(lines[layout.y+layout.count+1], layout.x, layout.x+layout.width))
+	if !strings.HasPrefix(top, "╭") || !strings.HasSuffix(top, "╮") ||
+		!strings.HasPrefix(bottom, "╰") || !strings.HasSuffix(bottom, "╯") {
+		t.Fatalf("context menu has no rounded frame: %q / %q", top, bottom)
+	}
 	m.Update(tea.MouseMotionMsg{X: layout.x + 2, Y: layout.y + 2})
 	if m.contextMenu.selected != 1 {
 		t.Fatal("menu hover did not select the second action")
