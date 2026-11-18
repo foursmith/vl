@@ -368,7 +368,7 @@
   "Search: Find in Files": "搜索：在文件中查找",
   "Search: Replace in Files": "搜索：在文件中替换",
   "Search: Options": "搜索：选项",
-  "%s: fields/results · %s: options": "%s：输入框/结果 · %s：选项",
-  "%s: replace · %s: replace all": "%s：替换 · %s：全部替换",
+  "%s: fields/results": "%s：输入框/结果",
+  "%s: replace": "%s：替换",
   "Find: Replace Current View": "查找：替换当前文件"
 }

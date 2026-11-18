@@ -960,17 +960,7 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 			return cmd
 		}
 	}
-	if !m.sidebar && m.fileFindHeight() > 0 && key.Matches(msg, searchKeys.ToggleReplace) {
-		return m.toggleFileReplacement()
-	}
-	if !m.sidebar && key.Matches(msg, searchKeys.Previous) {
-		if !m.findWidget.workspaceMatch {
-			m.presentFileFind()
-		}
-		m.navigateFileFind(-1)
-		return nil
-	}
-	if m.editorOnly && key.Matches(msg, workbenchKeys.Recent, workbenchKeys.Search, workbenchKeys.Replace, workbenchKeys.Explorer, workbenchKeys.Changes, workbenchKeys.History, workbenchKeys.PullRequests, workbenchKeys.Sidebar, workbenchKeys.Focus, workbenchKeys.DiffLayout) {
+	if m.editorOnly && key.Matches(msg, workbenchKeys.Recent, workbenchKeys.Search, workbenchKeys.Explorer, workbenchKeys.Changes, workbenchKeys.History, workbenchKeys.PullRequests, workbenchKeys.Sidebar, workbenchKeys.Focus, workbenchKeys.DiffLayout) {
 		return nil
 	}
 	if m.sidebar && m.section == search &&
@@ -1026,8 +1016,6 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		return m.openRecentWorkspaces()
 	case key.Matches(msg, workbenchKeys.Commands):
 		return m.openPalette()
-	case key.Matches(msg, workbenchKeys.Replace):
-		return m.openReplace()
 	case key.Matches(msg, workbenchKeys.Search):
 		return m.openSearch()
 	case key.Matches(msg, workbenchKeys.Explorer):
@@ -1062,8 +1050,6 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		return m.runShortcut(shortcut{action: shortcutClose})
 	case key.Matches(msg, workbenchKeys.Find):
 		return m.openFileFind()
-	case key.Matches(msg, workbenchKeys.FindNext):
-		return m.findNext()
 	case key.Matches(msg, workbenchKeys.Escape):
 		if m.editorOnly {
 			return nil

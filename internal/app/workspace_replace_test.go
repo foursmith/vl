@@ -180,9 +180,14 @@ func TestWorkspaceReplaceSelectedRegexDismissAndStale(t *testing.T) {
 }
 func TestWorkspaceReplaceControlsAndLayout(t *testing.T) {
 	m := replacementWorkspace(t)
-	m.Update(tea.KeyPressMsg{Code: 'h', Mod: tea.ModCtrl | tea.ModShift})
+	for _, c := range m.searchPanelControls(m.sidebarContentWidth()) {
+		if c.id == "replaceToggle" {
+			m.clickSearch(c.x, c.y)
+			break
+		}
+	}
 	if m.section != search || !m.search.replace || m.search.focus != 1 {
-		t.Fatal("replace shortcut did not open replacement field")
+		t.Fatal("replace toggle did not open replacement field")
 	}
 	m.Update(tea.PasteMsg{Content: "new"})
 	if m.search.replacement.Value() != "new" || m.search.query.Value() != "old" {

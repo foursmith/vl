@@ -13,8 +13,8 @@ read-only and shares the motions, selections, yanks, and jumps. See
 | `f`, `df`, `cf`, `yf` | Flash jump, or an operator up to a labeled target in the viewport | `f{char}` finds a character on the current line |
 | `U` | Redo. `u` still undoes. | Restore the last changed line. Redo is `Ctrl+R`. |
 | `:` | Quick Open with the line prompt prefilled. Try `:42` or `:42:8`. | Enter an Ex command |
-| `/`, `n` | Open the Find widget and jump to the next match. Use `Shift+F3` for the previous match. | Enter a search pattern and repeat the search. `N` goes in the opposite direction. |
-| `Space` | Leader in an editor tab. Try `Space w` to save or `Space Enter` to clear search highlights. | Move right in Normal mode |
+| `/`, `n` | Open the Find widget and jump to the next match. | Enter a search pattern and repeat the search. `N` goes in the opposite direction. |
+| `Space` | Leader in an editor tab. Try `Space w` to save. | Move right in Normal mode |
 | `Ctrl+V` | Paste from the system clipboard in the text editor | Start Visual block in Normal mode |
 | `Ctrl+H` / `Ctrl+D` | Open Recent Workspace / Toggle Inline View | Move left / scroll down by half a screen in Normal mode |
 | `Ctrl+F` / `Ctrl+W` | Find / Close Editor | Page forward / start a window command in Normal mode |
@@ -53,9 +53,9 @@ like `3j` or `2w`.
 | `PageUp` / `PageDown` | Move up / down a page |
 
 In Normal mode, `/` opens the same Find widget as `Ctrl+F`. Matches are
-highlighted and the current match is centered when you jump. `n` or `F3`
-advances and brings back hidden highlights. See
-[Find and Replace](KEYBINDINGS.md#find-and-replace) for the full set of bindings.
+highlighted and the current match is centered when you jump. `n` advances and
+brings back hidden highlights. See [Find and Replace](KEYBINDINGS.md#find-and-replace)
+for the full set of bindings.
 
 ## Editing in Normal mode
 
@@ -207,7 +207,6 @@ sequence. `Esc` cancels a pending sequence.
 | `Space w` / `Ctrl+S` | Save |
 | `Space q` / `Ctrl+W` | Close Editor |
 | `Space z` | Save and close |
-| `Space Enter` | Clear search highlights |
 
 Tab navigation and closing also work from diffs and image previews. Save
 commands apply to editable text files.

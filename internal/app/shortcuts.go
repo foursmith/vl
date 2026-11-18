@@ -8,7 +8,6 @@ const (
 	shortcutSave shortcutAction = iota
 	shortcutClose
 	shortcutSaveClose
-	shortcutClearSearch
 	shortcutSelectTab
 )
 
@@ -30,8 +29,6 @@ func leaderShortcut(k string) (shortcut, bool) {
 		return shortcut{action: shortcutClose}, true
 	case "z":
 		return shortcut{action: shortcutSaveClose}, true
-	case "enter":
-		return shortcut{action: shortcutClearSearch}, true
 	}
 	return shortcut{}, false
 }
@@ -91,17 +88,6 @@ func (m *Model) runShortcut(command shortcut) tea.Cmd {
 	case shortcutSaveClose:
 		if m.editing() {
 			return m.saveEditor(true)
-		}
-	case shortcutClearSearch:
-		if m.findWidget.visible {
-			m.closeFileFind()
-		} else {
-			m.findHidden = true
-		}
-		if d := m.editorDocument(); d != nil {
-			d.ClearSelection()
-			m.tabs[m.activeTab].vim.Reset(d)
-			m.ensureTextCursor()
 		}
 	}
 	return nil

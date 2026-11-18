@@ -46,13 +46,13 @@ func (m *Model) searchPanelControls(w int) []searchPanelControl {
 	l := m.searchPanelLayout()
 	detailsIcon := m.symbol(symbolSearchDetails)
 	detailsWidth := max(2, ansi.StringWidth(detailsIcon))
-	controls := []searchPanelControl{{id: "details", label: detailsIcon, hint: shortcutHint("Toggle Search Details", searchKeys.Options), x: max(1, w-2-detailsWidth), y: l.details, width: detailsWidth, quiet: true}}
+	controls := []searchPanelControl{{id: "details", label: detailsIcon, hint: "Toggle Search Details", x: max(1, w-2-detailsWidth), y: l.details, width: detailsWidth, quiet: true}}
 	label := " " + m.treeChevron(m.search.replace)
 	toggleY := l.query
 	if m.search.replace {
 		toggleY++
 	}
-	controls = append(controls, searchPanelControl{id: "replaceToggle", label: label, hint: shortcutHint(searchKeys.ToggleReplace.Help().Desc, searchKeys.ToggleReplace), x: 0, y: toggleY, width: sidebarSearchFieldInset, embedded: true, quiet: true})
+	controls = append(controls, searchPanelControl{id: "replaceToggle", label: label, hint: "Toggle Replace", x: 0, y: toggleY, width: sidebarSearchFieldInset, embedded: true, quiet: true})
 	add := func(y int, ids, labels, hints []string) {
 		right := w - 2
 		for index := len(ids) - 1; index >= 0; index-- {
@@ -72,7 +72,7 @@ func (m *Model) searchPanelControls(w int) []searchPanelControl {
 	}
 	add(l.query, []string{"case", "word", "regex"}, []string{"Aa", "ab", ".*"}, []string{"Match Case", "Match Whole Word", "Use Regular Expression"})
 	if m.search.replace {
-		add(l.replacement, []string{"preserve", "replaceAll"}, []string{"AB", "↵"}, []string{"Preserve Case", shortcutHint("Replace All", searchKeys.ReplaceAll)})
+		add(l.replacement, []string{"preserve", "replaceAll"}, []string{"AB", "↵"}, []string{"Preserve Case", "Replace All"})
 	}
 	if m.search.details {
 		changed := "Changed"

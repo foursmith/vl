@@ -213,14 +213,10 @@ func (m *Model) fileFindKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 		return true, nil
 	case key.Matches(msg, workbenchKeys.Find):
 		return true, m.focusFileFind(0)
-	case key.Matches(msg, searchKeys.Options):
-		return true, m.openSearchOptions()
-	case key.Matches(msg, searchKeys.ToggleReplace):
-		return true, m.toggleFileReplacement()
-	case key.Matches(msg, workbenchKeys.FindNext, pickerKeys.Down):
+	case key.Matches(msg, pickerKeys.Down):
 		m.navigateFileFind(1)
 		return true, nil
-	case key.Matches(msg, searchKeys.Previous, pickerKeys.Up):
+	case key.Matches(msg, pickerKeys.Up):
 		m.navigateFileFind(-1)
 		return true, nil
 	case key.Matches(msg, searchKeys.NextField, searchKeys.PreviousField):
@@ -229,10 +225,6 @@ func (m *Model) fileFindKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 		}
 		m.blurFileFind()
 		return true, nil
-	case key.Matches(msg, searchKeys.Replace):
-		return true, m.replaceFileFind(false)
-	case key.Matches(msg, searchKeys.ReplaceAll):
-		return true, m.replaceFileFind(true)
 	case key.Matches(msg, pickerKeys.Accept):
 		if m.search.focus == 1 {
 			return true, m.replaceFileFind(false)
@@ -281,7 +273,7 @@ func (m *Model) fileFindControls(w int) []searchPanelControl {
 	}
 	ids := []string{"case", "word", "regex", "previous", "next"}
 	labels := []string{"Aa", "ab", ".*", "↑", "↓"}
-	hints := []string{"Match Case", "Match Whole Word", "Use Regular Expression", shortcutHint(searchKeys.Previous.Help().Desc, searchKeys.Previous), "Next Match (" + workbenchKeys.FindNext.Help().Key + " / n)"}
+	hints := []string{"Match Case", "Match Whole Word", "Use Regular Expression", "Previous Match", "Next Match"}
 	ids = append(ids, "close")
 	labels = append(labels, "×")
 	hints = append(hints, shortcutHint("Close Find", workbenchKeys.Escape))
@@ -291,7 +283,7 @@ func (m *Model) fileFindControls(w int) []searchPanelControl {
 		if m.search.replace {
 			toggleRow++
 		}
-		controls = append(controls, searchPanelControl{id: "replacement", label: m.treeChevron(m.search.replace), hint: shortcutHint(searchKeys.ToggleReplace.Help().Desc, searchKeys.ToggleReplace), x: 1, y: toggleRow, width: 1, quiet: true})
+		controls = append(controls, searchPanelControl{id: "replacement", label: m.treeChevron(m.search.replace), hint: "Toggle Replace", x: 1, y: toggleRow, width: 1, quiet: true})
 	}
 	if m.search.replace && m.editing() {
 		right := w - 1
@@ -300,7 +292,7 @@ func (m *Model) fileFindControls(w int) []searchPanelControl {
 				right = min(right, control.x+1)
 			}
 		}
-		add(fileReplaceRow, right, []string{"preserve", "replaceAll"}, []string{"AB", "↵"}, []string{"Preserve Case", shortcutHint("Replace All in This File", searchKeys.ReplaceAll)})
+		add(fileReplaceRow, right, []string{"preserve", "replaceAll"}, []string{"AB", "↵"}, []string{"Preserve Case", "Replace All in This File"})
 	}
 	return slices.DeleteFunc(controls, func(c searchPanelControl) bool { return c.y >= m.fileFindHeight() })
 }

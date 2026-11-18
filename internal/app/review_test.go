@@ -66,10 +66,10 @@ func TestReadOnlyDiffSharesVimMotionsSelectionAndSearch(t *testing.T) {
 		if m.review.SelectedText() != "new" {
 			t.Fatal("n did not continue text search")
 		}
-		press(m, " ")
-		press(m, "enter")
-		if !m.findHidden || m.diffSelection.active {
-			t.Fatal("shared leader did not clear search selection")
+		press(m, "ctrl+f")
+		press(m, "esc")
+		if !m.findHidden {
+			t.Fatal("closing Find did not hide search highlights")
 		}
 		if m.View().Cursor == nil {
 			t.Fatal("read-only editor has no cursor")

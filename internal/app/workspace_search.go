@@ -185,15 +185,6 @@ func (m *Model) selectedSearchRow() (searchRow, bool) {
 func (m *Model) searchKey(msg tea.KeyPressMsg) tea.Cmd {
 	s := &m.search
 	switch {
-	case key.Matches(msg, searchKeys.Options):
-		return m.toggleSearchDetails()
-	case key.Matches(msg, searchKeys.ToggleReplace):
-		return m.toggleSearchReplace()
-	case key.Matches(msg, searchKeys.Replace, searchKeys.ReplaceAll):
-		if s.replace {
-			return m.replaceSearch(key.Matches(msg, searchKeys.ReplaceAll))
-		}
-		return nil
 	case key.Matches(msg, workbenchKeys.Find):
 		return m.focusSearch(0)
 	case key.Matches(msg, searchKeys.NextField, searchKeys.PreviousField):

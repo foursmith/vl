@@ -8,10 +8,10 @@ func binding(display, description string, keys ...string) key.Binding {
 
 // Bindings also supply the shortcut labels shown in commands and menus.
 var workbenchKeys = struct {
-	Quit, Copy, Files, Recent, Commands                                                  key.Binding
-	Explorer, Search, Replace, Changes, History, Sidebar, Focus, Refresh, SidebarRefresh key.Binding
-	PullRequests                                                                         key.Binding
-	DiffLayout, Save, Close, Find, FindNext, Escape, ContextMenu                         key.Binding
+	Quit, Copy, Files, Recent, Commands                                         key.Binding
+	Explorer, Search, Changes, History, Sidebar, Focus, Refresh, SidebarRefresh key.Binding
+	PullRequests                                                                key.Binding
+	DiffLayout, Save, Close, Find, Escape, ContextMenu                          key.Binding
 }{
 	Quit:         binding("Ctrl+Q", "Quit", "ctrl+q"),
 	Copy:         binding("Ctrl+C", "Copy", "ctrl+c"),
@@ -19,7 +19,6 @@ var workbenchKeys = struct {
 	Recent:       binding("Ctrl+H", "Open Recent Workspace", "ctrl+h"),
 	Commands:     binding("Ctrl+Shift+P", "Commands", "ctrl+shift+p", "f1"),
 	Explorer:     binding("Ctrl+1", "Explorer", "ctrl+1"),
-	Replace:      binding("Ctrl+Shift+H", "Replace in Files", "ctrl+shift+h"),
 	Search:       binding("Ctrl+2", "Search", "ctrl+2", "ctrl+shift+f"),
 	Changes:      binding("Ctrl+3", "Changes", "ctrl+3"),
 	History:      binding("Ctrl+4", "History", "ctrl+4"),
@@ -33,7 +32,6 @@ var workbenchKeys = struct {
 	Save:           binding("Ctrl+S", "Save", "ctrl+s"),
 	Close:          binding("Ctrl+W", "Close Editor", "ctrl+w"),
 	Find:           binding("Ctrl+F", "Find", "ctrl+f"),
-	FindNext:       binding("F3", "Next match", "f3"),
 	Escape:         binding("Esc", "Dismiss", "esc"),
 	ContextMenu:    binding("Shift+F10", "Context menu", "shift+f10"),
 }
@@ -42,21 +40,15 @@ var workbenchKeys = struct {
 var searchWorkbenchKeys = []key.Binding{
 	workbenchKeys.Quit, workbenchKeys.Files, workbenchKeys.Commands,
 	workbenchKeys.Explorer, workbenchKeys.Search, workbenchKeys.Changes, workbenchKeys.History, workbenchKeys.PullRequests,
-	workbenchKeys.Replace, workbenchKeys.Sidebar, workbenchKeys.Focus,
+	workbenchKeys.Sidebar, workbenchKeys.Focus,
 }
 
 var searchKeys = struct {
-	Options, ToggleReplace, Previous, NextField, PreviousField key.Binding
-	Replace, ReplaceAll, FocusQuery                            key.Binding
+	NextField, PreviousField, FocusQuery key.Binding
 }{
-	Options:       binding("Ctrl+Shift+J", "Search options", "ctrl+shift+j", "alt+e"),
-	ToggleReplace: binding("Alt+H", "Toggle Replace", "alt+h"),
-	Previous:      binding("Shift+F3", "Previous Match", "shift+f3"),
 	NextField:     binding("Tab", "Next field", "tab"),
 	PreviousField: binding("Shift+Tab", "Previous field", "shift+tab"),
-	Replace:       binding("Ctrl+Enter", "Replace match", "ctrl+enter"),
-	ReplaceAll:    binding("Ctrl+Alt+Enter", "Replace all matches", "ctrl+alt+enter"),
-	FocusQuery:    binding("/", "Focus search query", "/", "i"),
+	FocusQuery:    binding("/", "Focus search query", "/"),
 }
 
 func shortcutHint(label string, binding key.Binding) string {

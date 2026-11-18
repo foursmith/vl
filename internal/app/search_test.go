@@ -71,8 +71,8 @@ func TestSearchHighlightsAllAndClearsUntilNext(t *testing.T) {
 		}
 	}
 	check(12)
-	press(m, " ")
-	press(m, "enter")
+	press(m, "ctrl+f")
+	press(m, "esc")
 	check(0)
 	press(m, "n")
 	check(12)
@@ -216,8 +216,8 @@ func TestWorkspaceResultReusesFileSearchHighlightsAndNavigation(t *testing.T) {
 		if m.document().SelectedText() != tc.next {
 			t.Fatalf("%q: n selected %q, want %q", tc.query, m.document().SelectedText(), tc.next)
 		}
-		press(m, " ")
-		press(m, "enter")
+		press(m, "ctrl+f")
+		press(m, "esc")
 		if count() != 0 {
 			t.Fatal("clear highlight did not use shared state")
 		}

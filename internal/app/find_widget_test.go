@@ -25,11 +25,8 @@ func TestSharedFindComponentEntriesCountAndInput(t *testing.T) {
 	if m.fileFindHeight() != 0 || m.fileFindIndex() != 1 {
 		t.Fatal("next workspace match must stay in the editor")
 	}
-	press(m, "shift+f3")
-	if m.fileFindHeight() != 0 || m.fileFindIndex() != 0 {
-		t.Fatal("previous workspace match must stay in the editor")
-	}
 	press(m, "ctrl+f")
+	m.Update(tea.KeyPressMsg{Code: tea.KeyUp})
 	if !strings.Contains(plain(m.fileFindLines()[0]), "1 of 2") {
 		t.Fatal("match counter missing")
 	}
@@ -45,7 +42,7 @@ func TestSharedFindComponentEntriesCountAndInput(t *testing.T) {
 	if m.modal != "" || !m.fileFindFocused() || m.search.query.Value() != "old" {
 		t.Fatal("Ctrl+F did not reuse component")
 	}
-	press(m, "f3")
+	m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	press(m, "enter")
 	if m.fileFindFocused() || m.fileFindIndex() != 1 {
 		t.Fatal("accept reset explicit match navigation")
@@ -317,8 +314,12 @@ func TestSharedFindUndoRefreshesWorkspaceResults(t *testing.T) {
 	m.clickSearch(7, m.searchResultY())
 	m.openFileReplace()
 	m.search.replacement.SetValue("new")
-	_, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter, Mod: tea.ModCtrl | tea.ModAlt})
-	drain(t, m, cmd)
+	for _, control := range m.fileFindControls(m.fileFindWidth()) {
+		if control.id == "replaceAll" {
+			drain(t, m, m.clickFileFind(m.mainWidth()-m.fileFindWidth()+control.x, control.y))
+			break
+		}
+	}
 	if m.search.result.Count != 2 {
 		t.Fatal("file replacement did not refresh workspace scope")
 	}

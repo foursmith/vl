@@ -16,7 +16,6 @@ Keys are case-sensitive. `Ctrl+P` is a chord. `Space w` and `gg` are sequences.
 | `Ctrl+H` | Open Recent Workspace |
 | `Ctrl+1` / `Ctrl+2` / `Ctrl+3` / `Ctrl+4` / `Ctrl+5` | Focus Explorer / Search / Changes / History / Pull Requests |
 | `Ctrl+Shift+F` | Find in Files |
-| `Ctrl+Shift+H` | Replace in Files |
 | `Ctrl+L` | Toggle Sidebar |
 | `F2` | Focus the sidebar or the editor |
 | `Ctrl+S` | Save |
@@ -89,46 +88,42 @@ Unstage Changes.
 | Shortcut | Action |
 | --- | --- |
 | `Ctrl+F` / Normal mode `/` | Open Find in the editor |
-| `F3` / Normal mode `n` | Find Next |
-| `Shift+F3` | Find Previous |
+| Normal mode `n` | Find Next |
+| `↑` / `↓` in Find | Jump to the previous / next match |
 | `Enter` in Find | Jump to the match and return focus to the editor |
-| `Alt+H` in Find | Show or hide Replace |
 | `Tab` / `Shift+Tab` | Switch between Find and Replace, or return to the editor when Replace is collapsed |
-| `Ctrl+Shift+J` / `Alt+E` in Find | Open Find options |
-| `Enter` in Replace / `Ctrl+Enter` | Replace the current match |
-| `Ctrl+Alt+Enter` | Replace all matches in this file |
+| `Enter` in Replace | Replace the current match |
 | `Esc` | Close Find and hide highlights |
-| `Space Enter` in the editor | Clear search highlights and keep the query |
 
 Find opens as an overlay in the upper-right corner. It shares the query,
 replacement, and match options with workspace Search. Find Next and Find
 Previous wrap around. Use Match Case, Match Whole Word, or Use Regular
 Expression to change how the query matches. Replace also supports Preserve
-Case and capture groups like `$1` and `${name}`. In-file replacements stay in the
-buffer until you save. Read-only diffs support Find.
+Case. Use the chevron to toggle the Replace field and the Replace All button to
+replace every match in the file. Replacement text can include capture groups
+like `$1` and `${name}`. In-file replacements stay in the buffer until you save.
+Read-only diffs support Find.
 
 ### Search across files
 
 | Shortcut | Action |
 | --- | --- |
 | `Ctrl+Shift+F` / `Ctrl+2` | Find in Files |
-| `Ctrl+Shift+H` | Replace in Files |
-| `Alt+H` | Show or hide the Replace field |
-| `Ctrl+Shift+J` / `Alt+E` | Show or hide Files to Include / Files to Exclude |
 | `Tab` / `Shift+Tab` | Cycle through the visible fields and results |
 | `Enter` in the search field | Run the search and focus the results |
 | `Esc` from a field | Focus the results |
-| `/` / `i` / `Ctrl+F` in the results | Focus the search field |
+| `/` / `Ctrl+F` in the results | Focus the search field |
 | `j` / `k`, `gg` / `G`, `PageUp` / `PageDown` in the results | Move through matches and file groups |
 | `h` / `l` in the results | Select the parent file group / expand it or open the selected result |
 | `Enter` in the results | Open the selected file or match and keep the tab |
 | `dd` / `Delete` in the results | Remove a match or file group from the results. This leaves the file alone. |
-| `Enter` in Replace / `Ctrl+Enter` | Replace the selected match, or all retained matches in the selected file group |
-| `Ctrl+Alt+Enter` | Replace all retained results |
+| `Enter` in Replace | Replace the selected match, or all retained matches in the selected file group |
 
 Search runs as you type and includes unsaved edits. Selecting a result previews
 it. Opening it focuses the editor at the match and highlights the other matches
-in that file. Use `n` or `F3` to keep jumping.
+in that file. Use `n` to keep jumping. Use the chevron to toggle the
+Replace field and the Replace All button to replace all retained results. The
+search details button shows the include and exclude fields.
 
 Include and exclude fields take comma-separated globs such as
 `*.go, **/*.{ts,tsx}`. Use `./` to anchor a pattern at the workspace root.
