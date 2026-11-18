@@ -260,7 +260,7 @@ func TestDiffContextMenuStagesAndUnstagesMouseSelection(t *testing.T) {
 		selectChanged(t, m, "README.md", staged)
 		drain(t, m, m.openSelected())
 	}
-	menuAt := func(line string) {
+	selectLine := func(line string) (int, int) {
 		t.Helper()
 		if !m.diffLayout.split {
 			t.Fatal("expected a split diff")
@@ -269,18 +269,43 @@ func TestDiffContextMenuStagesAndUnstagesMouseSelection(t *testing.T) {
 			if pair.Right == nil || pair.Right.Text != line {
 				continue
 			}
-			x := m.mainX() + (m.mainWidth()-1)/2 + 1 + m.diffGutter
+			pane, _ := m.diffPane(true)
+			x := m.mainX() + pane + m.diffGutter
 			y := m.contentRow() + i - m.viewport.YOffset()
 			m.Update(tea.MouseClickMsg{X: x, Y: y, Button: tea.MouseLeft})
 			m.Update(tea.MouseReleaseMsg{X: x + 3, Y: y, Button: tea.MouseLeft})
-			m.Update(tea.MouseClickMsg{X: x + 2, Y: y, Button: tea.MouseRight})
-			return
+			return x + 2, y
 		}
 		t.Fatalf("diff row not found: %s", line)
+		return 0, 0
+	}
+	menuAt := func(line string) {
+		x, y := selectLine(line)
+		m.Update(tea.MouseClickMsg{X: x, Y: y, Button: tea.MouseRight})
+	}
+	clickButton := func(x, y int, discard bool, hint string) tea.Cmd {
+		t.Helper()
+		m.Update(tea.MouseMotionMsg{X: x, Y: y})
+		buttons := m.hoveredDiffButtons()
+		if !buttons.visible {
+			t.Fatal("hovered unstaged hunk has no buttons")
+		}
+		pos, glyph := buttons.stage, "+"
+		if discard {
+			pos, glyph = buttons.discard, "→"
+		}
+		x, y = m.mainX()+pos.x, pos.y
+		m.Update(tea.MouseMotionMsg{X: x, Y: y})
+		line := strings.Split(m.View().Content, "\n")[y]
+		if strings.TrimSpace(plain(ansi.Cut(line, x, x+pos.width))) != glyph || m.hoverHint() != hint {
+			t.Fatalf("unexpected diff button or hint at %d,%d: %q / %q", x, y, plain(line), m.hoverHint())
+		}
+		_, cmd := m.Update(tea.MouseClickMsg{X: x, Y: y, Button: tea.MouseLeft})
+		return cmd
 	}
 	open(false)
-	menuAt("+FIRST")
-	drain(t, m, chooseContextAction(t, m, "Stage Selected Ranges"))
+	x, y := selectLine("+FIRST")
+	drain(t, m, clickButton(x, y, false, "Stage Selected Ranges"))
 	if got := run("show", ":README.md"); got != "FIRST\nsecond\nlast\n" {
 		t.Fatalf("index after staging selection: %q", got)
 	}
@@ -293,6 +318,28 @@ func TestDiffContextMenuStagesAndUnstagesMouseSelection(t *testing.T) {
 	got, err := os.ReadFile(path)
 	if err != nil || string(got) != after {
 		t.Fatalf("working file changed: %q, %v", got, err)
+	}
+
+	open(false)
+	menuAt("+FIRST")
+	drain(t, m, chooseContextAction(t, m, "Stage Selected Ranges"))
+	menuAt("+SECOND")
+	drain(t, m, chooseContextAction(t, m, "Discard Selected Ranges"))
+	if m.modal != "confirm" || m.busy {
+		t.Fatal("partial discard must require confirmation")
+	}
+	drain(t, m, press(m, "esc"))
+	if got, err := os.ReadFile(path); err != nil || string(got) != after {
+		t.Fatalf("cancel changed the working file: %q, %v", got, err)
+	}
+	drain(t, m, clickButton(m.mainX()+2, m.contentRow(), true, "Discard Selected Ranges"))
+	drain(t, m, press(m, changesDiscardConfirmKey))
+	const staged = "FIRST\nsecond\nlast\n"
+	if got, err := os.ReadFile(path); err != nil || string(got) != staged {
+		t.Fatalf("working file after discarding hunk: %q, %v", got, err)
+	}
+	if got := run("show", ":README.md"); got != staged {
+		t.Fatalf("discard changed the index: %q", got)
 	}
 }
 

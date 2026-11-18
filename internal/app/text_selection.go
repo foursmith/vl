@@ -77,18 +77,12 @@ func (m *Model) positionDiff(x, y int, extend bool) {
 	}
 	s := &m.diffSelection
 	local := x - m.mainX()
-	leftWidth := (m.mainWidth() - 1) / 2
 	if !extend {
-		s.right = m.diffLayout.split && local > leftWidth
+		right, _ := m.diffPane(true)
+		s.right = m.diffLayout.split && local >= right
 	}
-	width := m.mainWidth()
-	if m.diffLayout.split {
-		width = leftWidth
-		if s.right {
-			local -= leftWidth + 1
-			width = m.mainWidth() - leftWidth - 1
-		}
-	}
+	start, width := m.diffPane(s.right)
+	local -= start
 	i := min(len(m.diffRows)-1, max(0, m.viewport.YOffset()+y-m.contentRow()))
 	code := codeLine(m.selectionLine(i, s.right))
 	gutter := min(width, m.diffGutter)

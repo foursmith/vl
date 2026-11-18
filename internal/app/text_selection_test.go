@@ -66,7 +66,8 @@ func TestDiffMouseSelectionCopyAndPainting(t *testing.T) {
 			}
 			x := m.mainX() + m.diffGutter
 			if split {
-				x += (m.mainWidth()-1)/2 + 1
+				pane, _ := m.diffPane(true)
+				x += pane
 			}
 			m.Update(tea.MouseClickMsg{X: x + 1, Y: editorContentRow + first, Button: tea.MouseLeft})
 			m.View()

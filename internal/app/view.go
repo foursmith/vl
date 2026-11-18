@@ -150,6 +150,7 @@ type hoverRenderKey struct {
 	findY                 int
 	hint                  string
 	divider               bool
+	diffButtons           diffButtons
 }
 
 func (m *Model) View() tea.View {
@@ -161,8 +162,9 @@ func (m *Model) View() tea.View {
 	}
 	key := hoverRenderKey{
 		row: m.hoveredSidebarRow(), hint: m.hoverHint(),
-		picker:  m.hoveredPickerIndex(),
-		divider: m.sidebarDividerAt(m.hoverX, m.hoverY),
+		picker:      m.hoveredPickerIndex(),
+		divider:     m.sidebarDividerAt(m.hoverX, m.hoverY),
+		diffButtons: m.hoveredDiffButtons(),
 	}
 	if menu := m.contextMenu; menu != nil {
 		key.menu, key.menuSelected, key.menuTop = menu, menu.selected, menu.top
@@ -187,6 +189,10 @@ func (m *Model) View() tea.View {
 	findOffset := m.fileFindX() - m.mainX()
 	for y := 0; y < m.bodyHeight(); y++ {
 		line := main[y]
+		if key.diffButtons.visible {
+			line = m.drawDiffButton(line, y, key.diffButtons.discard, "→")
+			line = m.drawDiffButton(line, y, key.diffButtons.stage, "+")
+		}
 		if index := y - m.contentRow(); index >= 0 && index < len(find) {
 			line = row(ansi.Cut(line, 0, findOffset), findOffset, m.colors.Foreground, m.colors.Background) + find[index]
 		}
@@ -794,6 +800,9 @@ func (m *Model) click(msg tea.MouseClickMsg) tea.Cmd {
 	}
 	if msg.Y < 0 || msg.Y >= m.bodyHeight() {
 		return nil
+	}
+	if cmd, handled := m.clickDiffButton(msg); handled {
+		return cmd
 	}
 	m.focusEditor()
 	m.blurFileFind()

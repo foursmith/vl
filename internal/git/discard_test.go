@@ -5,7 +5,42 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	patchdiff "github.com/foursmith/vl/internal/diff"
 )
+
+func TestDiscardLinesRestoresOnlySelectedChangesFromIndex(t *testing.T) {
+	r := committedRepository(t)
+	ctx := context.Background()
+	const path = "file.txt"
+	const staged = "staged\nsecond\nthird\n"
+	const modified = "FIRST\nSECOND\nthird\n"
+	write(t, r, path, staged)
+	run(t, r, "add", "--", path)
+	write(t, r, path, modified)
+	c := Change{Path: path, Index: 'M', Worktree: 'M'}
+	raw, err := r.Diff(ctx, c, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	patch := patchdiff.Parse(raw)
+	selected := func(line *patchdiff.Line) bool { return line.Text == "+FIRST" || line.Text == "-staged" }
+	write(t, r, path, modified+"external edit\n")
+	if _, err := r.DiscardLines(ctx, c, patch, selected); err == nil {
+		t.Fatal("discard accepted a stale patch")
+	}
+	write(t, r, path, modified)
+	if _, err := r.DiscardLines(ctx, c, patch, selected); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(filepath.Join(r.Root, path))
+	if err != nil || string(got) != "staged\nSECOND\nthird\n" {
+		t.Fatalf("working file after partial discard: %q, %v", got, err)
+	}
+	if got := run(t, r, "show", ":file.txt"); got != staged {
+		t.Fatalf("discard changed the index: %q", got)
+	}
+}
 
 func TestDiscardTrackedRestoresIndexWithoutLosingStagedContent(t *testing.T) {
 	r := committedRepository(t)

@@ -125,6 +125,9 @@ func (m *Model) hoverHint() string {
 	if m.resizingSidebar || m.sidebarDividerAt(m.hoverX, m.hoverY) {
 		return m.tr("Drag to resize sidebar")
 	}
+	if hint := m.diffButtonHint(m.hoveredDiffButtons()); hint != "" {
+		return hint
+	}
 	if m.modal == "" && m.hoverY >= 0 && m.hoverY < headerHeight && m.sidebarAt(m.hoverX) {
 		for _, nav := range m.navigation() {
 			x := m.hoverX - m.sideX()

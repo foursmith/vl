@@ -614,6 +614,23 @@ func (m *Model) stageDiffLines(reverse bool, title string, selected func(*diff.L
 	})
 }
 
+func (m *Model) discardDiffLines(title string, selected func(*diff.Line) bool) tea.Cmd {
+	if reason := m.partialDiscardReason(); reason != "" {
+		m.notice = reason
+		return nil
+	}
+	c, source, workspace := *m.diffChange, m.patch, m.repo
+	return m.askDiscard(title, func() tea.Cmd {
+		if m.fileDirty(c.Path) {
+			m.notice = m.tr("Save or close edited files before discarding")
+			return nil
+		}
+		return m.operation("Discard", func() (string, error) {
+			return workspace.DiscardLines(m.ctx, c, source, selected)
+		})
+	})
+}
+
 func (m *Model) commit() tea.Cmd { return m.commitInRepository(m.selectedRepository()) }
 
 func (m *Model) openSelected() tea.Cmd {

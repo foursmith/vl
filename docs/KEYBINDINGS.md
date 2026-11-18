@@ -149,7 +149,7 @@ Find, and Flash bindings as in a text tab.
 | --- | --- |
 | `[` / `]` in Normal mode | Previous / Next Hunk |
 | `Ctrl+D` | Toggle Inline View (inline / side by side) |
-| `Shift+F10` / right-click | Open diff actions, including Stage Hunk or Unstage Hunk when available |
+| `Shift+F10` / right-click | Open diff actions, including staging, unstaging, and discarding unstaged hunks or selected changes |
 | `Ctrl+C` | Copy selected source text to the system clipboard |
 | `Space 1` … `Space 9` / `Space q` | Switch tabs / close the tab |
 
@@ -157,6 +157,10 @@ In a side-by-side diff, click a side or run **Focus Other Diff Side** from the
 Command Palette. Motions and selections use the source shown on that side.
 Yanks and copies leave out line numbers and diff markers. Added or deleted
 files open inline, and side-by-side falls back to inline when space runs out.
+
+Hover an unstaged text hunk to reveal `→` (discard, with confirmation) and
+`+` (stage). If the hunk contains selected changes, the buttons act on
+those changes within that hunk.
 
 ## Image preview
 

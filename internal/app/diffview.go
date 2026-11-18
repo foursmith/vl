@@ -377,19 +377,35 @@ func diffSpans(ctx context.Context, patch diff.Patch, path string, colors *theme
 	return result
 }
 
+const diffSeparatorWidth = 3
+
+func (m *Model) diffPane(right bool) (start, width int) {
+	w := m.mainWidth()
+	if !m.diffLayout.split {
+		return 0, w
+	}
+	left := (w - diffSeparatorWidth) / 2
+	if right {
+		start = left + diffSeparatorWidth
+		return start, w - start
+	}
+	return 0, left
+}
+
 func (m *Model) diffView() []string {
 	if m.images != nil {
 		return m.diffImageLines()
 	}
 	var lines []string
 	w := m.mainWidth()
+	_, left := m.diffPane(false)
+	_, right := m.diffPane(true)
 	for i := m.viewport.YOffset(); i < min(len(m.diffRows), m.viewport.YOffset()+m.contentHeight()); i++ {
 		pair := m.diffRows[i]
 		if !m.diffLayout.split || pair.Left != nil && (pair.Left.Kind == diff.Header || pair.Left.Kind == diff.HunkHeader) {
 			lines = append(lines, m.diffRow(pair.Left, w, false, m.diffSelectedRange(i, false)))
 		} else {
-			left := (w - 1) / 2
-			lines = append(lines, m.diffRow(pair.Left, left, false, m.diffSelectedRange(i, false))+row("│", 1, m.colors.Border, m.colors.Background)+m.diffRow(pair.Right, w-left-1, true, m.diffSelectedRange(i, true)))
+			lines = append(lines, m.diffRow(pair.Left, left, false, m.diffSelectedRange(i, false))+row(" │ ", diffSeparatorWidth, m.colors.Border, m.colors.Background)+m.diffRow(pair.Right, right, true, m.diffSelectedRange(i, true)))
 		}
 	}
 	return lines

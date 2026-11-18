@@ -153,10 +153,7 @@ func (m *Model) ensureTextCursor() {
 		m.viewport.SetYOffset(row - m.contentHeight() + 1)
 	}
 	visual := ansi.StringWidth(expandTabs(d.Text[d.ByteOffset(d.LineOffset(line)):d.ByteOffset(d.Cursor)]))
-	width := m.mainWidth()
-	if m.diffLayout.split {
-		width = (width - 1) / 2
-	}
+	_, width := m.diffPane(m.reviewRight)
 	width = max(1, width-m.diffGutter)
 	if visual < m.diffLeft {
 		m.diffLeft = visual
@@ -180,18 +177,9 @@ func (m *Model) reviewCursor() *tea.Cursor {
 	line, _ := d.Position()
 	y := m.reviewRows[min(line, len(m.reviewRows)-1)] - m.viewport.YOffset()
 	start, end := d.ByteOffset(d.LineOffset(line)), d.ByteOffset(d.Cursor)
-	x := m.mainX() + m.diffGutter + ansi.StringWidth(expandTabs(d.Text[start:end])) - m.diffLeft
-	width := m.mainWidth()
-	if m.diffLayout.split {
-		width = (width - 1) / 2
-		if m.reviewRight {
-			x += width + 1
-		}
-	}
-	left := m.mainX()
-	if m.diffLayout.split && m.reviewRight {
-		left += width + 1
-	}
+	pane, width := m.diffPane(m.reviewRight)
+	left := m.mainX() + pane
+	x := left + m.diffGutter + ansi.StringWidth(expandTabs(d.Text[start:end])) - m.diffLeft
 	if y < 0 || y >= m.contentHeight() || x < left+m.diffGutter || x >= left+width || m.fileFindAt(x, m.contentRow()+y) {
 		return nil
 	}
@@ -220,10 +208,7 @@ func (m *Model) textViewport() (top, left, width, gutter int) {
 		t := &m.tabs[m.activeTab]
 		return t.editorDisplayTop(), t.left, m.mainWidth(), 7
 	}
-	width = m.mainWidth()
-	if m.diffLayout.split {
-		width = (width - 1) / 2
-	}
+	_, width = m.diffPane(m.reviewRight)
 	return m.viewport.YOffset(), m.diffLeft, width, m.diffGutter
 }
 
@@ -252,6 +237,23 @@ func (m *Model) partialStageReason(reverse bool) string {
 	}
 	if err := m.patch.PartialStagingError(); err != nil {
 		return m.tr(err.Error())
+	}
+	return ""
+}
+
+func (m *Model) partialDiscardReason() string {
+	if m.diffChange == nil || m.diffStaged || m.diffLoading || m.editing() {
+		return m.tr("Open a working-tree diff first")
+	}
+	c := *m.diffChange
+	if c.Conflicted() || c.Gitlink || !c.Unstaged() {
+		return m.tr("Select a non-conflicted working-tree file to discard")
+	}
+	if m.fileDirty(c.Path) {
+		return m.tr("Save or close edited files before discarding")
+	}
+	if m.images != nil || m.patch.PartialStagingError() != nil {
+		return m.tr("No text changes to discard partially")
 	}
 	return ""
 }
@@ -295,32 +297,49 @@ func (m *Model) reviewActions() []action {
 			prefix, file, hunk, ranges = "diff.unstage", "Unstage File", "Unstage Hunk", "Unstage Selected Ranges"
 		}
 		target, raw := m.diffState, m.patch.Raw
-		bind := func(run func() tea.Cmd) func() tea.Cmd {
+		bind := func(stale string, run func() tea.Cmd) func() tea.Cmd {
 			return func() tea.Cmd {
 				if m.diffState != target || m.diffChange == nil || m.diffLoading || m.patch.Raw != raw {
-					m.notice = m.tr("Diff changed; refresh before staging")
+					m.notice = m.tr(stale)
 					return nil
 				}
 				return run()
 			}
 		}
+		stage := func(run func() tea.Cmd) func() tea.Cmd { return bind("Diff changed; refresh before staging", run) }
 		partialReason := m.partialStageReason(reverse)
+		discardReason := m.partialDiscardReason()
+		addDiscard := func(id, label, prompt string, selected func(*diff.Line) bool) {
+			if reverse {
+				return
+			}
+			actions = append(actions, action{id: id, label: m.tr(label), disabled: discardReason,
+				run: bind("Diff changed; refresh before discarding", func() tea.Cmd {
+					return m.discardDiffLines(m.tr(prompt, m.diffPath), selected)
+				}),
+			})
+		}
 		selected := m.selectedDiffChanges()
 		if len(selected) != 0 {
-			actions = append(actions, action{id: prefix + "Ranges", label: m.tr(ranges), disabled: partialReason, run: bind(func() tea.Cmd {
-				return m.stageDiffLines(reverse, ranges, func(line *diff.Line) bool { return selected[line] })
+			inRange := func(line *diff.Line) bool { return selected[line] }
+			actions = append(actions, action{id: prefix + "Ranges", label: m.tr(ranges), disabled: partialReason, run: stage(func() tea.Cmd {
+				return m.stageDiffLines(reverse, ranges, inRange)
 			})})
+			addDiscard("diff.discardRanges", "Discard Selected Ranges", "Permanently discard the selected edits to %s?", inRange)
 		}
-		if m.diffHunk >= 0 && m.diffHunk < len(m.patch.Hunks) {
-			actions = append(actions, action{id: prefix + "Hunk", label: m.tr(hunk), disabled: partialReason, run: bind(func() tea.Cmd {
+		if index := m.diffHunk; index >= 0 && index < len(m.patch.Hunks) {
+			actions = append(actions, action{id: prefix + "Hunk", label: m.tr(hunk), disabled: partialReason, run: stage(func() tea.Cmd {
 				return m.stageHunk(reverse)
 			})})
+			addDiscard("diff.discardHunk", "Discard Hunk", "Permanently discard this hunk in %s?", func(line *diff.Line) bool {
+				return line.Hunk == index
+			})
 		}
 		fileReason := sourceReason
 		if fileReason == "" {
 			fileReason = m.stageFileReason(*m.diffChange, reverse)
 		}
-		actions = append(actions, action{id: prefix + "File", label: m.tr(file), disabled: fileReason, run: bind(func() tea.Cmd {
+		actions = append(actions, action{id: prefix + "File", label: m.tr(file), disabled: fileReason, run: stage(func() tea.Cmd {
 			return m.stageFile(*m.diffChange, reverse)
 		})})
 	}

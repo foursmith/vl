@@ -23,7 +23,7 @@ func (p Patch) PartialStagingError() error {
 	return nil
 }
 
-// StagingPatch transforms the displayed diff into an index-only patch. In
+// StagingPatch transforms the displayed diff into a text-only patch. In
 // either direction, skipped source lines remain as context and skipped target
 // lines are omitted. Recompute offsets using only the emitted changes.
 func (p Patch) StagingPatch(path string, reverse bool, selected func(*Line) bool) (string, error) {

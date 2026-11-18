@@ -19,9 +19,6 @@ func (m *Model) scrollHorizontal(delta int) {
 }
 
 func (m *Model) clampDiffHorizontal() {
-	width := m.mainWidth()
-	if m.diffLayout.split {
-		width = (width - 1) / 2
-	}
+	_, width := m.diffPane(false)
 	m.diffLeft = min(max(0, m.diffLeft), max(0, m.diffWidth-max(1, width-m.diffGutter)))
 }
