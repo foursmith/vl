@@ -10,8 +10,51 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/ourongxing/vl/internal/config"
 	gitservice "github.com/ourongxing/vl/internal/git"
 )
+
+func TestStatusBarStylePickerPersistsAndRestores(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	t.Cleanup(m.Close)
+	path := filepath.Join(t.TempDir(), "layout.json")
+	m.SetLayoutStore(config.NewLayoutStore(path))
+
+	for _, editorOnly := range []bool{false, true} {
+		m.editorOnly = editorOnly
+		m.openPalette()
+		m.input.SetValue(">Status Bar Style")
+		m.syncQuickPicker()
+		if rows := m.filteredActions(); len(rows) != 1 || rows[0].id != "statusBar.style" {
+			t.Fatalf("status bar style command not discoverable: %#v", rows)
+		}
+		drain(t, m, m.selectPickerChoice())
+		if m.modal != "statusBarStyles" || len(m.palette) != 2 || m.palette[0].key != "Current" {
+			t.Fatal("style picker should mark Standard as current")
+		}
+		m.input.SetValue("Pure")
+		drain(t, m, m.selectPickerChoice())
+		saved, err := config.LoadLayout(path)
+		if err != nil || saved.StatusBarStyle != statusBarPure || m.statusBarStyle != statusBarPure || m.modal != "" {
+			t.Fatalf("Pure was not applied and saved: %+v, %v", saved, err)
+		}
+		m.SetLayout(config.Layout{StatusBarStyle: "unknown"})
+		if m.statusBarStyle != statusBarStandard {
+			t.Fatal("unknown style should use Standard")
+		}
+		m.SetLayout(saved)
+		m.openStatusBarStylePicker()
+		if m.palette[1].key != "Current" {
+			t.Fatal("saved Pure was not restored")
+		}
+		m.input.SetValue("Standard")
+		drain(t, m, m.selectPickerChoice())
+		saved, err = config.LoadLayout(path)
+		if err != nil || saved.StatusBarStyle != statusBarStandard || m.statusBarStyle != statusBarStandard {
+			t.Fatalf("Standard was not applied and saved: %+v, %v", saved, err)
+		}
+	}
+}
 
 func branchWorkspace(t *testing.T) *Model {
 	t.Helper()

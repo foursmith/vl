@@ -7,13 +7,14 @@ import (
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
+	gitservice "github.com/ourongxing/vl/internal/git"
 	"github.com/ourongxing/vl/internal/highlight"
 	"github.com/ourongxing/vl/internal/theme"
 )
 
 func TestComponentsDoNotBorrowEditorOrPickerColors(t *testing.T) {
 	m := tabWorkspace(t, 1)
-	raw := `{"colors":{"editor.foreground":"#111111","quickInput.foreground":"#222222","quickInput.background":"#101010","menu.foreground":"#7799BB","menu.background":"#111213","menu.selectionForeground":"#8596A7","menu.selectionBackground":"#141516","statusBar.foreground":"#778899","statusBar.background":"#171819","statusBar.noFolderBackground":"#FF0000","tab.activeForeground":"#99AABB","strongForeground":"#FFFFFF"}}`
+	raw := `{"colors":{"editor.foreground":"#111111","quickInput.foreground":"#222222","quickInput.background":"#101010","menu.foreground":"#7799BB","menu.background":"#111213","menu.selectionForeground":"#8596A7","menu.selectionBackground":"#141516","sideBar.foreground":"#222324","sideBar.background":"#171819","statusBar.foreground":"#CC0000","statusBar.background":"#FF0000","tab.activeForeground":"#99AABB","strongForeground":"#FFFFFF"}}`
 	th, _ := fixtureTheme(t, "vs-dark", raw)
 	m.SetColorTheme(th)
 	m.openFile("file0.go")
@@ -30,23 +31,64 @@ func TestComponentsDoNotBorrowEditorOrPickerColors(t *testing.T) {
 	if !found {
 		t.Fatal("active tab label missing")
 	}
-	for _, noGit := range []bool{false, true} {
-		m.snapshot.NoRepository = noGit
-		modeWidth := 0
-		for _, segment := range m.statusLayout() {
-			if segment.id == "vim" {
-				modeWidth = segment.width
-			}
-		}
-		for x, cell := range uv.NewStyledString(m.statusLine()).Lines(ansi.GraphemeWidth)[0] {
-			if x < modeWidth {
-				continue
-			} // The mode badge deliberately uses its own background.
-			if !sameColor(cell.Style.Bg, lipgloss.Color("#171819")) {
-				t.Fatal("status bar borrowed sidebar/no-folder background")
-			}
+	assertStatusColors := func(id, fg, bg string) {
+		t.Helper()
+		segment := statusPart(t, m, id)
+		cells := uv.NewStyledString(m.statusLine()).Lines(ansi.GraphemeWidth)[0]
+		cell := cells[segment.x+1]
+		if !sameColor(cell.Style.Fg, lipgloss.Color(fg)) || !sameColor(cell.Style.Bg, lipgloss.Color(bg)) {
+			t.Fatalf("status item %s did not use %s on %s: %+v", id, fg, bg, cell.Style)
 		}
 	}
+	sidebarFG := theme.Readable("#222324", "#171819")
+	m.snapshot = gitservice.Snapshot{Branch: "main"}
+	vim := &m.tabs[m.activeTab].vim
+	for _, tc := range []struct {
+		label, bg            string
+		insert, visual, line bool
+	}{
+		{label: "NORMAL", bg: "#005F5F"},
+		{label: "INSERT", bg: "#5F0000", insert: true},
+		{label: "VISUAL", bg: "#5F00AF", visual: true},
+		{label: "VISUAL LINE", bg: "#005F87", visual: true, line: true},
+	} {
+		vim.InsertMode, vim.VisualMode, vim.VisualLine = tc.insert, tc.visual, tc.line
+		if mode := statusPart(t, m, "vim").text; mode != tc.label {
+			t.Fatalf("expected %s status label, got %q", tc.label, mode)
+		}
+		assertStatusColors("vim", "#FFFFFF", tc.bg)
+		assertStatusColors("branch", "#FFFFFF", tc.bg)
+		assertStatusColors("changes", "#FFFFFF", tc.bg)
+		m.statusBarStyle = statusBarPure
+		assertStatusColors("vim", "#FFFFFF", tc.bg)
+		assertStatusColors("branch", sidebarFG, "#171819")
+		assertStatusColors("changes", sidebarFG, "#171819")
+		m.statusBarStyle = statusBarStandard
+	}
+	vim.VisualMode, vim.VisualLine = false, false
+	m.snapshot.Changes = []gitservice.Change{{Path: "file0.go", Index: 'U', Worktree: 'U'}}
+	if got, want := statusPart(t, m, "changes").text, m.symbol(symbolWarning)+" 1"; got != want {
+		t.Fatalf("conflict indicator = %q, want %q", got, want)
+	}
+	assertStatusColors("changes", "#FFFFFF", "#005F5F")
+	m.statusBarStyle = statusBarPure
+	assertStatusColors("changes", sidebarFG, "#171819")
+	m.statusBarStyle = statusBarStandard
+	m.snapshot.NoRepository = true
+	assertStatusColors("init", "#FFFFFF", "#005F5F")
+	m.editorOnly = true
+	assertStatusColors("editor", "#FFFFFF", "#005F5F")
+	assertStatusColors("vim", "#FFFFFF", "#005F5F")
+	m.statusBarStyle = statusBarPure
+	assertStatusColors("editor", sidebarFG, "#171819")
+	assertStatusColors("vim", "#FFFFFF", "#005F5F")
+	m.statusBarStyle = statusBarStandard
+	activeTab := m.activeTab
+	m.activeTab = -1
+	assertStatusColors("editor", sidebarFG, "#171819")
+	m.editorOnly = false
+	assertStatusColors("init", sidebarFG, "#171819")
+	m.activeTab = activeTab
 	m.contextMenu = &contextMenu{x: 2, y: 2, actions: []action{{label: "a selected"}, {label: "z normal"}}}
 	base := make([]string, m.height)
 	for i := range base {

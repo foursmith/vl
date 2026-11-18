@@ -72,20 +72,25 @@ func (m *Model) Layout() config.Layout {
 	selected := m.committedTheme()
 	dark, light := m.darkTheme, m.lightTheme
 	return config.Layout{
-		SidebarWidth: m.sidebarWidth,
-		SidebarRight: m.sidebarRight,
-		Theme:        selected.ID,
-		ThemePinned:  m.themePinned,
-		DarkTheme:    dark.ID,
-		LightTheme:   light.ID,
-		LastCommand:  m.lastCommand,
-		Language:     string(m.displayLanguage),
+		SidebarWidth:   m.sidebarWidth,
+		SidebarRight:   m.sidebarRight,
+		Theme:          selected.ID,
+		ThemePinned:    m.themePinned,
+		DarkTheme:      dark.ID,
+		LightTheme:     light.ID,
+		LastCommand:    m.lastCommand,
+		Language:       string(m.displayLanguage),
+		StatusBarStyle: m.statusBarStyle,
 	}
 }
 
 func (m *Model) SetLayout(layout config.Layout) {
 	m.SetDisplayLanguage(layout.Language)
 	m.lastCommand = layout.LastCommand
+	m.statusBarStyle = statusBarStandard
+	if layout.StatusBarStyle == statusBarPure {
+		m.statusBarStyle = statusBarPure
+	}
 	m.SetSidebarLayout(layout.SidebarWidth, layout.SidebarRight)
 	restoredDark := m.restoreThemeSlot(layout.DarkTheme, false)
 	restoredLight := m.restoreThemeSlot(layout.LightTheme, true)
@@ -129,7 +134,7 @@ func (m *Model) toggleSidebar() tea.Cmd {
 	return nil
 }
 
-// SetLayoutStore enables immediate persistence after a language or theme selection.
+// SetLayoutStore enables immediate persistence after a preference selection.
 // Startup restoration runs before attaching the shared store.
 func (m *Model) SetLayoutStore(store *config.LayoutStore) { m.layoutStore = store }
 

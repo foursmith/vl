@@ -152,6 +152,9 @@ Workbench shortcuts remain available.
 
 Use **Ctrl+Shift+P → Preferences: Color Theme** to preview and select a theme, or
 **Preferences: Configure Display Language** to switch between English and 简体中文.
+Use **Preferences: Status Bar Style** to choose **Standard** (the default,
+colors the whole bar by Vim mode) or **Pure** (colors the mode label only
+and uses the sidebar colors for the rest of the bar).
 Theme, language and layout preferences persist across restarts and workspace switches.
 
 The 10 color themes from VS Code's `vscode.theme-defaults` are bundled. Dark/light

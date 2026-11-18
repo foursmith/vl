@@ -35,6 +35,7 @@ func (m *Model) editorActions() []action {
 	}
 	return []action{
 		{"theme.select", m.tr("Preferences: Color Theme"), "", "", m.openThemePicker},
+		{"statusBar.style", m.tr("Preferences: Status Bar Style"), "", "", m.openStatusBarStylePicker},
 		{"language.select", m.tr("Preferences: Configure Display Language"), "", "", m.openLanguagePicker},
 		{"file.save", m.tr("File: Save"), workbenchKeys.Save.Help().Key, docReason, m.save},
 		{"file.close", m.tr("View: Close Editor"), workbenchKeys.Close.Help().Key, tabReason, m.closeTab},

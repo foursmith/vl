@@ -135,6 +135,7 @@ type Model struct {
 	darkTheme               *theme.Theme
 	lightTheme              *theme.Theme
 	themePinned             bool
+	statusBarStyle          string
 	appearance              appearanceState
 	layoutStore             *config.LayoutStore
 	themeNotifications      bool
@@ -233,6 +234,7 @@ func newModel(ctx context.Context, repo *gitservice.Repository, nerd, editorOnly
 	input := newInput()
 	dark, light := theme.Builtin("dark_modern"), theme.Builtin("light_modern")
 	m := &Model{displayLanguage: i18n.English, cellWidth: 8, cellHeight: 16, colors: dark.Palette(), colorTheme: dark, darkTheme: dark, lightTheme: light, ctx: ctx, cancel: cancel, repo: repo, width: 120, height: 36, nerd: nerd, editorOnly: editorOnly, sidebar: !editorOnly, sidebarVisible: !editorOnly, split: true, diffState: newDiffState(), input: input, activeTab: -1, notice: "Loading repository…"}
+	m.statusBarStyle = statusBarStandard
 	m.snapshot.NoRepository = editorOnly || !repo.HasRepository()
 	if editorOnly {
 		m.notice = ""

@@ -152,8 +152,6 @@ func (t *Theme) makePalette() Palette {
 	p.MenuBorder = distinguish(p.MenuBorder, p.MenuBackground, Composite(p.MenuForeground, p.MenuBackground), 1.6)
 	p.OutputBackground = get("panel.background", p.Background)
 	p.OutputForeground = t.Color("foreground")
-	p.StatusBackground = get("statusBar.background", p.Panel)
-	p.StatusForeground = t.Color("statusBar.foreground")
 	return p
 }
 

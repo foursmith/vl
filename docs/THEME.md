@@ -108,8 +108,11 @@ colors rather than hardcoded RGB approximations.
 Quick Input uses its own focus colors even when keyboard focus is in its input;
 menus use `menu.*`; active tabs use `tab.activeForeground`, not generic strong
 text. The single editor group's active state does not change merely because
-sidebar keyboard focus changes. A folder without Git is still an open folder
-for status bar styling.
+sidebar keyboard focus changes. The status bar uses the sidebar background and
+text color by default. While editing text, **Standard** applies
+VSCodeVim's mode colors to the whole bar.
+**Pure** applies the same mode colors to the mode label and uses the
+sidebar colors for the other items.
 
 The single-row tab strip adapts `tab.activeBorderTop` to a thin leading marker.
 File tabs share Explorer's Git decoration colors. Breadcrumbs use

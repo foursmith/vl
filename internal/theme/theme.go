@@ -14,7 +14,6 @@ type Palette struct {
 	TabBarBackground, TabActiveForeground, TabBorder                                   string
 	MenuBackground, MenuForeground, MenuSelection, MenuSelectionForeground, MenuBorder string
 	OutputBackground, OutputForeground                                                 string
-	StatusBackground, StatusForeground                                                 string
 
 	FindMatch                    string
 	FindMatchForeground          string

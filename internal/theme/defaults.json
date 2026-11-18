@@ -85,8 +85,6 @@
     "sideBar.background": "src/vs/workbench/common/theme.ts",
     "sideBar.border": "src/vs/workbench/common/theme.ts",
     "sideBar.foreground": "src/vs/workbench/common/theme.ts",
-    "statusBar.background": "src/vs/workbench/common/theme.ts",
-    "statusBar.foreground": "src/vs/workbench/common/theme.ts",
     "strongForeground": "src/vs/platform/theme/common/colors/baseColors.ts",
     "tab.activeBackground": "src/vs/workbench/common/theme.ts",
     "tab.activeBorderTop": "src/vs/workbench/common/theme.ts",
@@ -1126,34 +1124,6 @@
       }
     },
     "sideBar.foreground": null,
-    "statusBar.background": {
-      "variants": {
-        "dark": {
-          "hex": "#007ACC"
-        },
-        "light": {
-          "hex": "#007ACC"
-        },
-        "hcDark": null,
-        "hcLight": null
-      }
-    },
-    "statusBar.foreground": {
-      "variants": {
-        "dark": {
-          "hex": "#FFFFFF"
-        },
-        "light": {
-          "hex": "#FFFFFF"
-        },
-        "hcDark": {
-          "hex": "#FFFFFF"
-        },
-        "hcLight": {
-          "ref": "editor.foreground"
-        }
-      }
-    },
     "strongForeground": {
       "variants": {
         "dark": {

@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -10,13 +11,35 @@ import (
 )
 
 type statusSegment struct {
-	id, text, color, background string
-	x, width                    int
+	id, text string
+	x, width int
+}
+
+const (
+	// These IDs are stored in user preferences independently of the labels.
+	statusBarStandard = "vscode"
+	statusBarPure     = "vim"
+)
+
+func (m *Model) openStatusBarStylePicker() tea.Cmd {
+	m.palette = nil
+	for _, style := range []struct{ id, label string }{
+		{statusBarStandard, m.tr("Standard")},
+		{statusBarPure, m.tr("Pure")},
+	} {
+		key := ""
+		if m.statusBarStyle == style.id {
+			key = m.tr("Current")
+		}
+		m.palette = append(m.palette, action{id: style.id, label: style.label, key: key, run: func() tea.Cmd {
+			m.statusBarStyle = style.id
+			return m.savePreferences()
+		}})
+	}
+	return m.prompt("statusBarStyles", m.tr("Status Bar Style"), "")
 }
 
 func (m *Model) gitStatusSegments() []statusSegment {
-	foreground := m.colors.StatusForeground
-	dim := theme.WithOpacity(foreground, .6)
 	target := m.statusRepository()
 	state := m.repositoryState(target)
 	branch := state.Branch
@@ -69,54 +92,48 @@ func (m *Model) gitStatusSegments() []statusSegment {
 	} else if state.Upstream != "" {
 		sync += " " + m.symbol(symbolWarning)
 	}
-	githubColor := foreground
-	if state.GitHubURL == "" {
-		githubColor = dim
-	}
-	left := []statusSegment{{id: "branch", text: branchIcon + " " + branch, color: foreground}, {id: "sync", text: sync, color: foreground}, {id: "github", text: githubIcon, color: githubColor}, {id: "changes", text: fmt.Sprintf("%s %d", m.symbol(symbolDiff), repositoryChanges), color: dim}}
+	changeIcon, changeCount := m.symbol(symbolDiff), repositoryChanges
 	if conflicts > 0 {
-		left[3].text = fmt.Sprintf("%s %d", m.symbol(symbolWarning), conflicts)
-		left[3].color = m.colors.Deleted
+		changeIcon, changeCount = m.symbol(symbolWarning), conflicts
 	}
-	return left
+	return []statusSegment{
+		{id: "branch", text: branchIcon + " " + branch},
+		{id: "sync", text: sync},
+		{id: "github", text: githubIcon},
+		{id: "changes", text: fmt.Sprintf("%s %d", changeIcon, changeCount)},
+	}
 }
 
 func (m *Model) statusLayout() []statusSegment {
-	foreground := m.colors.StatusForeground
-	dim := theme.WithOpacity(foreground, .6)
-	left := []statusSegment{{id: "init", text: m.tr("Initialize Repository"), color: dim}}
+	left := []statusSegment{{id: "init", text: m.tr("Initialize Repository")}}
 	if m.editorOnly {
-		label := "Ctrl+S · Ctrl+W · " + workbenchKeys.Commands.Help().Key
+		shortcuts := workbenchKeys.Save.Help().Key + " · " + workbenchKeys.Close.Help().Key + " · " + workbenchKeys.Commands.Help().Key
+		label := shortcuts
 		if d := m.document(); d != nil {
 			label = safe(filepath.Base(d.Path))
 			if d.Dirty() {
 				label += " *"
 			}
 			if m.width >= 100 {
-				label += " · Ctrl+S · Ctrl+W · " + workbenchKeys.Commands.Help().Key
+				label += " · " + shortcuts
 			}
 		}
-		left = []statusSegment{{id: "editor", text: label, color: dim}}
+		left = []statusSegment{{id: "editor", text: label}}
 	} else if !m.snapshot.NoRepository {
 		left = m.gitStatusSegments()
 	}
+	mode := ""
 	if m.editorDocument() != nil {
-		v := &m.tabs[m.activeTab].vim
-		label, color := v.Label(), m.colors.Accent
-		if v.InsertMode {
-			color = m.colors.GitAdded
-		} else if v.VisualMode || v.CommandPending() {
-			color = m.colors.GitModified
-		}
-		if m.leaderActive() {
-			label, color = "LEADER", m.colors.GitModified
-		}
+		mode = m.tabs[m.activeTab].vim.Label()
+	}
+	if m.leaderActive() {
+		mode = "LEADER"
+	}
+	if mode != "" {
 		if flash := m.flashLabel(); flash != "" {
-			label, color = flash, m.colors.GitModified
+			mode = flash
 		}
-		left = append([]statusSegment{{id: "vim", text: label, color: m.colors.Background, background: color}}, left...)
-	} else if m.leaderActive() {
-		left = append([]statusSegment{{id: "vim", text: "LEADER", color: m.colors.Background, background: m.colors.GitModified}}, left...)
+		left = append([]statusSegment{{id: "vim", text: mode}}, left...)
 	}
 	var result []statusSegment
 	x := 0
@@ -151,7 +168,6 @@ func (m *Model) statusLayout() []statusSegment {
 	rightWidth := 0
 	for _, segment := range candidates {
 		segment.width = ansi.StringWidth(segment.text) + 2
-		segment.color = foreground
 		if x+rightWidth+segment.width+1 <= m.width {
 			right = append(right, segment)
 			rightWidth += segment.width
@@ -173,7 +189,7 @@ func (m *Model) statusLayout() []statusSegment {
 	}
 	if gap := rightX - x; gap > 10 && notice != "" {
 		text := ansi.Truncate(safe(notice), gap-2, "…")
-		result = append(result, statusSegment{id: "notice", x: x, width: gap, text: text, color: dim})
+		result = append(result, statusSegment{id: "notice", x: x, width: gap, text: text})
 	}
 	for _, segment := range right {
 		segment.x = rightX
@@ -183,19 +199,49 @@ func (m *Model) statusLayout() []statusSegment {
 	return result
 }
 
+func (m *Model) vimModeBackground() string {
+	if m.editorDocument() == nil {
+		return ""
+	}
+	// VSCodeVim's defaults with statusBarColorControl enabled.
+	vim := &m.tabs[m.activeTab].vim
+	switch {
+	case vim.InsertMode:
+		return "#5F0000"
+	case vim.VisualMode && vim.VisualLine:
+		return "#005F87"
+	case vim.VisualMode:
+		return "#5F00AF"
+	default:
+		return "#005F5F"
+	}
+}
+
 func (m *Model) statusLine() string {
-	foreground := m.colors.StatusForeground
-	text := ""
+	background := m.colors.Panel
+	foreground := theme.Readable(m.colors.SideForeground, background)
+	modeBackground := m.vimModeBackground()
+	pureStyle := m.statusBarStyle == statusBarPure
+	if !pureStyle && modeBackground != "" {
+		foreground, background = "#FFFFFF", modeBackground
+	}
+	var text strings.Builder
 	x := 0
 	for _, segment := range m.statusLayout() {
-		background := segment.background
-		if background == "" {
-			background = m.colors.StatusBackground
+		if segment.x > x {
+			text.WriteString(row("", segment.x-x, foreground, background))
 		}
-		text += row("", segment.x-x, foreground, m.colors.StatusBackground) + row(" "+segment.text+" ", segment.width, theme.Readable(segment.color, background), background)
+		fg, bg := foreground, background
+		if pureStyle && segment.id == "vim" && modeBackground != "" {
+			fg, bg = "#FFFFFF", modeBackground
+		}
+		text.WriteString(row(" "+segment.text+" ", segment.width, fg, bg))
 		x = segment.x + segment.width
 	}
-	return row(text, m.width, foreground, m.colors.StatusBackground)
+	if x < m.width {
+		text.WriteString(row("", m.width-x, foreground, background))
+	}
+	return text.String()
 }
 
 func (m *Model) clickStatus(x int) tea.Cmd {
