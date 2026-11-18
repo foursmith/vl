@@ -90,7 +90,8 @@ URLs and clamps scroll offsets beyond the end of a file.
 - **Workspace search:** second sidebar tab, grouped file results with line numbers and match highlights;
   case, whole-word, regex and ignored-file options, including unsaved open text buffers.
   Use Replace below the search field or Ctrl+Shift+H for selected-match/file or workspace replacement,
-  with regex capture groups, stale-result checks and one undo step per file. Edits require explicit saving.
+  with regex capture groups and stale-result checks. Workspace replacements save affected files directly
+  without opening tabs, including any pending edits in those files. Replacements in open files are undoable.
   Full-width search and replacement inputs keep the sidebar focused on results.
   The Options picker provides preserve-case replacement, include/exclude globs, changed-file and
   open-editor scopes, and ignore files. The same editor find/replace component handles Ctrl+F, Vim / and n, context menus and

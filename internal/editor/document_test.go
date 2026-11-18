@@ -22,7 +22,7 @@ func TestRoundTripBOMCRLFTabsUnicodeAndUndo(t *testing.T) {
 	if d.Dirty() {
 		t.Fatal("opening dirtied document")
 	}
-	if string(d.Bytes()) != original {
+	if string(d.encode(d.Text)) != original {
 		t.Fatal("open changed document bytes")
 	}
 	d.SetPosition(1, 1)

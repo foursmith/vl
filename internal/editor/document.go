@@ -87,8 +87,19 @@ func Open(path string) (*Document, error) {
 	return d, nil
 }
 
-func (d *Document) Bytes() []byte {
-	text := d.Text
+// EncodedSize reports the on-disk size for text with this document's file format.
+func (d *Document) EncodedSize(text string) int {
+	size := len(text)
+	if d.CRLF {
+		size += strings.Count(text, "\n")
+	}
+	if d.BOM {
+		size += len("\xef\xbb\xbf")
+	}
+	return size
+}
+
+func (d *Document) encode(text string) []byte {
 	if d.CRLF {
 		text = strings.ReplaceAll(text, "\n", "\r\n")
 	}
@@ -427,6 +438,11 @@ func (d *Document) SetPosition(row, col int) {
 }
 
 func (d *Document) Save() error {
+	return d.SaveEdit(d.Text)
+}
+
+// SaveEdit writes the new text before applying it as an undoable edit.
+func (d *Document) SaveEdit(text string) error {
 	if d.ReadOnly {
 		return errors.New("file is read-only")
 	}
@@ -449,7 +465,7 @@ func (d *Document) Save() error {
 		return err
 	}
 	defer os.Remove(tmp.Name())
-	data := d.Bytes()
+	data := d.encode(text)
 	if err = tmp.Chmod(info.Mode().Perm()); err == nil {
 		_, err = tmp.Write(data)
 	}
@@ -473,6 +489,10 @@ func (d *Document) Save() error {
 	}
 	if err = os.Rename(tmp.Name(), d.Path); err != nil {
 		return err
+	}
+	if text != d.Text {
+		d.EndEditGroup()
+		d.Edit(text)
 	}
 	d.saved = data
 	d.savedText, d.savedCRLF, d.savedBOM = d.Text, d.CRLF, d.BOM

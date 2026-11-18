@@ -1,8 +1,6 @@
 package app
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -114,10 +112,6 @@ func TestCompleteSearchPanelScopesAndPreserveCase(t *testing.T) {
 	if _, err := m.repo.Run(m.ctx, "add", "file0.go"); err != nil {
 		t.Fatal(err)
 	}
-	path := filepath.Join(m.repo.Root, "file0.go")
-	if err := os.WriteFile(path, []byte("OLD Old old\n"), 0644); err != nil {
-		t.Fatal(err)
-	}
 	m.document().Edit("OLD Old old\n")
 	m.search.include.SetValue("*.go")
 	m.search.exclude.SetValue("file1.go")
@@ -138,6 +132,7 @@ func TestCompleteSearchPanelScopesAndPreserveCase(t *testing.T) {
 	if m.document().Text != "NEW New new\n" || !m.search.options.PreserveCase {
 		t.Fatal("preserve case replace all failed", m.document().Text)
 	}
+	assertReplacementFile(t, m, "file0.go", "NEW New new\n")
 	m.document().Undo()
 	if m.document().Text != "OLD Old old\n" {
 		t.Fatal("not one undo step")

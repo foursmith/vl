@@ -8,16 +8,26 @@ import (
 	searchservice "github.com/ourongxing/vl/internal/search"
 )
 
-// Replace buffers only after validating every target. Each file gets one undo step.
+// Validate all targets before writing. Edits to open documents remain undoable.
 func (m *Model) replaceSearch(all bool) tea.Cmd {
 	s := &m.search
 	if s.loading || s.err != "" || len(s.result.Files) == 0 {
 		return nil
 	}
-	m.clampSearch()
-	rows := m.searchRows()
-	selected := rows[s.selected]
-	if s.result.Unreadable > 0 && (all || selected.match < 0) {
+	if m.busy {
+		m.notice = searchText("Wait for the current Git operation before replacing")
+		return nil
+	}
+	files, selectedMatch := s.result.Files, -1
+	if !all {
+		selected, ok := m.selectedSearchRow()
+		if !ok {
+			return nil
+		}
+		files = files[selected.file : selected.file+1]
+		selectedMatch = selected.match
+	}
+	if s.result.Unreadable > 0 && selectedMatch < 0 {
 		m.notice = searchText("Search is incomplete; resolve unreadable files before bulk replacement")
 		return nil
 	}
@@ -27,29 +37,28 @@ func (m *Model) replaceSearch(all bool) tea.Cmd {
 		return nil
 	}
 	type edit struct {
-		doc      *editor.Document
-		text     string
-		existing bool
+		doc     *editor.Document
+		text    string
+		tab     int
+		matches int
 	}
-	var edits []edit
-	count := 0
-	for fi, f := range s.result.Files {
-		if !all && fi != selected.file {
-			continue
-		}
+	replacement := s.replacement.Value()
+	edits := make([]edit, 0, len(files))
+	for _, f := range files {
 		var d *editor.Document
-		for _, t := range m.tabs {
+		tabIndex := -1
+		for i, t := range m.tabs {
 			if t.doc != nil && t.doc.Path == f.Path {
 				d = t.doc
+				tabIndex = i
 				break
 			}
 		}
-		existing := d != nil
+		if real, err := filepath.EvalSymlinks(f.Path); err != nil || real != f.Path {
+			m.notice = searchText("Search file path changed; search again")
+			return m.runSearch()
+		}
 		if d == nil {
-			if real, err := filepath.EvalSymlinks(f.Path); err != nil || real != f.Path {
-				m.notice = searchText("Search file path changed; search again")
-				return m.runSearch()
-			}
 			var err error
 			d, err = editor.Open(f.Path)
 			if err != nil {
@@ -61,10 +70,10 @@ func (m *Model) replaceSearch(all bool) tea.Cmd {
 			m.notice = searchText("Search result changed; search again before replacing")
 			return m.runSearch()
 		}
-		matches := matcher.Find(f.Text, s.replacement.Value())
+		matches := matcher.Find(f.Text, replacement)
 		targets := f.Matches
-		if !all && selected.match >= 0 {
-			targets = targets[selected.match : selected.match+1]
+		if selectedMatch >= 0 {
+			targets = targets[selectedMatch : selectedMatch+1]
 		}
 		retained := matches[:0]
 		next := 0
@@ -77,40 +86,50 @@ func (m *Model) replaceSearch(all bool) tea.Cmd {
 		if next != len(targets) {
 			return m.runSearch()
 		}
-		matches = retained
-		nextText := searchservice.ReplaceText(f.Text, matches)
-		count += len(matches)
-		if len(nextText) > editor.MaxFileSize {
+		nextText := searchservice.ReplaceText(f.Text, retained)
+		if nextText == d.Text {
+			continue
+		}
+		if d.EncodedSize(nextText) > editor.MaxFileSize {
 			m.notice = searchText("Replacement exceeds editor file size limit")
 			return nil
 		}
 
-		edits = append(edits, edit{d, nextText, existing})
+		edits = append(edits, edit{d, nextText, tabIndex, len(retained)})
 	}
+	var lastError string
+	var count, savedFiles, failedFiles int
 	for _, e := range edits {
-		for i := range m.tabs {
-			if m.tabs[i].doc == e.doc {
-				m.tabs[i].vim.Reset(e.doc)
-				break
-			}
+		line, col := 0, 0
+		if e.tab >= 0 {
+			line, col = e.doc.Position()
 		}
-		e.doc.Edit(e.text)
-		e.doc.SelectRange(0, 0)
-		if !e.existing {
-			m.insertTab(tab{doc: e.doc})
+		if err := e.doc.SaveEdit(e.text); err != nil {
+			path, relErr := filepath.Rel(m.repo.Root, e.doc.Path)
+			if relErr != nil {
+				path = e.doc.Path
+			}
+			lastError = searchText("Could not replace in %s: %s", path, err.Error())
+			m.log(lastError)
+			failedFiles++
+			continue
+		}
+		savedFiles++
+		count += e.matches
+		if e.tab >= 0 {
+			t := &m.tabs[e.tab]
+			t.reloadSeq++
+			t.vim.Reset(e.doc)
+			e.doc.SetPosition(line, col)
+			m.clampEditorScroll(t)
 		}
 	}
-	if len(edits) > 0 {
-		for i := range m.tabs {
-			if m.tabs[i].doc == edits[0].doc {
-				m.selectTab(i)
-				break
-			}
-		}
+	m.notice = searchText("Replaced %d matches; saved %d files", count, savedFiles)
+	if failedFiles > 0 {
+		m.notice += searchText("; %d files failed (%s)", failedFiles, lastError)
 	}
-	m.keepEditedTabs()
-	m.syncWatch()
-	m.sidebar = true
-	m.notice = searchText("Replaced %d matches; save edited files with Ctrl+S (Ctrl+Z to undo)", count)
+	if savedFiles > 0 {
+		return tea.Batch(m.refresh(), m.runSearch())
+	}
 	return m.runSearch()
 }
