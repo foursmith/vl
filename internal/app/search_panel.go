@@ -216,20 +216,26 @@ func (m *Model) clickSearch(x, y int) tea.Cmd {
 		}
 
 	}
-	if y >= l.results {
-		i := m.search.top + y - l.results
-		rows := m.searchRows()
-		if i >= 0 && i < len(rows) {
-			if x == m.searchControlWidth()-1 && m.searchRowAction(i) {
-				m.dismissSearchResult(i)
-				return nil
-			}
-			m.search.selected = i
-			m.focusSearch(2)
-			return m.openSearchResultFile(rows[i].match < 0 && x >= 3)
-		}
+	index := m.sidebarRowAt(y)
+	if index < 0 {
+		return nil
 	}
-	return nil
+	if x == m.searchControlWidth()-1 && m.searchRowAction(index) {
+		m.lastClickKey = ""
+		m.dismissSearchResult(index)
+		return nil
+	}
+	if m.selectSidebarRow(index) == nil {
+		return nil
+	}
+	if row, ok := m.selectedSearchRow(); ok && row.match < 0 && x < 3 {
+		m.lastClickKey = ""
+		path := m.search.result.Files[row.file].Path
+		m.search.folded[path] = !m.search.folded[path]
+		m.clampSearch()
+		return nil
+	}
+	return m.clickSidebarFile()
 }
 func (m *Model) searchHoverHint(x, y int) string {
 	for _, c := range m.searchPanelControls(m.searchControlWidth()) {
@@ -237,7 +243,7 @@ func (m *Model) searchHoverHint(x, y int) string {
 			return c.hint
 		}
 	}
-	if m.searchHoveredRow() >= 0 && x == m.searchControlWidth()-1 {
+	if m.hoveredSidebarRow() >= 0 && x == m.searchControlWidth()-1 {
 		return searchText("Remove from Search Results (Delete)")
 	}
 	return ""

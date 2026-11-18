@@ -167,3 +167,19 @@ func TestImageKeyboardZoomPanFocusAndBounds(t *testing.T) {
 		t.Fatal("unsupported terminal changed the image viewport")
 	}
 }
+
+func TestImagePreviewWheelDoesNotFocusButClickKeepsTab(t *testing.T) {
+	m := zoomWorkspace(t)
+	t.Cleanup(m.Close)
+	m.selectSection(explorer)
+	m.tabs[0].preview = true
+	x, y := m.mainX()+m.mainWidth()/2, m.contentRow()+m.contentHeight()/2
+	m.Update(tea.MouseWheelMsg{X: x, Y: y, Button: tea.MouseWheelUp})
+	if !m.sidebar || !m.tabs[0].preview || m.tabs[0].image.zoom <= 1 {
+		t.Fatal("wheel did not zoom the image without taking focus")
+	}
+	m.Update(tea.MouseClickMsg{X: x, Y: y, Button: tea.MouseLeft})
+	if m.sidebar || m.tabs[0].preview {
+		t.Fatal("image content click did not focus and keep the tab")
+	}
+}

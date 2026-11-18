@@ -34,14 +34,10 @@ func (m *Model) navigation() []navigationItem {
 func (m *Model) sidebarLines() []string { return m.sidebarLinesWidth(m.sideWidth()) }
 
 func (m *Model) hoveredSidebarRow() int {
-	if m.section == search || m.resizingSidebar || m.modal != "" || m.hoverX < 0 || !m.sidebarAt(m.hoverX) || m.hoverY < headerHeight || m.hoverY >= m.bodyHeight() {
+	if m.resizingSidebar || m.modal != "" || m.hoverX < 0 || !m.sidebarAt(m.hoverX) || m.hoverY < headerHeight || m.hoverY >= m.bodyHeight() {
 		return -1
 	}
-	i := m.sidebarRowAt(m.hoverY)
-	if i < 0 || i >= len(m.items) {
-		return -1
-	}
-	return i
+	return m.sidebarRowAt(m.hoverY)
 }
 
 func (m *Model) sidebarLinesWidth(w int) []string {
@@ -230,42 +226,30 @@ func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 	if y < headerHeight || i < 0 || i >= len(m.items) {
 		return nil
 	}
-	if m.repositoryBranchAt(m.items[i], msg.X, w) {
-		m.selected = i
-		m.sidebar = true
+	entry := m.selectSidebarRow(i)
+	if entry == nil {
+		return nil
+	}
+	if m.repositoryBranchAt(*entry, msg.X, w) {
+		m.lastClickKey = ""
 		return m.openBranchPicker(m.items[i].repository, "")
 	}
 	if m.section == changes {
 		if cmd, handled := m.clickChangeAction(i, msg.X, w); handled {
+			m.lastClickKey = ""
 			return cmd
 		}
 	}
-	if m.items[i].header {
-		m.selected = i
-		m.sidebar = true
+	if entry.header {
+		m.lastClickKey = ""
 		return m.openSelected()
 	}
-	m.selected = i
-	m.sidebar = true
-	entry := m.current()
-	if m.section == explorer && entry.file != "" {
-		if m.doubleClick("file:" + entry.file) {
-			return m.openFile(entry.file)
-		}
-		return m.openPreviewFile(entry.file)
-	}
-	if entry.change != nil || entry.historyChange != nil {
-		double := m.doubleClick("diff:" + entry.key)
-		cmd := m.preview()
-		if double {
-			m.keepTab()
-			m.sidebar = false
-		}
-		return cmd
+	if entry.file != "" || entry.change != nil || entry.historyChange != nil {
+		return m.clickSidebarFile()
 	}
 	m.lastClickKey = ""
 	if m.section == history && entry.commit != nil {
-		return m.openHistory(*entry)
+		return m.openHistoryRow(*entry, false)
 	}
 	if m.section == explorer || entry.folder != "" {
 		return m.openSelected()

@@ -131,9 +131,7 @@ func (m *Model) requestDiff(target diffTarget, read func(context.Context) (strin
 		d.diffChange = nil
 	}
 	// Opening selects a tab; refreshing an existing tab is handled separately.
-	sidebar := m.sidebar
-	m.activateTab(index)
-	m.sidebar = sidebar
+	m.selectTab(index)
 	return m.loadDiff(d, true)
 }
 

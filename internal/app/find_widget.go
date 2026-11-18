@@ -62,7 +62,6 @@ func (m *Model) openFileFind() tea.Cmd {
 	}
 	m.presentFileFind()
 	m.findWidget.anchor = m.editorDocument().Cursor + 1
-	m.sidebar = false
 	m.tabs[m.activeTab].vim.CancelPending()
 	return m.focusFileFind(0)
 }
@@ -76,7 +75,7 @@ func (m *Model) openFileReplace() tea.Cmd {
 	return m.focusFileFind(1)
 }
 func (m *Model) focusFileFind(focus int) tea.Cmd {
-	m.sidebar = false
+	m.focusEditor()
 	m.findWidget.focused = true
 	return m.focusSearch(focus)
 }
@@ -163,7 +162,7 @@ func (m *Model) navigateFileFind(direction int) {
 	hit := matches[index]
 	m.notice = ""
 	d.SelectRange(hit[1], hit[0])
-	m.sidebar = false
+	m.focusEditor()
 	m.findHidden = false
 	m.centerTextCursor()
 }
@@ -432,7 +431,7 @@ func (m *Model) clickFileFind(x, y int) tea.Cmd {
 		m.blurFileFind()
 		return nil
 	}
-	m.sidebar = false
+	m.focusEditor()
 	for _, c := range m.fileFindControls(m.fileFindWidth()) {
 		if y == c.y && x >= c.x && x < c.x+c.width {
 			if c.disabled {

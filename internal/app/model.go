@@ -159,6 +159,7 @@ type Model struct {
 	split                   bool
 	lastFileRepository      string
 	pendingHistory          string
+	keepPendingHistory      bool
 	historyCommit           string
 	historyStates           map[string]*historyState
 	historyPages            map[string]*historyPageState
@@ -344,14 +345,14 @@ func (m *Model) current() *item {
 }
 
 func (m *Model) ensureSidebar() {
-	h := max(1, m.bodyHeight()-headerHeight)
-	if m.selected < m.sideTop {
-		m.sideTop = m.selected
+	l := m.sidebarList()
+	if m.section == search {
+		m.clampSearchList(l)
+		l.ensureSelected()
+		return
 	}
-	if m.selected >= m.sideTop+h {
-		m.sideTop = m.selected - h + 1
-	}
-	m.sideTop = max(0, m.sideTop)
+	l.ensureSelected()
+	h := l.height
 	sticky := m.sidebarStickyRows()
 	if m.selected >= m.sideTop && m.selected < m.sideTop+len(sticky) {
 		m.sideTop = max(0, m.selected-stickyLimit(h))
@@ -359,8 +360,7 @@ func (m *Model) ensureSidebar() {
 }
 
 func (m *Model) clampSidebarScroll() {
-	height := max(1, m.bodyHeight()-headerHeight)
-	m.sideTop = min(max(0, m.sideTop), max(0, len(m.items)-height))
+	m.treeList().clampScroll()
 }
 
 func (m *Model) selectSection(s section) tea.Cmd {
@@ -403,26 +403,15 @@ func (m *Model) selectSectionInRepository(s section, repository string) tea.Cmd 
 }
 
 func (m *Model) preview() tea.Cmd {
-	entry := m.current()
+	entry := m.sidebarEntry()
 	if entry == nil {
 		return nil
 	}
-	if m.section == history {
-		return m.previewHistory(*entry)
+	if m.section == history && entry.commit != nil {
+		return m.loadHistoryCommit(*entry, false)
 	}
-	if m.section == explorer && entry.file != "" {
-		sidebar := m.sidebar
-		cmd := m.openPreviewFile(entry.file)
-		m.sidebar = sidebar
-		return cmd
-	}
-	if entry.change == nil {
-		return nil
-	}
-	c, staged := *entry.change, entry.staged
-	return m.requestDiff(diffTarget{path: c.Path, repository: c.Repository, staged: staged, change: &c, preview: true}, func(ctx context.Context) (string, error) {
-		return m.repo.Diff(ctx, c, staged)
-	})
+	cmd, _ := m.loadSidebarFile(*entry)
+	return cmd
 }
 
 func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
@@ -815,15 +804,11 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			if msg.Button == tea.MouseWheelUp {
 				delta = -3
 			}
-			if m.section == search {
-				if msg.Y >= m.searchResultY() {
-					m.search.top += delta
-					m.clampSearch()
-				}
-				return m, nil
+			l := m.sidebarList()
+			if msg.Y >= l.start {
+				*l.top += delta
+				l.clampScroll()
 			}
-			m.sideTop += delta
-			m.clampSidebarScroll()
 		} else if m.editing() && m.activeTab >= 0 {
 			delta := 3
 			if msg.Button == tea.MouseWheelUp {
@@ -928,8 +913,7 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	}
 	if key.Matches(msg, workbenchKeys.ContextMenu) {
 		if m.sidebar {
-			m.ensureSidebar()
-			return m.openContextMenu(m.sideX()+2, headerHeight+max(0, m.selected-m.sideTop))
+			return m.openSidebarContextMenu()
 		}
 		if cursor := m.editorCursor(); cursor != nil {
 			return m.openContextMenu(cursor.X, cursor.Y)
@@ -963,8 +947,11 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	case key.Matches(msg, workbenchKeys.Sidebar):
 		return m.toggleSidebar()
 	case key.Matches(msg, workbenchKeys.Focus):
-		m.sidebar = !m.sidebar
 		if m.sidebar {
+			m.blurFileFind()
+			m.focusEditor()
+		} else {
+			m.sidebar = true
 			m.sidebarVisible = true
 			m.resize()
 		}
@@ -1009,6 +996,8 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 			return m.deleteSelectedEntry()
 		case "enter":
 			return m.openSelected()
+		case "L", "shift+l":
+			return m.splitFolderChain()
 		case "e":
 			return m.editSelected()
 		case "space":
@@ -1167,9 +1156,7 @@ func (m *Model) reloadCleanTabs() {
 	if len(kept) == 0 {
 		m.diffState = m.emptyDiff
 	} else {
-		sidebar := m.sidebar
-		m.activateTab(m.activeTab)
-		m.sidebar = sidebar
+		m.selectTab(m.activeTab)
 	}
 	m.ensureEditor()
 }

@@ -194,37 +194,36 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 	}
 	if m.sidebarAt(x) && y >= headerHeight && y < m.bodyHeight() {
 		m.sidebar = true
-		index := m.sidebarRowAt(y)
-		var entry *item
-		if y >= headerHeight && index >= 0 && index < len(m.items) {
-			m.selected = index
-			copy := m.items[index]
-			entry = &copy
-		} else {
+		entry := m.selectSidebarRow(m.sidebarRowAt(y))
+		if entry == nil {
+			if m.section == search {
+				return nil
+			}
 			m.selected = -1
 		}
-		// Resolve the row again after refresh; never apply an action to a replacement row.
+		section, root := m.section, m.repo.Root
+		// Resolve the row again after refresh before running the action.
 		bind := func(run func() tea.Cmd) func() tea.Cmd {
 			return func() tea.Cmd {
-				if entry != nil {
-					for i := range m.items {
-						if m.items[i].key == entry.key {
-							m.selected = i
-							return run()
-						}
+				if m.section == section && m.repo.Root == root {
+					if entry == nil {
+						m.selected = -1
+						return run()
 					}
-					m.notice = m.tr("Target changed; reopen the menu")
-					return nil
+					if index := m.sidebarRowWithKey(entry.key); index >= 0 {
+						*m.sidebarList().selected = index
+						return run()
+					}
 				}
-				m.selected = -1
-				return run()
+				m.notice = m.tr("Target changed; reopen the menu")
+				return nil
 			}
 		}
 		if m.section == explorer {
 			if entry != nil {
 				add(m.tr("Open"), "Enter", bind(m.openSelected))
 				if entry.folder != "" && strings.Contains(entry.label, "/") {
-					add(m.tr("Split Folders"), "", bind(m.splitFolderChain))
+					add(m.tr("Split Folders"), "L", bind(m.splitFolderChain))
 				}
 				add(m.tr("Copy"), "yy", bind(m.yankEntry))
 			}
@@ -240,6 +239,9 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 			if entry.change != nil {
 				add(m.tr("Open Changes"), "Enter", bind(m.openSelected))
 			}
+		} else if m.section == search && entry != nil {
+			add(m.tr("Open"), "Enter", bind(m.openSelected))
+			add(m.tr("Dismiss Result"), "dd / Del", bind(func() tea.Cmd { m.dismissSearchResult(m.search.selected); return nil }))
 		} else if entry != nil {
 			add(m.tr("Open / Expand"), "Enter", bind(m.openSelected))
 			if entry.repoHeader {
@@ -283,16 +285,13 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 				return nil
 			}
 		} else {
-			m.sidebar = false
+			m.focusEditor()
 		}
 		if m.activeTab >= 0 && m.activeTab < len(m.tabs) {
 			if !m.editorOnly && y == tabRow {
 				add(m.tr("Close"), workbenchKeys.Close.Help().Key, m.closeTab)
 				add(m.tr("Close Others"), "", m.closeOtherTabs)
 				add(m.tr("Close All"), "", m.closeAllTabs)
-				if m.tabs[m.activeTab].preview {
-					add(m.tr("Keep Open"), "", m.keepTab)
-				}
 			} else if m.editing() {
 				selected := m.document().SelectedText() != ""
 				reason := m.tr("Select text first")

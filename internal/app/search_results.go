@@ -32,24 +32,14 @@ func (m *Model) searchControlWidth() int {
 	return m.sideWidth()
 }
 
-func (m *Model) searchHoveredRow() int {
-	if m.modal != "" || m.resizingSidebar || !m.sidebarAt(m.hoverX) || m.hoverY < m.searchResultY() || m.hoverY >= m.bodyHeight() {
-		return -1
-	}
-	i := m.search.top + m.hoverY - m.searchResultY()
-	if i >= len(m.searchRows()) {
-		return -1
-	}
-	return i
-}
 func (m *Model) searchRowAction(index int) bool {
-	return index == m.searchHoveredRow() || (m.search.focus == 2 && index == m.search.selected)
+	return index == m.hoveredSidebarRow() || (m.search.focus == 2 && index == m.search.selected)
 }
 func (m *Model) searchResultRow(index, w int, r searchRow) string {
 	s := &m.search
 	f := s.result.Files[r.file]
 	bg := m.colors.Panel
-	hovered := m.searchHoveredRow()
+	hovered := m.hoveredSidebarRow()
 	if index == hovered {
 		bg = m.colors.Hover
 	}

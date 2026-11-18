@@ -197,7 +197,6 @@ func (m *Model) zoomImage(factor float64, x, y int) {
 	if !m.kittySupported {
 		return
 	}
-	m.sidebar = false
 	t := &m.tabs[m.activeTab]
 	before := m.imageRegion()
 	next := min(32., max(.1, t.image.zoom*factor))
@@ -256,6 +255,7 @@ type imagePan struct {
 }
 
 func (m *Model) beginImagePan(x, y int) {
+	m.focusEditor()
 	if !m.kittySupported {
 		return
 	}
@@ -263,7 +263,6 @@ func (m *Model) beginImagePan(x, y int) {
 	m.clampImageCenter()
 	t := &m.tabs[m.activeTab]
 	m.imagePan = &imagePan{t.image.Image, x, y, t.image.centerX, t.image.centerY, region.Scale}
-	m.sidebar = false
 }
 
 func (m *Model) dragImage(x, y int) {

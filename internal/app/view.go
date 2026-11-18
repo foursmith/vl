@@ -148,12 +148,8 @@ func (m *Model) View() tea.View {
 		v.BackgroundColor = lipgloss.Color(m.colors.Panel)
 		return v
 	}
-	hovered := m.hoveredSidebarRow()
-	if m.section == search {
-		hovered = m.searchHoveredRow()
-	}
 	key := hoverRenderKey{
-		row: hovered, hint: m.hoverHint(),
+		row: m.hoveredSidebarRow(), hint: m.hoverHint(),
 		picker:  m.hoveredPickerIndex(),
 		divider: m.sidebarDividerAt(m.hoverX, m.hoverY),
 	}
@@ -733,7 +729,10 @@ func (m *Model) click(msg tea.MouseClickMsg) tea.Cmd {
 		}
 		return nil
 	}
-	m.sidebar = false
+	if msg.Y < 0 || msg.Y >= m.bodyHeight() {
+		return nil
+	}
+	m.focusEditor()
 	m.blurFileFind()
 	m.lastClickKey = ""
 	if m.welcomeVisible() {

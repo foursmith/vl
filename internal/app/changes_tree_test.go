@@ -312,11 +312,11 @@ func TestCompactHistoryParentNavigation(t *testing.T) {
 		t.Fatalf("history tree: %+v", m.items)
 	}
 	m.selected = 2
-	m.selectHistoryParent(*m.current())
+	m.selectParentFolder()
 	if m.selected != 1 {
 		t.Fatal("file did not select compact folder")
 	}
-	m.selectHistoryParent(*m.current())
+	m.selectParentFolder()
 	if m.selected != 0 {
 		t.Fatal("compact folder did not select commit")
 	}

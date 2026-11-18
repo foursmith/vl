@@ -166,7 +166,7 @@ func TestSidebarLayoutPaletteAndDragCancellation(t *testing.T) {
 
 func TestLayoutRestoresPreferencesAcrossWorkspaces(t *testing.T) {
 	m := newHoverRenderModel(t)
-	want := config.Layout{SidebarWidth: 45, SidebarRight: true, Theme: "light_modern", LastCommand: "view.sidebar"}
+	want := config.Layout{SidebarWidth: 45, SidebarRight: true, Theme: "light_modern", LightTheme: "light_modern", LastCommand: "view.sidebar"}
 	m.SetLayout(want)
 	want = m.Layout()
 	m.Update(tea.WindowSizeMsg{Width: 30, Height: 12})

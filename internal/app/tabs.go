@@ -27,12 +27,11 @@ func (m *Model) openFile(path string) tea.Cmd {
 	return nil
 }
 
-func (m *Model) openPreviewFile(path string) tea.Cmd {
-	m.openDocument(path, true)
-	return nil
-}
-
 func (m *Model) openDocument(path string, preview bool) bool {
+	show := m.selectTab
+	if !preview {
+		show = m.activateTab
+	}
 	abs := path
 	if !filepath.IsAbs(abs) {
 		abs = filepath.Join(m.repo.Root, path)
@@ -43,10 +42,7 @@ func (m *Model) openDocument(path string, preview bool) bool {
 	}
 	for i := range m.tabs {
 		if m.tabs[i].diff == nil && m.tabs[i].path() == abs {
-			if !preview {
-				m.tabs[i].preview = false
-			}
-			m.activateTab(i)
+			show(i)
 			return true
 		}
 	}
@@ -56,7 +52,7 @@ func (m *Model) openDocument(path string, preview bool) bool {
 			m.log(m.tr(err.Error()))
 			return false
 		}
-		m.activateTab(m.insertTab(tab{image: newImageState(im, m.allocateImageID()), preview: preview}))
+		show(m.insertTab(tab{image: newImageState(im, m.allocateImageID()), preview: preview}))
 		return true
 	}
 	d, err := editor.Open(abs)
@@ -64,7 +60,7 @@ func (m *Model) openDocument(path string, preview bool) bool {
 		m.log(m.tr(err.Error()))
 		return false
 	}
-	m.activateTab(m.insertTab(tab{doc: d, preview: preview}))
+	show(m.insertTab(tab{doc: d, preview: preview}))
 	return true
 }
 
@@ -111,7 +107,8 @@ func (t tab) path() string {
 
 func (m *Model) editing() bool { return m.document() != nil }
 
-func (m *Model) activateTab(index int) {
+// selectTab changes the displayed content while leaving keyboard focus where it is.
+func (m *Model) selectTab(index int) {
 	m.blurFileFind()
 	m.leaderTarget = ""
 	if m.activeTab >= 0 && m.activeTab < len(m.tabs) && m.activeTab != index {
@@ -131,12 +128,22 @@ func (m *Model) activateTab(index int) {
 	} else {
 		m.lastFileRepository = m.fileRepository(t.path())
 	}
-	m.sidebar = false
 	m.ensureEditor()
 	if t := &m.tabs[index]; t.doc != nil && t.positionBaseline == nil {
 		t.capturePosition()
 	}
 	m.ensureTabVisible()
+}
+
+func (m *Model) activateTab(index int) {
+	m.selectTab(index)
+	m.focusEditor()
+}
+
+func (m *Model) focusEditor() {
+	m.sidebar = false
+	m.pendingHistory = ""
+	m.keepTab()
 }
 
 func (m *Model) keepTab() tea.Cmd {
@@ -251,6 +258,7 @@ func (m *Model) removeTab(doc *editor.Document) {
 }
 
 func (m *Model) removeTabAt(index int) {
+	m.lastClickKey = ""
 	t := &m.tabs[index]
 	m.rememberFilePosition(t)
 	m.retireImage(t)
@@ -267,9 +275,12 @@ func (m *Model) removeTabAt(index int) {
 		m.diffState = m.emptyDiff
 		m.sidebar = !m.editorOnly
 	} else if wasActive {
-		sidebar := m.sidebar
-		m.activateTab(min(index, len(m.tabs)-1))
-		m.sidebar = sidebar
+		next := min(index, len(m.tabs)-1)
+		if m.sidebar {
+			m.selectTab(next)
+		} else {
+			m.activateTab(next)
+		}
 	}
 	m.syncWatch()
 	m.ensureEditor()
@@ -425,10 +436,8 @@ func (m *Model) clickTab(msg tea.MouseClickMsg) tea.Cmd {
 			m.lastClickKey = ""
 			return m.requestCloseTabs([]tab{m.tabs[slot.index]})
 		}
+		m.lastClickKey = ""
 		m.activateTab(slot.index)
-		if m.doubleClick(m.tabs[slot.index].clickKey()) {
-			m.keepTab()
-		}
 		return nil
 	}
 	return nil

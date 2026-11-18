@@ -47,53 +47,51 @@ func (m *Model) historyTree(id string) []item {
 	return rows
 }
 
-func (m *Model) previewHistory(entry item) tea.Cmd {
-	if entry.commit != nil {
-		objectID := entry.commit.ID
-		id := historyKey(entry.repository, objectID)
-		changed := id != m.historyCommit
-		m.historyCommit = id
-		state := m.historyStates[id]
-		if state == nil {
-			state = &historyState{repository: entry.repository, expanded: true, collapsed: map[string]bool{}}
-			m.historyStates[id] = state
-		}
-		m.pendingHistory = id
-		m.rebuildItems()
-		if state.loaded {
-			if (changed || !m.diffOpen || m.diffCommit != objectID || m.diffRepository != entry.repository) && m.historyExpanded(id) {
-				return m.previewHistoryFirst(id)
-			}
-			return nil
-		}
-		if state.loading {
-			return nil
-		}
-		ctx, cancel := context.WithCancel(m.ctx)
-		m.historySeq++
-		seq := m.historySeq
-		state.seq, state.cancel, state.loading = seq, cancel, true
-		workspace, repoPath := m.repo, entry.repository
-		return func() tea.Msg {
-			defer cancel()
-			repo, err := workspace.RepositoryAt(ctx, repoPath)
-			var files []gitservice.Change
-			if err == nil {
-				files, err = repo.CommitFiles(ctx, objectID)
-			}
-			for i := range files {
-				files[i].Repository = repoPath
-				files[i].Path = filepath.ToSlash(filepath.Join(repoPath, files[i].Path))
-				if files[i].Original != "" {
-					files[i].Original = filepath.ToSlash(filepath.Join(repoPath, files[i].Original))
-				}
-			}
-			return historyFilesMsg{repository: repoPath, seq: seq, id: objectID, files: files, err: err}
-		}
+func (m *Model) loadHistoryCommit(entry item, keep bool) tea.Cmd {
+	objectID := entry.commit.ID
+	id := historyKey(entry.repository, objectID)
+	changed := id != m.historyCommit
+	m.historyCommit = id
+	state := m.historyStates[id]
+	if state == nil {
+		state = &historyState{repository: entry.repository, expanded: true, collapsed: map[string]bool{}}
+		m.historyStates[id] = state
 	}
-	if entry.historyChange == nil {
+	m.pendingHistory, m.keepPendingHistory = id, keep
+	m.rebuildItems()
+	if state.loaded {
+		if (keep || changed || !m.diffOpen || m.diffCommit != objectID || m.diffRepository != entry.repository) && m.historyExpanded(id) {
+			return m.openHistoryFirst(id, keep)
+		}
 		return nil
 	}
+	if state.loading {
+		return nil
+	}
+	ctx, cancel := context.WithCancel(m.ctx)
+	m.historySeq++
+	seq := m.historySeq
+	state.seq, state.cancel, state.loading = seq, cancel, true
+	workspace, repoPath := m.repo, entry.repository
+	return func() tea.Msg {
+		defer cancel()
+		repo, err := workspace.RepositoryAt(ctx, repoPath)
+		var files []gitservice.Change
+		if err == nil {
+			files, err = repo.CommitFiles(ctx, objectID)
+		}
+		for i := range files {
+			files[i].Repository = repoPath
+			files[i].Path = filepath.ToSlash(filepath.Join(repoPath, files[i].Path))
+			if files[i].Original != "" {
+				files[i].Original = filepath.ToSlash(filepath.Join(repoPath, files[i].Original))
+			}
+		}
+		return historyFilesMsg{repository: repoPath, seq: seq, id: objectID, files: files, err: err}
+	}
+}
+
+func (m *Model) requestHistoryDiff(entry item) tea.Cmd {
 	c := *entry.historyChange
 	id := strings.TrimPrefix(entry.historyID, repositoryPrefix(entry.repository))
 	m.historyCommit = entry.historyID
@@ -123,20 +121,20 @@ func (m *Model) applyHistoryFiles(msg historyFilesMsg) tea.Cmd {
 	if m.pendingHistory != key || !m.historyExpanded(key) || key != m.historyCommit || entry == nil || entry.commit == nil || historyKey(entry.repository, entry.commit.ID) != key {
 		return nil
 	}
-	return m.previewHistoryFirst(key)
+	return m.openHistoryFirst(key, m.keepPendingHistory)
 }
 
-func (m *Model) previewHistoryFirst(id string) tea.Cmd {
+func (m *Model) openHistoryFirst(id string, keep bool) tea.Cmd {
 	for _, entry := range m.historyTree(id) {
 		if entry.historyChange != nil {
-			return m.previewHistory(entry)
+			return m.openSidebarEntry(entry, !keep)
 		}
 	}
 	m.notice = m.tr("This commit has no visible file changes")
 	return nil
 }
 
-func (m *Model) openHistory(entry item) tea.Cmd {
+func (m *Model) openHistoryRow(entry item, keep bool) tea.Cmd {
 	if entry.historyPage != nil {
 		return m.loadHistoryPage(entry.historyPage)
 	}
@@ -155,7 +153,7 @@ func (m *Model) openHistory(entry item) tea.Cmd {
 		if state := m.historyStates[key]; state != nil {
 			state.expanded = true
 		}
-		return m.previewHistory(entry)
+		return m.loadHistoryCommit(entry, keep)
 	}
 	if entry.folder != "" {
 		state := m.historyStates[entry.historyID]
@@ -169,38 +167,7 @@ func (m *Model) openHistory(entry item) tea.Cmd {
 	if entry.historyChange == nil {
 		return nil
 	}
-	m.sidebar = false
-	cmd := m.previewHistory(entry)
-	m.keepTab()
-	return cmd
-}
-
-func (m *Model) selectHistoryParent(entry item) {
-	if entry.repoHeader {
-		return
-	}
-	if entry.commit != nil {
-		for i, row := range m.items {
-			if row.repoHeader && row.repository == entry.repository {
-				m.selected = i
-				m.ensureSidebar()
-				return
-			}
-		}
-		return
-	}
-	path := entry.folder
-	if entry.historyChange != nil {
-		path = entry.historyChange.Path
-	}
-	for i := m.selected - 1; i >= 0; i-- {
-		row := m.items[i]
-		if row.historyID == entry.historyID && row.folder != "" && strings.HasPrefix(path, row.folder+"/") || row.commit != nil && historyKey(row.repository, row.commit.ID) == entry.historyID {
-			m.selected = i
-			m.ensureSidebar()
-			return
-		}
-	}
+	return m.openSidebarEntry(entry, !keep)
 }
 
 func (m *Model) historyRow(entry item, w int, bg string) (string, string) {

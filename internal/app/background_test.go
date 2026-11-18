@@ -28,7 +28,7 @@ func sameColor(a, b color.Color) bool {
 func TestTerminalPaddingFollowsThemeChrome(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	for _, id := range []string{"dark_modern", "light_modern", "dark_vs"} {
-		m.SetTheme(id, "")
+		m.setTestTheme(id, "")
 		m.width, m.height = 120, 36
 		for _, open := range []bool{false, true} {
 			if open {

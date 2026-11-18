@@ -95,7 +95,13 @@ func (m *Model) restoreSession() tea.Cmd {
 		m.tabs[index].preview = preview
 	}
 	if len(m.tabs) > 0 {
-		m.activateTab(max(0, active))
+		index := max(0, active)
+		if m.tabs[index].preview && m.sidebarVisible {
+			m.sidebar = true
+			m.selectTab(index)
+		} else {
+			m.activateTab(index)
+		}
 	}
 	return tea.Batch(commands...)
 }

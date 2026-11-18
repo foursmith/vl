@@ -105,9 +105,9 @@ func TestHistoryKeepsMultipleCommitsExpandedWithIndependentLoads(t *testing.T) {
 		return item{}
 	}
 	m.rebuildItems()
-	m.previewHistory(selectCommit(a.ID))
+	m.loadHistoryCommit(selectCommit(a.ID), false)
 	seqA := m.historyStates[historyKey("", a.ID)].seq
-	m.previewHistory(selectCommit(b.ID))
+	m.loadHistoryCommit(selectCommit(b.ID), false)
 	seqB := m.historyStates[historyKey("", b.ID)].seq
 	// The earlier request may finish last; both results belong to their own trees.
 	m.applyHistoryFiles(historyFilesMsg{seq: seqB, id: b.ID, files: []gitservice.Change{{Path: "src/b.go", Index: 'M', Worktree: ' '}}})
@@ -128,18 +128,18 @@ func TestHistoryKeepsMultipleCommitsExpandedWithIndependentLoads(t *testing.T) {
 	for i, entry := range m.items {
 		if entry.historyID == historyKey("", a.ID) && entry.folder == "src" {
 			m.selected = i
-			m.openHistory(entry)
+			m.openHistoryRow(entry, true)
 			break
 		}
 	}
 	if visible(a.ID, "src/a.go") || !visible(b.ID, "src/b.go") {
 		t.Fatal("directory folding leaked across commits")
 	}
-	m.openHistory(selectCommit(a.ID))
+	m.openHistoryRow(selectCommit(a.ID), true)
 	if m.historyExpanded(historyKey("", a.ID)) || !m.historyExpanded(historyKey("", b.ID)) {
 		t.Fatal("commit collapse affected its neighbor")
 	}
-	m.openHistory(selectCommit(a.ID))
+	m.openHistoryRow(selectCommit(a.ID), true)
 	if !m.historyExpanded(historyKey("", a.ID)) || m.historyStates[historyKey("", a.ID)].seq != seqA || visible(a.ID, "src/a.go") || !visible(b.ID, "src/b.go") {
 		t.Fatal("reopening lost cached files or independent directory state")
 	}
@@ -169,5 +169,32 @@ func TestHistoryTagBadgesPrecedeLongSubjects(t *testing.T) {
 		if ansi.StringWidth(text) > width {
 			t.Fatalf("row exceeds width %d", width)
 		}
+	}
+}
+
+func TestHistoryKeyboardOpenKeepsFirstLoadedDiff(t *testing.T) {
+	for _, key := range []string{"enter", "l"} {
+		t.Run(key, func(t *testing.T) {
+			m := tabWorkspace(t, 0)
+			t.Cleanup(m.Close)
+			m.section = history
+			commit := gitservice.Commit{ID: strings.Repeat("a", 40), Subject: "initial"}
+			m.snapshot.Commits = []gitservice.Commit{commit}
+			m.rebuildItems()
+			for i, entry := range m.items {
+				if entry.commit != nil {
+					m.selected = i
+					break
+				}
+			}
+			if press(m, key) == nil {
+				t.Fatal("opening an unloaded commit did not request changed files")
+			}
+			state := m.historyStates[historyKey("", commit.ID)]
+			m.Update(historyFilesMsg{seq: state.seq, id: commit.ID, files: []gitservice.Change{{Path: "file.go", Index: 'M'}}})
+			if len(m.tabs) != 1 || m.tabs[0].preview || m.sidebar {
+				t.Fatal("keyboard open did not focus and keep the asynchronously opened diff")
+			}
+		})
 	}
 }

@@ -11,16 +11,6 @@ import (
 	"github.com/ourongxing/vl/internal/theme"
 )
 
-// SetTheme loads and remembers a theme for its light/dark appearance.
-func (m *Model) SetTheme(name, uiTheme string) tea.Cmd {
-	selected, err := theme.Load(name, uiTheme)
-	if err != nil {
-		m.notice = m.tr("Load theme: %s", m.tr(err.Error()))
-		return nil
-	}
-	return m.SetColorTheme(selected)
-}
-
 // SetColorTheme commits a selection. Preview changes never call this method.
 func (m *Model) SetColorTheme(selected *theme.Theme) tea.Cmd {
 	if selected.IsLight() {

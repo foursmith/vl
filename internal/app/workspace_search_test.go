@@ -138,7 +138,7 @@ func TestWorkspaceSearchLayoutScrollAndMouse(t *testing.T) {
 	}
 	drain(t, m, m.runSearch())
 	m.clickSearch(5, m.searchResultY()+1)
-	if m.sidebar || m.document() == nil || m.document().SelectedText() != "needle" {
+	if !m.sidebar || m.document() == nil || m.document().SelectedText() != "needle" {
 		t.Fatal("match click did not open file")
 	}
 }
@@ -150,6 +150,10 @@ func TestWorkspaceSearchFoldsAndStaleFile(t *testing.T) {
 	drain(t, m, m.runSearch())
 	m.search.focus = 2
 	press(m, "h")
+	if len(m.searchRows()) != 2 {
+		t.Fatal("parent navigation folded file")
+	}
+	m.clickSearch(1, m.searchResultY())
 	if len(m.searchRows()) != 1 {
 		t.Fatal("file not folded")
 	}
@@ -162,7 +166,7 @@ func TestWorkspaceSearchFoldsAndStaleFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	m.search.selected = 1
-	cmd := m.openSearchResult()
+	cmd := m.openSelected()
 	if cmd == nil || !m.search.loading || !strings.Contains(m.notice, "changed") {
 		t.Fatal("stale file not refreshed")
 	}
@@ -198,7 +202,7 @@ func TestSearchResultCentersMatchAndClampsAtFileEdges(t *testing.T) {
 		m.clickSearch(5, m.searchResultY()+1)
 		tab := &m.tabs[m.activeTab]
 		want := min(max(0, target-m.contentHeight()/2), 120-m.contentHeight())
-		if tab.top != want || m.sidebar || m.document().SelectedText() != "needle" {
+		if tab.top != want || !m.sidebar || m.document().SelectedText() != "needle" {
 			t.Fatalf("target=%d top=%d want=%d", target, tab.top, want)
 		}
 		row, _ := m.document().Position()

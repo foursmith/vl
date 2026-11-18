@@ -169,6 +169,7 @@ func TestFilesAndDiffsSharePreviewAndKeepMechanism(t *testing.T) {
 	if len(m.tabs) != 1 || first.diffOpen || m.document() != doc {
 		t.Fatal("file preview did not close and replace diff safely")
 	}
+	m.Update(tea.KeyPressMsg{Code: tea.KeyF6})
 	press(m, "x")
 	openPreview("file0.go", false)
 	if len(m.tabs) != 2 || !doc.Dirty() || m.tabs[0].preview {
@@ -185,11 +186,8 @@ func TestFilesAndDiffsSharePreviewAndKeepMechanism(t *testing.T) {
 		t.Fatal("revisiting kept diff changed its state")
 	}
 	// The tab bar uses the same promotion gesture for either kind.
-	m.activateTab(2)
 	slot := m.tabLayout()[2]
-	for i := 0; i < 2; i++ {
-		m.click(tea.MouseClickMsg{X: m.mainX() + slot.x + 4, Y: tabRow, Button: tea.MouseLeft})
-	}
+	m.click(tea.MouseClickMsg{X: m.mainX() + slot.x + 4, Y: tabRow, Button: tea.MouseLeft})
 	if m.tabs[2].preview {
 		t.Fatal("double click on diff tab did not keep it")
 	}

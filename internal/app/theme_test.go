@@ -15,13 +15,22 @@ import (
 	"github.com/ourongxing/vl/internal/theme"
 )
 
+func (m *Model) setTestTheme(name, uiTheme string) tea.Cmd {
+	selected, err := theme.Load(name, uiTheme)
+	if err != nil {
+		m.notice = m.tr("Load theme: %s", m.tr(err.Error()))
+		return nil
+	}
+	return m.SetColorTheme(selected)
+}
+
 func TestThemeSwitchRejectsOldSyntaxAndPreservesEditing(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	m.openFile("file0.go")
 	old := m.scheduleHighlight()().(highlightStartMsg).request
 	m.editorLines() // populate colored row cache
 	text, cursor := m.document().Text, m.document().Cursor
-	drain(t, m, m.SetTheme("light_modern", ""))
+	drain(t, m, m.setTestTheme("light_modern", ""))
 	if old.ctx.Err() == nil || m.startHighlight(old) != nil {
 		t.Fatal("old-theme syntax was accepted")
 	}
@@ -37,7 +46,7 @@ func TestThemeSwitchRejectsOldSyntaxAndPreservesEditing(t *testing.T) {
 	if !sameColor(m.View().BackgroundColor, lipgloss.Color(m.colors.Panel)) {
 		t.Fatal("theme switch did not update terminal padding")
 	}
-	drain(t, m, m.SetTheme("dark_modern", ""))
+	drain(t, m, m.setTestTheme("dark_modern", ""))
 	if m.colors != theme.Builtin("dark_modern").Palette() || m.tabs[0].spans[0][0].Color != "#569CD6" {
 		t.Fatal("switching back lost dark theme")
 	}
@@ -45,7 +54,7 @@ func TestThemeSwitchRejectsOldSyntaxAndPreservesEditing(t *testing.T) {
 
 func TestLightThemePickerAndDiffSurfaces(t *testing.T) {
 	m := tabWorkspace(t, 0)
-	m.SetTheme("light_modern", "")
+	m.setTestTheme("light_modern", "")
 	m.openPalette()
 	m.input.SetValue(">Color Theme")
 	rows := m.filteredActions()
@@ -66,7 +75,7 @@ func TestLightThemePickerAndDiffSurfaces(t *testing.T) {
 	m.patch = diff.Parse("--- a/file.go\n+++ b/file.go\n@@ -1 +1 @@\n-var old = 1\n+var value = 2\n")
 	m.renderDiff()
 	oldSyntax := m.highlightDiff()()
-	drain(t, m, m.SetTheme("dark_modern", ""))
+	drain(t, m, m.setTestTheme("dark_modern", ""))
 	m.Update(oldSyntax)
 	for _, spans := range m.diffSyntax {
 		for _, span := range spans {
@@ -75,7 +84,7 @@ func TestLightThemePickerAndDiffSurfaces(t *testing.T) {
 			}
 		}
 	}
-	drain(t, m, m.SetTheme("light_modern", ""))
+	drain(t, m, m.setTestTheme("light_modern", ""))
 	for i := range m.patch.Lines {
 		line := &m.patch.Lines[i]
 		if line.Kind != diff.Added {
@@ -97,12 +106,12 @@ func TestThemeFollowsOnlyWhenPreviouslyAligned(t *testing.T) {
 	if m.colorTheme.IsLight() {
 		t.Fatal("first report must only establish the appearance baseline")
 	}
-	m.SetTheme("light_plus", "")
+	m.setTestTheme("light_plus", "")
 	m.Update(uv.DarkColorSchemeEvent{})
 	if m.committedTheme().ID != "dark_modern" {
 		t.Fatal("aligned theme did not follow dark appearance")
 	}
-	m.SetTheme("dark_vs", "")
+	m.setTestTheme("dark_vs", "")
 	m.Update(uv.LightColorSchemeEvent{})
 	if m.committedTheme().ID != "light_plus" {
 		t.Fatal("remembered light theme was lost")
@@ -111,7 +120,7 @@ func TestThemeFollowsOnlyWhenPreviouslyAligned(t *testing.T) {
 	if m.committedTheme().ID != "dark_vs" {
 		t.Fatal("remembered dark theme was lost")
 	}
-	m.SetTheme("light_vs", "") // deliberately differs from dark terminal
+	m.setTestTheme("light_vs", "") // deliberately differs from dark terminal
 	m.Update(uv.DarkColorSchemeEvent{})
 	m.Update(uv.LightColorSchemeEvent{})
 	if m.committedTheme().ID != "light_vs" {
@@ -126,8 +135,8 @@ func TestThemeFollowsOnlyWhenPreviouslyAligned(t *testing.T) {
 func TestThemePairAndAlignmentSurviveRestart(t *testing.T) {
 	m := tabWorkspace(t, 0)
 	m.Update(uv.DarkColorSchemeEvent{})
-	m.SetTheme("light_plus", "")
-	m.SetTheme("dark_plus", "")
+	m.setTestTheme("light_plus", "")
+	m.setTestTheme("dark_plus", "")
 	next := tabWorkspace(t, 0)
 	next.SetLayout(m.Layout())
 	next.Update(uv.LightColorSchemeEvent{})
@@ -150,7 +159,7 @@ func TestThemePairAndAlignmentSurviveRestart(t *testing.T) {
 
 func TestFirstTerminalReportDoesNotTreatSystemHandoffAsAppearanceChange(t *testing.T) {
 	m := tabWorkspace(t, 0)
-	m.SetTheme("dark_plus", "")
+	m.setTestTheme("dark_plus", "")
 	m.Update(systemAppearanceMsg{light: false, known: true})
 	m.Update(uv.LightColorSchemeEvent{})
 	if m.committedTheme().ID != "dark_plus" {
@@ -165,7 +174,7 @@ func TestFirstTerminalReportDoesNotTreatSystemHandoffAsAppearanceChange(t *testi
 
 func TestFirstAppearancePreservesExplicitSelection(t *testing.T) {
 	m := tabWorkspace(t, 0)
-	m.SetTheme("dark_plus", "")
+	m.setTestTheme("dark_plus", "")
 	m.Update(uv.LightColorSchemeEvent{})
 	if m.committedTheme().ID != "dark_plus" {
 		t.Fatal("first report replaced manual theme")
@@ -223,7 +232,7 @@ func TestSameBrightnessSwitchInvalidatesSyntax(t *testing.T) {
 	m.openFile("file0.go")
 	old := m.scheduleHighlight()().(highlightStartMsg).request
 	text, cursor := m.document().Text, m.document().Cursor
-	drain(t, m, m.SetTheme("dark_vs", ""))
+	drain(t, m, m.setTestTheme("dark_vs", ""))
 	if m.colorTheme.IsLight() || m.colors.Background != "#1E1E1E" || m.committedTheme().ID != "dark_vs" {
 		t.Fatal("same-brightness theme was not installed")
 	}
@@ -233,7 +242,7 @@ func TestSameBrightnessSwitchInvalidatesSyntax(t *testing.T) {
 	if m.document().Text != text || m.document().Cursor != cursor {
 		t.Fatal("theme changed editor state")
 	}
-	drain(t, m, m.SetTheme("dark_plus", ""))
+	drain(t, m, m.setTestTheme("dark_plus", ""))
 	if m.colorTheme != theme.Builtin("dark_plus") {
 		t.Fatal("Dark+ not selected")
 	}
@@ -268,7 +277,7 @@ func TestLocalThemeRestoresTypeAndPalette(t *testing.T) {
 		t.Fatal("local theme or extension type lost on restore")
 	}
 	before := m.colorTheme
-	m.SetTheme(filepath.Join(dir, "missing.json"), "")
+	m.setTestTheme(filepath.Join(dir, "missing.json"), "")
 	if m.colorTheme != before || m.committedTheme().ID != path || !strings.Contains(m.notice, "Load theme") {
 		t.Fatal("invalid local theme replaced working theme")
 	}
@@ -303,7 +312,7 @@ func TestLocalThemeCatalogAppearsAndSelects(t *testing.T) {
 
 func TestColorThemeHasOneCommandAndSeparatePicker(t *testing.T) {
 	m := tabWorkspace(t, 0)
-	m.SetTheme("dark_plus", "")
+	m.setTestTheme("dark_plus", "")
 	original := m.colorTheme
 	m.openPalette()
 	m.input.SetValue(">Color Theme")
@@ -342,7 +351,7 @@ func TestColorThemeHasOneCommandAndSeparatePicker(t *testing.T) {
 
 func TestThemeArrowPreviewCancelsAndConfirms(t *testing.T) {
 	m := tabWorkspace(t, 1)
-	m.SetTheme("dark_plus", "")
+	m.setTestTheme("dark_plus", "")
 	m.openFile("file0.go")
 	old := m.scheduleHighlight()().(highlightStartMsg).request
 	original, preference := m.colorTheme, m.Layout()
@@ -377,8 +386,8 @@ func TestThemeArrowPreviewCancelsAndConfirms(t *testing.T) {
 func TestThemePreviewKeepsSlotsAndTracksCommittedAppearance(t *testing.T) {
 	m := tabWorkspace(t, 0)
 	m.Update(uv.DarkColorSchemeEvent{})
-	m.SetTheme("light_plus", "")
-	m.SetTheme("dark_plus", "")
+	m.setTestTheme("light_plus", "")
+	m.setTestTheme("dark_plus", "")
 	m.openThemePicker()
 	drain(t, m, m.updateModal(tea.KeyPressMsg{Code: tea.KeyHome}))
 	preview := m.colorTheme
@@ -426,7 +435,7 @@ func TestSystemAppearanceFallbackAndTerminalPriority(t *testing.T) {
 	if m.colorTheme.IsLight() || !m.appearance.light {
 		t.Fatal("first system report must only establish the appearance baseline")
 	}
-	m.SetTheme("light_vs", "")
+	m.setTestTheme("light_vs", "")
 	m.Update(systemAppearanceMsg{light: false, known: true})
 	if m.colorTheme.IsLight() {
 		t.Fatal("aligned theme did not follow system change")
@@ -465,7 +474,7 @@ func TestRememberedLocalThemeOverrideAndMissingFile(t *testing.T) {
 	m := tabWorkspace(t, 0)
 	m.Update(uv.DarkColorSchemeEvent{})
 	m.SetColorTheme(selected)
-	m.SetTheme("dark_plus", "")
+	m.setTestTheme("dark_plus", "")
 	next := tabWorkspace(t, 0)
 	next.SetLayout(m.Layout())
 	next.Update(uv.DarkColorSchemeEvent{})
@@ -510,7 +519,7 @@ func TestUnsupportedTerminalSavesConfirmedThemeBeforeExit(t *testing.T) {
 		t.Fatal("unsupported terminal lost saved choice")
 	}
 	next.SetLayoutStore(config.NewLayoutStore(path))
-	drain(t, next, next.SetTheme("dark_plus", ""))
+	drain(t, next, next.setTestTheme("dark_plus", ""))
 	saved, err = config.LoadLayout(path)
 	if err != nil || saved.DarkTheme != "dark_plus" || saved.LightTheme != "light_plus" {
 		t.Fatalf("remembered pair not saved: %+v %v", saved, err)
@@ -524,7 +533,7 @@ func TestThemeSaveFailureRemainsVisible(t *testing.T) {
 	}
 	m := tabWorkspace(t, 0)
 	m.SetLayoutStore(config.NewLayoutStore(filepath.Join(parent, "layout.json")))
-	drain(t, m, m.SetTheme("light_plus", ""))
+	drain(t, m, m.setTestTheme("light_plus", ""))
 	if m.committedTheme().ID != "light_plus" || !strings.Contains(m.notice, "Save preferences:") {
 		t.Fatal("save failure was silent or discarded selection")
 	}

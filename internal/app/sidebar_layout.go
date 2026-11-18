@@ -91,8 +91,14 @@ func (m *Model) SetLayout(layout config.Layout) {
 	m.SetSidebarLayout(layout.SidebarWidth, layout.SidebarRight)
 	m.restoreThemeSlot(layout.DarkTheme, layout.DarkThemeType, false)
 	m.restoreThemeSlot(layout.LightTheme, layout.LightThemeType, true)
-	if layout.Theme != "" {
-		m.SetTheme(layout.Theme, layout.ThemeType)
+	if layout.Theme == "" {
+		return
+	}
+	switch {
+	case layout.Theme == layout.DarkTheme && layout.ThemeType == layout.DarkThemeType:
+		m.applyTheme(m.darkTheme)
+	case layout.Theme == layout.LightTheme && layout.ThemeType == layout.LightThemeType:
+		m.applyTheme(m.lightTheme)
 	}
 }
 
@@ -113,7 +119,11 @@ func (m *Model) toggleSidebar() tea.Cmd {
 	m.resizingSidebar = false
 	m.hoverX, m.hoverY = -1, -1
 	m.sidebarVisible = !m.sidebarVisible
-	m.sidebar = m.sidebarVisible
+	if m.sidebarVisible {
+		m.sidebar = true
+	} else {
+		m.focusEditor()
+	}
 	m.resize()
 	return nil
 }

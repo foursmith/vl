@@ -18,6 +18,7 @@ func TestSharedFindComponentEntriesCountAndInput(t *testing.T) {
 	if m.fileFindHeight() != 0 || m.findHidden || m.fileFindIndex() != 0 || len(m.fileFindCache().ranges) != 2 {
 		t.Fatal("workspace result must highlight matches without opening file find")
 	}
+	press(m, "enter")
 	press(m, "n")
 	if m.fileFindHeight() != 0 || m.fileFindIndex() != 1 {
 		t.Fatal("next workspace match must stay in the editor")

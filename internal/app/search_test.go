@@ -199,6 +199,7 @@ func TestWorkspaceResultReusesFileSearchHighlightsAndNavigation(t *testing.T) {
 		if m.findOptions.Query != tc.query || m.findHidden || count() != tc.cells {
 			t.Fatalf("%q: file search was not seeded, highlights=%d want=%d", tc.query, count(), tc.cells)
 		}
+		press(m, "enter")
 		press(m, "n")
 		if m.document().SelectedText() != tc.next {
 			t.Fatalf("%q: n selected %q, want %q", tc.query, m.document().SelectedText(), tc.next)
@@ -232,6 +233,7 @@ func TestWorkspaceSearchNextVisitsAdjacentMatches(t *testing.T) {
 	m.search.options.Regex = true
 	drain(t, m, m.runSearch())
 	m.clickSearch(5, m.searchResultY()+1)
+	press(m, "enter")
 	for _, want := range []string{"ID22", "id3", "id1"} {
 		press(m, "n")
 		if m.document().SelectedText() != want {
@@ -251,7 +253,7 @@ func TestSearchFileNameOpensFileAndChevronOnlyFolds(t *testing.T) {
 		t.Fatal("chevron opened a file instead of folding")
 	}
 	m.clickSearch(7, m.searchResultY())
-	if m.document() == nil || m.sidebar || m.findOptions.Query != "package" || m.document().SelectedText() != "package" {
+	if m.document() == nil || !m.sidebar || m.findOptions.Query != "package" || m.document().SelectedText() != "package" {
 		t.Fatal("file name did not activate file search")
 	}
 	if len(m.searchRows()) != 1 {

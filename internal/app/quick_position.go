@@ -96,7 +96,7 @@ func (m *Model) goToPosition(value string) tea.Cmd {
 func (m *Model) SetEditorPosition(line, column int) {
 	if d := m.editorDocument(); d != nil {
 		d.SetPosition(line-1, column-1)
-		m.sidebar = false
+		m.focusEditor()
 		m.ensureTextCursor()
 	}
 }

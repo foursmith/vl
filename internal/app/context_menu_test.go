@@ -235,3 +235,23 @@ func TestContextMenuMouseAndDisabledActions(t *testing.T) {
 	}
 	t.Fatal("select all missing")
 }
+
+func TestExplorerShiftLSplitsCompactFolder(t *testing.T) {
+	m := explorerWorkspace(t)
+	t.Cleanup(m.Close)
+	if err := os.MkdirAll(filepath.Join(m.repo.Root, "parent", "child"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	drain(t, m, m.refreshTree())
+	for i, entry := range m.items {
+		if entry.label == "parent/child" {
+			m.selected = i
+			break
+		}
+	}
+	_, cmd := m.Update(tea.KeyPressMsg{Code: 'l', Mod: tea.ModShift})
+	drain(t, m, cmd)
+	if entry := m.current(); entry == nil || entry.label != "child" || entry.depth != 1 || m.expanded["parent/child"] {
+		t.Fatal("Shift+L did not split the compact folder while preserving the selected leaf")
+	}
+}

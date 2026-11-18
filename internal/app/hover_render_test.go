@@ -173,7 +173,7 @@ func TestPickerHoverUsesVisibleRowsWithoutChangingSelection(t *testing.T) {
 	for _, mode := range []string{"dark_modern", "light_modern"} {
 		t.Run(mode, func(t *testing.T) {
 			m := newHoverRenderModel(t)
-			m.SetTheme(mode, "")
+			m.setTestTheme(mode, "")
 			m.Update(tea.WindowSizeMsg{Width: 80, Height: 12})
 			m.workspaces = nil
 			for i := range 23 {

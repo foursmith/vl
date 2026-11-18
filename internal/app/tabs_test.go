@@ -40,6 +40,10 @@ func TestTabHeaderDecorationsPreserveDirtyAndDiffState(t *testing.T) {
 	}
 }
 
+func (m *Model) openPreviewFile(path string) {
+	m.openDocument(path, true)
+}
+
 func tabWorkspace(t *testing.T, count int) *Model {
 	t.Helper()
 	root := t.TempDir()
@@ -104,7 +108,7 @@ func TestSidebarSectionsPreserveActiveTab(t *testing.T) {
 	}
 }
 
-func TestPreviewReplacesOnlyCleanPreviewAndPromotesOnEdit(t *testing.T) {
+func TestPreviewReplacesOnlyCleanPreviewAndKeepsAfterUndo(t *testing.T) {
 	m := tabWorkspace(t, 4)
 	m.openPreviewFile("file0.go")
 	first := m.document()
@@ -112,10 +116,11 @@ func TestPreviewReplacesOnlyCleanPreviewAndPromotesOnEdit(t *testing.T) {
 	if len(m.tabs) != 1 || m.document() == first || !m.tabs[0].preview {
 		t.Fatal("single click did not replace the clean preview")
 	}
+	m.Update(tea.KeyPressMsg{Code: tea.KeyF6})
 	press(m, "x")
 	press(m, "ctrl+z")
 	if m.tabs[0].preview || m.document().Dirty() {
-		t.Fatal("edit should permanently keep the tab even after undo")
+		t.Fatal("editor focus should permanently keep the tab even after undo")
 	}
 	m.openPreviewFile("file2.go")
 	m.openPreviewFile("file3.go")
@@ -246,8 +251,8 @@ func TestExplorerSingleAndDoubleClick(t *testing.T) {
 	}
 	click(0)
 	click(1)
-	if len(m.tabs) != 1 || filepath.Base(m.document().Path) != "file1.go" || !m.tabs[0].preview || m.sidebar {
-		t.Fatal("single-click browsing did not reuse preview and focus the editor")
+	if len(m.tabs) != 1 || filepath.Base(m.document().Path) != "file1.go" || !m.tabs[0].preview || !m.sidebar {
+		t.Fatal("single-click browsing did not reuse preview and preserve sidebar focus")
 	}
 	click(1)
 	if m.tabs[0].preview || m.sidebar {
@@ -292,6 +297,7 @@ func TestTabCloseHitboxesAndInactiveMiddleClose(t *testing.T) {
 func TestCloseDirtySaveDiscardCancelAndSaveFailure(t *testing.T) {
 	m := tabWorkspace(t, 2)
 	m.openPreviewFile("file0.go")
+	m.Update(tea.KeyPressMsg{Code: tea.KeyF6})
 	press(m, "i")
 	press(m, "x")
 	first := m.document()
@@ -423,5 +429,45 @@ func TestEditingKeepsDirtyActiveTabVisibleAtOverflowBoundary(t *testing.T) {
 	}
 	if !strings.Contains(ansi.Strip(m.tabBar()), m.symbol(symbolDot)) {
 		t.Fatal("dirty indicator was truncated")
+	}
+}
+
+func TestPreviewStaysReusableUntilEditorTakesFocus(t *testing.T) {
+	for _, action := range []string{"enter", "l", "F6", "content click", "tab click"} {
+		t.Run(action, func(t *testing.T) {
+			m := tabWorkspace(t, 3)
+			t.Cleanup(m.Close)
+			m.items = []item{{key: "file0.go", file: "file0.go"}, {key: "file1.go", file: "file1.go"}, {key: "file2.go", file: "file2.go"}}
+			m.selected = 0
+			m.preview()
+			m.Update(tea.MouseWheelMsg{X: m.mainX() + 8, Y: m.contentRow(), Button: tea.MouseWheelDown})
+			if !m.sidebar || !m.tabs[0].preview {
+				t.Fatal("scroll focused or kept the preview")
+			}
+			press(m, "j")
+			if len(m.tabs) != 1 || !m.tabs[0].preview || filepath.Base(m.tabs[0].path()) != "file1.go" {
+				t.Fatal("replacement did not reuse the preview")
+			}
+			switch action {
+			case "F6":
+				m.Update(tea.KeyPressMsg{Code: tea.KeyF6})
+			case "content click":
+				m.Update(tea.MouseClickMsg{X: m.mainX() + 8, Y: m.contentRow(), Button: tea.MouseLeft})
+			case "tab click":
+				m.Update(tea.MouseClickMsg{X: m.mainX() + 3, Y: tabRow, Button: tea.MouseLeft})
+			default:
+				press(m, action)
+			}
+			if m.sidebar || m.tabs[0].preview {
+				t.Fatal("editor focus did not keep the tab")
+			}
+			m.selectSection(explorer)
+			m.items = []item{{key: "file2.go", file: "file2.go"}}
+			m.selected = 0
+			m.preview()
+			if len(m.tabs) != 2 || m.tabs[0].preview || !m.tabs[1].preview {
+				t.Fatal("next preview replaced the kept tab")
+			}
+		})
 	}
 }

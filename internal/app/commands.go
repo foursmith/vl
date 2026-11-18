@@ -476,6 +476,9 @@ func (m *Model) stageHunk(reverse bool) tea.Cmd {
 func (m *Model) commit() tea.Cmd { return m.commitInRepository(m.selectedRepository()) }
 
 func (m *Model) openSelected() tea.Cmd {
+	if m.section == search {
+		return m.openSidebarFile(false)
+	}
 	if m.snapshot.NoRepository && (m.section == changes || m.section == history) {
 		return m.initializeRepository()
 	}
@@ -484,30 +487,18 @@ func (m *Model) openSelected() tea.Cmd {
 		return nil
 	}
 	if m.section == history {
-		return m.openHistory(*entry)
+		return m.openHistoryRow(*entry, true)
 	}
-	if entry.header && m.section == changes {
+	if m.section == changes && (entry.header || entry.folder != "") {
 		m.changeCollapsed[entry.key] = !m.changeCollapsed[entry.key]
 		m.rebuildItems()
 		return nil
 	}
 	if entry.folder != "" {
-		if m.section == changes {
-			m.changeCollapsed[entry.key] = !m.changeCollapsed[entry.key]
-			m.rebuildItems()
-			return nil
-		}
 		m.expanded[entry.folder] = !m.expanded[entry.folder]
 		return m.refreshTree()
 	}
-	if entry.file != "" {
-		return m.openFile(entry.file)
-	}
-
-	m.sidebar = false
-	cmd := m.preview()
-	m.keepTab()
-	return cmd
+	return m.openSidebarFile(false)
 }
 
 func (m *Model) editSelected() tea.Cmd {

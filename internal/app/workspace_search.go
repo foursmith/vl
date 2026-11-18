@@ -165,22 +165,24 @@ func (m *Model) searchRows() []searchRow {
 }
 func (m *Model) searchResultY() int { return m.searchPanelLayout().results }
 func (m *Model) clampSearch() {
-	s := &m.search
-	n := len(m.searchRows())
-	s.selected = min(max(0, s.selected), max(0, n-1))
-	s.top = min(max(0, s.top), max(0, n-max(1, m.bodyHeight()-m.searchResultY())))
+	m.clampSearchList(m.searchList())
 }
-func (m *Model) ensureSearchSelection() {
-	m.clampSearch()
-	s := &m.search
-	h := max(1, m.bodyHeight()-m.searchResultY())
-	if s.selected < s.top {
-		s.top = s.selected
-	}
-	if s.selected >= s.top+h {
-		s.top = s.selected - h + 1
-	}
+
+func (m *Model) clampSearchList(list sidebarList) {
+	m.search.selected = min(max(0, m.search.selected), max(0, list.count-1))
+	list.clampScroll()
 }
+
+func (m *Model) selectedSearchRow() (searchRow, bool) {
+	if !m.search.loading {
+		rows := m.searchRows()
+		if index := m.search.selected; index >= 0 && index < len(rows) {
+			return rows[index], true
+		}
+	}
+	return searchRow{}, false
+}
+
 func (m *Model) searchKey(msg tea.KeyPressMsg) tea.Cmd {
 	s := &m.search
 	k := msg.String()
@@ -227,7 +229,7 @@ func (m *Model) searchKey(msg tea.KeyPressMsg) tea.Cmd {
 		return m.focusSearch(2)
 	case "enter":
 		if s.focus == 2 {
-			return m.openSearchResult()
+			return m.openSelected()
 		}
 		if s.focus == 1 {
 			return m.replaceSearch(false)
@@ -245,48 +247,27 @@ func (m *Model) searchKey(msg tea.KeyPressMsg) tea.Cmd {
 	if k == "/" || k == "i" {
 		return m.focusSearch(0)
 	}
-	if k == "delete" {
-		m.dismissSearchResult(s.selected)
+	if k == "shift+f10" {
+		return m.openSidebarContextMenu()
+	}
+	_, cmd := m.sidebarNavigationKey(k)
+	return cmd
+}
+
+func (m *Model) openSearchRight() tea.Cmd {
+	r, ok := m.selectedSearchRow()
+	if !ok {
 		return nil
 	}
-	action, count, handled := m.navigationState.key("search", k)
-	if !handled || action == "" {
-		return nil
+	path := m.search.result.Files[r.file].Path
+	if !m.search.folded[path] {
+		return m.openSidebarFile(false)
 	}
-	switch action {
-	case "up":
-		s.selected -= count
-	case "down":
-		s.selected += count
-	case "pageUp":
-		s.selected -= count * max(1, m.bodyHeight()-m.searchResultY())
-	case "pageDown":
-		s.selected += count * max(1, m.bodyHeight()-m.searchResultY())
-	case "first":
-		s.selected = count - 1
-	case "last":
-		s.selected = len(m.searchRows()) - 1
-	case "left", "right":
-		rows := m.searchRows()
-		if len(rows) == 0 {
-			return nil
-		}
-		r := rows[s.selected]
-		path := s.result.Files[r.file].Path
-		if action == "right" && !s.folded[path] {
-			return m.openSearchResult()
-		}
-		s.folded[path] = action == "left"
-		for i, row := range m.searchRows() {
-			if row.file == r.file && row.match < 0 {
-				s.selected = i
-				break
-			}
-		}
-	}
-	m.ensureSearchSelection()
+	m.search.folded[path] = false
+	m.ensureSidebar()
 	return nil
 }
+
 func (m *Model) searchInput(msg tea.Msg) tea.Cmd {
 	s := &m.search
 	field := m.searchField(s.focus)
@@ -301,38 +282,30 @@ func (m *Model) searchInput(msg tea.Msg) tea.Cmd {
 	}
 	return cmd
 }
-func (m *Model) openSearchResult() tea.Cmd { return m.openSearchResultFile(false) }
 
-func (m *Model) openSearchResultFile(openFile bool) tea.Cmd {
-	rows := m.searchRows()
-	s := &m.search
-	if len(rows) == 0 || s.loading {
-		return nil
+func (m *Model) loadSearchResult() (tea.Cmd, bool) {
+	r, ok := m.selectedSearchRow()
+	if !ok {
+		return nil, false
 	}
-	m.clampSearch()
-	r := rows[s.selected]
-	f := s.result.Files[r.file]
+	f := m.search.result.Files[r.file]
 	if r.match < 0 {
-		if !openFile {
-			s.folded[f.Path] = !s.folded[f.Path]
-			m.clampSearch()
-			return nil
-		}
 		r.match = 0
 	}
+
 	if real, err := filepath.EvalSymlinks(f.Path); err != nil || real != f.Path {
 		m.notice = searchText("Search file path changed; search again")
-		return m.runSearch()
+		return m.runSearch(), false
 	}
 	if m.openDocument(f.Path, true) {
 		d := m.document()
 		if d == nil {
-			return nil
+			return nil, false
 		}
 		if d.Text != f.Text {
 			m.notice = searchText("Search result changed; search again")
 			m.sidebar = true
-			return m.runSearch()
+			return m.runSearch(), false
 		}
 		if m.findWidget.visible {
 			m.closeFileFind()
@@ -346,6 +319,7 @@ func (m *Model) openSearchResultFile(openFile bool) tea.Cmd {
 		t.vim.JumpTo(d, utf8.RuneCountInString(f.Text[:hit.Start]))
 		d.SelectRange(utf8.RuneCountInString(f.Text[:hit.End]), d.Cursor)
 		m.centerTextCursor()
+		return nil, true
 	}
-	return nil
+	return nil, false
 }

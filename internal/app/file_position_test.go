@@ -125,8 +125,8 @@ func TestExplorerClickRestoresFilePositions(t *testing.T) {
 	click := func(index int) {
 		t.Helper()
 		m.click(tea.MouseClickMsg{X: m.sideX() + 5, Y: headerHeight + index, Button: tea.MouseLeft})
-		if m.sidebar || m.editorCursor() == nil {
-			t.Fatal("explorer click did not focus the restored cursor")
+		if !m.sidebar || m.document() == nil || !m.tabs[m.activeTab].preview {
+			t.Fatal("explorer click did not show a preview with sidebar focus")
 		}
 	}
 	click(0)

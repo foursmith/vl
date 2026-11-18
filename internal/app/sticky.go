@@ -173,7 +173,8 @@ func (m *Model) sidebarStickyRows() []int {
 }
 
 func (m *Model) sidebarRowAt(y int) int {
-	y -= headerHeight
+	l := m.sidebarList()
+	y -= l.start
 	if y < 0 {
 		return -1
 	}
@@ -181,7 +182,11 @@ func (m *Model) sidebarRowAt(y int) int {
 	if y < len(sticky) {
 		return sticky[y]
 	}
-	return m.sideTop + y
+	index := *l.top + y
+	if index >= l.count {
+		return -1
+	}
+	return index
 }
 
 func (m *Model) revealEditorRow(line int) {

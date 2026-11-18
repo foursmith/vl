@@ -98,47 +98,5 @@ func (m *Model) navigationKey(k string) (bool, tea.Cmd) {
 		m.navigationState = navigationState{}
 		return false, nil
 	}
-	scope := fmt.Sprintf("%d:%d:%d:%s", m.section, m.activeTab, m.selected, m.repo.Root)
-	action, count, handled := m.navigationState.key(scope, k)
-	if !handled {
-		return false, nil
-	}
-	if action == "" {
-		return true, nil
-	}
-	if action == "dd" || action == "yy" {
-		if m.section == explorer {
-			if count != 1 {
-				m.notice = m.tr("File operations act on one selected entry")
-				return true, nil
-			}
-			if action == "dd" {
-				return true, m.deleteSelectedEntry()
-			}
-			return true, m.yankEntry()
-		}
-		return true, nil
-	}
-	page := max(1, m.bodyHeight()-headerHeight)
-	delta := count
-	if action == "pageUp" || action == "pageDown" {
-		delta *= page
-	}
-	switch action {
-	case "up", "pageUp":
-		m.selected = max(0, m.selected-delta)
-	case "down", "pageDown":
-		m.selected = min(len(m.items)-1, max(-1, m.selected)+delta)
-	case "first":
-		m.selected = min(len(m.items)-1, count-1)
-	case "last":
-		m.selected = len(m.items) - 1
-	case "left":
-		m.selectParentFolder()
-		return true, nil
-	case "right":
-		return true, m.openSelected()
-	}
-	m.ensureSidebar()
-	return true, m.preview()
+	return m.sidebarNavigationKey(k)
 }

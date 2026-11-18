@@ -90,9 +90,10 @@ Open files with **Ctrl+P**, commands with **Ctrl+Shift+P**, and recent workspace
 The file/command picker accepts `>` for commands, `:line[:column]` for a position
 in the current file, or `filename:line[:column]` to open a file at that position.
 
-A single click opens a reusable preview tab and focuses the editor at its remembered
-cursor position. Double-click or Enter keeps it open;
-editing also keeps a text tab. The active tab has a thin accent marker; file tabs
+A single click in a sidebar list shows a reusable preview and leaves focus in the list.
+Moving focus into the editor keeps the displayed tab open. You can do this with
+Enter, F6, a double-click in the list, or a click in the editor or its tab.
+Scrolling the content leaves the preview reusable. The active tab has a thin accent marker; file tabs
 share Explorer's Git colors and status letters. An unsaved dot takes precedence
 over the Git status letter. Tabs and text cursor/scroll positions are restored
 per folder. Unsaved edits require confirmation before closing, quitting or

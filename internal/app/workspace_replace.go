@@ -103,7 +103,7 @@ func (m *Model) replaceSearch(all bool) tea.Cmd {
 	if len(edits) > 0 {
 		for i := range m.tabs {
 			if m.tabs[i].doc == edits[0].doc {
-				m.activateTab(i)
+				m.selectTab(i)
 				break
 			}
 		}

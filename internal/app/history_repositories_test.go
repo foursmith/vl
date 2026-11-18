@@ -50,10 +50,10 @@ func TestHistoryGroupsSharedCommitsByRepository(t *testing.T) {
 	drain(t, m, m.refresh())
 	drain(t, m, m.selectSection(history))
 	root := selectHistoryCommit(t, m, "", shared)
-	drain(t, m, m.previewHistory(root))
+	drain(t, m, m.loadHistoryCommit(root, false))
 	rootText, _ := m.historyRow(root, 120, theme.Builtin("dark_modern").Palette().Panel)
 	childEntry := selectHistoryCommit(t, m, "child space", shared)
-	drain(t, m, m.previewHistory(childEntry))
+	drain(t, m, m.loadHistoryCommit(childEntry, false))
 	childText, _ := m.historyRow(childEntry, 120, theme.Builtin("dark_modern").Palette().Panel)
 	if !strings.Contains(plain(rootText), "parent-only") || strings.Contains(plain(rootText), "child-only") {
 		t.Fatal("parent history uses child refs")
@@ -106,7 +106,7 @@ func TestHistoryChildOnlyCommitDiffAndRefresh(t *testing.T) {
 	}
 	drain(t, m, m.selectSection(history))
 	entry := selectHistoryCommit(t, m, "child space", id)
-	drain(t, m, m.openHistory(entry))
+	drain(t, m, m.openHistoryRow(entry, true))
 	if m.diffCommit != id || m.diffPath != "child space/README.md" || !strings.Contains(m.patch.Raw, "+# child history only") {
 		t.Fatalf("child history diff: %s %s\n%s", m.diffCommit, m.diffPath, m.patch.Raw)
 	}
@@ -160,11 +160,11 @@ func TestHistoryRepliesWithSameIDStayInTheirRepository(t *testing.T) {
 	m.section = history
 	m.rebuildItems()
 	root := selectHistoryCommit(t, m, "", id)
-	m.previewHistory(root)
+	m.loadHistoryCommit(root, false)
 	rootKey := historyKey("", id)
 	rootSeq := m.historyStates[rootKey].seq
 	child := selectHistoryCommit(t, m, "child", id)
-	m.previewHistory(child)
+	m.loadHistoryCommit(child, false)
 	key := historyKey("child", id)
 	childSeq := m.historyStates[key].seq
 	m.applyHistoryFiles(historyFilesMsg{repository: "child", seq: childSeq, id: id, files: []gitservice.Change{{Repository: "child", Path: "child/src/child.go", Index: 'M', Worktree: ' '}}})
@@ -218,13 +218,13 @@ func TestHistoryEmptyAndNestedRepositorySections(t *testing.T) {
 	for _, entry := range m.items {
 		if entry.label == "No commits yet" {
 			m.sidebar = true
-			if cmd := m.openHistory(entry); cmd != nil || !m.sidebar {
+			if cmd := m.openHistoryRow(entry, true); cmd != nil || !m.sidebar {
 				t.Fatal("empty history note stole focus")
 			}
 		}
 	}
-	nested := selectHistoryCommit(t, m, "app/nested", id)
-	m.selectHistoryParent(nested)
+	selectHistoryCommit(t, m, "app/nested", id)
+	m.selectParentFolder()
 	if !m.current().repoHeader || m.current().repository != "app/nested" {
 		t.Fatal("nested commit selected wrong parent repository")
 	}
@@ -240,7 +240,7 @@ func TestHistoryCollapsedRepositoryDoesNotOpenLatePreview(t *testing.T) {
 	}
 	m.section = history
 	m.rebuildItems()
-	m.previewHistory(selectHistoryCommit(t, m, "child", id))
+	m.loadHistoryCommit(selectHistoryCommit(t, m, "child", id), false)
 	key := historyKey("child", id)
 	seq := m.historyStates[key].seq
 	for i, e := range m.items {
@@ -249,7 +249,7 @@ func TestHistoryCollapsedRepositoryDoesNotOpenLatePreview(t *testing.T) {
 			break
 		}
 	}
-	m.openHistory(*m.current())
+	m.openHistoryRow(*m.current(), true)
 	cmd := m.applyHistoryFiles(historyFilesMsg{repository: "child", id: id, seq: seq, files: []gitservice.Change{{Repository: "child", Path: "child/file.go", Index: 'M', Worktree: ' '}}})
 	if cmd != nil || m.diffOpen || !m.current().repoHeader || m.current().repository != "child" {
 		t.Fatal("late result opened preview inside collapsed repository")
