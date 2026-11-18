@@ -23,10 +23,10 @@ func compareCodeScopes(a, b codeScope) int {
 }
 
 func codeScopes(path, text string) []codeScope {
-	source := strings.Split(text, "\n")
 	var scopes []codeScope
 	ext := strings.ToLower(filepath.Ext(path))
 	if ext == ".py" || ext == ".pyw" {
+		source := strings.Split(text, "\n")
 		var stack []int
 		for i, line := range source {
 			trimmed := strings.TrimSpace(line)
@@ -55,6 +55,10 @@ func codeScopes(path, text string) []codeScope {
 		default:
 			return nil
 		}
+		if !strings.ContainsRune(text, '{') {
+			return nil
+		}
+		source := strings.Split(text, "\n")
 		var s scanner.Scanner
 		s.Init(strings.NewReader(text))
 		s.Mode = scanner.ScanIdents | scanner.ScanStrings | scanner.ScanRawStrings | scanner.ScanChars | scanner.ScanComments | scanner.SkipComments

@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -130,6 +131,27 @@ func TestEditorRowCacheIsBoundedAndInvalidatesOnTextAndLayoutChanges(t *testing.
 	for _, line := range m.editorLines() {
 		if ansi.StringWidth(line) != m.mainWidth() {
 			t.Fatal("resize reused rows with stale widths")
+		}
+	}
+}
+
+func TestEditorRowCacheMatchesFreshRenderAfterCursorAndStickyChanges(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	m.openFile("file0.go")
+	m.Update(tea.WindowSizeMsg{Width: 120, Height: 12})
+	d := m.document()
+	d.Edit("package sample\nfunc outer() {\n\tif ready {\n" +
+		strings.Repeat("\t\twork()\n", 10) + "\t}\n}\n")
+	drain(t, m, m.scheduleHighlight())
+	tab := &m.tabs[m.activeTab]
+	m.editorLines()
+	for _, step := range []struct{ line, top int }{{4, 3}, {5, 4}, {12, 9}, {14, 10}, {0, 0}} {
+		d.SetPosition(step.line, 0)
+		tab.top = step.top
+		rows := m.editorLines()
+		tab.renderedRows = nil
+		if want := m.editorLines(); !slices.Equal(rows, want) {
+			t.Fatalf("cached rows differ from a fresh render at line %d, top %d", step.line, step.top)
 		}
 	}
 }

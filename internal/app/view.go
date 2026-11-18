@@ -490,21 +490,30 @@ func expandTabs(text string) string {
 	return b.String()
 }
 
-// Cached rows are bounded to the current viewport; edits, selection, current
-// line and horizontal layout changes invalidate them together.
+// Document-wide changes invalidate the cache. Cursor and sticky styling
+// are keyed per row so movement can reuse the rest of the viewport.
 type editorRenderKey struct {
-	flashRevision                                   uint64
-	findOptions                                     searchservice.Options
-	text                                            string
-	line, selectionStart, selectionEnd, width, left int
-	sticky                                          [maxStickyRows]int
-	stickyCount                                     int
-	bracket                                         bracketGuide
+	flashRevision                             uint64
+	findOptions                               searchservice.Options
+	text                                      string
+	selectionStart, selectionEnd, width, left int
+}
+
+type editorRowKey struct {
+	current, sticky, stickyBorder bool
+	guideColumn                   int
+	guideColor                    string
+}
+
+type editorRenderedRow struct {
+	key  editorRowKey
+	text string
 }
 
 func (m *Model) editorLines() []string {
 	const gutterWidth = 7
-	textWidth := max(1, m.mainWidth()-gutterWidth)
+	width, height := m.mainWidth(), m.contentHeight()
+	textWidth := max(1, width-gutterWidth)
 	t := &m.tabs[m.activeTab]
 	d := t.doc
 	source := d.Lines()
@@ -526,49 +535,62 @@ func (m *Model) editorLines() []string {
 	if m.findHidden {
 		findOptions = searchservice.Options{}
 	}
-	key := editorRenderKey{findOptions: findOptions, flashRevision: m.flashRevision, stickyCount: len(sticky), text: d.Text, line: line, selectionStart: a, selectionEnd: b, width: m.mainWidth(), left: t.left, bracket: bracket}
-	copy(key.sticky[:], sticky)
+	key := editorRenderKey{findOptions: findOptions, flashRevision: m.flashRevision, text: d.Text, width: width, left: t.left}
+	if a != b {
+		key.selectionStart, key.selectionEnd = a, b
+	}
 	if t.renderedRows == nil || t.renderKey != key {
 		t.renderKey = key
-		t.renderedRows = make(map[int]string, m.contentHeight())
+		t.renderedRows = make(map[int]editorRenderedRow, height)
 	}
 	top := t.editorDisplayTop()
 	for i := range t.renderedRows {
-		if !slices.Contains(sticky, i) && (t.editorDisplayRow(i) < top+len(sticky) || t.editorDisplayRow(i) >= top+m.contentHeight()) {
+		display := t.editorDisplayRow(i)
+		if !slices.Contains(sticky, i) && (display < top+len(sticky) || display >= top+height) {
 			delete(t.renderedRows, i)
 		}
 	}
-	var lines []string
+	lines := make([]string, 0, height)
+	var blank string
 	currentRow := -1
-	for y := 0; y < m.contentHeight(); y++ {
+	for y := 0; y < height; y++ {
 		i, image, imageOffset := t.editorDisplayAt(top + y)
-		if y < len(sticky) {
+		isSticky := y < len(sticky)
+		if isSticky {
 			i = sticky[y]
 		} else if image != nil {
-			w := m.mainWidth()
 			mdRows, _ := image.image.regionRows(image.region)
 			content := ""
 			if imageOffset <= len(mdRows) {
 				content = mdRows[imageOffset-1]
 			}
-			lines = append(lines, row("", gutterWidth, m.colors.Foreground, m.colors.Background)+row(content, w-gutterWidth, m.colors.Foreground, m.colors.Background))
+			lines = append(lines, row("", gutterWidth, m.colors.Foreground, m.colors.Background)+row(content, width-gutterWidth, m.colors.Foreground, m.colors.Background))
 			continue
 		}
 		if i >= len(source) {
-			lines = append(lines, row("", m.mainWidth(), m.colors.Foreground, m.colors.Background))
+			if blank == "" {
+				blank = row("", width, m.colors.Foreground, m.colors.Background)
+			}
+			lines = append(lines, blank)
 			continue
 		}
 		highlightCurrentLine := i == line && a == b
-		if highlightCurrentLine && y >= len(sticky) {
+		if highlightCurrentLine && !isSticky {
 			currentRow = y
 		}
-		if rendered, ok := t.renderedRows[i]; ok {
-			lines = append(lines, rendered)
+		rowKey := editorRowKey{current: i == line, sticky: isSticky, stickyBorder: isSticky && y == len(sticky)-1}
+		var rowBracket bracketGuide
+		if !isSticky && bracket.color != "" && bracket.column >= t.left && i > bracket.start && i < bracket.end {
+			rowBracket = bracket
+			rowKey.guideColumn, rowKey.guideColor = bracket.column, bracket.color
+		}
+		if rendered, ok := t.renderedRows[i]; ok && rendered.key == rowKey {
+			lines = append(lines, rendered.text)
 			continue
 		}
 		offset := d.LineOffset(i)
 		gutterBG := m.colors.Background
-		if y < len(sticky) {
+		if isSticky {
 			gutterBG = m.colors.StickyBackground
 		}
 		bg := gutterBG
@@ -713,16 +735,17 @@ func (m *Model) editorLines() []string {
 		}
 		gutter := theme.TextStyle(numberColor, gutterBG).Render(fmt.Sprintf("%5d%s", i+1, marker))
 		gutter += row("", 1, numberColor, gutterBG)
-		rendered := row(gutter+row(text.String(), textWidth, m.colors.Foreground, bg), m.mainWidth(), m.colors.Foreground, m.colors.Background)
-		rowBracket := bracketGuide{}
-		if y >= len(sticky) {
-			rowBracket = bracket
+		rendered := gutter + row(text.String(), textWidth, m.colors.Foreground, bg)
+		// Both segments already have a full background and the expected width.
+		// Six-digit line numbers extend the gutter and still need clipping.
+		if i >= 99999 || width < gutterWidth+1 {
+			rendered = row(rendered, width, m.colors.Foreground, m.colors.Background)
 		}
 		rendered = guides.decorate(rendered, i, gutterWidth, t.left, rowBracket, m.colors)
-		if len(sticky) > 0 && y == len(sticky)-1 {
+		if rowKey.stickyBorder {
 			rendered = underlineRow(rendered, theme.Composite(m.colors.StickyBorder, m.colors.StickyBackground), 0)
 		}
-		t.renderedRows[i] = rendered
+		t.renderedRows[i] = editorRenderedRow{key: rowKey, text: rendered}
 		lines = append(lines, rendered)
 	}
 

@@ -15,6 +15,12 @@ type Preview struct {
 	state   *textmate.StateStack
 	mapper  spanMapper
 	budget  time.Duration
+
+	// Only memoize the most recent visible line, and only when tokenizing
+	// it kept the same lexical state. Repeated lines then need no regex work.
+	lastLine  string
+	lastState *textmate.StateStack
+	lastSpans []Span
 }
 
 func NewPreview(path string, colors *theme.Theme) *Preview {
@@ -45,10 +51,18 @@ func NewPreview(path string, colors *theme.Theme) *Preview {
 }
 
 // Line advances lexical state. Context lines need no presentation spans.
+// Callers must treat returned spans as read-only.
 func (p *Preview) Line(line string, visible bool) []Span {
 	if p.budget <= 0 {
 		return nil
 	}
+	if p.lastState != nil && p.lastState == p.state && p.lastLine == line {
+		if visible {
+			return p.lastSpans
+		}
+		return nil
+	}
+	startState := p.state
 	var result textmate.LineResult
 	for attempt := 0; attempt < 3 && p.budget > 0; attempt++ {
 		start := time.Now()
@@ -66,7 +80,11 @@ func (p *Preview) Line(line string, visible bool) []Span {
 		p.state = result.RuleStack
 	}
 	if visible {
-		return p.mapper.spans(line, result.Tokens)
+		spans := p.mapper.spans(line, result.Tokens)
+		if !result.Stopped && startState == p.state {
+			p.lastLine, p.lastState, p.lastSpans = line, p.state, spans
+		}
+		return spans
 	}
 	return nil
 }

@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/colorprofile"
@@ -141,17 +142,26 @@ func writePreview(out io.Writer, path string, opt previewOptions) error {
 		contextStart = max(0, opt.skip-previewContextLines)
 	}
 	var syntax *highlight.Preview
+	styles := make(map[previewStyle]string)
+	plain := opt.colors == nil && opt.width == 0 && !opt.lineNumbers
 	for index := 0; opt.lines == 0 || index-opt.skip < opt.lines; index++ {
 		line, err := reader.ReadSlice('\n')
 		if len(line) == 0 && err == io.EOF {
 			break
 		}
 		shortened := err == bufio.ErrBufferFull
-		var source string
 		if index >= contextStart {
 			line = bytes.TrimSuffix(bytes.TrimSuffix(line, []byte("\n")), []byte("\r"))
 			shortened = shortened || len(line) > previewLineBytes
-			source = string(line[:min(len(line), previewLineBytes)])
+			line = line[:min(len(line), previewLineBytes)]
+			if index == 0 {
+				line = bytes.TrimPrefix(line, []byte("\xef\xbb\xbf"))
+			}
+		}
+		// ReadSlice's buffer is reused when draining an oversized line.
+		var source string
+		if err == bufio.ErrBufferFull && index >= contextStart {
+			source = string(line)
 		}
 		for err == bufio.ErrBufferFull {
 			_, err = reader.ReadSlice('\n')
@@ -162,8 +172,17 @@ func writePreview(out io.Writer, path string, opt previewOptions) error {
 		if index < contextStart {
 			continue
 		}
-		if index == 0 {
-			source = strings.TrimPrefix(source, "\ufeff")
+		if plain && !shortened && cleanPreviewBytes(line) {
+			if _, err := out.Write(line); err != nil {
+				return err
+			}
+			if _, err := io.WriteString(out, "\n"); err != nil {
+				return err
+			}
+			continue
+		}
+		if source == "" {
+			source = string(line)
 		}
 		source = strings.ToValidUTF8(source, "\ufffd")
 		visible := index >= opt.skip
@@ -177,7 +196,7 @@ func writePreview(out io.Writer, path string, opt previewOptions) error {
 		if !visible {
 			continue
 		}
-		lineText := previewLine(source, tabs, spans)
+		lineText := previewLine(source, tabs, spans, styles)
 		if shortened {
 			lineText += "…"
 		}
@@ -205,8 +224,7 @@ func (opt previewOptions) writeLine(out io.Writer, line string, number, digits i
 		}
 	}
 
-	if opt.width > 0 {
-		width := opt.width - len(gutter)
+	if width := opt.width - len(gutter); opt.width > 0 && len(line) > width {
 		if opt.wrap {
 			line = ansi.Hardwrap(line, width, true)
 			if strings.Contains(line, "\n") {
@@ -230,27 +248,84 @@ func (opt previewOptions) writeLine(out io.Writer, line string, number, digits i
 	return err
 }
 
-func previewLine(source, tabs string, spans []highlight.Span) string {
+type previewStyle struct {
+	fg, bg string
+	font   theme.FontStyle
+}
+
+func (s previewStyle) lipglossStyle() lipgloss.Style {
+	style := s.font.Apply(lipgloss.NewStyle())
+	if s.fg != "" {
+		style = style.Foreground(lipgloss.Color(s.fg))
+	}
+	if s.bg != "" {
+		style = style.Background(lipgloss.Color(s.bg))
+	}
+	return style
+}
+
+func previewLine(source, tabs string, spans []highlight.Span, styles map[previewStyle]string) string {
 	if len(spans) == 0 {
 		return previewText(source, tabs)
 	}
 	var line strings.Builder
-	runes := []rune(source)
-	start := 0
-	for _, span := range spans {
-		line.WriteString(previewText(string(runes[start:span.Start]), tabs))
-		style := span.Font.Apply(lipgloss.NewStyle())
-		if span.Color != "" {
-			style = style.Foreground(lipgloss.Color(span.Color))
+	line.Grow(len(source))
+	column, offset := 0, 0
+	take := func(end int) string {
+		start := offset
+		for column < end {
+			_, size := utf8.DecodeRuneInString(source[offset:])
+			offset += size
+			column++
 		}
-		if span.Background != "" {
-			style = style.Background(lipgloss.Color(span.Background))
-		}
-		line.WriteString(style.Render(previewText(string(runes[span.Start:span.End]), tabs)))
-		start = span.End
+		return previewText(source[start:offset], tabs)
 	}
-	line.WriteString(previewText(string(runes[start:]), tabs))
+	for _, span := range spans {
+		line.WriteString(take(span.Start))
+		style := previewStyle{span.Color, span.Background, span.Font}
+		text := take(span.End)
+		if span.Font&(theme.Underline|theme.Strikethrough) != 0 {
+			// Lipgloss applies these decorations per grapheme.
+			line.WriteString(style.lipglossStyle().Render(text))
+			continue
+		}
+		prefix, ok := styles[style]
+		if !ok {
+			// For ordinary single-line runs only the style determines the SGR prefix.
+			prefix, ok = strings.CutSuffix(style.lipglossStyle().Render("x"), "x"+ansi.ResetStyle)
+			if !ok {
+				prefix = ""
+			}
+			styles[style] = prefix
+		}
+		line.WriteString(prefix)
+		line.WriteString(text)
+		if prefix != "" {
+			line.WriteString(ansi.ResetStyle)
+		}
+	}
+	line.WriteString(previewText(source[offset:], tabs))
 	return line.String()
+}
+
+func cleanPreviewBytes(line []byte) bool {
+	for i := 0; i < len(line); {
+		b := line[i]
+		if b < ' ' || b == 0x7f {
+			return false
+		}
+		if b < utf8.RuneSelf {
+			i++
+			continue
+		}
+		r, size := utf8.DecodeRune(line[i:])
+		// Non-ASCII controls are C1. RuneError can represent an invalid byte.
+		if r <= 0x9f || r == utf8.RuneError {
+			return false
+		}
+		i += size
+	}
+	return true
 }
 
 func previewText(text, tabs string) string {

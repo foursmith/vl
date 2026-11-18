@@ -7,7 +7,9 @@ import (
 	"strings"
 	"testing"
 
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/ourongxing/vl/internal/highlight"
 	"github.com/ourongxing/vl/internal/theme"
 )
 
@@ -106,5 +108,37 @@ func TestPreviewWindowAfterLongLine(t *testing.T) {
 	}
 	if got, want := out.String(), "\nlast\n"; got != want {
 		t.Fatalf("output %q, want %q", got, want)
+	}
+}
+
+func TestPlainPreviewPreservesSanitization(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "source.txt")
+	source := "\ufeff中文\r\n\x1b[2J\tbad\xff\xfe\u009b\r\n\ufffd\nlast"
+	if err := os.WriteFile(path, []byte(source), 0600); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := writePreview(&out, path, previewOptions{tabSize: 2}); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := out.String(), "中文\n[2J  bad�\n�\nlast\n"; got != want {
+		t.Fatalf("output %q, want %q", got, want)
+	}
+}
+
+func TestPreviewStylesPreserveUnicodeAndDecorations(t *testing.T) {
+	source := "中á 中"
+	fg := "#AABBCC"
+	spans := []highlight.Span{
+		{Start: 1, End: 3, Color: fg, Font: theme.Bold},
+		{Start: 3, End: 5, Color: fg, Font: theme.Underline},
+	}
+	style := lipgloss.NewStyle().Foreground(lipgloss.Color(fg))
+	want := "中" + theme.Bold.Apply(style).Render("á") + theme.Underline.Apply(style).Render(" 中")
+	styles := make(map[previewStyle]string)
+	for range 2 {
+		if got := previewLine(source, "    ", spans, styles); got != want {
+			t.Fatalf("output %q, want %q", got, want)
+		}
 	}
 }

@@ -79,7 +79,7 @@ type tab struct {
 	highlightJob     highlightJob
 	highlighter      *highlight.Session
 	renderKey        editorRenderKey
-	renderedRows     map[int]string
+	renderedRows     map[int]editorRenderedRow
 	guides           *editorGuides
 	markdown         markdownLayout
 	markdownImages   *markdownImageCache
