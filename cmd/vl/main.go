@@ -21,7 +21,7 @@ import (
 	"github.com/foursmith/vl/internal/theme"
 )
 
-var buildVersion = "0.1.0-dev"
+var buildVersion = "dev"
 
 const usage = `A VSCode-like terminal workbench with Vim-like keybindings.
 

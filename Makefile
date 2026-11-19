@@ -1,6 +1,6 @@
 .PHONY: build run test check package
 
-VERSION ?= 0.1.0-dev
+VERSION ?= $(patsubst v%,%,$(shell git describe --tags --match 'v[0-9]*' --always --dirty 2>/dev/null || printf '%s' dev))
 OUTPUT ?= bin/vl
 
 build:
