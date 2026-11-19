@@ -30,7 +30,8 @@ Usage:
   vl preview [options] file
 
 Open a folder in the workspace viewer or a file in the editor.
-Line and column numbers start at 1. With no path, reopen the most recent workspace.
+Line and column numbers start at 1. With no path, reopen the most recent existing workspace
+or report an error if none remain.
 
 Options:
   -h, --help        Show this help
@@ -171,10 +172,17 @@ func startupPath(args []string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("read recent workspaces: %w", err)
 		}
-		if len(folders) == 0 {
-			return "", errors.New("no recent workspace; open a folder with: vl /path/to/folder")
+		for _, folder := range folders {
+			info, statErr := os.Stat(folder)
+			if os.IsNotExist(statErr) || (statErr == nil && !info.IsDir()) {
+				continue
+			}
+			if statErr != nil {
+				return "", statErr
+			}
+			return folder, nil
 		}
-		path = folders[0]
+		return "", errors.New("no available recent workspace; open a folder with: vl /path/to/folder")
 	}
 	if path == "" {
 		return "", errors.New("workspace path must not be empty")

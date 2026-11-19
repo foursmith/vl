@@ -16,7 +16,14 @@ func TestStartupPathUsesExplicitPathOrMostRecentWorkspace(t *testing.T) {
 	if _, err := startupPath(nil); err == nil {
 		t.Fatal("startup without history must require a path")
 	}
-	for _, folder := range []string{"/workspace/older", "/workspace/latest"} {
+	if err := config.RememberFolder(filepath.Join(t.TempDir(), "missing")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := startupPath(nil); err == nil {
+		t.Fatal("startup with only missing workspaces must require a path")
+	}
+	latest := t.TempDir()
+	for _, folder := range []string{t.TempDir(), latest, filepath.Join(t.TempDir(), "missing")} {
 		if err := config.RememberFolder(folder); err != nil {
 			t.Fatal(err)
 		}
@@ -25,7 +32,7 @@ func TestStartupPathUsesExplicitPathOrMostRecentWorkspace(t *testing.T) {
 		args []string
 		want string
 	}{
-		{nil, "/workspace/latest"},
+		{nil, latest},
 		{[]string{"/workspace/explicit"}, "/workspace/explicit"},
 		{[]string{"."}, "."},
 	} {
