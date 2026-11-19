@@ -148,3 +148,14 @@ func (v *Vim) MovePage(d *Document, rows int) {
 	v.motion(d, key, min(1000000, rows*count))
 	v.syncCursor(d)
 }
+
+// ScrollPage lets the view map screen rows through folds and diff headers.
+func (v *Vim) ScrollPage(d *Document, rows int, target func(line, delta int) int) {
+	if !v.CommandPending() {
+		rows *= max(1, v.count)
+	}
+	v.CancelPending()
+	line, col := d.Position()
+	d.SetPosition(target(line, rows), col)
+	v.syncCursor(d)
+}

@@ -51,7 +51,7 @@ var workbenchKeybindings = []workbenchShortcut{
 	{id: sidebarRefreshRuleID, binding: sidebarRefreshKey, command: commandRefresh, when: func(m *Model) bool {
 		return m.sidebar && m.section != search
 	}},
-	{binding: binding("Ctrl+D", "Toggle Inline View", "ctrl+d"), context: workspaceOnly, command: commandDiffLayout},
+	{context: workspaceOnly, command: commandDiffLayout},
 	{binding: binding("Ctrl+S", "Save", "ctrl+s"), context: fromSidebarSearch | fromFileFind, command: commandSave},
 	{binding: binding("Ctrl+W", "Close Editor", "ctrl+w"), context: fromSidebarSearch, command: commandClose},
 	{binding: binding("Ctrl+Shift+W", "Close Other Editors", "ctrl+shift+w", "ctrl+shift+W"), context: beforeInput, command: commandCloseOthers},
@@ -94,15 +94,31 @@ var sidebarKeys = struct {
 	OpenPullRequest: binding("o", "Open on GitHub", "o"),
 }
 
-var pickerKeys = struct{ Up, Down, PageUp, PageDown, First, Last, Accept key.Binding }{
-	Up:       binding("↑", "Previous", "up"),
-	Down:     binding("↓", "Next", "down"),
-	PageUp:   binding("PgUp", "Previous page", "pgup"),
-	PageDown: binding("PgDn", "Next page", "pgdown"),
-	First:    binding("Home", "First", "home"),
-	Last:     binding("End", "Last", "end"),
-	Accept:   binding("Enter", "Select", "enter"),
+var pickerKeys = struct{ Up, Down, First, Last, Accept key.Binding }{
+	Up:     binding("↑", "Previous", "up"),
+	Down:   binding("↓", "Next", "down"),
+	First:  binding("Home", "First", "home"),
+	Last:   binding("End", "Last", "end"),
+	Accept: binding("Enter", "Select", "enter"),
 }
+
+// pageDelta uses the height of the focused view, excluding its chrome.
+func pageDelta(k string, height int) int {
+	switch k {
+	case "ctrl+u":
+		return -max(1, height/2)
+	case "ctrl+d":
+		return max(1, height/2)
+	case "pgup":
+		return -height
+	case "pgdown":
+		return height
+	default:
+		return 0
+	}
+}
+
+func isHalfPageKey(k string) bool { return k == "ctrl+u" || k == "ctrl+d" }
 
 const (
 	navigationFirstPrefix  = "g"

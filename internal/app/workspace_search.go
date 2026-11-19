@@ -211,6 +211,10 @@ func (m *Model) searchKey(msg tea.KeyPressMsg) tea.Cmd {
 		return m.focusSearch(order[(index+step+len(order))%len(order)])
 	case key.Matches(msg, dismissKey):
 		return m.focusSearch(2)
+	case isHalfPageKey(msg.String()) && s.focus != 2:
+		m.focusSearch(2)
+		_, cmd := m.sidebarNavigationKey(msg)
+		return cmd
 	case key.Matches(msg, sidebarKeys.Open):
 		if s.focus == 2 {
 			return m.openSelected()

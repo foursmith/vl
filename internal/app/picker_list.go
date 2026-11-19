@@ -115,15 +115,18 @@ func (m *Model) scrollPicker(msg tea.MouseWheelMsg) {
 
 func (m *Model) pickerKey(msg tea.KeyPressMsg) bool {
 	index := m.pickerIndex
+	k := msg.String()
+	delta := pageDelta(k, m.pickerHeight())
 	switch {
 	case key.Matches(msg, pickerKeys.Up):
 		index--
 	case key.Matches(msg, pickerKeys.Down):
 		index++
-	case key.Matches(msg, pickerKeys.PageUp):
-		index -= m.pickerHeight()
-	case key.Matches(msg, pickerKeys.PageDown):
-		index += m.pickerHeight()
+	case delta != 0:
+		index += delta
+		if isHalfPageKey(k) {
+			m.pickerTop += delta
+		}
 	case key.Matches(msg, pickerKeys.First):
 		index = 0
 	case key.Matches(msg, pickerKeys.Last):

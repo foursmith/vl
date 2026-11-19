@@ -16,7 +16,7 @@ read-only and shares the motions, selections, yanks, and jumps. See
 | `/`, `n` | Open the Find widget and jump to the next match. | Enter a search pattern and repeat the search. `N` goes in the opposite direction. |
 | `Space` | Leader in an editor tab. Try `Space w` to save. | Move right in Normal mode |
 | `Ctrl+V` | Paste from the system clipboard in the text editor | Start Visual block in Normal mode |
-| `Ctrl+H` / `Ctrl+D` | Open Recent Workspace / Toggle Inline View | Move left / scroll down by half a screen in Normal mode |
+| `Ctrl+H` | Open Recent Workspace | Move left in Normal mode |
 | `Ctrl+F` / `Ctrl+W` | Find / Close Editor | Page forward / start a window command in Normal mode |
 | `Tab` / `Shift+Tab` | Indent / outdent in Normal and Visual | `Tab` jumps forward in the jumplist in Normal mode |
 | Backtick | Move back to a word start and toggle case. In Visual, extend the selection with that motion and toggle its case. | Jump to a mark |
@@ -51,6 +51,7 @@ like `3j` or `2w`.
 | `gg` / `G` | First / last line |
 | `5gg` / `5G` | Go to line 5 |
 | `PageUp` / `PageDown` | Move up / down a page |
+| `Ctrl+U` / `Ctrl+D` | Scroll up / down half a screen |
 
 In Normal mode, `/` opens the same Find widget as `Ctrl+F`. Matches are
 highlighted and the current match is centered when you jump. `n` advances and
@@ -134,6 +135,7 @@ Parentheses, square brackets, and braces can nest and span lines.
 | `Ctrl+Home` / `Ctrl+End` | Move to the start / end of the file |
 | `Shift` + a movement key above | Extend the selection |
 | `PageUp` / `PageDown` | Move up / down a page |
+| `Ctrl+U` / `Ctrl+D` | Scroll up / down half a screen |
 | `Ctrl+A` | Select All |
 | `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copy / Cut / Paste using the system clipboard |
 | `Ctrl+Z` / `Ctrl+Y` or `Ctrl+Shift+Z` | Undo / redo |

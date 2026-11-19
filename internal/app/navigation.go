@@ -54,10 +54,7 @@ func (n *navigationState) key(scope, k string) (string, int, bool) {
 		k = "left"
 	case matchesShortcut(k, navigationKeys.Right):
 		k = "right"
-	case matchesShortcut(k, pickerKeys.PageUp):
-		k = "pageUp"
-	case matchesShortcut(k, pickerKeys.PageDown):
-		k = "pageDown"
+	case isHalfPageKey(k), k == "pgup", k == "pgdown":
 	case matchesShortcut(k, pickerKeys.First):
 		k = "first"
 	case matchesShortcut(k, pickerKeys.Last):
@@ -75,7 +72,7 @@ func (m *Model) navigationKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 		k := msg.String()
 		digit := len(k) == 1 && k[0] >= '0' && k[0] <= '9' && (k != "0" || m.navigationState.count > 0)
 		if !digit && !matchesShortcut(k, navigationKeys.Left) && !matchesShortcut(k, navigationKeys.Right) &&
-			!matchesShortcut(k, navigationKeys.Up) && !matchesShortcut(k, navigationKeys.Down) {
+			!matchesShortcut(k, navigationKeys.Up) && !matchesShortcut(k, navigationKeys.Down) && !isHalfPageKey(k) {
 			m.navigationState = navigationState{}
 			return false, nil
 		}
@@ -89,6 +86,8 @@ func (m *Model) navigationKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 			m.panImage(0, -3*count)
 		case "down":
 			m.panImage(0, 3*count)
+		case "ctrl+u", "ctrl+d":
+			m.panImage(0, pageDelta(action, m.contentHeight())*count)
 		}
 		return true, nil
 	}

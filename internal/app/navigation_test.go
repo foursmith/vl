@@ -3,6 +3,7 @@ package app
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -117,6 +118,43 @@ func TestTreeVimNavigationAndFileOperators(t *testing.T) {
 	}
 }
 
+func TestHalfPageScrollInAllEditorModes(t *testing.T) {
+	for _, mode := range []string{"normal", "i", "v", "V"} {
+		t.Run(mode, func(t *testing.T) {
+			m := tabWorkspace(t, 1)
+			defer m.Close()
+			m.Update(tea.WindowSizeMsg{Width: 120, Height: 25})
+			m.openFile("file0.go")
+			tab := &m.tabs[m.activeTab]
+			d := tab.doc
+			original := strings.Repeat("    text\n", 100)
+			d.Text = original
+			if mode != "normal" {
+				press(m, mode)
+			}
+			for _, step := range []struct {
+				key  string
+				want int
+			}{{"ctrl+d", m.contentHeight() / 2}, {"ctrl+u", 0}} {
+				press(m, step.key)
+				line, _ := d.Position()
+				if line != step.want || tab.editorDisplayTop() != step.want || d.Text != original {
+					t.Fatalf("%s: cursor=%d scroll=%d, want %d with original text", step.key, line, tab.editorDisplayTop(), step.want)
+				}
+				if tab.vim.InsertMode != (mode == "i") || tab.vim.VisualMode != (mode == "v" || mode == "V") {
+					t.Fatalf("%s changed editor mode", step.key)
+				}
+				if tab.vim.VisualMode {
+					start, _ := d.Selection()
+					if start != 0 {
+						t.Fatalf("%s moved the selection anchor", step.key)
+					}
+				}
+			}
+		})
+	}
+}
+
 func TestDiffVimNavigationAndShortcutPriority(t *testing.T) {
 	m := reviewWorkspace(t, false)
 	press(m, "3")
@@ -135,8 +173,24 @@ func TestDiffVimNavigationAndShortcutPriority(t *testing.T) {
 	}
 	split := m.split
 	press(m, "ctrl+d")
+	if row, _ := m.review.Position(); row == 0 || m.split != split || !m.review.ReadOnly {
+		t.Fatal("Ctrl+D must scroll the read-only diff")
+	}
+	press(m, "ctrl+u")
+	if row, _ := m.review.Position(); row != 0 {
+		t.Fatal("Ctrl+U must scroll back to the first row")
+	}
+	for _, action := range m.commandActions() {
+		if action.id == string(commandDiffLayout) {
+			if action.key != "" {
+				t.Fatalf("Toggle Inline View still advertises %q", action.key)
+			}
+			action.run()
+			break
+		}
+	}
 	if m.split == split || !m.review.ReadOnly {
-		t.Fatal("Ctrl+D must change layout without changing read-only capability")
+		t.Fatal("Toggle Inline View must still change the layout from the palette")
 	}
 	press(m, "ctrl+f")
 	if !m.fileFindFocused() || m.modal != "" {

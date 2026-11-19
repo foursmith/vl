@@ -290,15 +290,14 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 	if m.confirmationDialog() {
 		l := m.dialogLayout()
 		top := l.top
+		delta := pageDelta(k, l.page)
 		switch {
 		case matchesShortcut(k, navigationKeys.Up):
 			top--
 		case matchesShortcut(k, navigationKeys.Down):
 			top++
-		case matchesShortcut(k, pickerKeys.PageUp):
-			top -= l.page
-		case matchesShortcut(k, pickerKeys.PageDown):
-			top += l.page
+		case delta != 0:
+			top += delta
 		case matchesShortcut(k, pickerKeys.First):
 			top = 0
 		case matchesShortcut(k, pickerKeys.Last):

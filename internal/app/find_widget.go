@@ -211,6 +211,9 @@ func (m *Model) fileFindKey(msg tea.KeyPressMsg) tea.Cmd {
 	case key.Matches(msg, dismissKey):
 		m.closeFileFind()
 		return nil
+	case isHalfPageKey(msg.String()):
+		m.scrollTextHalfPage(msg.String())
+		return nil
 	case m.matchWorkbenchCommand(msg.String(), commandFind):
 		return m.focusFileFind(0)
 	case key.Matches(msg, pickerKeys.Down):

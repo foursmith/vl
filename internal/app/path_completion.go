@@ -150,13 +150,21 @@ func (m *Model) validPathCompletion() bool {
 func (m *Model) pathCompletionKey(k string) (bool, tea.Cmd) {
 	c := m.pathCompletion
 	if c == nil || len(c.matches) == 0 || (!matchesShortcut(k, pickerKeys.Up) &&
-		!matchesShortcut(k, pickerKeys.Down) && !matchesShortcut(k, completionAccept)) {
+		!matchesShortcut(k, pickerKeys.Down) && !matchesShortcut(k, completionAccept) && !isHalfPageKey(k)) {
 		return false, nil
 	}
-	if !m.validPathCompletion() || m.editorCursor() == nil || m.width < 30 || m.height < 8 {
+	cursor := m.editorCursor()
+	if !m.validPathCompletion() || cursor == nil || m.width < 30 || m.height < 8 {
 		return false, nil
 	}
 	switch {
+	case isHalfPageKey(k):
+		_, height := m.pathCompletionRows(cursor.Y, len(c.matches))
+		if height <= 0 {
+			return false, nil
+		}
+		c.selected = min(len(c.matches)-1, max(0, c.selected+pageDelta(k, height)))
+
 	case matchesShortcut(k, pickerKeys.Up):
 		c.selected = max(0, c.selected-1)
 	case matchesShortcut(k, pickerKeys.Down):
@@ -179,16 +187,7 @@ func (m *Model) pathCompletionOverlay(base []string, cursor *tea.Cursor) []strin
 	if cursor == nil || !m.validPathCompletion() || len(c.matches) == 0 {
 		return base
 	}
-	above, below := cursor.Y-m.contentRow(), m.bodyHeight()-cursor.Y-1
-	count := min(6, len(c.matches))
-	up := below < count && above > below
-	y := cursor.Y + 1
-	if up {
-		count = min(count, above)
-		y = cursor.Y - count
-	} else {
-		count = min(count, below)
-	}
+	y, count := m.pathCompletionRows(cursor.Y, len(c.matches))
 	if count <= 0 {
 		return base
 	}
@@ -214,4 +213,14 @@ func (m *Model) pathCompletionOverlay(base []string, cursor *tea.Cursor) []strin
 		lines = append(lines, row(label, width, fg, bg))
 	}
 	return m.composeOverlay(base, lines, x, y)
+}
+
+func (m *Model) pathCompletionRows(cursorY, matches int) (y, count int) {
+	above, below := cursorY-m.contentRow(), m.bodyHeight()-cursorY-1
+	count = min(6, matches)
+	if below < count && above > below {
+		count = min(count, above)
+		return cursorY - count, count
+	}
+	return cursorY + 1, min(count, below)
 }

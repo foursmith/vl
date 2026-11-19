@@ -63,10 +63,14 @@ func (m *Model) contextMenuInput(msg tea.Msg) (tea.Cmd, bool) {
 				case "last":
 					menu.selected = len(menu.actions) - 1
 					m.ensureContextMenu()
-				case "pageUp":
-					m.moveContextMenu(-count * m.contextMenuLayout().count)
-				case "pageDown":
-					m.moveContextMenu(count * m.contextMenuLayout().count)
+				case "pgup", "pgdown":
+					m.moveContextMenu(count * pageDelta(action, m.contextMenuLayout().count))
+				case "ctrl+u", "ctrl+d":
+					height := m.contextMenuLayout().count
+					delta := count * pageDelta(action, height)
+					menu.selected = min(len(menu.actions)-1, max(0, menu.selected+delta))
+					menu.top = min(len(menu.actions)-height, max(0, menu.top+delta))
+					m.ensureContextMenu()
 				}
 				return nil, true
 			}

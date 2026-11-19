@@ -56,7 +56,6 @@ func TestDefaultWorkbenchShortcutActions(t *testing.T) {
 		{commandFocus, false, []tea.KeyPressMsg{keypress(tea.KeyF2)}, sidebarSection(explorer)},
 		{commandRefresh, false, []tea.KeyPressMsg{keypress(tea.KeyF5)}, refresh},
 		{commandRefresh, true, []tea.KeyPressMsg{keypress('r'), keypress('R'), {Code: 'r', Mod: tea.ModShift}}, refresh},
-		{commandDiffLayout, false, []tea.KeyPressMsg{ctrl('d')}, func(m *Model, _ tea.Cmd) bool { return !m.split }},
 		{commandSave, false, []tea.KeyPressMsg{ctrl('s')}, func(m *Model, _ tea.Cmd) bool {
 			data, err := os.ReadFile(m.document().Path)
 			return err == nil && !m.document().Dirty() && string(data) == m.document().Text

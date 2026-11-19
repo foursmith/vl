@@ -5,6 +5,12 @@ focus between the sidebar and the editor. Files open in Normal mode. See the
 [Vim guide](VIM.md#where-vl-differs-from-vim) for the bindings that behave
 differently in vl.
 
+Use `Ctrl+U` / `Ctrl+D` to scroll up / down by half the height of the active
+view. This works in text and diff editors (including Insert and Visual),
+sidebar lists, pickers, menus, and scrollable confirmation details. In
+Search, the keys navigate the results. In Find, they scroll the document
+while keeping focus on the field. In a zoomed image preview, they pan vertically.
+
 Keys are case-sensitive. `Ctrl+P` is a chord. `Space w` and `gg` are sequences.
 
 ## Adding a binding in code
@@ -166,12 +172,12 @@ Find, and Flash bindings as in a text tab.
 | `Shift+S` | Stage or unstage the entire file |
 | `d` | Discard selected changes or the current hunk, with confirmation |
 | `Shift+D` | Discard all unstaged changes to this file, with confirmation |
-| `Ctrl+D` | Toggle Inline View (inline / side by side) |
 | `Shift+F10` / right-click | Open diff actions, including staging, unstaging, and discarding unstaged hunks or selected changes |
 | `Ctrl+C` | Copy selected source text to the system clipboard |
 | `Space 1` … `Space 9` / `Space q` | Switch tabs / close the tab |
 
-In a side-by-side diff, keyboard navigation uses the right pane. You can
+Switch layouts from the diff toolbar or use **Toggle Inline View** in the
+Command Palette or diff context menu. In a side-by-side diff, keyboard navigation uses the right pane. You can
 select text with the mouse in either pane.
 Yanks and copies leave out line numbers and diff markers. Added or deleted
 files open inline, and side-by-side falls back to inline when space runs out.
