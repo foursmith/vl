@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 )
@@ -33,9 +34,15 @@ func VSCodeExtensionDirs() ([]string, error) {
 		return nil, err
 	}
 	candidates := []string{filepath.Join(home, ".vscode", "extensions")}
+	var windowsInstalls []string
 	if code, err := exec.LookPath("code"); err == nil {
 		if resolved, err := filepath.EvalSymlinks(code); err == nil {
-			candidates = append(candidates, filepath.Join(filepath.Dir(resolved), "..", "extensions"))
+			install := filepath.Join(filepath.Dir(resolved), "..")
+			if runtime.GOOS == "windows" {
+				windowsInstalls = append(windowsInstalls, install)
+			} else {
+				candidates = append(candidates, filepath.Join(install, "extensions"))
+			}
 		}
 	}
 	switch runtime.GOOS {
@@ -50,9 +57,16 @@ func VSCodeExtensionDirs() ([]string, error) {
 	case "windows":
 		for _, programs := range []string{filepath.Join(os.Getenv("LOCALAPPDATA"), "Programs"), os.Getenv("ProgramFiles"), os.Getenv("ProgramFiles(x86)")} {
 			if filepath.IsAbs(programs) {
-				candidates = append(candidates, filepath.Join(programs, "Microsoft VS Code", "resources", "app", "extensions"))
+				windowsInstalls = append(windowsInstalls, filepath.Join(programs, "Microsoft VS Code"))
 			}
 		}
+	}
+	for _, install := range windowsInstalls {
+		dirs, err := windowsVSCodeExtensionCandidates(install)
+		if err != nil {
+			return nil, err
+		}
+		candidates = append(candidates, dirs...)
 	}
 
 	var dirs []string
@@ -78,6 +92,26 @@ func VSCodeExtensionDirs() ([]string, error) {
 	}
 	if len(dirs) == 0 {
 		return nil, errors.New("No VS Code extension folders found")
+	}
+	return dirs, nil
+}
+
+var windowsVersionDirPattern = regexp.MustCompile(`^[0-9a-f]{10}$`)
+
+func windowsVSCodeExtensionCandidates(install string) ([]string, error) {
+	dirs := []string{filepath.Join(install, "resources", "app", "extensions")}
+	entries, err := os.ReadDir(install)
+	if errors.Is(err, os.ErrNotExist) {
+		return dirs, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	// New Windows installs put resources under the first ten commit hash digits.
+	for _, entry := range entries {
+		if entry.IsDir() && windowsVersionDirPattern.MatchString(entry.Name()) {
+			dirs = append(dirs, filepath.Join(install, entry.Name(), "resources", "app", "extensions"))
+		}
 	}
 	return dirs, nil
 }

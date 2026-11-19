@@ -3,9 +3,73 @@ package theme
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
+
+func TestWindowsVSCodeExtensionDirs(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Windows installation discovery")
+	}
+	for _, location := range []string{"user", "system", "system-x86", "path"} {
+		for _, version := range []string{"", "645f29cc31"} {
+			t.Run(location+"/"+version, func(t *testing.T) {
+				base := t.TempDir()
+				t.Setenv("USERPROFILE", filepath.Join(base, "home"))
+				t.Setenv("LOCALAPPDATA", filepath.Join(base, "local"))
+				t.Setenv("ProgramFiles", filepath.Join(base, "Program Files"))
+				t.Setenv("ProgramFiles(x86)", filepath.Join(base, "Program Files (x86)"))
+				t.Setenv("PATH", filepath.Join(base, "empty-path"))
+				var install string
+				switch location {
+				case "user":
+					install = filepath.Join(os.Getenv("LOCALAPPDATA"), "Programs", "Microsoft VS Code")
+				case "system":
+					install = filepath.Join(os.Getenv("ProgramFiles"), "Microsoft VS Code")
+				case "system-x86":
+					install = filepath.Join(os.Getenv("ProgramFiles(x86)"), "Microsoft VS Code")
+				case "path":
+					install = filepath.Join(base, "自定义 [VS Code]")
+					bin := filepath.Join(install, "bin")
+					if err := os.MkdirAll(bin, 0700); err != nil {
+						t.Fatal(err)
+					}
+					writeTheme(t, bin, "code.cmd", "@echo off\r\n")
+					t.Setenv("PATH", bin)
+				}
+				extensions := filepath.Join(install, version, "resources", "app", "extensions")
+				extension := filepath.Join(extensions, "theme-fixture")
+				if err := os.MkdirAll(extension, 0700); err != nil {
+					t.Fatal(err)
+				}
+				writeTheme(t, extension, "package.json", `{"publisher":"example","name":"fixture","contributes":{"themes":[
+					{"id":"night","label":"Fixture Night","uiTheme":"vs-dark","path":"theme.json"}
+				]}}`)
+				writeTheme(t, extension, "theme.json", `{"colors":{"editor.background":"#123456"}}`)
+				dirs, err := VSCodeExtensionDirs()
+				if err != nil {
+					t.Fatal(err)
+				}
+				want, err := filepath.EvalSymlinks(extensions)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if len(dirs) != 1 || dirs[0] != want {
+					t.Fatalf("extension directories = %v, want [%s]", dirs, want)
+				}
+				dest := t.TempDir()
+				if count, err := ImportVSCode(dest, dirs); count != 1 || err != nil {
+					t.Fatalf("imported %d themes: %v", count, err)
+				}
+				themes, err := DiscoverImports(dest)
+				if err != nil || len(themes) != 1 || themes[0].Name != "Fixture Night" || themes[0].Color("editor.background") != "#123456" {
+					t.Fatalf("imported themes = %v, %v", themes, err)
+				}
+			})
+		}
+	}
+}
 
 func TestImportSkipsBundledThemesAndResolvesSavedIDs(t *testing.T) {
 	home := t.TempDir()
