@@ -15,7 +15,7 @@ import (
 )
 
 func testRaster(pixels image.Image) *Image {
-	return &Image{pixels: pixels}
+	return &Image{pixels: pixels, bounds: pixels.Bounds()}
 }
 
 func TestFormatsAndTransparency(t *testing.T) {
@@ -59,6 +59,41 @@ func TestFormatsAndTransparency(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAlphaWebPUsesPackedPixels(t *testing.T) {
+	path := filepath.Join("..", "..", "assets", "screenshots.webp")
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	original, _, err := image.Decode(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	im, err := Open(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	packed, ok := im.pixels.(*image.RGBA)
+	if !ok || packed.Bounds() != original.Bounds() {
+		t.Fatal("alpha WebP did not use packed RGBA pixels")
+	}
+	for y := 0; y < packed.Bounds().Dy(); y += 7 {
+		for x := 0; x < packed.Bounds().Dx(); x += 7 {
+			r, g, b, a := original.At(x, y).RGBA()
+			want := color.RGBA{R: uint8(r >> 8), G: uint8(g >> 8), B: uint8(b >> 8), A: uint8(a >> 8)}
+			got := packed.RGBAAt(x, y)
+			if got.A != want.A || !withinOne(got.R, want.R) || !withinOne(got.G, want.G) || !withinOne(got.B, want.B) {
+				t.Fatalf("pixel at %d,%d = %v, want %v", x, y, got, want)
+			}
+		}
+	}
+}
+
+func withinOne(a, b uint8) bool {
+	return int(max(a, b))-int(min(a, b)) <= 1
 }
 
 func TestFitPreservesAspectAndBounds(t *testing.T) {

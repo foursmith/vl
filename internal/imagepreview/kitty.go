@@ -2,8 +2,10 @@ package imagepreview
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"image"
+	"image/png"
 	"strings"
 
 	"github.com/charmbracelet/x/ansi"
@@ -11,14 +13,37 @@ import (
 )
 
 func kittyPixelRows(id, columns, rows int, pixels image.Image) (string, []string, error) {
-	var upload bytes.Buffer
-	err := kitty.EncodeGraphics(&upload, pixels, &kitty.Options{
-		Action: kitty.TransmitAndPut, ID: id, PlacementID: 1,
-		Transmission: kitty.Direct, Format: kitty.PNG, Chunk: true, Quiet: 2,
-		VirtualPlacement: true, Columns: columns, Rows: rows, DoNotMoveCursor: true,
-	})
-	if err != nil {
+	var encoded bytes.Buffer
+	encoder := png.Encoder{CompressionLevel: png.BestSpeed}
+	if err := encoder.Encode(&encoded, pixels); err != nil {
 		return "", nil, err
+	}
+	opts := kitty.Options{
+		Action: kitty.TransmitAndPut, ID: id, PlacementID: 1,
+		Transmission: kitty.Direct, Format: kitty.PNG, Quiet: 2,
+		VirtualPlacement: true, Columns: columns, Rows: rows, DoNotMoveCursor: true,
+	}
+	var upload strings.Builder
+	const chunkBytes = kitty.MaxChunkSize / 4 * 3
+	upload.Grow(base64.StdEncoding.EncodedLen(encoded.Len()) + 20*(encoded.Len()/chunkBytes+1) + 128)
+	var payload [kitty.MaxChunkSize]byte
+	options := strings.Join(opts.Options(), ",")
+	for data := encoded.Bytes(); len(data) > 0; {
+		n := min(len(data), chunkBytes)
+		base64.StdEncoding.Encode(payload[:], data[:n])
+		data = data[n:]
+		more := "m=0"
+		if len(data) > 0 {
+			more = "m=1"
+		}
+		upload.WriteString("\x1b_G")
+		upload.WriteString(options)
+		upload.WriteByte(',')
+		upload.WriteString(more)
+		upload.WriteByte(';')
+		upload.Write(payload[:base64.StdEncoding.EncodedLen(n)])
+		upload.WriteString("\x1b\\")
+		options = "q=2"
 	}
 	result := make([]string, rows)
 	for y := 0; y < rows; y++ {

@@ -40,6 +40,9 @@ func (r *Runtime) Filter(_ tea.Model, msg tea.Msg) tea.Msg {
 	if upload, ok := msg.(imageUploadMsg); ok {
 		return r.current.imageUploadMessage(upload)
 	}
+	if retired, ok := msg.(imageRetirementMsg); ok {
+		return r.current.imageRetirementMessage(retired)
+	}
 	return msg
 }
 

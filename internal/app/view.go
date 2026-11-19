@@ -556,7 +556,7 @@ func (m *Model) editorLines() []string {
 			content := ""
 			if image.image == nil {
 				content = m.markdownRemoteImageRow(t.markdownImages, image, imageOffset)
-			} else if mdRows, _ := image.image.regionRows(image.region); imageOffset <= len(mdRows) {
+			} else if mdRows := image.image.regionRows(image.region); imageOffset <= len(mdRows) {
 				content = mdRows[imageOffset-1]
 			}
 			lines = append(lines, row("", editorGutterWidth, m.colors.Foreground, m.colors.Background)+row(content, textWidth, m.colors.Foreground, m.colors.Background))

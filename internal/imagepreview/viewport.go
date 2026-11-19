@@ -42,7 +42,7 @@ func (im *Image) ViewRegion(columns, rows, cellWidth, cellHeight int, zoom, cent
 // KittyRegion separates the pixel transfer from the virtual placement's text.
 // Upload once via terminal I/O; redraw placeholders without retransmitting PNGs.
 func (im *Image) KittyRegion(id int, region Region) (string, []string, error) {
-	if id <= 0 || uint64(id) > 0xffffffff || id&0x00ffff00 != 0 ||
+	if im.pixels == nil || id <= 0 || uint64(id) > 0xffffffff || id&0x00ffff00 != 0 ||
 		region.Columns <= 0 || region.Rows <= 0 || region.Columns > 255 || region.Rows > 255 ||
 		region.Width <= 0 || region.Height <= 0 || region.Scale <= 0 {
 		return "", nil, fmt.Errorf("invalid Kitty image region")
@@ -53,13 +53,30 @@ func (im *Image) KittyRegion(id int, region Region) (string, []string, error) {
 		// The terminal scales the raster into the original cell placement.
 		scale *= math.Sqrt(float64(imageDownsampleThreshold) / float64(im.sourceBytes))
 	}
-	scale = min(scale, maxUploadSide/max(region.Width, region.Height))
+	// The terminal scales the raster to the display cells. Enlarging it here
+	// adds encode and transfer work without adding source detail.
+	scale = min(scale, 1, maxUploadSide/max(region.Width, region.Height))
 	width := max(1, int(math.Round(region.Width*scale)))
 	height := max(1, int(math.Round(region.Height*scale)))
+	b := im.Bounds()
+	whole := region.X == 0 && region.Y == 0 && region.Width == float64(b.Dx()) && region.Height == float64(b.Dy())
+	if whole && width == b.Dx() && height == b.Dy() {
+		return kittyPixelRows(id, region.Columns, region.Rows, im.pixels)
+	}
 	target := image.NewRGBA(image.Rect(0, 0, width, height))
 	sx, sy := float64(width)/region.Width, float64(height)/region.Height
-	b := im.Bounds()
 	transform := f64.Aff3{sx, 0, -(region.X + float64(b.Min.X)) * sx, 0, sy, -(region.Y + float64(b.Min.Y)) * sy}
-	draw.CatmullRom.Transform(target, transform, im.pixels, b, draw.Src, nil)
+	if max(sx, sy) < .25 {
+		// Take four bilinear samples per output pixel at thumbnail sizes,
+		// where a single sample can miss fine patterns in the source.
+		samples := image.NewRGBA(image.Rect(0, 0, width*2, height*2))
+		for i := range transform {
+			transform[i] *= 2
+		}
+		draw.ApproxBiLinear.Transform(samples, transform, im.pixels, b, draw.Src, nil)
+		draw.ApproxBiLinear.Scale(target, target.Bounds(), samples, samples.Bounds(), draw.Src, nil)
+	} else {
+		draw.ApproxBiLinear.Transform(target, transform, im.pixels, b, draw.Src, nil)
+	}
 	return kittyPixelRows(id, region.Columns, region.Rows, target)
 }

@@ -119,7 +119,7 @@ func (m *Model) scheduleMarkdownImages() tea.Cmd {
 				state.cancel()
 			}
 			if state.image != nil {
-				m.imageRetired = append(m.imageRetired, state.image.id)
+				m.retireImageID(state.image.id)
 			}
 			delete(cache.remote, address)
 		}
@@ -140,7 +140,7 @@ func (m *Model) scheduleLocalMarkdownImages(cache *markdownImageCache, paths []s
 	for path, im := range cache.files {
 		if !slices.Contains(paths, path) {
 			if im != nil {
-				m.imageRetired = append(m.imageRetired, im.id)
+				m.retireImageID(im.id)
 			}
 			delete(cache.files, path)
 		}

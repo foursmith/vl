@@ -102,6 +102,7 @@ func TestImageZoomFrameBounds(t *testing.T) {
 		m.Update(tea.WindowSizeMsg{Width: size[0], Height: size[1]})
 		m.sidebar = false
 		m.zoomImage(32, m.mainX()+m.mainWidth()/2, editorContentRow+m.contentHeight()/2)
+		imageUploadOutput(t, m)
 		lines := strings.Split(m.View().Content, "\n")
 		if len(lines) != size[1] {
 			t.Fatal("zoom changed frame height")
@@ -111,6 +112,44 @@ func TestImageZoomFrameBounds(t *testing.T) {
 				t.Fatal("zoom escaped frame width")
 			}
 		}
+	}
+}
+
+func TestImageZoomRasterCoalescesInputAndKeepsPreviousFrame(t *testing.T) {
+	m := zoomWorkspace(t)
+	t.Cleanup(m.Close)
+	label := m.tr("Loading image…")
+	loading := m.imageLines()
+	want := strings.Repeat(" ", (m.mainWidth()-ansi.StringWidth(label))/2) + label
+	if got := loading[len(loading)/2]; got != want {
+		t.Fatalf("loading label = %q, want %q", got, want)
+	}
+	imageUploadOutput(t, m)
+	im := m.tabs[0].image
+	fit := im.region
+	x, y := m.mainX()+m.mainWidth()/2, m.contentRow()+m.contentHeight()/2
+	m.zoomImage(2, x, y)
+	cmd := m.prepareImageUploads()
+	if cmd == nil {
+		t.Fatal("zoom did not schedule a raster")
+	}
+	for range 5 {
+		m.zoomImage(1.25, x, y)
+		if m.prepareImageUploads() != nil {
+			t.Fatal("queued another raster while a frame was in flight")
+		}
+	}
+	if im.region != fit || !strings.Contains(strings.Join(m.imageLines(), ""), "\U0010eeee") {
+		t.Fatal("zoom hid the previous frame while rendering")
+	}
+	first := cmd().(imageRasterResult)
+	m.finishImageRaster(first)
+	if im.region != first.region || im.region == m.imageRegion() {
+		t.Fatal("expected the completed intermediate frame to be presented")
+	}
+	imageUploadOutput(t, m)
+	if im.region != m.imageRegion() || !im.upload.sent {
+		t.Fatal("did not render and upload the latest viewport")
 	}
 }
 

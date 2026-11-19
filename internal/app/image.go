@@ -21,6 +21,8 @@ type imageState struct {
 	content                []string
 	region                 imagepreview.Region
 	upload                 *imageUpload
+	renderErr              error
+	lastUsed               uint64
 	width, height          int
 	zoom, centerX, centerY float64
 }
@@ -40,9 +42,7 @@ func (m *Model) currentImage() *imagepreview.Image {
 }
 
 func (m *Model) imageLines() []string {
-	t := &m.tabs[m.activeTab]
-	w, h := m.mainWidth(), m.contentHeight()
-	return m.imagePreviewLines(t.image, w, h)
+	return m.imagePreviewLines(m.tabs[m.activeTab].image, m.mainWidth(), m.contentHeight())
 }
 
 func (m *Model) imagePreviewLines(im *imageState, w, h int) []string {
@@ -50,46 +50,72 @@ func (m *Model) imagePreviewLines(im *imageState, w, h int) []string {
 		return nil
 	}
 	if !m.kittySupported {
-		text := m.tr("No response to the Kitty graphics protocol; a terminal with Unicode placeholder support is required")
-		if !m.kittyProbeDone {
-			text = m.tr("Detecting terminal graphics protocol…")
+		text := m.tr("Detecting terminal graphics protocol…")
+		if m.kittyProbeDone {
+			text = m.tr("No response to the Kitty graphics protocol; a terminal with Unicode placeholder support is required")
 		}
 		lines := make([]string, h)
-		lines[h/2] = "  " + text
+		lines[h/2] = centerImageLabel(text, w)
 		return lines
 	}
 	if im.width == w && im.height == h && im.rows != nil {
 		return im.rows
 	}
-	region := im.ViewRegion(max(1, w-4), max(1, h-2), m.cellWidth, m.cellHeight, im.zoom, im.centerX, im.centerY)
-	cols, rows := region.Columns, region.Rows
 	lines := make([]string, h)
-	content, err := im.regionRows(region)
-	if err != nil {
-		lines[h/2] = "  " + safe(m.tr(err.Error()))
-		im.width, im.height, im.rows = w, h, lines
-		return lines
-	}
-	x, y := (w-cols)/2, (h-rows)/2
-	for r, line := range content {
-		lines[y+r] = strings.Repeat(" ", x) + line
+	switch {
+	case im.renderErr != nil:
+		lines[h/2] = "  " + safe(m.tr(im.renderErr.Error()))
+	case im.content == nil:
+		lines[h/2] = centerImageLabel(m.tr("Loading image…"), w)
+	default:
+		placeImageRows(lines, w, im.content, im.region)
 	}
 	im.width, im.height, im.rows = w, h, lines
 	return lines
 }
 
-func (im *imageState) regionRows(region imagepreview.Region) ([]string, error) {
-	if im.content != nil && im.region == region {
-		return im.content, nil
+func centerImageLabel(text string, width int) string {
+	text = ansi.Truncate(text, width, "")
+	return strings.Repeat(" ", (width-ansi.StringWidth(text))/2) + text
+}
+
+func (m *Model) diffImagePreviewLines(im *imageState, w, h int) []string {
+	if m.kittySupported && w > 0 && h > 0 && (im.rows == nil || im.width != w || im.height != h) {
+		im.regionRows(im.viewRegion(w, h, m.cellWidth, m.cellHeight))
 	}
-	im.content, im.upload = nil, nil
-	upload, content, err := im.KittyRegion(im.id, region)
-	if err != nil {
-		return nil, err
+	return m.imagePreviewLines(im, w, h)
+}
+
+func placeImageRows(lines []string, width int, content []string, region imagepreview.Region) {
+	// A previous frame may be too large after a window resize.
+	if region.Columns > width || region.Rows > len(lines) {
+		return
 	}
-	im.content, im.region = content, region
-	im.upload = &imageUpload{target: im, payload: upload}
-	return content, nil
+	padding := strings.Repeat(" ", (width-region.Columns)/2)
+	top := (len(lines) - region.Rows) / 2
+	for r, line := range content {
+		lines[top+r] = padding + line
+	}
+}
+
+func (im *imageState) hasRegion(region imagepreview.Region) bool {
+	return im.region == region && (im.content != nil || im.renderErr != nil)
+}
+
+func (im *imageState) regionRows(region imagepreview.Region) []string {
+	if !im.hasRegion(region) {
+		upload, content, err := im.KittyRegion(im.id, region)
+		im.setRegion(region, upload, content, err)
+	}
+	return im.content
+}
+
+func (im *imageState) setRegion(region imagepreview.Region, payload string, content []string, err error) {
+	im.region, im.content, im.renderErr = region, content, err
+	im.rows, im.upload = nil, nil
+	if err == nil {
+		im.upload = &imageUpload{target: im, payload: payload}
+	}
 }
 
 type imageReloadMsg struct {
@@ -113,11 +139,43 @@ func (m *Model) finishImageReload(msg imageReloadMsg) {
 			return
 		}
 		t.diskNotice = ""
-		if msg.fresh.SameContent(t.image.Image) {
+		if t.image.HasPixels() && msg.fresh.SameContent(t.image.Image) {
 			return
 		}
-		t.image.Image, t.image.rows, t.image.content = msg.fresh, nil, nil
+		t.image.replacePixels(msg.fresh)
+		m.trimImageTabs()
 		return
+	}
+}
+
+func (im *imageState) replacePixels(fresh *imagepreview.Image) {
+	im.Image, im.rows, im.content, im.upload, im.renderErr = fresh, nil, nil, nil, nil
+}
+
+const imageTabPixelBudget = 64 << 20
+
+func (m *Model) trimImageTabs() {
+	total := 0
+	for i := range m.tabs {
+		if im := m.tabs[i].image; im != nil {
+			total += im.DecodedBytes()
+		}
+	}
+	for total > imageTabPixelBudget {
+		var oldest *imageState
+		for i := range m.tabs {
+			if im := m.tabs[i].image; i != m.activeTab && im != nil && im.HasPixels() &&
+				(oldest == nil || im.lastUsed < oldest.lastUsed) {
+				oldest = im
+			}
+		}
+		if oldest == nil {
+			return
+		}
+		total -= oldest.DecodedBytes()
+		m.retireImageID(oldest.id)
+		oldest.id = 0
+		oldest.replacePixels(oldest.WithoutPixels())
 	}
 }
 
@@ -152,17 +210,17 @@ func (m *Model) allocateImageID() int {
 
 func (m *Model) retireImage(t *tab) {
 	if t.image != nil {
-		m.imageRetired = append(m.imageRetired, t.image.id)
+		m.retireImageID(t.image.id)
 	}
 	if t.markdownImages != nil {
 		for _, im := range t.markdownImages.files {
 			if im != nil {
-				m.imageRetired = append(m.imageRetired, im.id)
+				m.retireImageID(im.id)
 			}
 		}
 		for _, state := range t.markdownImages.remote {
 			if state.image != nil {
-				m.imageRetired = append(m.imageRetired, state.image.id)
+				m.retireImageID(state.image.id)
 			}
 		}
 	}
@@ -171,16 +229,36 @@ func (m *Model) retireImage(t *tab) {
 	}
 }
 
+func (m *Model) retireImageID(id int) {
+	if id != 0 {
+		m.imageRetired = append(m.imageRetired, id)
+	}
+}
+
+type imageRetirementMsg []int
+
 func (m *Model) flushRetiredImages() tea.Cmd {
 	if len(m.imageRetired) == 0 {
 		return nil
 	}
-	var out strings.Builder
-	for _, id := range m.imageRetired {
-		out.WriteString(imagepreview.DeleteKitty(id))
-	}
+	retired := imageRetirementMsg(m.imageRetired)
 	m.imageRetired = nil
-	return tea.Raw(out.String())
+	return func() tea.Msg { return retired }
+}
+
+func (m *Model) imageRetirementMessage(retired imageRetirementMsg) tea.Msg {
+	var out strings.Builder
+	for _, id := range retired {
+		if !m.imageIDs[id] {
+			continue
+		}
+		out.WriteString(imagepreview.DeleteKitty(id))
+		delete(m.imageIDs, id)
+	}
+	if out.Len() == 0 {
+		return nil
+	}
+	return tea.RawMsg{Msg: out.String()}
 }
 
 // ImageCleanupSequence releases only this workbench's images, including IDs
@@ -195,8 +273,11 @@ func (m *Model) ImageCleanupSequence() string {
 
 // Zoom is relative to the initial fit, and the center is normalized source space.
 func (m *Model) imageRegion() imagepreview.Region {
-	t := &m.tabs[m.activeTab]
-	return t.image.ViewRegion(max(1, m.mainWidth()-4), max(1, m.contentHeight()-2), m.cellWidth, m.cellHeight, t.image.zoom, t.image.centerX, t.image.centerY)
+	return m.tabs[m.activeTab].image.viewRegion(m.mainWidth(), m.contentHeight(), m.cellWidth, m.cellHeight)
+}
+
+func (im *imageState) viewRegion(w, h, cellWidth, cellHeight int) imagepreview.Region {
+	return im.ViewRegion(max(1, w-4), max(1, h-2), cellWidth, cellHeight, im.zoom, im.centerX, im.centerY)
 }
 
 func (m *Model) imageContentAt(x, y int) bool {

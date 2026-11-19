@@ -128,6 +128,11 @@ func (m *Model) selectTab(index int) {
 		m.lastFileRepository = m.fileRepository(t.path())
 	}
 	m.ensureEditor()
+	if im := m.tabs[index].image; im != nil {
+		m.imageUse++
+		im.lastUsed = m.imageUse
+	}
+	m.trimImageTabs()
 	if t := &m.tabs[index]; t.doc != nil && t.positionBaseline == nil {
 		t.capturePosition()
 	}

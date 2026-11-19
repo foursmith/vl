@@ -87,7 +87,7 @@ func (m *Model) setDiffImages(d *diffState, images *diffImages) {
 			continue
 		}
 		if old != nil {
-			m.imageRetired = append(m.imageRetired, old.id)
+			m.retireImageID(old.id)
 		}
 		if next != nil && next.id == 0 {
 			next.id = m.allocateImageID()
@@ -116,7 +116,7 @@ func (m *Model) diffImageLines() []string {
 		if im != nil {
 			b := im.Bounds()
 			label += fmt.Sprintf(" · %d × %d", b.Dx(), b.Dy())
-			copy(columns[side][1:], m.imagePreviewLines(im, width, h-1))
+			copy(columns[side][1:], m.diffImagePreviewLines(im, width, h-1))
 		} else {
 			text := m.tr("Missing")
 			if err := m.images.errors[side]; err != nil {

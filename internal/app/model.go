@@ -130,6 +130,8 @@ type Model struct {
 	imageIDs                           map[int]bool
 	imageRetired                       []int
 	imagePan                           *imagePan
+	imageRaster                        *imageRasterRequest
+	imageUse                           uint64
 
 	colors                  theme.Palette
 	monochrome              bool
@@ -653,6 +655,8 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		return m, tea.Batch(m.handleWatch(msg.batch), m.nextWatch())
 	case imageReloadMsg:
 		m.finishImageReload(msg)
+	case imageRasterResult:
+		m.finishImageRaster(msg)
 	case fileReloadMsg:
 		m.finishReload(msg)
 	case highlightStartMsg:
@@ -1235,12 +1239,12 @@ func (m *Model) reloadCleanTabs() {
 	newActive := -1
 	for i, t := range m.tabs {
 		wasActive := i == m.activeTab
-		if t.image != nil {
+		if t.image != nil && t.image.HasPixels() {
 			fresh, err := imagepreview.Open(m.ctx, t.image.Path)
 			if err != nil {
 				m.notice = m.tr(err.Error())
-			} else {
-				t.image.Image, t.image.rows = fresh, nil
+			} else if !fresh.SameContent(t.image.Image) {
+				t.image.replacePixels(fresh)
 			}
 		}
 		if t.doc != nil && !t.doc.Dirty() {
@@ -1264,6 +1268,11 @@ func (m *Model) reloadCleanTabs() {
 	if m.activeTab < 0 && len(kept) > 0 {
 		m.activeTab = 0
 	}
+	if image := m.currentImage(); image != nil && !image.HasPixels() {
+		im := m.tabs[m.activeTab].image
+		im.renderErr, im.rows = nil, nil
+	}
+	m.trimImageTabs()
 	if len(kept) == 0 {
 		m.diffState = m.emptyDiff
 	} else {

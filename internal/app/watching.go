@@ -111,6 +111,9 @@ func (m *Model) reloadWatchedFiles(paths []string) tea.Cmd {
 		}
 		t.reloadSeq++
 		if t.image != nil {
+			if !t.image.HasPixels() && i != m.activeTab {
+				continue
+			}
 			original, path, seq := t.image.Image, t.path(), t.reloadSeq
 			commands = append(commands, func() tea.Msg {
 				fresh, err := imagepreview.Open(m.ctx, path)

@@ -71,12 +71,13 @@ func TestZoomRegionBoundsAtExtremeScale(t *testing.T) {
 		t.Fatal("invalid crop bounds")
 	}
 	got := decodeRegion(t, im, region)
-	if got.Bounds().Dx() > 640 || got.Bounds().Dy() > 384 {
-		t.Fatal("allocated full zoomed image")
+	if want := image.Pt(int(region.Width+.5), int(region.Height+.5)); got.Bounds().Size() != want {
+		t.Fatalf("zoom uploaded %v pixels, want the source crop %v", got.Bounds().Size(), want)
 	}
-	wide := im.ViewRegion(255, 6, 32, 32, 64, 1, 0)
-	if got := decodeRegion(t, im, wide).Bounds().Size(); got != image.Pt(4096, 96) {
-		t.Errorf("large viewport uploaded %v, want 4096×96", got)
+	wide := testRaster(image.NewNRGBA(image.Rect(0, 0, 8192, 192)))
+	fit := wide.ViewRegion(255, 6, 32, 32, 1, .5, .5)
+	if got := decodeRegion(t, wide, fit).Bounds().Size(); got != image.Pt(4096, 96) {
+		t.Errorf("wide source uploaded %v, want 4096×96", got)
 	}
 }
 

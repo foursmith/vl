@@ -143,6 +143,38 @@ func TestImagePreviewPreservesDirtyAndFailedOpen(t *testing.T) {
 	}
 }
 
+func TestImageTabPixelBudgetReloadsEvictedTab(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	t.Cleanup(m.Close)
+	m.kittySupported = true
+	source, err := os.ReadFile(filepath.Join("..", "..", "assets", "screenshots.webp"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"one.webp", "two.webp", "three.webp"} {
+		if err := os.WriteFile(filepath.Join(m.repo.Root, name), source, 0600); err != nil {
+			t.Fatal(err)
+		}
+		m.openFile(name)
+		m.zoomImage(2, m.mainX()+10, m.contentRow()+5)
+		imageUploadOutput(t, m)
+	}
+	first := m.tabs[0].image
+	if len(m.tabs) != 3 || first.DecodedBytes() != 0 || first.Bounds().Dx() != 3200 || first.id != 0 {
+		t.Fatal("least recently used image did not release its pixels and placement")
+	}
+	if m.tabs[1].image.DecodedBytes() == 0 || m.tabs[2].image.DecodedBytes() == 0 {
+		t.Fatal("image budget discarded more tabs than necessary")
+	}
+	m.activateTab(0)
+	if first.zoom != 2 || !strings.Contains(strings.Join(m.imageLines(), ""), "Loading image") {
+		t.Fatal("evicted tab lost its zoom or loading state")
+	}
+	if output := imageUploadOutput(t, m); output == "" || first.DecodedBytes() == 0 || m.tabs[1].image.DecodedBytes() != 0 {
+		t.Fatal("reselected tab did not restore its pixels within the budget")
+	}
+}
+
 func TestSVGFilePreviewWithoutResvgUsesTextTab(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	defer m.Close()

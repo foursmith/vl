@@ -18,15 +18,20 @@ import (
 
 func TestImageProtocolDetectionAndCellSize(t *testing.T) {
 	m := tabWorkspace(t, 1)
+	m.width = 160
 	writePreviewPNG(t, filepath.Join(m.repo.Root, "image.png"), 32, 5)
 	m.openFile("image.png")
-	if strings.Contains(strings.Join(m.imageLines(), ""), "\x1b_G") {
-		t.Fatal("transmitted before detection")
+	assertCentered := func(label string) {
+		t.Helper()
+		lines := m.imageLines()
+		padding := (m.mainWidth() - ansi.StringWidth(label)) / 2
+		if got := lines[len(lines)/2]; got != strings.Repeat(" ", padding)+label {
+			t.Fatalf("image status = %q, want centered %q", got, label)
+		}
 	}
+	assertCentered(m.tr("Detecting terminal graphics protocol…"))
 	m.Update(imageProbeTimeoutMsg{})
-	if !strings.Contains(strings.Join(m.imageLines(), ""), "No response") {
-		t.Fatal("missing unsupported-terminal explanation")
-	}
+	assertCentered(m.tr("No response to the Kitty graphics protocol; a terminal with Unicode placeholder support is required"))
 	m.Update(uv.KittyGraphicsEvent{Options: kitty.Options{ID: kittyProbeID}, Payload: []byte("OK")})
 	if !m.kittySupported || !strings.Contains(imageUploadOutput(t, m), "\x1b_G") {
 		t.Fatal("did not enable image protocol")
@@ -138,12 +143,16 @@ func TestImageProtocolSurvivesRendererAndCleansOwnedIDs(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("preview replacement did not release terminal image")
 	}
-	raw, ok := cmd().(tea.RawMsg)
-	if !ok || !strings.Contains(fmt.Sprint(raw), "i=") {
-		t.Fatal("missing image deletion")
-	}
 	if cleanup := m.ImageCleanupSequence(); cleanup != deletion {
 		t.Fatalf("cleanup escaped image ownership: %q", cleanup)
+	}
+	r := NewRuntime(m, nil)
+	raw, ok := r.Filter(r, cmd()).(tea.RawMsg)
+	if !ok || raw.Msg != deletion {
+		t.Fatal("missing image deletion")
+	}
+	if cleanup := m.ImageCleanupSequence(); cleanup != "" {
+		t.Fatalf("deleted ID was retained: %q", cleanup)
 	}
 }
 
@@ -201,6 +210,11 @@ func imageUploadOutput(t testing.TB, m *Model) string {
 		msg := cmd()
 		if batch, ok := msg.(tea.BatchMsg); ok {
 			queue = append(queue, batch...)
+			continue
+		}
+		if result, ok := msg.(imageRasterResult); ok {
+			m.finishImageRaster(result)
+			queue = append(queue, m.prepareImageUploads())
 			continue
 		}
 		if raw, ok := runtime.Filter(runtime, msg).(tea.RawMsg); ok {

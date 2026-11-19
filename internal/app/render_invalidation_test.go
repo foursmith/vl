@@ -23,6 +23,10 @@ func pendingImageUpload(t testing.TB, m *Model) imageUploadMsg {
 		}
 		msg = batch[0]()
 	}
+	if result, ok := msg.(imageRasterResult); ok {
+		m.finishImageRaster(result)
+		return pendingImageUpload(t, m)
+	}
 	upload, ok := msg.(imageUploadMsg)
 	if !ok {
 		t.Fatalf("unexpected upload command %T", msg)
@@ -69,6 +73,7 @@ func TestImageReloadAndDuplicateCellReportRetainPixels(t *testing.T) {
 	m := zoomWorkspace(t)
 	defer m.Close()
 	imageUploadOutput(t, m)
+	m.imageLines()
 	im := m.tabs[0].image
 	original, upload := im.Image, im.upload
 	rows := im.rows
@@ -153,19 +158,21 @@ func TestImageRenderErrorDropsPendingUpload(t *testing.T) {
 	im := m.tabs[0].image
 	id := im.id
 	m.zoomImage(2, m.mainX()+10, m.contentRow()+5)
-	im.id = 0 // Force the protocol encoder's validation error.
+	im.id = -1 // Force the protocol encoder's validation error.
 	if got := imageUploadOutput(t, m); got != "" {
 		t.Fatal("failed crop uploaded stale pixels")
 	}
 	if NewRuntime(m, nil).Filter(nil, pending) != nil {
 		t.Fatal("failed crop retained an obsolete upload")
 	}
+	m.imageLines()
 	rows := im.rows
 	m.imageLines()
 	if &im.rows[0] != &rows[0] {
 		t.Fatal("unchanged render failure was recomputed")
 	}
-	im.id, im.rows = id, nil
+	im.id = id
+	im.replacePixels(im.Image)
 	if got := imageUploadOutput(t, m); got == "" {
 		t.Fatal("valid retry did not restore image upload")
 	}
