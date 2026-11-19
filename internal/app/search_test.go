@@ -101,7 +101,7 @@ func TestLocalSearchCentersCtrlFSlashAndNext(t *testing.T) {
 		t.Helper()
 		row, _ := d.Position()
 		tab := &m.tabs[m.activeTab]
-		wantTop := min(max(0, wantRow-m.contentHeight()/2), 120-m.contentHeight())
+		wantTop := max(0, wantRow-m.contentHeight()/2)
 		if row != wantRow || tab.top != wantTop || d.SelectedText() != "needle" {
 			t.Fatalf("row=%d top=%d, want %d / %d", row, tab.top, wantRow, wantTop)
 		}

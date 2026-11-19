@@ -96,9 +96,15 @@ func codeScopes(path, text string) []codeScope {
 
 func (m *Model) editorStickyRows() []int {
 	t := &m.tabs[m.activeTab]
-	t.syncCodeScopes()
+	top := t.visibleRow(t.top)
+	if len(t.scopes) == 0 {
+		return nil
+	}
+	last := t.visibleRow(len(t.doc.Lines()) - 1)
+	// Leave the last line visible when it has scrolled into the sticky area.
+	limit := min(stickyLimit(m.contentHeight()), max(0, last-top))
 	if len(t.folds) == 0 {
-		return stickyRows(t.scopes, t.top, stickyLimit(m.contentHeight()))
+		return stickyRows(t.scopes, top, limit)
 	}
 	var scopes []codeScope
 	for _, scope := range t.scopes {
@@ -107,7 +113,7 @@ func (m *Model) editorStickyRows() []int {
 			scopes = append(scopes, codeScope{start, end})
 		}
 	}
-	rows := stickyRows(scopes, t.visibleRow(t.top), stickyLimit(m.contentHeight()))
+	rows := stickyRows(scopes, top, limit)
 	for i := range rows {
 		rows[i] = t.sourceRow(rows[i])
 	}

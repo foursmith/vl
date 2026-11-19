@@ -118,8 +118,6 @@ func (m *Model) resize() {
 	m.hoverOnly = false
 	m.hoverRender = hoverRenderCache{}
 	m.pickerFilter = pickerFilterCache{}
-	m.viewport.SetWidth(m.mainWidth())
-	m.viewport.SetHeight(m.contentHeight())
 	m.resizeInput()
 	m.syncPicker()
 	m.renderDiff()
@@ -326,6 +324,10 @@ type diffLayoutKey struct {
 }
 
 func (m *Model) renderDiff() {
+	w, height := m.mainWidth(), m.contentHeight()
+	m.viewport.SetWidth(w)
+	heightChanged := m.viewport.Height() != height
+	m.viewport.SetHeight(height)
 	if m.images != nil {
 		m.diffRows, m.diffRowHunks = nil, nil
 		m.diffSelection = diffSelection{}
@@ -333,9 +335,11 @@ func (m *Model) renderDiff() {
 		m.viewport.SetContent("")
 		return
 	}
-	w := m.mainWidth()
 	key := diffLayoutKey{m.patch.Raw, m.diffPath, w, m.splitDiff()}
 	if m.diffRows != nil && m.diffLayout == key {
+		if heightChanged {
+			m.setDiffScrollRows()
+		}
 		return
 	}
 	m.diffLayout = key
@@ -395,10 +399,8 @@ func (m *Model) renderDiff() {
 			}
 		}
 	}
-	// The viewport only tracks row geometry; the shared document owns search.
-	m.viewport.SetContentLines(make([]string, len(m.diffRows)))
+	m.setDiffScrollRows()
 	m.rebuildReview()
-	m.viewport.SetHeight(m.contentHeight())
 }
 
 func (m *Model) nextHunk(delta int) {
@@ -442,14 +444,16 @@ func (m *Model) ensureEditor() {
 	m.ensureTabVisible()
 }
 
-// Keep the final line within the last full screen, including after edits/resizes.
+// Allow scrolling the last text row to the middle while keeping any trailing image reachable.
 func (m *Model) clampEditorScroll(t *tab) {
-	lines := t.editorDisplayRow(len(t.doc.Lines())-1) + 1
+	height := m.contentHeight()
+	lastRow := t.editorDisplayRow(len(t.doc.Lines()) - 1)
+	maxTop := max(0, lastRow-height/2)
 	if cache := t.markdownImages; cache != nil && len(cache.blocks) > 0 {
 		last := cache.blocks[len(cache.blocks)-1]
-		lines = max(lines, last.first+last.region.Rows)
+		maxTop = max(maxTop, last.first+last.region.Rows-height)
 	}
-	t.setEditorDisplayTop(min(t.editorDisplayTop(), max(0, lines-m.contentHeight())))
+	t.setEditorDisplayTop(min(t.editorDisplayTop(), maxTop))
 }
 
 // displayCluster is shared by painting, cursor scrolling and mouse hit testing.

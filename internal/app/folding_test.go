@@ -143,8 +143,8 @@ func TestEditorPythonFoldAndScroll(t *testing.T) {
 	for range 30 {
 		m.Update(tea.MouseWheelMsg{X: m.mainX() + 8, Y: 5, Button: tea.MouseWheelDown})
 	}
-	if state.visibleRow(state.top)+m.contentHeight() != len(state.foldRows) {
-		t.Fatal("folded scroll did not clamp to the final full screen")
+	if state.visibleRow(state.top)+m.contentHeight()/2 != len(state.foldRows)-1 {
+		t.Fatal("folded scroll did not center the last visible line")
 	}
 }
 

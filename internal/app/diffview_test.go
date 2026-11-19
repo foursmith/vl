@@ -7,6 +7,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
@@ -14,6 +15,35 @@ import (
 	"github.com/foursmith/vl/internal/highlight"
 	"github.com/foursmith/vl/internal/theme"
 )
+
+func TestDiffWheelCentersLastRowInBothLayouts(t *testing.T) {
+	for _, split := range []bool{false, true} {
+		m := tabWorkspace(t, 0)
+		t.Cleanup(m.Close)
+		m.Update(tea.WindowSizeMsg{Width: 160, Height: 15})
+		m.split = split
+		m.diffPath = "file.txt"
+		m.patch = diff.Parse("@@ -1 +1,31 @@\n same\n" + strings.Repeat("+line\n", 29) + "+last\n")
+		showDiffFixture(m)
+		if m.diffLayout.split != split {
+			t.Fatalf("requested split=%v, got split=%v", split, m.diffLayout.split)
+		}
+		cursor := m.review.Cursor
+		for range 30 {
+			m.Update(tea.MouseWheelMsg{X: m.mainX() + 8, Y: 5, Button: tea.MouseWheelDown})
+		}
+		for _, height := range []int{15, 25} {
+			m.Update(tea.WindowSizeMsg{Width: 160, Height: height})
+			rows := m.diffView()
+			if len(rows) != m.contentHeight()/2+1 || !strings.Contains(plain(rows[len(rows)-1]), "last") {
+				t.Fatalf("split=%v, height=%d: last diff row did not render in the middle", split, height)
+			}
+		}
+		if m.review.Cursor != cursor {
+			t.Fatal("wheel scrolling moved the diff cursor")
+		}
+	}
+}
 
 func TestSharedDiffSyntaxKeepsSideAndHunkStatesSeparate(t *testing.T) {
 	patch := diff.Parse("--- a/file.go\n+++ b/file.go\n@@ -1,3 +1,3 @@\n-/*\n+// opening\n var n = 1\n-*/\n+// closing\n@@ -20 +20 @@\n-var later = 1\n+var later = 2\n")

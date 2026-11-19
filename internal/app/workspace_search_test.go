@@ -224,7 +224,7 @@ func TestSearchResultCentersMatchAndClampsAtFileEdges(t *testing.T) {
 		drain(t, m, m.runSearch())
 		m.clickSearch(5, m.searchResultY()+1)
 		tab := &m.tabs[m.activeTab]
-		want := min(max(0, target-m.contentHeight()/2), 120-m.contentHeight())
+		want := max(0, target-m.contentHeight()/2)
 		if tab.top != want || !m.sidebar || m.document().SelectedText() != "needle" {
 			t.Fatalf("target=%d top=%d want=%d", target, tab.top, want)
 		}

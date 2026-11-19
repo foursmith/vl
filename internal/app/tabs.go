@@ -121,8 +121,6 @@ func (m *Model) selectTab(index int) {
 	if t := &m.tabs[index]; t.diff != nil {
 		m.diffState = t.diff
 		m.lastFileRepository = t.diff.diffRepository
-		m.viewport.SetWidth(m.mainWidth())
-		m.viewport.SetHeight(m.contentHeight())
 		m.renderDiff()
 	} else {
 		m.lastFileRepository = m.fileRepository(t.path())

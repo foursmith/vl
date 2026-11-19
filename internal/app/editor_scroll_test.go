@@ -11,27 +11,33 @@ import (
 	"github.com/foursmith/vl/internal/files"
 )
 
-func TestEditorWheelStopsAtFileBoundariesWithoutMovingCursor(t *testing.T) {
+func TestEditorWheelCentersLastLineWithoutMovingCursor(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	m.openFile("file0.go")
-	m.Update(tea.WindowSizeMsg{Width: 100, Height: 15})
+	m.Update(tea.WindowSizeMsg{Width: 100, Height: 10})
 	d := m.document()
-	for _, lines := range []int{1, m.contentHeight(), 50} {
-		d.Edit(strings.Repeat("line\n", lines-1) + "last")
+	for _, prefix := range []string{
+		"",
+		strings.Repeat("line\n", m.contentHeight()-1),
+		strings.Repeat("line\n", 49),
+		strings.Repeat("if ready {\n", 6) + strings.Repeat("line\n", 49),
+	} {
+		d.Edit(prefix + "last")
 		d.SetPosition(0, 0)
 		m.ensureEditor()
 		for i := 0; i < 100; i++ {
 			m.Update(tea.MouseWheelMsg{X: m.mainX() + 8, Y: 5, Button: tea.MouseWheelDown})
 		}
-		want := max(0, lines-m.contentHeight())
+		last := len(d.Lines()) - 1
+		want := max(0, last-m.contentHeight()/2)
 		if m.tabs[m.activeTab].top != want {
-			t.Fatalf("%d lines: scroll top %d, want %d", lines, m.tabs[m.activeTab].top, want)
+			t.Fatalf("%d lines: scroll top %d, want %d", last+1, m.tabs[m.activeTab].top, want)
 		}
 		if d.Cursor != 0 {
 			t.Fatal("wheel scrolling moved the editing cursor")
 		}
-		if !strings.Contains(plain(strings.Join(m.editorLines(), "\n")), "last") {
-			t.Fatal("last line scrolled out of the viewport")
+		if !strings.Contains(plain(m.editorLines()[last-want]), "last") {
+			t.Fatal("last line did not render at the expected row")
 		}
 		for i := 0; i < 100; i++ {
 			m.Update(tea.MouseWheelMsg{X: m.mainX() + 8, Y: 5, Button: tea.MouseWheelUp})
@@ -54,6 +60,10 @@ func TestEditorScrollClampsAfterResizeAndTextDeletion(t *testing.T) {
 		t.Fatal("cursor did not scroll into view")
 	}
 	m.Update(tea.WindowSizeMsg{Width: 100, Height: 80})
+	if got, want := m.tabs[m.activeTab].top, 49-m.contentHeight()/2; got != want {
+		t.Fatalf("larger viewport clamped scroll to %d, want %d", got, want)
+	}
+	m.Update(tea.WindowSizeMsg{Width: 100, Height: 110})
 	if m.tabs[m.activeTab].top != 0 {
 		t.Fatal("larger viewport kept unnecessary bottom space")
 	}

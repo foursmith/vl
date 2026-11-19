@@ -62,6 +62,16 @@ func (m *Model) splitDiff() bool {
 	return m.split && m.mainWidth() >= 68 && !m.patch.NewFile && !m.patch.DeletedFile
 }
 
+func (m *Model) setDiffScrollRows() {
+	rows := len(m.diffRows)
+	if rows > 0 {
+		height := m.viewport.Height()
+		rows += height - height/2 - 1
+	}
+	// The viewport tracks scroll geometry, including the blank space below the last row.
+	m.viewport.SetContentLines(make([]string, rows))
+}
+
 func (d *diffState) clearContent() {
 	if d.diffSyntaxCancel != nil {
 		d.diffSyntaxCancel()
@@ -240,8 +250,6 @@ func (m *Model) finishDiff(msg diffMsg) tea.Cmd {
 		}
 		d.diffSyntax = nil
 	}
-	d.viewport.SetWidth(m.mainWidth())
-	d.viewport.SetHeight(m.contentHeight())
 	m.renderDiff()
 	if d.diffSyntax == nil {
 		return m.highlightDiff()

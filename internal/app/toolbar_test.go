@@ -70,10 +70,6 @@ func TestLargeDiffPaintsOnlyViewportAndKeepsHunkSelection(t *testing.T) {
 	m.patch = benchmarkPatch()
 	m.diffPath = "file.go"
 	showDiffFixture(m)
-	m.renderDiff()
-	if m.viewport.TotalLineCount() != len(m.diffRows) {
-		t.Fatal("viewport geometry does not cover the complete diff")
-	}
 	if len(m.diffView()) > m.contentHeight() {
 		t.Fatal("diff rendered beyond its viewport")
 	}
