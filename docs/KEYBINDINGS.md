@@ -56,8 +56,9 @@ or `:` to go to a line or column. In a picker, use `Up` / `Down` to select a
 result, `PageUp` / `PageDown` to page, and `Enter` to accept. `Esc` dismisses
 the picker.
 
-`Ctrl+C` copies selected text when the text or diff editor has focus. In the
-main workbench outside those editors and text inputs, it can quit vl.
+`⌘C` (macOS) or `Ctrl+C` copies selected text when the text or diff editor has
+focus. In the main workbench outside those editors and text inputs, `Ctrl+C`
+can quit vl.
 
 ## Sidebar
 
@@ -180,7 +181,7 @@ Find, and Flash bindings as in a text tab.
 | `d` | Discard selected changes or the current hunk, with confirmation |
 | `Shift+D` | Discard all unstaged changes to this file, with confirmation |
 | `Shift+F10` / right-click | Open diff actions, including staging, unstaging, and discarding unstaged hunks or selected changes |
-| `Ctrl+C` | Copy selected source text to the system clipboard |
+| `⌘C` (macOS) / `Ctrl+C` | Copy selected source text to the system clipboard |
 | `Space 1` … `Space 9` / `Space q` | Switch tabs / close the tab |
 
 Switch layouts from the diff toolbar or use **Toggle Inline View** in the

@@ -29,8 +29,10 @@ For Vim's defaults, see [motions](https://vimhelp.org/motion.txt.html),
 **Know which clipboard you're using.** `y` yanks into vl's unnamed register.
 `d`, `c`, `x`, and `s` also put removed text there. `p` and `P` read that
 register, which is shared across editor tabs. For example, `ddp` moves a line
-down. Use `Ctrl+C`, `Ctrl+X`, and `Ctrl+V` for the system clipboard. Explorer's
-`yy` and `p` have their own file clipboard.
+down. In Normal, Visual, and Insert modes, use `⌘C`, `⌘X`, and `⌘V` on macOS
+or `Ctrl+C`, `Ctrl+X`, and `Ctrl+V` to copy, cut, and paste using the system
+clipboard. Copy and cut require a selection. Cut and paste require an editable
+text file. Explorer's `yy` and `p` have their own file clipboard.
 
 vl supports a subset of Vim. Use Visual characterwise or linewise selection.
 For saving and closing, use the Leader or workbench bindings below. Visual
@@ -137,7 +139,7 @@ Parentheses, square brackets, and braces can nest and span lines.
 | `PageUp` / `PageDown` | Move up / down a page |
 | `Ctrl+U` / `Ctrl+D` | Scroll up / down half a screen |
 | `Ctrl+A` | Select All |
-| `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copy / Cut / Paste using the system clipboard |
+| `⌘C` / `⌘X` / `⌘V` (macOS), or `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copy / Cut / Paste using the system clipboard |
 | `⌘Z` / `⌘⇧Z` (macOS), or `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo |
 | `Backspace` / `Delete` | Delete the selection or the character before / after the cursor |
 | `Enter` / `Tab` | Insert a newline / tab |
