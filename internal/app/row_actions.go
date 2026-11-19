@@ -268,7 +268,7 @@ func (m *Model) runChangeRowAction(index int, id string) tea.Cmd {
 			m.notice = reason
 			return nil
 		}
-		return m.openFileInExplorer(entry.change.Path)
+		return m.openChangedFileInExplorer(*entry.change, entry.staged)
 	case "discard":
 		if !entry.staged {
 			return m.discardFile(*entry.change, "")

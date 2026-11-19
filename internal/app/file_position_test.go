@@ -14,6 +14,80 @@ import (
 	gitservice "github.com/foursmith/vl/internal/git"
 )
 
+func TestChangesOpenFileCentersCursorHunkOrFirstHunk(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	defer m.Close()
+	m.Update(tea.WindowSizeMsg{Width: 120, Height: 24})
+	store := &config.FilePositionStore{Dir: t.TempDir()}
+	m.SetFilePositionStore(store)
+	name := "file0.go"
+	path := filepath.Join(m.repo.Root, name)
+	write := func(text string) {
+		t.Helper()
+		if err := os.WriteFile(path, []byte(text), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	git := func(args ...string) {
+		t.Helper()
+		if out, err := m.repo.Run(m.ctx, args...); err != nil {
+			t.Fatalf("git %v: %s (%v)", args, out, err)
+		}
+	}
+	before := strings.Repeat("context\n", 30)
+	after := strings.Repeat("more context\n", 30)
+	write(before + "first before\n" + after + "second before\n" + after)
+	git("add", name)
+	git("-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-m", "initial")
+	staged := before + "first staged\n" + after + "second staged\n" + after
+	write(staged)
+	git("add", name)
+	write("inserted\ninserted\n" + staged)
+	drain(t, m, m.refresh())
+	selectStaged := func() int {
+		t.Helper()
+		drain(t, m, m.selectSection(changes))
+		for i, entry := range m.items {
+			if entry.change != nil && entry.change.Path == name && entry.staged {
+				m.selected = i
+				return i
+			}
+		}
+		t.Fatal("staged row missing")
+		return -1
+	}
+	if err := store.Save(path, config.FilePosition{}); err != nil {
+		t.Fatal(err)
+	}
+	checkCentered := func(want int) {
+		t.Helper()
+		if row, col := m.document().Position(); row != want || col != 0 {
+			t.Fatalf("working file cursor = %d:%d, want %d:0", row, col, want)
+		}
+		cursor := m.editorCursor()
+		if mid := m.contentRow() + m.contentHeight()/2; cursor == nil || cursor.Position.Y != mid {
+			t.Fatalf("working file cursor = %+v, want screen row %d", cursor, mid)
+		}
+	}
+	drain(t, m, m.runChangeRowAction(selectStaged(), "open"))
+	d := m.document()
+	checkCentered(29)
+	d.SetPosition(10, 1)
+	selectStaged()
+	drain(t, m, m.openSelected())
+	for row, text := range m.review.Lines() {
+		if text == "second staged" {
+			m.review.SetPosition(row, 3)
+			break
+		}
+	}
+	drain(t, m, m.runChangeRowAction(selectStaged(), "open"))
+	if m.document() != d {
+		t.Fatal("opening the working file replaced its existing tab")
+	}
+	checkCentered(60)
+}
+
 func TestFilePositionsSurvivePreviewReplacementCloseAndRestart(t *testing.T) {
 	m := tabWorkspace(t, 2)
 	defer m.Close()

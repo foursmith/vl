@@ -25,6 +25,7 @@ type Line struct {
 type Hunk struct {
 	header     string
 	start, end int
+	newStart   int
 }
 type Patch struct {
 	Raw                  string
@@ -35,6 +36,42 @@ type Patch struct {
 }
 
 var hunkPattern = regexp.MustCompile(`^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@`)
+
+// HunkStartLine returns the one-based start of the hunk on the new side.
+func (p Patch) HunkStartLine(index int) int {
+	if index < 0 || index >= len(p.Hunks) {
+		return 0
+	}
+	return max(1, p.Hunks[index].newStart)
+}
+
+// MapOldLine maps a one-based source line through the patch. A removed line
+// lands at the deletion boundary on the new side.
+func (p Patch) MapOldLine(line int) int {
+	offset := 0
+	for _, pair := range p.Pairs() {
+		old, newLine := 0, 0
+		if pair.Left != nil {
+			old = pair.Left.Old
+		}
+		if pair.Right != nil {
+			newLine = pair.Right.New
+		}
+		switch {
+		case old == line && newLine > 0:
+			return newLine
+		case old >= line:
+			return line + offset
+		case old > 0 && newLine > 0:
+			offset = newLine - old
+		case old > 0:
+			offset--
+		case newLine > 0 && newLine-offset <= line:
+			offset++
+		}
+	}
+	return line + offset
+}
 
 func Parse(raw string) Patch {
 	p := Patch{Raw: raw}
@@ -53,7 +90,7 @@ func Parse(raw string) Patch {
 			old, _ = strconv.Atoi(match[1])
 			newLine, _ = strconv.Atoi(match[3])
 			hunk = len(p.Hunks)
-			p.Hunks = append(p.Hunks, Hunk{header: header, start: len(p.Lines), end: len(p.Lines) + 1})
+			p.Hunks = append(p.Hunks, Hunk{header: header, start: len(p.Lines), end: len(p.Lines) + 1, newStart: newLine})
 			line.Kind, line.Hunk = HunkHeader, hunk
 		} else if hunk >= 0 && len(text) > 0 && strings.ContainsRune(" +-\\", rune(text[0])) {
 			line.Hunk = hunk

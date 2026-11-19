@@ -223,6 +223,7 @@ type Model struct {
 	uncompressed            map[string]bool
 	treeEntries             []files.Entry
 	treeSeq                 int
+	changeFilePositionSeq   int
 	revealFile              string
 	tabStart                int
 	closeQueue              []*editor.Document
@@ -814,6 +815,8 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		m.applyHistoryFiles(msg)
 	case diffMsg:
 		return m, m.finishDiff(msg)
+	case changeFilePositionMsg:
+		m.finishChangeFilePosition(msg)
 
 	case remoteProgressFrameMsg:
 		if progress := msg.progress; progress != nil && m.remoteProgress == progress {

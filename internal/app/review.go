@@ -113,8 +113,7 @@ func (m *Model) syncReviewMouse() {
 	m.review.SelectRange(offset(s.anchor), offset(s.cursor))
 }
 
-// Search navigation centers the matching row in both files and text diffs.
-// Folded source lines and diff headers use their painted row coordinates.
+// Center the cursor using displayed rows, including folds, images and diff headers.
 func (m *Model) centerTextCursor() {
 	d := m.editorDocument()
 	if d == nil {
@@ -124,7 +123,8 @@ func (m *Model) centerTextCursor() {
 	if m.editing() {
 		t := &m.tabs[m.activeTab]
 		t.revealFold(line)
-		t.top = t.sourceRow(max(0, t.visibleRow(line)-m.contentHeight()/2))
+		m.syncMarkdownImageRows(t)
+		t.setEditorDisplayTop(t.editorDisplayRow(line) - m.contentHeight()/2)
 	} else if len(m.reviewRows) > 0 {
 		row := m.reviewRows[min(line, len(m.reviewRows)-1)]
 		m.viewport.SetYOffset(row - m.contentHeight()/2)
@@ -181,6 +181,15 @@ func (m *Model) reviewCursor() *tea.Cursor {
 		return nil
 	}
 	return &tea.Cursor{Position: tea.Position{X: x, Y: m.contentRow() + y}, Shape: tea.CursorBlock, Color: lipgloss.Color(m.colors.Foreground)}
+}
+
+func (d *diffState) reviewHunkStartLine() int {
+	if d.review == nil || len(d.reviewRows) == 0 || d.images != nil {
+		return 0
+	}
+	row, _ := d.review.Position()
+	paintedRow := d.reviewRows[min(row, len(d.reviewRows)-1)]
+	return d.patch.HunkStartLine(d.diffRowHunks[paintedRow])
 }
 
 func (m *Model) reviewToRow(row int) {

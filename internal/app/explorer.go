@@ -6,7 +6,10 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/foursmith/vl/internal/diff"
+	"github.com/foursmith/vl/internal/editor"
 	"github.com/foursmith/vl/internal/files"
+	gitservice "github.com/foursmith/vl/internal/git"
 )
 
 type treeMsg struct {
@@ -22,6 +25,68 @@ func (m *Model) openFileInExplorer(path string) tea.Cmd {
 		return nil
 	}
 	return m.revealDocument(path)
+}
+
+type changeFilePositionMsg struct {
+	doc            *editor.Document
+	text           string
+	cursor, anchor int
+	line           int
+	seq            int
+}
+
+func (m *Model) openChangedFileInExplorer(c gitservice.Change, staged bool) tea.Cmd {
+	target := diffTarget{path: c.Path, repository: c.Repository, staged: staged}
+	position := changeFilePositionMsg{}
+	for _, t := range m.tabs {
+		if t.diff != nil && t.diff.matches(target) {
+			position.line = t.diff.reviewHunkStartLine()
+			break
+		}
+	}
+	if !m.openDocument(c.Path, false) {
+		return nil
+	}
+	reveal := m.revealDocument(c.Path)
+	d := m.document()
+	if d == nil {
+		return reveal
+	}
+	m.changeFilePositionSeq++
+	position.seq = m.changeFilePositionSeq
+	position.doc, position.text, position.cursor, position.anchor = d, d.Text, d.Cursor, d.Anchor
+	mapWorktree := staged && c.Unstaged()
+	if position.line > 0 && !mapWorktree {
+		m.finishChangeFilePosition(position)
+		return reveal
+	}
+	ctx, workspace := m.ctx, m.repo
+	return tea.Batch(reveal, func() tea.Msg {
+		if position.line == 0 {
+			if raw, err := workspace.Diff(ctx, c, staged); err == nil {
+				position.line = diff.Parse(raw).HunkStartLine(0)
+			}
+		}
+		if position.line > 0 && mapWorktree {
+			// The index line can have moved in the working file.
+			if worktree, err := workspace.Diff(ctx, c, false); err == nil {
+				position.line = max(1, diff.Parse(worktree).MapOldLine(position.line))
+			}
+		}
+		return position
+	})
+}
+
+func (m *Model) finishChangeFilePosition(msg changeFilePositionMsg) {
+	d := m.document()
+	// A later edit, cursor movement, or tab change takes precedence.
+	if msg.seq != m.changeFilePositionSeq || msg.line == 0 || d == nil || d != msg.doc ||
+		d.Text != msg.text || d.Cursor != msg.cursor || d.Anchor != msg.anchor {
+		return
+	}
+	m.tabs[m.activeTab].vim.Reset(d)
+	d.SetPosition(msg.line-1, 0)
+	m.centerTextCursor()
 }
 
 func (m *Model) revealDocument(path string) tea.Cmd {
