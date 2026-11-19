@@ -191,7 +191,7 @@ func TestContextMenuTargetsClickedTabAndConfirmsDirtyClose(t *testing.T) {
 		t.Fatal("opening a tab menu changed the active tab or focus")
 	}
 	chooseContextAction(t, m, "Close")
-	if m.contextMenu != nil || m.modal != "close" || len(m.closeQueue) != 1 || m.closeQueue[0] != first || len(m.tabs) != 2 {
+	if m.contextMenu != nil || !hasSaveConfirmation(m) || len(m.closeQueue) != 1 || m.closeQueue[0] != first || len(m.tabs) != 2 {
 		t.Fatal("close did not confirm closing the clicked dirty tab")
 	}
 	m.chooseClose("cancel")
@@ -347,7 +347,7 @@ func TestDiffContextMenuStagesAndUnstagesMouseSelection(t *testing.T) {
 		t.Fatalf("cancel changed the working file: %q, %v", got, err)
 	}
 	drain(t, m, clickButton(m.mainX()+2, m.contentRow(), true, "Discard Selected Ranges"))
-	drain(t, m, press(m, gitKeys.ConfirmDiscard.Help().Key))
+	drain(t, m, press(m, "enter"))
 	const staged = "FIRST\nsecond\nlast\n"
 	if got, err := os.ReadFile(path); err != nil || string(got) != staged {
 		t.Fatalf("working file after discarding hunk: %q, %v", got, err)
@@ -363,7 +363,8 @@ func TestDiffContextMenuStagesAndUnstagesMouseSelection(t *testing.T) {
 	if cmd := press(m, "D"); cmd != nil || m.modal != "confirm" || m.busy {
 		t.Fatal("whole-file discard did not wait for confirmation")
 	}
-	drain(t, m, press(m, "x"))
+	press(m, "left")
+	drain(t, m, press(m, "enter"))
 	if got, err := os.ReadFile(path); err != nil || string(got) != staged {
 		t.Fatalf("whole-file discard did not restore the index version: %q, %v", got, err)
 	}

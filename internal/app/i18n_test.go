@@ -86,7 +86,7 @@ func TestDisplayLanguagePreservesEditingAndFitsBothLanguages(t *testing.T) {
 					t.Fatalf("%s dialog escaped %v", language, size)
 				}
 			}
-			if m.confirmationActions()[2].label != m.tr("Cancel") {
+			if m.confirmationActions[2].label != m.tr("Cancel") {
 				t.Fatal("dialog language did not change")
 			}
 			press(m, "esc")

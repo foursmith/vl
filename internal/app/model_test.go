@@ -19,6 +19,10 @@ import (
 
 func plain(s string) string { return ansi.Strip(s) }
 
+func hasSaveConfirmation(m *Model) bool {
+	return m.confirmationDialog() && len(m.confirmationActions) == 3 && m.confirmationActions[0].label == m.tr("Save")
+}
+
 func drain(t testing.TB, m *Model, cmd tea.Cmd) {
 	t.Helper()
 	queue := []tea.Cmd{cmd}
@@ -110,6 +114,51 @@ func TestAppEditStageCommitWorkflow(t *testing.T) {
 	}
 }
 
+func TestQuitSaveDialogChoices(t *testing.T) {
+	for _, choice := range []string{"save", "discard", "cancel"} {
+		t.Run(choice, func(t *testing.T) {
+			m := tabWorkspace(t, 1)
+			defer m.Close()
+			m.openFile("file0.go")
+			doc := m.document()
+			doc.Edit("// edited\n")
+			if cmd := m.quit(); cmd != nil || !hasSaveConfirmation(m) {
+				t.Fatal("dirty quit did not open the save dialog")
+			}
+
+			var cmd tea.Cmd
+			switch choice {
+			case "save":
+				cmd = m.updateModal(tea.KeyPressMsg{Code: tea.KeyEnter})
+			case "discard":
+				m.updateModal(tea.KeyPressMsg{Code: tea.KeyRight})
+				cmd = m.updateModal(tea.KeyPressMsg{Code: tea.KeyEnter})
+			case "cancel":
+				cmd = m.updateModal(tea.KeyPressMsg{Code: tea.KeyEscape})
+			}
+			if m.modal != "" || len(m.confirmationActions) != 0 {
+				t.Fatal("save dialog did not close")
+			}
+			if choice == "cancel" {
+				if cmd != nil || !doc.Dirty() || doc.Text != "// edited\n" {
+					t.Fatal("cancel quit did not preserve the unsaved buffer")
+				}
+			} else if cmd == nil {
+				t.Fatal("expected a quit command")
+			} else if _, ok := cmd().(tea.QuitMsg); !ok {
+				t.Fatal("expected a quit message")
+			}
+			want := "package main\n"
+			if choice == "save" {
+				want = "// edited\n"
+			}
+			if got, err := os.ReadFile(doc.Path); err != nil || string(got) != want {
+				t.Fatalf("file content = %q, %v; want %q", got, err, want)
+			}
+		})
+	}
+}
+
 func TestFrameGeometryAndControlCharacters(t *testing.T) {
 	m := New(context.Background(), &gitservice.Repository{Root: "/tmp/中文-repo"}, true)
 	m.items = []item{{label: "CHANGES", header: true}, {label: "file\n\x1b[31m.go", key: "file", file: "file.go"}}
@@ -155,7 +204,7 @@ func TestStaleResultsAndDirtyQuit(t *testing.T) {
 	}
 	m.tabs = []tab{{doc: &editor.Document{Path: "/tmp/a", Text: "unsaved", Anchor: -1}}}
 	m.activeTab = 0
-	if cmd := m.quit(); cmd != nil || m.modal != "confirm" || m.confirm == nil {
+	if cmd := m.quit(); cmd != nil || !hasSaveConfirmation(m) {
 		t.Fatal("unsaved changes were not guarded")
 	}
 	press(m, "esc")

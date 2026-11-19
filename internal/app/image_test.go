@@ -138,7 +138,7 @@ func TestImagePreviewPreservesDirtyAndFailedOpen(t *testing.T) {
 		t.Fatal("failed reload discarded visible preview")
 	}
 	m.closeAllTabs()
-	if len(m.tabs) != 1 || m.document() != doc || m.modal != "close" {
+	if len(m.tabs) != 1 || m.document() != doc || !hasSaveConfirmation(m) {
 		t.Fatal("close did not retain dirty save guard")
 	}
 }

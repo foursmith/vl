@@ -93,7 +93,7 @@ func (m *Model) actions() []action {
 		{"github.open", m.tr("GitHub: Open Repository"), "", githubReason, m.openGitHub},
 		{"git.stash", m.tr("Git: Stash (Include Untracked)"), stashKey, "", func() tea.Cmd { return m.stash(remoteTarget) }},
 		{"git.stashPop", m.tr("Git: Pop Latest Stash"), "", "", func() tea.Cmd {
-			return m.ask(m.tr("Apply and remove the latest stash?"), func() tea.Cmd { return m.gitOperation("Stash pop", "stash", "pop") })
+			return m.ask(m.tr("Apply and remove the latest stash?"), m.tr("Confirm"), func() tea.Cmd { return m.gitOperation("Stash pop", "stash", "pop") })
 		}},
 		{"file.open", m.tr("File: Open Selected File"), sidebarKeys.Edit.Help().Key, openReason, m.editSelected},
 		{"file.keepOpen", m.tr("View: Keep Editor"), "", tabReason, m.keepTab},
@@ -217,10 +217,7 @@ func (m *Model) filterActions() []action {
 }
 
 func (m *Model) prompt(kind, title, value string) tea.Cmd {
-	m.leaderTarget = ""
-	m.resizingSidebar = false
-	m.modal, m.modalTitle = kind, title
-	m.dialogTop = 0
+	m.showDialog(kind, title)
 	m.input.SetValue(value)
 	m.input.Placeholder = ""
 	m.input.Prompt = "> "
@@ -253,15 +250,6 @@ func (m *Model) resizeInput() {
 	m.input.SetWidth(width)
 }
 
-func (m *Model) ask(title string, run func() tea.Cmd) tea.Cmd {
-	m.confirm = run
-	m.confirmationDetail = ""
-	m.confirmationLabel = m.tr("Confirm")
-	m.confirmationKey = key.Binding{}
-	m.confirmationButton = 0
-	return m.prompt("confirm", title, "")
-}
-
 func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 	k := msg.String()
 	if m.modal == "searchOptions" {
@@ -271,65 +259,17 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 	}
 
 	if m.confirmationDialog() {
-		if m.modal == "confirm" && matchesShortcut(k, m.confirmationKey) {
-			m.confirmationButton = 0
-			return m.chooseConfirmation()
-		}
-		count := len(m.confirmationActions())
-		switch {
-		case matchesShortcut(k, navigationKeys.Right), matchesShortcut(k, searchKeys.NextField):
-			m.confirmationButton = (m.confirmationButton + 1) % count
-			return nil
-		case matchesShortcut(k, navigationKeys.Left), matchesShortcut(k, searchKeys.PreviousField):
-			m.confirmationButton = (m.confirmationButton + count - 1) % count
-			return nil
-		case matchesShortcut(k, dialogKeys.Accept):
-			return m.chooseConfirmation()
-		}
-	}
-	if m.confirmationDialog() {
-		l := m.dialogLayout()
-		top := l.top
-		delta := pageDelta(k, l.page)
-		switch {
-		case matchesShortcut(k, navigationKeys.Up):
-			top--
-		case matchesShortcut(k, navigationKeys.Down):
-			top++
-		case delta != 0:
-			top += delta
-		case matchesShortcut(k, pickerKeys.First):
-			top = 0
-		case matchesShortcut(k, pickerKeys.Last):
-			top = l.maxTop
-		}
-		if top != l.top {
-			m.dialogTop = min(max(0, top), l.maxTop)
-			return nil
-		}
+		return m.updateConfirmation(k)
 	}
 	if m.isPicker() {
 		if command := m.widgetWorkbenchCommand(k, commandFiles, commandPalette); command != "" {
 			return m.executeCommand(command, "")
 		}
 	}
-	if m.modal == "close" {
-		switch {
-		case matchesShortcut(k, dialogKeys.Save):
-			return m.chooseClose("save")
-		case matchesShortcut(k, dialogKeys.Discard):
-			return m.chooseClose("discard")
-		case matchesShortcut(k, dismissKey):
-			return m.chooseClose("cancel")
-		}
-		return nil
-	}
 	if key.Matches(msg, dismissKey) {
 		restore := m.cancelThemePreview()
 		m.rememberCommitDraft()
-		m.modal = ""
-		m.confirm = nil
-		m.input.Blur()
+		m.dismissDialog()
 		return restore
 	}
 	if m.isPicker() {
@@ -347,8 +287,7 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 		}
 		m.rememberCommitDraft()
 		kind, value := m.modal, strings.TrimSpace(m.input.Value())
-		m.modal = ""
-		m.input.Blur()
+		m.dismissDialog()
 		switch kind {
 		case "commit":
 			target := m.commitRepository
@@ -380,9 +319,6 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 		case "newFolder":
 			return m.createEntry(value, true)
 		}
-		return nil
-	}
-	if m.modal == "confirm" {
 		return nil
 	}
 	var cmd tea.Cmd
@@ -765,10 +701,7 @@ func (m *Model) discardFile(c gitservice.Change, expectedDiff string) tea.Cmd {
 }
 
 func (m *Model) askDiscard(title string, run func() tea.Cmd) tea.Cmd {
-	cmd := m.ask(title, run)
-	m.confirmationKey = gitKeys.ConfirmDiscard
-	m.confirmationLabel = shortcutHint(m.confirmationLabel, m.confirmationKey)
-	return cmd
+	return m.ask(title, m.tr("Discard"), run)
 }
 
 func (m *Model) quit() tea.Cmd {
@@ -777,7 +710,7 @@ func (m *Model) quit() tea.Cmd {
 		return nil
 	}
 	if m.hasDirtyTabs() {
-		return m.ask(m.tr("Discard unsaved editor changes and quit?"), func() tea.Cmd { return tea.Quit })
+		return m.confirmLeavingWorkspace(m.tr("Save changes before quitting?"), func() tea.Cmd { return tea.Quit })
 	}
 	return tea.Quit
 }

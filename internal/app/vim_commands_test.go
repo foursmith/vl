@@ -20,7 +20,7 @@ func TestVimMappedSaveAndClose(t *testing.T) {
 			press(m, " ")
 			drain(t, m, press(m, key))
 			if key == "q" {
-				if m.modal != "close" || m.document() != d {
+				if !hasSaveConfirmation(m) || m.document() != d {
 					t.Fatal("close bypassed dirty prompt")
 				}
 				return
@@ -241,7 +241,7 @@ func TestDiffLeaderClosesOnlyCurrentTab(t *testing.T) {
 	}
 	press(m, " ")
 	drain(t, m, press(m, "q"))
-	if m.modal != "close" || m.document() != document {
+	if !hasSaveConfirmation(m) || m.document() != document {
 		t.Fatal("editor close bypassed unsaved prompt")
 	}
 }

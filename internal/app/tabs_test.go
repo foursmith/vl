@@ -298,7 +298,7 @@ func TestCloseDirtySaveDiscardCancelAndSaveFailure(t *testing.T) {
 	press(m, "x")
 	first := m.document()
 	m.closeTab()
-	if m.modal != "close" || len(m.tabs) != 1 {
+	if !hasSaveConfirmation(m) || len(m.tabs) != 1 {
 		t.Fatal("dirty close did not offer save/discard/cancel")
 	}
 	press(m, "esc")
@@ -317,7 +317,7 @@ func TestCloseDirtySaveDiscardCancelAndSaveFailure(t *testing.T) {
 	os.WriteFile(m.document().Path, []byte("external\n"), 0644)
 	m.closeTab()
 	press(m, "s")
-	if m.modal != "close" || len(m.tabs) != 1 {
+	if !hasSaveConfirmation(m) || len(m.tabs) != 1 {
 		t.Fatal("save failure dismissed dirty close")
 	}
 	press(m, "d")
@@ -395,7 +395,7 @@ func TestCloseOthersKeepsActiveAndGuardsDirtyFiles(t *testing.T) {
 	m.openFile("file2.go")
 	active := m.document()
 	m.Update(tea.KeyPressMsg{Code: 'w', Mod: tea.ModCtrl | tea.ModShift})
-	if m.modal != "close" {
+	if !hasSaveConfirmation(m) {
 		t.Fatal("close others bypassed dirty file")
 	}
 	press(m, "d")

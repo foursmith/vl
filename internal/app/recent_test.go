@@ -99,11 +99,6 @@ func TestRepositorySwitchProtectsDirtyFilesAndBusyOperations(t *testing.T) {
 	m.openFile("file0.go")
 	doc := m.document()
 	target := explorerWorkspace(t)
-	doc.Insert("edited")
-	if cmd := m.openRepository(target.repo.Root); cmd != nil {
-		t.Fatal("dirty editor allowed switching")
-	}
-	doc.Undo()
 	m.busy = true
 	if cmd := m.openRepository(target.repo.Root); cmd != nil {
 		t.Fatal("busy operation allowed switching")
@@ -115,8 +110,90 @@ func TestRepositorySwitchProtectsDirtyFilesAndBusyOperations(t *testing.T) {
 	}
 	doc.Insert("edited during discovery")
 	drain(t, m, cmd)
-	if m.nextRepository != nil || m.document() != doc || !doc.Dirty() {
-		t.Fatal("asynchronous discovery lost unsaved changes")
+	if !hasSaveConfirmation(m) || m.nextRepository != nil || m.document() != doc || !doc.Dirty() {
+		t.Fatal("asynchronous discovery did not prompt for new edits")
+	}
+}
+
+func TestRecentWorkspacePromptsForUnsavedFiles(t *testing.T) {
+	for _, choice := range []string{"save", "discard", "cancel"} {
+		t.Run(choice, func(t *testing.T) {
+			m := tabWorkspace(t, 2)
+			target := explorerWorkspace(t)
+			m.Update(tea.WindowSizeMsg{Width: 120, Height: 30})
+			for _, name := range []string{"file0.go", "file1.go"} {
+				m.openFile(name)
+				m.document().Edit("// edited\n")
+			}
+			press(m, "ctrl+h")
+			m.Update(workspacesMsg{seq: m.workspaceSeq, folders: []string{target.repo.Root}})
+			drain(t, m, press(m, "enter"))
+			if !hasSaveConfirmation(m) || m.nextRepository != nil {
+				t.Fatal("recent picker did not pause switching for the save prompt")
+			}
+
+			switch choice {
+			case "save":
+				press(m, "enter")
+			case "discard":
+				l := m.dialogLayout()
+				button := l.buttons[1]
+				m.Update(tea.MouseClickMsg{X: l.x + button.x, Y: l.y + button.y, Button: tea.MouseLeft})
+			case "cancel":
+				press(m, "esc")
+			}
+			if m.modal != "" || len(m.confirmationActions) != 0 || (m.nextRepository == nil) != (choice == "cancel") {
+				t.Fatal("workspace transition did not respect the requested choice")
+			}
+			if m.nextRepository != nil && m.nextRepository.Root != target.repo.Root {
+				t.Fatal("workspace switch lost the selected destination")
+			}
+			want := "package main\n"
+			if choice == "save" {
+				want = "// edited\n"
+			}
+			if len(m.tabs) != 2 {
+				t.Fatal("workspace prompt removed tabs from the saved session")
+			}
+			for _, tab := range m.tabs {
+				got, err := os.ReadFile(tab.doc.Path)
+				if err != nil || string(got) != want {
+					t.Fatalf("file content = %q, %v; want %q", got, err, want)
+				}
+				if choice == "cancel" && (!tab.doc.Dirty() || tab.doc.Text != "// edited\n") {
+					t.Fatal("cancel lost an unsaved edit")
+				}
+			}
+		})
+	}
+}
+
+func TestWorkspaceSwitchStaysOpenWhenSaveFails(t *testing.T) {
+	m := tabWorkspace(t, 2)
+	target := explorerWorkspace(t)
+	for _, name := range []string{"file0.go", "file1.go"} {
+		m.openFile(name)
+		m.document().Edit("// edited\n")
+	}
+	doc := m.document()
+	if err := os.Chmod(doc.Path, 0444); err != nil {
+		t.Fatal(err)
+	}
+	drain(t, m, m.openRepository(target.repo.Root))
+	press(m, "s")
+	if !hasSaveConfirmation(m) || m.nextRepository != nil || !doc.Dirty() ||
+		!strings.Contains(m.confirmationDetail, "file1.go") || !strings.Contains(m.confirmationDetail, "read-only") {
+		t.Fatal("failed save lost edits, switched, or hid the error")
+	}
+	if m.tabs[0].dirty() {
+		t.Fatal("first file was not saved")
+	}
+	if err := os.Chmod(doc.Path, 0644); err != nil {
+		t.Fatal(err)
+	}
+	press(m, "s")
+	if m.nextRepository == nil || m.modal != "" || doc.Dirty() {
+		t.Fatal("retry did not finish saving and switch")
 	}
 }
 

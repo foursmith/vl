@@ -159,7 +159,8 @@ func TestChangesDiscardAllShortcutConfirmsAndPreservesIndex(t *testing.T) {
 		t.Fatal("the default choice did not cancel repository discard")
 	}
 	press(m, "D")
-	drain(t, m, press(m, "x"))
+	press(m, "left")
+	drain(t, m, press(m, "enter"))
 	if len(m.snapshot.Changes) != 1 || m.snapshot.Changes[0].Path != "README.md" || !m.snapshot.Changes[0].Staged() {
 		t.Fatalf("discard affected the index or left worktree changes: %+v", m.snapshot.Changes)
 	}
@@ -184,7 +185,10 @@ func TestChangesDiscardAndStashShortcuts(t *testing.T) {
 	if _, err := os.Stat(path); err != nil {
 		t.Fatal(err)
 	}
-	drain(t, m, press(m, "x"))
+	if cmd := press(m, "x"); cmd != nil || m.modal != "confirm" {
+		t.Fatal("x bypassed the confirmation buttons")
+	}
+	drain(t, m, press(m, "enter"))
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatalf("expected untracked file to be discarded, got %v", err)
 	}

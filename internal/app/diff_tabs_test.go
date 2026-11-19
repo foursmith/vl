@@ -136,7 +136,7 @@ func TestMixedTabsRetainDirtyCloseGuard(t *testing.T) {
 	doc := m.document()
 	drain(t, m, m.requestDiff(diffTarget{path: "file0.go"}, func(context.Context) (string, error) { return diffTabText("review"), nil }))
 	m.closeOtherTabs()
-	if m.modal != "close" || len(m.tabs) != 2 {
+	if !hasSaveConfirmation(m) || len(m.tabs) != 2 {
 		t.Fatal("close others bypassed a dirty document")
 	}
 	m.chooseClose("cancel")
@@ -144,7 +144,7 @@ func TestMixedTabsRetainDirtyCloseGuard(t *testing.T) {
 		t.Fatal("cancel changed tab selection or removed the document")
 	}
 	m.closeAllTabs()
-	if m.modal != "close" || len(m.tabs) != 1 || m.document() != doc {
+	if !hasSaveConfirmation(m) || len(m.tabs) != 1 || m.document() != doc {
 		t.Fatal("close all did not preserve the dirty document prompt")
 	}
 	m.chooseClose("discard")

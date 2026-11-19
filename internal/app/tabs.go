@@ -209,22 +209,18 @@ func (m *Model) advanceClose() tea.Cmd {
 	for len(m.closeQueue) > 0 {
 		d := m.closeQueue[0]
 		if d.Dirty() {
-			m.modal = "close"
-			m.dialogTop = 0
-			m.confirmationButton = 0
 			path, err := filepath.Rel(m.repo.Root, d.Path)
 			if err != nil {
 				path = d.Path
 			}
-			m.modalTitle = m.tr("Save changes to %s?", path)
-			m.input.Blur()
+			m.askSaveChanges(m.tr("Save changes to %s?", path), m.chooseClose)
 			return nil
 		}
 		m.removeTab(d)
 		m.closeQueue = m.closeQueue[1:]
 	}
 	m.closeQueue = nil
-	m.modal = ""
+	m.dismissDialog()
 	if m.editorOnly && len(m.tabs) == 0 {
 		return tea.Quit
 	}
@@ -234,23 +230,16 @@ func (m *Model) advanceClose() tea.Cmd {
 func (m *Model) chooseClose(choice string) tea.Cmd {
 	if choice == "cancel" {
 		m.closeQueue = nil
-		m.modal = ""
+		m.dismissDialog()
 		return nil
 	}
 	if len(m.closeQueue) == 0 {
-		m.modal = ""
+		m.dismissDialog()
 		return nil
 	}
 	d := m.closeQueue[0]
-	if choice == "save" {
-		if m.busy {
-			m.notice = m.tr("Wait for the current Git operation before saving")
-			return nil
-		}
-		if err := d.Save(); err != nil {
-			m.notice = m.tr(err.Error())
-			return nil
-		}
+	if choice == "save" && !m.saveDialogDocument(d) {
+		return nil
 	}
 	m.removeTab(d)
 	m.closeQueue = m.closeQueue[1:]
@@ -521,41 +510,6 @@ func (m *Model) tabBar() string {
 		x = slot.x + slot.width
 	}
 	return row(text, w, m.colors.Foreground, m.colors.TabBarBackground)
-}
-
-func (m *Model) clickModal(msg tea.MouseClickMsg) tea.Cmd {
-	if m.isPicker() {
-		return m.clickPicker(msg)
-	}
-	if m.gitMessageDialog() {
-		l := m.dialogLayout()
-		if msg.Button == tea.MouseLeft {
-			for i, button := range l.buttons {
-				if msg.Y == l.y+button.y && msg.X >= l.x+button.x && msg.X < l.x+button.x+button.width {
-					code := tea.KeyEscape
-					if i == 1 {
-						code = tea.KeyEnter
-					}
-					return m.updateModal(tea.KeyPressMsg{Code: code})
-				}
-			}
-		}
-		if msg.X >= l.x && msg.X < l.x+l.width && msg.Y >= l.y && msg.Y < l.y+len(l.content)+2 {
-			return nil
-		}
-	}
-	if m.confirmationDialog() {
-		l := m.dialogLayout()
-		if msg.Button == tea.MouseLeft {
-			for i, button := range l.buttons {
-				if msg.Y == l.y+button.y && msg.X >= l.x+button.x && msg.X < l.x+button.x+button.width {
-					m.confirmationButton = i
-					return m.chooseConfirmation()
-				}
-			}
-		}
-	}
-	return m.updateModal(tea.KeyPressMsg{Code: tea.KeyEscape})
 }
 
 func (m *Model) fileDirty(path string) bool {

@@ -31,11 +31,13 @@ default key still gives the user a target to bind.
 
 ## Workbench
 
+In confirmation dialogs, use `←`/`→` or `Tab` to select a button, `Enter` to activate it, and `Esc` to cancel.
+
 | Shortcut | Action |
 | --- | --- |
 | `Ctrl+P` | Quick Open (Go to File) |
 | `Ctrl+Shift+P` / `F1` | Show Command Palette |
-| `Ctrl+H` | Open Recent Workspace |
+| `Ctrl+H` | Open Recent Workspace. Prompts if there are unsaved changes. |
 | `Ctrl+1` / `Ctrl+2` / `Ctrl+3` / `Ctrl+4` / `Ctrl+5` | Focus Explorer / Search / Changes / History / Pull Requests |
 | `Ctrl+Shift+F` | Find in Files |
 | `Ctrl+L` | Toggle Sidebar |
@@ -99,7 +101,7 @@ name ending in `-copy` if the default destination is the source itself.
 | `s` | Stage a working-tree row or unstage a staged row. Applies to the file, folder, or group selected. On the repository header, stages the repository. |
 | `Shift+S` | Stage all in the selected repository from a working-tree row, or unstage all from a staged row. On the repository header, stages first when there are stageable changes. |
 | `c` | Commit |
-| `d` | Open Discard Changes for the selected unstaged item. Confirm with `x` or the dialog. |
+| `d` | Open Discard Changes for the selected unstaged item. |
 | `Shift+D` | Discard all unstaged changes in the selected repository, with confirmation. Available from working-tree rows and repository headers. |
 | `t` | Open Stash Changes, including untracked files |
 | `f` | Fetch |

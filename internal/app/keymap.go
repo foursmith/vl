@@ -151,19 +151,18 @@ var completionAccept = binding("Tab", "Insert completion", "tab")
 var eraseCharacter = binding("Backspace", "Delete previous character", "backspace")
 
 var gitKeys = struct {
-	Stage, StageScope, Discard, DiscardScope, ConfirmDiscard key.Binding
-	Commit, Stash, Fetch, Pull, Push                         key.Binding
+	Stage, StageScope, Discard, DiscardScope key.Binding
+	Commit, Stash, Fetch, Pull, Push         key.Binding
 }{
-	Stage:          binding("s", "Stage or unstage", "s"),
-	StageScope:     binding("S", "Stage or unstage scope", "S", "shift+s"),
-	Discard:        binding("d", "Discard changes", "d"),
-	DiscardScope:   binding("D", "Discard changes in scope", "D", "shift+d"),
-	ConfirmDiscard: binding("x", "Confirm discard", "x"),
-	Commit:         binding("c", "Commit staged changes", "c"),
-	Stash:          binding("t", "Stash changes", "t"),
-	Fetch:          binding("f", "Fetch", "f"),
-	Pull:           binding("p", "Pull", "p"),
-	Push:           binding("P", "Push", "P", "shift+p"),
+	Stage:        binding("s", "Stage or unstage", "s"),
+	StageScope:   binding("S", "Stage or unstage scope", "S", "shift+s"),
+	Discard:      binding("d", "Discard changes", "d"),
+	DiscardScope: binding("D", "Discard changes in scope", "D", "shift+d"),
+	Commit:       binding("c", "Commit staged changes", "c"),
+	Stash:        binding("t", "Stash changes", "t"),
+	Fetch:        binding("f", "Fetch", "f"),
+	Pull:         binding("p", "Pull", "p"),
+	Push:         binding("P", "Push", "P", "shift+p"),
 }
 
 func isDiffGitShortcut(name string) bool {

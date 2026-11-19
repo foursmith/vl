@@ -48,7 +48,7 @@ func TestConfirmationLongUnicodeTargetCanBeReadBeforeConfirming(t *testing.T) {
 	for _, size := range [][2]int{{120, 36}, {60, 20}, {30, 8}} {
 		m.Update(tea.WindowSizeMsg{Width: size[0], Height: size[1]})
 		confirmed := false
-		m.ask(title, func() tea.Cmd { confirmed = true; return nil })
+		m.ask(title, "Confirm", func() tea.Cmd { confirmed = true; return nil })
 		m.confirmationDetail = "This file cannot be recovered by Git."
 		var seen strings.Builder
 		readLines := 0
@@ -125,21 +125,20 @@ func TestConfirmationButtonsNavigateAndPreserveCloseChoices(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	defer m.Close()
 	confirmed := false
-	m.ask("Continue?", func() tea.Cmd { confirmed = true; return nil })
+	m.ask("Continue?", "Confirm", func() tea.Cmd { confirmed = true; return nil })
 	m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	press(m, "enter")
 	if confirmed || m.modal != "" {
 		t.Fatal("confirmation cancel button did not cancel")
 	}
-	m.ask("Continue?", func() tea.Cmd { confirmed = true; return nil })
+	m.ask("Continue?", "Confirm", func() tea.Cmd { confirmed = true; return nil })
 	press(m, "enter")
 	if !confirmed || m.modal != "" {
 		t.Fatal("confirmation button did not run action")
 	}
 	for i := range 2 {
 		confirmed = false
-		m.ask("Delete file file.txt?", func() tea.Cmd { confirmed = true; return nil })
-		m.confirmationLabel = "Delete"
+		m.ask("Delete file file.txt?", "Delete", func() tea.Cmd { confirmed = true; return nil })
 		l := m.dialogLayout()
 		button := l.buttons[i]
 		m.clickModal(tea.MouseClickMsg{X: l.x + button.x, Y: l.y + button.y, Button: tea.MouseLeft})

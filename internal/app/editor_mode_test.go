@@ -102,7 +102,7 @@ func TestEditorCloseProtectsEditsAndExits(t *testing.T) {
 			defer m.Close()
 			m.document().Insert("new ")
 			m.closeTab()
-			if m.modal != "close" || m.document() == nil {
+			if !hasSaveConfirmation(m) || m.document() == nil {
 				t.Fatal("dirty close skipped prompt")
 			}
 			cmd := m.chooseClose(choice)

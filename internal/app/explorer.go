@@ -271,7 +271,7 @@ func (m *Model) deleteSelectedEntry() tea.Cmd {
 		title = m.tr("Delete folder %s?", path)
 		detail = m.tr("This permanently deletes the folder and all its contents from disk. Uncommitted content cannot be recovered by Git.")
 	}
-	cmd := m.ask(title, func() tea.Cmd {
+	cmd := m.ask(title, m.tr("Delete"), func() tea.Cmd {
 		if m.repo.Root != root || m.busy || m.deletePathDirty(path) {
 			m.notice = m.tr("Path state changed; try again")
 			return nil
@@ -281,7 +281,6 @@ func (m *Model) deleteSelectedEntry() tea.Cmd {
 		})
 	})
 	m.confirmationDetail = detail
-	m.confirmationLabel = m.tr("Delete")
 	return cmd
 }
 

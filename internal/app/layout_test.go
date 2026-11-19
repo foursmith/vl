@@ -108,11 +108,15 @@ func TestPickerOutsideClickDismissesWithoutClickThrough(t *testing.T) {
 	}
 }
 
-func TestAllDialogsDismissOnClickAndPreserveUnsavedFiles(t *testing.T) {
+func TestDialogClicksDismissOnlyOutside(t *testing.T) {
 	for _, kind := range []string{"newFile", "newFolder", "branch", "commit", "find", "confirm"} {
 		m := tabWorkspace(t, 0)
 		confirmed := false
-		m.prompt(kind, "Dialog", "")
+		if kind == "confirm" {
+			m.ask("Dialog", "Confirm", func() tea.Cmd { confirmed = true; return nil })
+		} else {
+			m.prompt(kind, "Dialog", "")
+		}
 		layout := m.dialogLayout()
 		view := m.View()
 		top := strings.Split(view.Content, "\n")[layout.y]
@@ -127,10 +131,13 @@ func TestAllDialogsDismissOnClickAndPreserveUnsavedFiles(t *testing.T) {
 				}
 			}
 		}
-		m.confirm = func() tea.Cmd { confirmed = true; return nil }
-		_, cmd := m.Update(tea.MouseClickMsg{X: 24, Y: 5, Button: tea.MouseLeft})
-		if m.modal != "" || m.input.Focused() || confirmed || cmd != nil || m.confirm != nil {
-			t.Fatalf("%s dialog was not canceled on click", kind)
+		m.Update(tea.MouseClickMsg{X: layout.x + 1, Y: layout.y + 1, Button: tea.MouseLeft})
+		if m.modal != kind || confirmed {
+			t.Fatalf("%s dialog was canceled or accepted by an inside click", kind)
+		}
+		_, cmd := m.Update(tea.MouseClickMsg{X: 0, Y: 0, Button: tea.MouseLeft})
+		if m.modal != "" || m.input.Focused() || confirmed || cmd != nil || len(m.confirmationActions) != 0 {
+			t.Fatalf("%s dialog was not canceled by an outside click", kind)
 		}
 	}
 	m := tabWorkspace(t, 1)
@@ -138,6 +145,11 @@ func TestAllDialogsDismissOnClickAndPreserveUnsavedFiles(t *testing.T) {
 	press(m, "x")
 	doc := m.document()
 	m.closeTab()
+	layout := m.dialogLayout()
+	m.Update(tea.MouseClickMsg{X: layout.x + 1, Y: layout.y + 1, Button: tea.MouseLeft})
+	if !hasSaveConfirmation(m) || m.document() != doc || !doc.Dirty() {
+		t.Fatal("clicking inside the save dialog changed its state")
+	}
 	m.Update(tea.MouseClickMsg{X: 0, Y: 0, Button: tea.MouseLeft})
 	if m.modal != "" || len(m.closeQueue) != 0 || m.document() != doc || !doc.Dirty() {
 		t.Fatal("canceling dirty close lost unsaved document")

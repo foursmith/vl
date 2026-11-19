@@ -32,12 +32,8 @@ func (m *Model) populateRecentWorkspaces() {
 }
 
 func (m *Model) repositorySwitchBlocked() bool {
-	if m.busy || m.openingRepository {
+	if m.busy || m.openingRepository || m.modal != "" || m.flash != nil {
 		m.notice = m.tr("Wait for the current operation to finish")
-		return true
-	}
-	if m.hasDirtyTabs() {
-		m.notice = m.tr("Save or close unsaved files first")
 		return true
 	}
 	return false
@@ -61,13 +57,19 @@ func (m *Model) finishOpenRepository(msg repositoryOpenedMsg) tea.Cmd {
 		m.notice = m.tr("Failed to open folder: %s", m.tr(msg.err.Error()))
 		return nil
 	}
-	// Editing or a Git operation may have started while discovery was running.
+	// Discovery can finish after the user starts editing or opens another dialog.
 	if m.repositorySwitchBlocked() {
 		return nil
 	}
 	if msg.repo.Root == m.repo.Root {
 		m.notice = m.tr("Already in this repository")
 		return nil
+	}
+	if m.hasDirtyTabs() {
+		return m.confirmLeavingWorkspace(m.tr("Save changes before switching workspaces?"), func() tea.Cmd {
+			m.nextRepository = msg.repo
+			return nil
+		})
 	}
 	m.nextRepository = msg.repo
 	return nil

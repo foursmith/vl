@@ -1,10 +1,13 @@
 package app
 
 import (
+	"path/filepath"
 	"strings"
 
+	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/foursmith/vl/internal/editor"
 	"github.com/foursmith/vl/internal/theme"
 )
 
@@ -16,35 +19,165 @@ type dialogLayout struct {
 
 type dialogButton struct{ x, y, width int }
 
-type confirmationAction struct{ label, choice string }
-
-func (m *Model) confirmationActions() []confirmationAction {
-	if m.modal == "close" {
-		return []confirmationAction{{m.tr("Save"), "save"}, {m.tr("Don't Save"), "discard"}, {m.tr("Cancel"), "cancel"}}
-	}
-	return []confirmationAction{{m.confirmationLabel, "confirm"}, {m.tr("Cancel"), "cancel"}}
+type confirmationAction struct {
+	label    string
+	shortcut key.Binding
+	run      func() tea.Cmd
 }
 
-func (m *Model) confirmationDialog() bool { return m.modal == "confirm" || m.modal == "close" }
+func (m *Model) confirmationDialog() bool {
+	return m.modal == "confirm" && len(m.confirmationActions) > 0
+}
+
+func (m *Model) showDialog(kind, title string) {
+	m.leaderTarget = ""
+	m.resizingSidebar = false
+	m.modal, m.modalTitle = kind, title
+	m.dialogTop = 0
+}
+
+func (m *Model) openConfirmation(title, detail string, cancel func() tea.Cmd, actions ...confirmationAction) {
+	m.showDialog("confirm", title)
+	m.confirmationDetail = detail
+	m.confirmationButton = 0
+	m.confirmationActions = append(actions, confirmationAction{label: m.tr("Cancel"), shortcut: dismissKey, run: cancel})
+	m.input.Blur()
+}
+
+func (m *Model) dismissDialog() {
+	m.confirmationActions = nil
+	m.modal = ""
+	m.input.Blur()
+}
+
+func (m *Model) ask(title, label string, run func() tea.Cmd) tea.Cmd {
+	cancel := func() tea.Cmd {
+		m.dismissDialog()
+		return nil
+	}
+	m.openConfirmation(title, "", cancel, confirmationAction{label: label, run: func() tea.Cmd {
+		m.dismissDialog()
+		return run()
+	}})
+	return nil
+}
+
+func (m *Model) askSaveChanges(title string, choose func(string) tea.Cmd) {
+	cancel := func() tea.Cmd { return choose("cancel") }
+	m.openConfirmation(title, m.tr("Unsaved changes will be lost."), cancel,
+		confirmationAction{label: m.tr("Save"), shortcut: dialogKeys.Save, run: func() tea.Cmd { return choose("save") }},
+		confirmationAction{label: m.tr("Don't Save"), shortcut: dialogKeys.Discard, run: func() tea.Cmd { return choose("discard") }},
+	)
+}
+
+func (m *Model) saveDialogDocument(d *editor.Document) bool {
+	if m.busy {
+		m.confirmationDetail = m.tr("Wait for the current Git operation before saving")
+		m.dialogTop = 0
+		return false
+	}
+	if err := m.saveDocument(d); err != nil {
+		m.confirmationDetail = m.tr("Failed to save %s: %s", filepath.Base(d.Path), m.tr(err.Error()))
+		m.dialogTop = 0
+		return false
+	}
+	return true
+}
+
+func (m *Model) confirmLeavingWorkspace(title string, leave func() tea.Cmd) tea.Cmd {
+	m.askSaveChanges(title, func(choice string) tea.Cmd {
+		if choice == "cancel" {
+			m.dismissDialog()
+			return nil
+		}
+		if m.busy {
+			m.confirmationDetail = m.tr("Wait for the current operation to finish")
+			m.dialogTop = 0
+			return nil
+		}
+		if choice == "save" {
+			for _, t := range m.tabs {
+				if t.dirty() && !m.saveDialogDocument(t.doc) {
+					return nil
+				}
+			}
+		}
+		m.dismissDialog()
+		return leave()
+	})
+	return nil
+}
 
 func (m *Model) gitMessageDialog() bool { return m.modal == "commit" || m.modal == "stash" }
 
 func (m *Model) gitMessageDialogWidth() int { return max(6, min(58, m.width-4)) }
 
-func (m *Model) chooseConfirmation() tea.Cmd {
-	actions := m.confirmationActions()
-	choice := actions[min(max(0, m.confirmationButton), len(actions)-1)].choice
-	if m.modal == "close" {
-		return m.chooseClose(choice)
+func (m *Model) activateConfirmation(index int) tea.Cmd {
+	m.confirmationButton = index
+	return m.confirmationActions[index].run()
+}
+
+func (m *Model) updateConfirmation(k string) tea.Cmd {
+	count := len(m.confirmationActions)
+	switch {
+	case matchesShortcut(k, navigationKeys.Right), matchesShortcut(k, searchKeys.NextField):
+		m.confirmationButton = (m.confirmationButton + 1) % count
+		return nil
+	case matchesShortcut(k, navigationKeys.Left), matchesShortcut(k, searchKeys.PreviousField):
+		m.confirmationButton = (m.confirmationButton + count - 1) % count
+		return nil
+	case matchesShortcut(k, dialogKeys.Accept):
+		return m.activateConfirmation(m.confirmationButton)
 	}
-	run := m.confirm
-	m.confirm = nil
-	m.modal = ""
-	m.input.Blur()
-	if choice == "confirm" && run != nil {
-		return run()
+	for i, action := range m.confirmationActions {
+		if matchesShortcut(k, action.shortcut) {
+			return m.activateConfirmation(i)
+		}
 	}
+
+	l := m.confirmationLayout()
+	top := l.top
+	delta := pageDelta(k, l.page)
+	switch {
+	case matchesShortcut(k, navigationKeys.Up):
+		top--
+	case matchesShortcut(k, navigationKeys.Down):
+		top++
+	case delta != 0:
+		top += delta
+	case matchesShortcut(k, pickerKeys.First):
+		top = 0
+	case matchesShortcut(k, pickerKeys.Last):
+		top = l.maxTop
+	}
+	m.dialogTop = min(max(0, top), l.maxTop)
 	return nil
+}
+
+func (m *Model) clickModal(msg tea.MouseClickMsg) tea.Cmd {
+	if m.isPicker() {
+		return m.clickPicker(msg)
+	}
+	l := m.dialogLayout()
+	if msg.Button == tea.MouseLeft {
+		for i, button := range l.buttons {
+			x, y := l.x+button.x, l.y+button.y
+			if msg.Y != y || msg.X < x || msg.X >= x+button.width {
+				continue
+			}
+			if m.confirmationDialog() {
+				return m.activateConfirmation(i)
+			}
+			if i == 1 {
+				return m.updateModal(tea.KeyPressMsg{Code: tea.KeyEnter})
+			}
+			return m.updateModal(tea.KeyPressMsg{Code: tea.KeyEscape})
+		}
+	}
+	if msg.X >= l.x && msg.X < l.x+l.width && msg.Y >= l.y && msg.Y < l.y+len(l.content)+2 {
+		return nil
+	}
+	return m.updateModal(tea.KeyPressMsg{Code: tea.KeyEscape})
 }
 
 // Rendering and button hit testing share the same wrapped, height-bounded layout.
@@ -123,11 +256,7 @@ func (m *Model) confirmationLayout() dialogLayout {
 		return row(strings.Repeat(" ", padding)+text, w-2, theme.Readable(fg, m.colors.Popup), m.colors.Popup)
 	}
 	var message []string
-	detail := m.confirmationDetail
-	if m.modal == "close" {
-		detail = m.tr("Unsaved changes will be lost.")
-	}
-	for i, text := range []string{m.modalTitle, detail} {
+	for i, text := range []string{m.modalTitle, m.confirmationDetail} {
 		if text == "" {
 			continue
 		}
@@ -159,7 +288,7 @@ func (m *Model) confirmationLayout() dialogLayout {
 		l.content = append(l.content, center(m.tr("↑/↓ Scroll"), m.colors.Muted))
 	}
 	l.content = append(l.content, blank)
-	actions := m.confirmationActions()
+	actions := m.confirmationActions
 	gap := 3
 	buttonWidth := max(1, min(12, (w-2-gap*(len(actions)-1))/len(actions)))
 	start := max(0, (w-2-len(actions)*buttonWidth-gap*(len(actions)-1))/2)

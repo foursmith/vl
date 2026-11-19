@@ -209,10 +209,8 @@ type Model struct {
 	lastCommand             string
 	pickerIndex             int
 	pickerTop               int
-	confirm                 func() tea.Cmd
+	confirmationActions     []confirmationAction
 	confirmationDetail      string
-	confirmationLabel       string
-	confirmationKey         key.Binding
 	confirmationButton      int
 	dialogTop               int
 	search                  searchState
@@ -1173,17 +1171,24 @@ func (m *Model) saveEditor(closeAfter bool) tea.Cmd {
 		m.notice = m.tr("Open a file to edit first")
 		return nil
 	}
-	if err := d.Save(); err != nil {
+	if err := m.saveDocument(d); err != nil {
 		m.notice = m.tr(err.Error())
 		return nil
 	}
 	m.notice = m.tr("Saved %s", filepath.Base(d.Path))
-	m.invalidateWorktreeDiffs(d.Path)
 	refresh := m.refreshRepository()
 	if closeAfter {
 		return tea.Batch(refresh, m.closeTab())
 	}
 	return refresh
+}
+
+func (m *Model) saveDocument(d *editor.Document) error {
+	if err := d.Save(); err != nil {
+		return err
+	}
+	m.invalidateWorktreeDiffs(d.Path)
+	return nil
 }
 
 func (m *Model) reloadCleanTabs() {

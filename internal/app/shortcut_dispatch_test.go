@@ -17,7 +17,7 @@ func TestDefaultWorkbenchShortcutActions(t *testing.T) {
 	}
 	keypress := func(code rune) tea.KeyPressMsg { return tea.KeyPressMsg{Code: code} }
 	isQuit := func(m *Model, _ tea.Cmd) bool {
-		return m.modal == "confirm" && m.confirm != nil
+		return hasSaveConfirmation(m)
 	}
 	tabs := func(count int) func(*Model, tea.Cmd) bool {
 		return func(m *Model, _ tea.Cmd) bool { return len(m.tabs) == count }
