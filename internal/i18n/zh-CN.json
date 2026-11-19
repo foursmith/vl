@@ -1,4 +1,9 @@
 {
+  "Load image": "加载图片",
+  "Loading image…": "正在加载图片…",
+  "Retry image (curl required)": "重试加载图片（需要 curl）",
+  "Retry image (load failed)": "重试加载图片（加载失败）",
+  "Markdown image preview limit reached": "已达到 Markdown 图片预览上限",
   "Dismiss Result": "移除结果",
   "%d lines": "%d 行",
   "Type to search · label to jump · Tab next · Esc cancel": "输入搜索 · 标签跳转 · Tab 下一组 · Esc 取消",

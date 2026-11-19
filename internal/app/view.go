@@ -97,6 +97,7 @@ func underlineRow(rendered, color string, startColumn int) string {
 
 const tabRow = 0
 const editorContentRow = tabRow + 2
+const editorGutterWidth = 7
 
 func (m *Model) contentRow() int {
 	if m.editorOnly {
@@ -431,7 +432,7 @@ func (m *Model) ensureEditor() {
 	m.clampEditorScroll(t)
 	m.revealEditorRow(line)
 	visual := t.editorColumn(line, col)
-	w := max(1, m.mainWidth()-7)
+	w := max(1, m.mainWidth()-editorGutterWidth)
 	if visual < t.left {
 		t.left = visual
 	}
@@ -444,8 +445,9 @@ func (m *Model) ensureEditor() {
 // Keep the final line within the last full screen, including after edits/resizes.
 func (m *Model) clampEditorScroll(t *tab) {
 	lines := t.editorDisplayRow(len(t.doc.Lines())-1) + 1
-	if _, block, _ := t.editorDisplayAt(lines); block != nil {
-		lines = block.first + block.region.Rows
+	if cache := t.markdownImages; cache != nil && len(cache.blocks) > 0 {
+		last := cache.blocks[len(cache.blocks)-1]
+		lines = max(lines, last.first+last.region.Rows)
 	}
 	t.setEditorDisplayTop(min(t.editorDisplayTop(), max(0, lines-m.contentHeight())))
 }
@@ -504,9 +506,8 @@ type editorRenderedRow struct {
 }
 
 func (m *Model) editorLines() []string {
-	const gutterWidth = 7
 	width, height := m.mainWidth(), m.contentHeight()
-	textWidth := max(1, width-gutterWidth)
+	textWidth := max(1, width-editorGutterWidth)
 	t := &m.tabs[m.activeTab]
 	d := t.doc
 	source := d.Lines()
@@ -552,12 +553,13 @@ func (m *Model) editorLines() []string {
 		if isSticky {
 			i = sticky[y]
 		} else if image != nil {
-			mdRows, _ := image.image.regionRows(image.region)
 			content := ""
-			if imageOffset <= len(mdRows) {
+			if image.image == nil {
+				content = m.markdownRemoteImageRow(t.markdownImages, image, imageOffset)
+			} else if mdRows, _ := image.image.regionRows(image.region); imageOffset <= len(mdRows) {
 				content = mdRows[imageOffset-1]
 			}
-			lines = append(lines, row("", gutterWidth, m.colors.Foreground, m.colors.Background)+row(content, width-gutterWidth, m.colors.Foreground, m.colors.Background))
+			lines = append(lines, row("", editorGutterWidth, m.colors.Foreground, m.colors.Background)+row(content, textWidth, m.colors.Foreground, m.colors.Background))
 			continue
 		}
 		if i >= len(source) {
@@ -731,10 +733,10 @@ func (m *Model) editorLines() []string {
 		rendered := gutter + row(text.String(), textWidth, m.colors.Foreground, bg)
 		// Both segments already have a full background and the expected width.
 		// Six-digit line numbers extend the gutter and still need clipping.
-		if i >= 99999 || width < gutterWidth+1 {
+		if i >= 99999 || width < editorGutterWidth+1 {
 			rendered = row(rendered, width, m.colors.Foreground, m.colors.Background)
 		}
-		rendered = guides.decorate(rendered, i, gutterWidth, t.left, rowBracket, m.colors)
+		rendered = guides.decorate(rendered, i, editorGutterWidth, t.left, rowBracket, m.colors)
 		if rowKey.stickyBorder {
 			rendered = underlineRow(rendered, theme.Composite(m.colors.StickyBorder, m.colors.StickyBackground), 0)
 		}
@@ -744,11 +746,11 @@ func (m *Model) editorLines() []string {
 
 	if currentRow >= 0 && m.colors.CurrentLineBorder != "" {
 		border := theme.Composite(m.colors.CurrentLineBorder, m.colors.Background)
-		lines[currentRow] = underlineRow(lines[currentRow], border, gutterWidth)
+		lines[currentRow] = underlineRow(lines[currentRow], border, editorGutterWidth)
 		// The previous text row's underline draws the top edge without moving content.
 		if currentRow > len(sticky) {
 			if _, image, _ := t.editorDisplayAt(top + currentRow - 1); image == nil {
-				lines[currentRow-1] = underlineRow(lines[currentRow-1], border, gutterWidth)
+				lines[currentRow-1] = underlineRow(lines[currentRow-1], border, editorGutterWidth)
 			}
 		}
 	}
@@ -811,6 +813,11 @@ func (m *Model) click(msg tea.MouseClickMsg) tea.Cmd {
 		return m.clickWelcome(msg)
 	}
 	if msg.Y >= m.contentRow() && msg.Y < m.bodyHeight() {
+		if msg.Mod == 0 {
+			if cmd, handled := m.clickMarkdownRemoteImage(msg.X-m.mainX(), msg.Y-m.contentRow()); handled {
+				return cmd
+			}
+		}
 		m.beginTextDrag(msg)
 		if !m.editing() && m.diffOpen {
 			i := m.viewport.YOffset() + msg.Y - m.contentRow()

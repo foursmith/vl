@@ -581,6 +581,10 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		m.monochrome = msg.Profile <= colorprofile.ASCII
 	case markdownImageLoadedMsg:
 		m.finishMarkdownImage(msg)
+	case markdownRemoteImageMsg:
+		m.finishMarkdownRemoteImage(msg)
+	case markdownRemoteCacheMsg:
+		m.finishMarkdownRemoteCache(msg)
 	case uv.KittyGraphicsEvent:
 		m.imageCapability(msg)
 	case imageProbeTimeoutMsg:
@@ -1000,6 +1004,11 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		return nil
 	}
 	if !m.sidebar && m.editorDocument() != nil {
+		if k == "enter" {
+			if cmd, handled := m.enterMarkdownRemoteImage(); handled {
+				return cmd
+			}
+		}
 		if handled, cmd := m.vimKey(k); handled {
 			return cmd
 		}

@@ -18,40 +18,47 @@ import (
 const maxMarkdownImageFiles = 8
 
 type markdownImageRef struct {
-	line int
-	path string
+	line   int
+	path   string
+	remote bool
 }
 
-func markdownImagePath(document string, destination []byte) string {
+func markdownImagePath(document string, destination []byte) (path string, remote bool) {
 	raw := string(util.URLEscape(destination, true))
 	if strings.HasPrefix(raw, "//") {
-		return ""
+		return "", false
 	}
 	u, err := url.Parse(raw)
 	if err != nil {
-		return ""
+		return "", false
+	}
+	if (u.Scheme == "http" || u.Scheme == "https") && u.Hostname() != "" && u.User == nil {
+		u.Fragment, u.RawFragment = "", ""
+		return u.String(), true
 	}
 	if u.Scheme != "" || u.Host != "" || u.Path == "" {
-		return ""
+		return "", false
 	}
-	path := filepath.FromSlash(u.Path)
+	path = filepath.FromSlash(u.Path)
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(filepath.Dir(document), path)
 	}
 	if !imagepreview.Supported(path) {
-		return ""
+		return "", false
 	}
-	return filepath.Clean(path)
+	return filepath.Clean(path), false
 }
 
 type markdownImageCache struct {
-	source string
-	paths  []string
-	files  map[string]*imageState
-	cancel context.CancelFunc
-	job    uint64
-	key    markdownImageLayoutKey
-	blocks []markdownImageBlock
+	source     string
+	paths      []string
+	files      map[string]*imageState
+	remote     map[string]*markdownRemoteImage
+	remoteScan *markdownRemoteCacheScan
+	cancel     context.CancelFunc
+	job        uint64
+	key        markdownImageLayoutKey
+	blocks     []markdownImageBlock
 }
 
 type markdownImageLayoutKey struct {
@@ -61,6 +68,7 @@ type markdownImageLayoutKey struct {
 
 type markdownImageBlock struct {
 	line, first int // Source line and first inserted screen row.
+	address     string
 	image       *imageState
 	region      imagepreview.Region
 }
@@ -83,22 +91,43 @@ func (m *Model) scheduleMarkdownImages() tea.Cmd {
 		return nil
 	}
 	if t.markdownImages == nil {
-		t.markdownImages = &markdownImageCache{files: make(map[string]*imageState)}
+		t.markdownImages = &markdownImageCache{
+			files:  make(map[string]*imageState),
+			remote: make(map[string]*markdownRemoteImage),
+		}
 	}
 	cache := t.markdownImages
 	if cache.source == t.doc.Text {
 		return nil
 	}
 	cache.source = t.doc.Text
-	var paths []string
+	var paths, remotePaths []string
+	remoteRefs := make(map[string]bool)
 	for _, ref := range refs {
-		if !slices.Contains(paths, ref.path) {
-			paths = append(paths, ref.path)
-			if len(paths) == maxMarkdownImageFiles {
-				break
+		if ref.remote {
+			if !remoteRefs[ref.path] {
+				remoteRefs[ref.path] = true
+				remotePaths = append(remotePaths, ref.path)
 			}
+		} else if len(paths) < maxMarkdownImageFiles && !slices.Contains(paths, ref.path) {
+			paths = append(paths, ref.path)
 		}
 	}
+	for address, state := range cache.remote {
+		if !remoteRefs[address] {
+			if state.cancel != nil {
+				state.cancel()
+			}
+			if state.image != nil {
+				m.imageRetired = append(m.imageRetired, state.image.id)
+			}
+			delete(cache.remote, address)
+		}
+	}
+	return tea.Batch(m.scheduleLocalMarkdownImages(cache, paths), m.scheduleMarkdownRemoteCache(cache, remotePaths))
+}
+
+func (m *Model) scheduleLocalMarkdownImages(cache *markdownImageCache, paths []string) tea.Cmd {
 	if slices.Equal(paths, cache.paths) {
 		return nil
 	}
@@ -170,6 +199,11 @@ func (cache *markdownImageCache) remainingPixels() int {
 			remaining -= markdownImagePixels(im.Image)
 		}
 	}
+	for _, remote := range cache.remote {
+		if remote.image != nil {
+			remaining -= markdownImagePixels(remote.image.Image)
+		}
+	}
 	return remaining
 }
 
@@ -193,18 +227,23 @@ func (m *Model) finishMarkdownImage(msg markdownImageLoadedMsg) {
 		if !added {
 			return
 		}
-		cache.key = markdownImageLayoutKey{}
-		if i == m.activeTab && m.editing() {
-			line, _ := t.doc.Position()
-			y := t.editorDisplayRow(line) - t.editorDisplayTop()
-			m.syncMarkdownImageRows(t)
-			m.cancelFlash()
-			if y >= 0 && y < m.contentHeight() {
-				m.ensureEditor()
-			} else {
-				m.clampEditorScroll(t)
-			}
-		}
+		m.updateMarkdownImageRows(i)
 		return
+	}
+}
+
+func (m *Model) updateMarkdownImageRows(index int) {
+	t := &m.tabs[index]
+	t.markdownImages.key = markdownImageLayoutKey{}
+	if index == m.activeTab && m.editing() {
+		line, _ := t.doc.Position()
+		y := t.editorDisplayRow(line) - t.editorDisplayTop()
+		m.syncMarkdownImageRows(t)
+		m.cancelFlash()
+		if y >= 0 && y < m.contentHeight() {
+			m.ensureEditor()
+		} else {
+			m.clampEditorScroll(t)
+		}
 	}
 }

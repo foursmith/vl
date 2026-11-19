@@ -90,6 +90,7 @@ Run `./bin/vl` from the checkout or copy it into a directory on your `PATH`.
 
 - Workbench mode requires Git on your `PATH`. [Git](https://git-scm.com/)
 - For GitHub pull requests, install `gh` and run `gh auth login`. [GitHub CLI](https://cli.github.com/)
+- For remote images in Markdown, install `curl`.
 - For SVG previews, install `resvg` and put it on your `PATH`. [resvg](https://github.com/linebender/resvg)
 - For file icons, install a Nerd Font and select it in your terminal's font settings. [Nerd Fonts](https://github.com/ryanoasis/nerd-fonts)
 

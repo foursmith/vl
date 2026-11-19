@@ -17,7 +17,7 @@ func renderSVG(ctx context.Context, source []byte) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, "resvg", "--width", "2048", "--height", "2048", "-", "-c")
 	cmd.WaitDelay = 200 * time.Millisecond
 	cmd.Stdin = bytes.NewReader(source)
-	var output svgOutput
+	var output previewOutput
 	cmd.Stdout = &output
 	if err := cmd.Run(); err != nil {
 		if ctx.Err() != nil {
@@ -26,13 +26,4 @@ func renderSVG(ctx context.Context, source []byte) ([]byte, error) {
 		return nil, fmt.Errorf("SVG preview: %w", err)
 	}
 	return output.buf.Bytes(), nil
-}
-
-type svgOutput struct{ buf bytes.Buffer }
-
-func (out *svgOutput) Write(p []byte) (int, error) {
-	if len(p) > MaxBytes-out.buf.Len() {
-		return 0, fmt.Errorf("SVG preview exceeds 32 MiB output limit")
-	}
-	return out.buf.Write(p)
 }

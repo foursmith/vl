@@ -1,13 +1,17 @@
 package app
 
-import "sort"
+import (
+	"sort"
+
+	"github.com/foursmith/vl/internal/imagepreview"
+)
 
 func (m *Model) syncMarkdownImageRows(t *tab) {
 	cache := t.markdownImages
 	if cache == nil {
 		return
 	}
-	w := min(48, m.mainWidth()-7)
+	w := min(48, m.mainWidth()-editorGutterWidth)
 	h := min(12, m.contentHeight()/2)
 	if !m.kittySupported || w <= 0 || h <= 0 {
 		cache.key, cache.blocks = markdownImageLayoutKey{}, nil
@@ -21,22 +25,45 @@ func (m *Model) syncMarkdownImageRows(t *tab) {
 	t.syncMarkdown()
 	clear(cache.blocks)
 	cache.key, cache.blocks = key, cache.blocks[:0]
+	// Fit a 16:9 frame in physical pixels, rounding to whole terminal cells.
+	rowDenominator := 16 * m.cellHeight
+	frameHeight := min(max(3, h), max(3, (w*m.cellWidth*9+rowDenominator/2)/rowDenominator))
+	columnDenominator := 9 * m.cellWidth
+	frameWidth := min(w, max(2, (frameHeight*m.cellHeight*16+columnDenominator/2)/columnDenominator))
+	frame := imagepreview.Region{Columns: frameWidth, Rows: frameHeight}
 	extra, previous := 0, -1
 	for _, ref := range t.markdown.images {
-		im := cache.files[ref.path]
-		if im == nil || ref.line == previous {
-			continue
-		}
 		base := t.visibleRow(ref.line)
 		if t.sourceRow(base) != ref.line {
 			continue
 		}
-		region := im.ViewRegion(w, h, m.cellWidth, m.cellHeight, 1, .5, .5)
-		if region.Rows > 0 && region.Columns > 0 {
-			cache.blocks = append(cache.blocks, markdownImageBlock{ref.line, base + extra + 1, im, region})
-			extra += region.Rows
+		var im *imageState
+		var address string
+		if ref.remote {
+			address = ref.path
+			if state := cache.remote[address]; state != nil {
+				im = state.image
+			} else if cache.remoteScan != nil {
+				continue
+			}
+		} else {
+			im = cache.files[ref.path]
+			if im == nil || ref.line == previous {
+				continue
+			}
 			previous = ref.line
 		}
+		region := frame
+		if im != nil {
+			region = im.ViewRegion(w, h, m.cellWidth, m.cellHeight, 1, .5, .5)
+			if region.Rows <= 0 || region.Columns <= 0 {
+				continue
+			}
+		}
+		cache.blocks = append(cache.blocks, markdownImageBlock{
+			line: ref.line, first: base + extra + 1, address: address, image: im, region: region,
+		})
+		extra += region.Rows
 	}
 }
 
@@ -71,16 +98,23 @@ func (t *tab) editorDisplayAt(row int) (line int, block *markdownImageBlock, off
 
 func (t *tab) editorDisplayTop() int {
 	top := t.editorDisplayRow(t.top)
-	if t.topImageOffset > 0 {
-		if line, block, _ := t.editorDisplayAt(top + 1); block != nil && line == t.top {
-			top += min(t.topImageOffset, block.region.Rows)
+	if t.topImageOffset > 0 && t.markdownImages != nil {
+		blocks := t.markdownImages.blocks
+		end := sort.Search(len(blocks), func(i int) bool { return blocks[i].line > t.top })
+		if end > 0 && blocks[end-1].line == t.top {
+			last := blocks[end-1]
+			top += min(t.topImageOffset, last.first+last.region.Rows-1-top)
 		}
 	}
 	return top
 }
 
 func (t *tab) setEditorDisplayTop(row int) {
-	t.top, _, t.topImageOffset = t.editorDisplayAt(max(0, row))
+	line, block, _ := t.editorDisplayAt(max(0, row))
+	t.top, t.topImageOffset = line, 0
+	if block != nil {
+		t.topImageOffset = row - t.editorDisplayRow(line)
+	}
 }
 
 func (m *Model) visibleMarkdownImages(visit func(*markdownImageBlock)) {
@@ -96,6 +130,8 @@ func (m *Model) visibleMarkdownImages(visit func(*markdownImageBlock)) {
 	blocks := t.markdownImages.blocks
 	first := sort.Search(len(blocks), func(i int) bool { return blocks[i].first+blocks[i].region.Rows > top })
 	for i := first; i < len(blocks) && blocks[i].first < end; i++ {
-		visit(&blocks[i])
+		if blocks[i].image != nil {
+			visit(&blocks[i])
+		}
 	}
 }

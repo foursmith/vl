@@ -160,6 +160,11 @@ func (m *Model) retireImage(t *tab) {
 				m.imageRetired = append(m.imageRetired, im.id)
 			}
 		}
+		for _, state := range t.markdownImages.remote {
+			if state.image != nil {
+				m.imageRetired = append(m.imageRetired, state.image.id)
+			}
+		}
 	}
 	if t.diff != nil {
 		m.setDiffImages(t.diff, nil)

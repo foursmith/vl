@@ -59,8 +59,8 @@ func (t *tab) syncMarkdown() {
 		if image, ok := node.(*ast.Image); ok {
 			pos := image.Pos()
 			line := sort.Search(len(starts), func(i int) bool { return starts[i] > pos }) - 1
-			if path := markdownImagePath(t.doc.Path, image.Destination); line >= 0 && path != "" {
-				cache.images = append(cache.images, markdownImageRef{line, path})
+			if path, remote := markdownImagePath(t.doc.Path, image.Destination); line >= 0 && path != "" {
+				cache.images = append(cache.images, markdownImageRef{line, path, remote})
 			}
 			return ast.WalkSkipChildren, nil
 		}

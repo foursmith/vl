@@ -25,16 +25,12 @@ type cachedPullRequestDiff struct {
 var pullRequestCacheWrites sync.Mutex
 
 func pullRequestCacheDir(workspace, kind string) string {
-	base := os.Getenv("XDG_CACHE_HOME")
-	if !filepath.IsAbs(base) {
-		var err error
-		base, err = os.UserCacheDir()
-		if err != nil {
-			return ""
-		}
+	dir := CacheDir(kind)
+	if dir == "" {
+		return ""
 	}
 	key := sha256.Sum256([]byte(filepath.Clean(workspace)))
-	return filepath.Join(base, "vl", kind, fmt.Sprintf("%x", key))
+	return filepath.Join(dir, fmt.Sprintf("%x", key))
 }
 
 func NewPullRequestDiffCache(workspace string, limit int) *PullRequestDiffCache {

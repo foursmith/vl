@@ -74,4 +74,45 @@ func TestZoomRegionBoundsAtExtremeScale(t *testing.T) {
 	if got.Bounds().Dx() > 640 || got.Bounds().Dy() > 384 {
 		t.Fatal("allocated full zoomed image")
 	}
+	wide := im.ViewRegion(255, 6, 32, 32, 64, 1, 0)
+	if got := decodeRegion(t, im, wide).Bounds().Size(); got != image.Pt(4096, 96) {
+		t.Errorf("large viewport uploaded %v, want 4096×96", got)
+	}
+}
+
+func TestKittyRegionScalesRasterBySourceSize(t *testing.T) {
+	const width, height = 160, 128
+	var pngData bytes.Buffer
+	if err := png.Encode(&pngData, image.NewNRGBA(image.Rect(0, 0, width, height))); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		size, width, height int
+	}{
+		{500_000, 160, 128},
+		{500_001, 160, 128},
+		{781_250, 128, 102},
+		{1_000_000, 113, 91},
+		{2_000_000, 80, 64},
+	} {
+		// PNG decoding ends at IEND. Padding varies the file size without
+		// changing the source raster.
+		source := make([]byte, tc.size)
+		copy(source, pngData.Bytes())
+		im, err := Decode(t.Context(), "preview.png", source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		region := im.ViewRegion(48, 12, 8, 16, 1, .5, .5)
+		upload, _, err := im.KittyRegion(42, region)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(upload, ",c=20,r=8,") {
+			t.Fatalf("%d-byte source changed the cell placement", tc.size)
+		}
+		if got := decodeKittyUpload(t, upload).Bounds().Size(); got != image.Pt(tc.width, tc.height) {
+			t.Errorf("%d-byte source uploaded %v, want %d×%d", tc.size, got, tc.width, tc.height)
+		}
+	}
 }

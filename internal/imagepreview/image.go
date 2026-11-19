@@ -24,6 +24,7 @@ const MaxPixels = 16 << 20
 
 type Image struct {
 	Path, Format string
+	sourceBytes  int
 	pixels       image.Image
 	digest       [sha256.Size]byte
 }
@@ -40,6 +41,14 @@ func Supported(path string) bool {
 }
 
 func Open(ctx context.Context, path string) (*Image, error) {
+	data, err := readImageFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return Decode(ctx, path, data)
+}
+
+func readImageFile(path string) ([]byte, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -55,11 +64,7 @@ func Open(ctx context.Context, path string) (*Image, error) {
 	if info.Size() > MaxBytes {
 		return nil, fmt.Errorf("image exceeds 32 MiB preview limit")
 	}
-	data, err := io.ReadAll(io.LimitReader(f, MaxBytes+1))
-	if err != nil {
-		return nil, err
-	}
-	return Decode(ctx, path, data)
+	return io.ReadAll(io.LimitReader(f, MaxBytes+1))
 }
 
 // Decode applies the same preview limits to Git blobs and disk files.
@@ -93,7 +98,7 @@ func Decode(ctx context.Context, path string, source []byte) (*Image, error) {
 	if svg {
 		format = "svg"
 	}
-	return &Image{Path: path, Format: format, pixels: pixels, digest: sha256.Sum256(source)}, nil
+	return &Image{Path: path, Format: format, sourceBytes: len(source), pixels: pixels, digest: sha256.Sum256(source)}, nil
 }
 
 // SameContent identifies previews whose source bytes and decoding format match.
@@ -103,3 +108,12 @@ func (im *Image) SameContent(other *Image) bool {
 
 // Bounds returns the decoded image bounds.
 func (im *Image) Bounds() image.Rectangle { return im.pixels.Bounds() }
+
+type previewOutput struct{ buf bytes.Buffer }
+
+func (out *previewOutput) Write(p []byte) (int, error) {
+	if len(p) > MaxBytes-out.buf.Len() {
+		return 0, fmt.Errorf("image exceeds 32 MiB preview limit")
+	}
+	return out.buf.Write(p)
+}

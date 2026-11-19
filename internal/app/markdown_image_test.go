@@ -2,9 +2,14 @@ package app
 
 import (
 	"context"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -18,9 +23,6 @@ func TestMarkdownImageRowsAndUpload(t *testing.T) {
 	const heading = "# Notes\n"
 	const reference = "![local](local%20image.png)\n"
 	source := heading + reference + "After\n" +
-		"![http](http://example.test/image.png)\n" +
-		"![https](https://example.test/image.png)\n" +
-		"![host-relative](//example.test/image.png)\n" +
 		"```md\n![fenced](fenced.png)\n```\n" + strings.Repeat("Tail\n", 25)
 	path := filepath.Join(dir, "notes.md")
 	if err := os.WriteFile(path, []byte(source), 0600); err != nil {
@@ -87,5 +89,107 @@ func TestMarkdownImageRowsAndUpload(t *testing.T) {
 	m.ensureEditor()
 	if len(tab.markdownImages.blocks) != 0 || m.flushRetiredImages() == nil {
 		t.Fatal("removing the reference left a placement or Kitty image behind")
+	}
+}
+
+func TestMarkdownRemoteImageClickRetryAndOfflineCache(t *testing.T) {
+	if _, err := exec.LookPath("curl"); err != nil {
+		t.Skip("curl unavailable")
+	}
+	t.Setenv("NO_PROXY", "127.0.0.1")
+	t.Setenv("no_proxy", "127.0.0.1")
+	dir := t.TempDir()
+	t.Setenv("XDG_CACHE_HOME", filepath.Join(dir, "cache"))
+	pngPath := filepath.Join(dir, "image.png")
+	writePreviewPNG(t, pngPath, 160, 128)
+	png, err := os.ReadFile(pngPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if requests.Add(1) == 1 {
+			http.Error(w, "try again", http.StatusServiceUnavailable)
+			return
+		}
+		_, _ = w.Write(png)
+	}))
+	defer server.Close()
+
+	path := filepath.Join(dir, "notes.md")
+	source := fmt.Sprintf("![remote](%s/image?q=1) ![same](%s/image?q=1#fragment)\nAfter\n", server.URL, server.URL)
+	source += "![scheme-relative](//example.test/image.png)\n"
+	if err := os.WriteFile(path, []byte(source), 0600); err != nil {
+		t.Fatal(err)
+	}
+	open := func(kitty bool) *Model {
+		m, err := NewEditor(t.Context(), path, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(m.Close)
+		m.kittySupported = kitty
+		_, cmd := m.Update(tea.WindowSizeMsg{Width: 80, Height: 32})
+		drain(t, m, cmd)
+		return m
+	}
+	m := open(false)
+	if tab := &m.tabs[m.activeTab]; tab.markdownImages != nil || !strings.Contains(m.editorLines()[1], "After") {
+		t.Fatal("inserted a placeholder without graphics support")
+	}
+
+	m = open(true)
+	tab := &m.tabs[m.activeTab]
+	if len(tab.markdownImages.blocks) != 2 {
+		t.Fatal("expected two placeholders")
+	}
+	first, second := tab.markdownImages.blocks[0], tab.markdownImages.blocks[1]
+	pixelWidth, pixelHeight := first.region.Columns*m.cellWidth, first.region.Rows*m.cellHeight
+	if delta := 9*pixelWidth - 16*pixelHeight; delta < -9*m.cellWidth/2 || delta > 9*m.cellWidth/2 {
+		t.Fatalf("placeholder is %d×%d pixels, want 16:9 within half a column", pixelWidth, pixelHeight)
+	}
+	labelRow := second.first + (second.region.Rows-1)/2
+	bottomRow := second.first + second.region.Rows - 1
+	lines := m.editorLines()
+	if first.region.Rows < 5 || !strings.Contains(lines[first.first], "╭") ||
+		!strings.Contains(lines[labelRow], "Load image") || !strings.Contains(lines[bottomRow], "╯") ||
+		!strings.Contains(lines[bottomRow+1], "After") || requests.Load() != 0 {
+		t.Fatal("expected two framed placeholders and no automatic download")
+	}
+	outside := tea.MouseClickMsg{X: m.mainX() + editorGutterWidth + second.region.Columns, Y: m.contentRow() + bottomRow, Button: tea.MouseLeft}
+	_, cmd := m.Update(outside)
+	drain(t, m, cmd)
+	if requests.Load() != 0 {
+		t.Fatal("click outside the frame triggered a download")
+	}
+	click := outside
+	click.X--
+	_, cmd = m.Update(click)
+	if !strings.Contains(m.editorLines()[labelRow], "Loading image") {
+		t.Fatal("click did not show loading state")
+	}
+	drain(t, m, cmd)
+	if !strings.Contains(m.editorLines()[labelRow], "Retry image") || requests.Load() != 1 {
+		t.Fatal("failed download did not offer retry")
+	}
+	_, cmd = m.Update(click)
+	drain(t, m, cmd)
+	blocks := tab.markdownImages.blocks
+	if len(blocks) != 2 || blocks[0].image == nil || blocks[0].image != blocks[1].image || requests.Load() != 2 {
+		t.Fatal("expected both placements to reuse the downloaded image")
+	}
+	if upload := imageUploadOutput(t, m); !strings.Contains(upload, "\x1b_G") || imageUploadOutput(t, m) != "" {
+		t.Fatal("expected one shared Kitty upload")
+	}
+	tab.setEditorDisplayTop(blocks[1].first)
+	if tab.editorDisplayTop() != blocks[1].first {
+		t.Fatal("could not scroll to the second placement on the same source line")
+	}
+
+	server.Close()
+	m = open(true)
+	if blocks := m.tabs[m.activeTab].markdownImages.blocks; len(blocks) != 2 || blocks[0].image == nil ||
+		blocks[0].image != blocks[1].image || requests.Load() != 2 {
+		t.Fatal("reopening offline did not automatically render the cached image")
 	}
 }

@@ -9,6 +9,11 @@ import (
 	"golang.org/x/image/math/f64"
 )
 
+const (
+	imageDownsampleThreshold = 500_000
+	maxUploadSide            = 4096
+)
+
 // Region describes the visible part of an image in source pixel coordinates.
 // Only this part is rasterized, so zooming never allocates a full enlarged image.
 type Region struct {
@@ -42,9 +47,15 @@ func (im *Image) KittyRegion(id int, region Region) (string, []string, error) {
 		region.Width <= 0 || region.Height <= 0 || region.Scale <= 0 {
 		return "", nil, fmt.Errorf("invalid Kitty image region")
 	}
-	width, height := max(1, int(math.Round(region.Width*region.Scale))), max(1, int(math.Round(region.Height*region.Scale)))
-	transferScale := min(1, 4096/float64(max(width, height)))
-	width, height = max(1, int(float64(width)*transferScale)), max(1, int(float64(height)*transferScale))
+	scale := region.Scale
+	if im.sourceBytes > imageDownsampleThreshold {
+		// Reduce the uploaded pixel count in proportion to the byte ratio.
+		// The terminal scales the raster into the original cell placement.
+		scale *= math.Sqrt(float64(imageDownsampleThreshold) / float64(im.sourceBytes))
+	}
+	scale = min(scale, maxUploadSide/max(region.Width, region.Height))
+	width := max(1, int(math.Round(region.Width*scale)))
+	height := max(1, int(math.Round(region.Height*scale)))
 	target := image.NewRGBA(image.Rect(0, 0, width, height))
 	sx, sy := float64(width)/region.Width, float64(height)/region.Height
 	b := im.Bounds()

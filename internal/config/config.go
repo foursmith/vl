@@ -49,3 +49,16 @@ func saveJSON(path string, value any) error {
 	}
 	return os.Rename(file.Name(), path)
 }
+
+// CacheDir returns the application cache directory for kind.
+func CacheDir(kind string) string {
+	base := os.Getenv("XDG_CACHE_HOME")
+	if !filepath.IsAbs(base) {
+		var err error
+		base, err = os.UserCacheDir()
+		if err != nil {
+			return ""
+		}
+	}
+	return filepath.Join(base, "vl", kind)
+}
