@@ -51,6 +51,13 @@ func (m *Model) vimKey(k string) (bool, tea.Cmd) {
 	}
 	before, _ := d.Position()
 	vertical := !v.InsertMode && !v.CommandPending() && (k == "j" || k == "k" || k == "up" || k == "down")
+	// Every undo/redo binding must cancel pending operators and invalidate insert replay.
+	switch {
+	case matchesShortcut(k, editorKeys.Undo):
+		k = "ctrl+z"
+	case matchesShortcut(k, editorKeys.Redo):
+		k = "ctrl+shift+z"
+	}
 	handled, text := v.Handle(d, k, m.vimRegister)
 	if !handled {
 		return false, nil

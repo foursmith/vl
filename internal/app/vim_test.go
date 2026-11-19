@@ -1,11 +1,88 @@
 package app
 
 import (
-	tea "charm.land/bubbletea/v2"
-	"github.com/foursmith/vl/internal/editor"
+	"runtime"
 	"strings"
 	"testing"
+
+	tea "charm.land/bubbletea/v2"
+	"github.com/foursmith/vl/internal/editor"
 )
+
+func TestVimSystemClipboardShortcuts(t *testing.T) {
+	m := flashModel(t, "one two")
+	d := m.document()
+	mod := tea.ModCtrl
+	if runtime.GOOS == "darwin" {
+		mod = tea.ModSuper
+	}
+
+	press(m, "v")
+	press(m, "e")
+	_, cut := m.Update(tea.KeyPressMsg{Code: 'x', Mod: mod})
+	if cut == nil || d.SelectedText() != "one" || d.Text != "one two" {
+		t.Fatal("cut did not retain the selection while writing to the clipboard")
+	}
+	m.Update(clipboardMsg{doc: d, cut: true, text: "one"})
+	if d.Text != " two" || m.tabs[0].vim.VisualMode {
+		t.Fatal("cut did not remove the selection and exit Visual mode")
+	}
+
+	_, paste := m.Update(tea.KeyPressMsg{Code: 'v', Mod: mod})
+	if paste == nil {
+		t.Fatal("paste did not request the system clipboard")
+	}
+	m.Update(clipboardMsg{doc: d, text: "one"})
+	if d.Text != "one two" {
+		t.Fatalf("direct clipboard paste produced %q", d.Text)
+	}
+	d.SetPosition(0, 0)
+	press(m, "d")
+	m.Update(tea.PasteMsg{Content: "p\n猫"})
+	if d.Text != "p\n猫one two" || m.tabs[0].vim.CommandPending() {
+		t.Fatal("terminal paste in Normal mode did not insert literal text and clear the pending command")
+	}
+}
+
+func TestVimUndoRedoShortcuts(t *testing.T) {
+	ctrl := tea.ModCtrl
+	keys := [][2]tea.KeyPressMsg{
+		{{Code: 'z', Mod: ctrl}, {Code: 'z', Mod: ctrl | tea.ModShift}},
+	}
+	if runtime.GOOS == "darwin" {
+		keys = append(keys, [2]tea.KeyPressMsg{
+			{Code: 'z', Mod: tea.ModSuper}, {Code: 'Z', Mod: tea.ModSuper | tea.ModShift},
+		})
+	}
+	for _, pair := range keys {
+		undo, redo := pair[0], pair[1]
+		t.Run(redo.String(), func(t *testing.T) {
+			m := flashModel(t, "one")
+			d := m.document()
+			press(m, "i")
+			press(m, "X")
+			m.Update(undo)
+			if d.Text != "one" || !m.tabs[0].vim.InsertMode {
+				t.Fatalf("undo in Insert mode produced %q", d.Text)
+			}
+			m.Update(tea.KeyPressMsg{Code: 'y', Mod: ctrl})
+			if d.Text != "one" {
+				t.Fatalf("Ctrl+Y unexpectedly redid the edit: %q", d.Text)
+			}
+			m.Update(redo)
+			if d.Text != "Xone" || !m.tabs[0].vim.InsertMode {
+				t.Fatalf("redo in Insert mode produced %q", d.Text)
+			}
+
+			press(m, "esc")
+			press(m, "d")
+			m.Update(undo)
+			if d.Text != "one" || m.tabs[0].vim.CommandPending() {
+				t.Fatalf("undo in Normal mode produced %q or left an operator pending", d.Text)
+			}
+		})
+	}
+}
 
 func TestVimWorkbenchRouting(t *testing.T) {
 	m := newHoverRenderModel(t)
@@ -29,10 +106,6 @@ func TestVimWorkbenchRouting(t *testing.T) {
 	press(m, "U")
 	if m.modal != "" || d.Text != "Xone two\nthree" {
 		t.Fatal("U did not redo")
-	}
-	m.Update(tea.PasteMsg{Content: "ignored"})
-	if strings.Contains(d.Text, "ignored") {
-		t.Fatal("Normal mode accepted bracketed paste")
 	}
 	press(m, "/")
 	if !m.fileFindFocused() || m.modal != "" {

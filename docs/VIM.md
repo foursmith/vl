@@ -138,7 +138,7 @@ Parentheses, square brackets, and braces can nest and span lines.
 | `Ctrl+U` / `Ctrl+D` | Scroll up / down half a screen |
 | `Ctrl+A` | Select All |
 | `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copy / Cut / Paste using the system clipboard |
-| `Ctrl+Z` / `Ctrl+Y` or `Ctrl+Shift+Z` | Undo / redo |
+| `⌘Z` / `⌘⇧Z` (macOS), or `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo |
 | `Backspace` / `Delete` | Delete the selection or the character before / after the cursor |
 | `Enter` / `Tab` | Insert a newline / tab |
 
@@ -207,7 +207,7 @@ sequence. `Esc` cancels a pending sequence.
 | --- | --- |
 | `Space 1` … `Space 9` | Go to a tab by its position from the left |
 | `Space ←` / `Space →` | Go to the adjacent tab on the left or right |
-| `Space w` / `Ctrl+S` | Save |
+| `Space w` / `⌘S` (macOS) / `Ctrl+S` | Save |
 | `Space q` / `Ctrl+W` | Close Editor |
 | `Ctrl+Shift+W` | Close the other tabs |
 | `Space z` | Save and close |

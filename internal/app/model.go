@@ -854,12 +854,11 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		} else if msg.doc != nil && m.document() == msg.doc {
 			if msg.cut {
 				if msg.doc.SelectedText() == msg.text {
-					msg.doc.Insert("")
+					m.insertClipboardText("")
 				}
-			} else {
-				msg.doc.Insert(msg.text)
+			} else if msg.text != "" {
+				m.insertClipboardText(msg.text)
 			}
-			m.ensureEditor()
 		}
 	case pathEntriesMsg:
 		if m.pathCompletion == msg.request && m.validPathCompletion() {
@@ -982,9 +981,8 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			m.selectPickerIndex(0)
 			return m, cmd
 		}
-		if !m.sidebar && m.editing() && m.tabs[m.activeTab].vim.InsertMode {
-			m.document().Insert(msg.Content)
-			m.ensureEditor()
+		if !m.sidebar && m.editing() && msg.Content != "" {
+			m.insertClipboardText(msg.Content)
 		}
 	}
 	return m, nil
@@ -1035,7 +1033,23 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	if handled, cmd := m.diffChangeShortcut(k); handled {
 		return cmd
 	}
-	if !m.sidebar && m.editorDocument() != nil {
+	if route.command == commandCopy || route.command == commandSave {
+		if m.editorDocument() != nil && !m.tabs[m.activeTab].vim.InsertMode {
+			m.tabs[m.activeTab].vim.CancelPending()
+		}
+		return m.executeCommand(route.command, "")
+	}
+	if d := m.editorDocument(); !m.sidebar && d != nil {
+		if matchesShortcut(k, editorKeys.Cut) || matchesShortcut(k, editorKeys.Paste) {
+			if d.ReadOnly {
+				return nil
+			}
+			m.tabs[m.activeTab].vim.CancelPending()
+			if matchesShortcut(k, editorKeys.Cut) {
+				return m.copy(true)
+			}
+			return m.paste()
+		}
 		if matchesShortcut(k, pickerKeys.Accept) {
 			if cmd, handled := m.enterMarkdownRemoteImage(); handled {
 				return cmd
@@ -1117,13 +1131,6 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 			d.Redo()
 		case matchesShortcut(k, editorKeys.SelectAll):
 			d.SelectAll()
-		case matchesShortcut(k, editorKeys.Cut):
-			return m.copy(true)
-		case matchesShortcut(k, editorKeys.Paste):
-			if d.ReadOnly {
-				return nil
-			}
-			return m.paste()
 		case matchesShortcut(k, eraseCharacter):
 			d.Delete(true)
 		case k == "delete":
@@ -1278,4 +1285,17 @@ func writeClipboard(text string, cut *editor.Document) tea.Cmd {
 func (m *Model) paste() tea.Cmd {
 	d := m.document()
 	return func() tea.Msg { text, err := clipboard.ReadAll(); return clipboardMsg{text: text, err: err, doc: d} }
+}
+
+func (m *Model) insertClipboardText(text string) {
+	d := m.document()
+	v := &m.tabs[m.activeTab].vim
+	if !v.InsertMode {
+		v.CancelPending()
+	}
+	d.Insert(text)
+	if v.VisualMode {
+		v.Reset(d)
+	}
+	m.ensureEditor()
 }

@@ -42,7 +42,7 @@ In confirmation dialogs, use `←`/`→` or `Tab` to select a button, `Enter` to
 | `Ctrl+Shift+F` | Find in Files |
 | `Ctrl+L` | Toggle Sidebar |
 | `F2` | Focus the sidebar or the editor |
-| `Ctrl+S` | Save |
+| `⌘S` (macOS) / `Ctrl+S` | Save |
 | `Ctrl+W` | Close Editor. Prompts if the file has unsaved changes. |
 | `Ctrl+Shift+W` | Close the other tabs. Prompts for unsaved changes. |
 | `Space 1` … `Space 9` | Switch to a tab by number from a focused editor outside Insert mode |

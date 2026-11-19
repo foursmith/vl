@@ -41,7 +41,7 @@ func (r *vimRecording) beginInsert(d *Document) {
 
 func repeatableInsertKey(key string) bool {
 	switch key {
-	case "left", "right", "up", "down", "home", "end", "pgup", "pgdown", "ctrl+z", "ctrl+y", "ctrl+shift+z":
+	case "left", "right", "up", "down", "home", "end", "pgup", "pgdown", "ctrl+z", "ctrl+shift+z":
 		return false
 	}
 	return !strings.HasPrefix(key, "alt+") && (!strings.HasPrefix(key, "ctrl+") || key == "ctrl+s")
