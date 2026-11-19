@@ -388,7 +388,7 @@ func (m *Model) tabContextActions(x int) []action {
 			{label: m.tr("Close"), key: workbenchKeys.Close.Help().Key, run: bind(func(i int) tea.Cmd {
 				return m.requestCloseTabs(m.tabs[i : i+1])
 			})},
-			{label: m.tr("Close Others"), run: bind(m.closeOtherTabsExcept)},
+			{label: m.tr("Close Others"), key: workbenchKeys.CloseOthers.Help().Key, run: bind(m.closeOtherTabsExcept)},
 			{label: m.tr("Close All"), run: m.closeAllTabs},
 		}
 		return append(actions, m.copyPathActions(target.path())...)

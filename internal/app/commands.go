@@ -101,7 +101,7 @@ func (m *Model) actions() []action {
 		}},
 		{"file.open", m.tr("File: Open Selected File"), "e", openReason, m.editSelected},
 		{"file.keepOpen", m.tr("View: Keep Editor"), "", tabReason, m.keepTab},
-		{"file.closeOthers", m.tr("View: Close Other Editors"), "", "", m.closeOtherTabs},
+		{"file.closeOthers", m.tr("View: Close Other Editors"), workbenchKeys.CloseOthers.Help().Key, "", m.closeOtherTabs},
 		{"file.closeAll", m.tr("View: Close All Editors"), "", "", m.closeAllTabs},
 	}
 	if m.sidebar && m.section == changes {

@@ -18,11 +18,15 @@ type shortcut struct {
 
 // One mapping for all content tabs. Text input and sidebar actions own Space
 // in their respective contexts; they never enter this command sequence.
-func leaderShortcut(k string) (shortcut, bool) {
+func leaderShortcut(k string, activeTab int) (shortcut, bool) {
 	if len(k) == 1 && k[0] >= '1' && k[0] <= '9' {
 		return shortcut{action: shortcutSelectTab, tab: int(k[0] - '1')}, true
 	}
 	switch k {
+	case "left":
+		return shortcut{action: shortcutSelectTab, tab: activeTab - 1}, true
+	case "right":
+		return shortcut{action: shortcutSelectTab, tab: activeTab + 1}, true
 	case "w":
 		return shortcut{action: shortcutSave}, true
 	case "q":
@@ -51,7 +55,7 @@ func (m *Model) leaderKey(k string) (bool, tea.Cmd) {
 		return false, nil
 	}
 	if pending {
-		if command, ok := leaderShortcut(k); ok {
+		if command, ok := leaderShortcut(k, m.activeTab); ok {
 			return true, m.runShortcut(command)
 		}
 		if k == "esc" && m.editorDocument() != nil {

@@ -20,7 +20,9 @@ Keys are case-sensitive. `Ctrl+P` is a chord. `Space w` and `gg` are sequences.
 | `F2` | Focus the sidebar or the editor |
 | `Ctrl+S` | Save |
 | `Ctrl+W` | Close Editor. Prompts if the file has unsaved changes. |
+| `Ctrl+Shift+W` | Close the other tabs. Prompts for unsaved changes. |
 | `Space 1` … `Space 9` | Switch to a tab by number from a focused editor outside Insert mode |
+| `Space ←` / `Space →` | Switch to the adjacent tab from a focused editor outside Insert mode |
 | `F5` | Refresh the active view |
 | `Shift+F10` / right-click | Open the context menu |
 | `Ctrl+Q` | Quit. Prompts if there are unsaved changes. |

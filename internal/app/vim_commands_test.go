@@ -161,6 +161,22 @@ func TestDiffLeaderSelectsTabsWithoutSpacePaging(t *testing.T) {
 	if m.activeTab != 0 {
 		t.Fatal("Diff Space 1 did not select first tab")
 	}
+	for _, step := range []struct {
+		key  rune
+		want int
+	}{
+		{tea.KeyLeft, 0},
+		{tea.KeyRight, 1},
+		{tea.KeyRight, 2},
+		{tea.KeyRight, 2},
+		{tea.KeyLeft, 1},
+	} {
+		press(m, " ")
+		m.Update(tea.KeyPressMsg{Code: step.key})
+		if m.activeTab != step.want || m.diffOpen != (step.want == 2) {
+			t.Fatalf("Space %s: active tab %d, want %d", (tea.KeyPressMsg{Code: step.key}).String(), m.activeTab, step.want)
+		}
+	}
 	press(m, " ")
 	press(m, "3")
 	if m.activeTab != 2 || !m.diffOpen {

@@ -998,6 +998,11 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	if !updatePath {
 		m.pathCompletion = nil
 	}
+	if key.Matches(msg, workbenchKeys.CloseOthers) {
+		m.leaderTarget = ""
+		m.navigationState = navigationState{}
+		return m.closeOtherTabs()
+	}
 	if m.fileFindFocused() {
 		if handled, cmd := m.fileFindKey(msg); handled {
 			return cmd

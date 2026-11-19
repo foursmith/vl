@@ -204,8 +204,10 @@ sequence. `Esc` cancels a pending sequence.
 | Key | Action |
 | --- | --- |
 | `Space 1` … `Space 9` | Go to a tab by its position from the left |
+| `Space ←` / `Space →` | Go to the adjacent tab on the left or right |
 | `Space w` / `Ctrl+S` | Save |
 | `Space q` / `Ctrl+W` | Close Editor |
+| `Ctrl+Shift+W` | Close the other tabs |
 | `Space z` | Save and close |
 
 Tab navigation and closing also work from diffs and image previews. Save

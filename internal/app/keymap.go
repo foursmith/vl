@@ -11,7 +11,7 @@ var workbenchKeys = struct {
 	Quit, Copy, Files, Recent, Commands                                         key.Binding
 	Explorer, Search, Changes, History, Sidebar, Focus, Refresh, SidebarRefresh key.Binding
 	PullRequests                                                                key.Binding
-	DiffLayout, Save, Close, Find, Escape, ContextMenu                          key.Binding
+	DiffLayout, Save, Close, CloseOthers, Find, Escape, ContextMenu             key.Binding
 }{
 	Quit:         binding("Ctrl+Q", "Quit", "ctrl+q"),
 	Copy:         binding("Ctrl+C", "Copy", "ctrl+c"),
@@ -31,6 +31,7 @@ var workbenchKeys = struct {
 	DiffLayout:     binding("Ctrl+D", "Toggle Inline View", "ctrl+d"),
 	Save:           binding("Ctrl+S", "Save", "ctrl+s"),
 	Close:          binding("Ctrl+W", "Close Editor", "ctrl+w"),
+	CloseOthers:    binding("Ctrl+Shift+W", "Close Other Editors", "ctrl+shift+w", "ctrl+shift+W"),
 	Find:           binding("Ctrl+F", "Find", "ctrl+f"),
 	Escape:         binding("Esc", "Dismiss", "esc"),
 	ContextMenu:    binding("Shift+F10", "Context menu", "shift+f10"),

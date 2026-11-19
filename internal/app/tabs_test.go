@@ -388,12 +388,13 @@ func TestClosedDiffStaysClosedAndClickPinsPreview(t *testing.T) {
 
 func TestCloseOthersKeepsActiveAndGuardsDirtyFiles(t *testing.T) {
 	m := tabWorkspace(t, 3)
+	defer m.Close()
 	m.openFile("file0.go")
 	press(m, "x")
 	m.openFile("file1.go")
 	m.openFile("file2.go")
 	active := m.document()
-	m.closeOtherTabs()
+	m.Update(tea.KeyPressMsg{Code: 'w', Mod: tea.ModCtrl | tea.ModShift})
 	if m.modal != "close" {
 		t.Fatal("close others bypassed dirty file")
 	}
