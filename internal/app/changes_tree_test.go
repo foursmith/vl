@@ -83,11 +83,14 @@ func TestTreeStageUnstageAndParentNavigation(t *testing.T) {
 	if m.diffPath != "cmd/main.go" || m.patch.Raw == "" {
 		t.Fatal("tree file did not open diff")
 	}
-	drain(t, m, press(m, " "))
+	if cmd := press(m, " "); cmd != nil || m.busy {
+		t.Fatal("Space triggered a Git operation")
+	}
+	drain(t, m, press(m, "s"))
 	if m.current() == nil || m.current().change == nil || m.current().change.Path != "cmd/main.go" || !m.current().staged {
 		t.Fatal("staging lost selected tree file")
 	}
-	drain(t, m, press(m, " "))
+	drain(t, m, press(m, "s"))
 	if m.current() == nil || m.current().change == nil || m.current().change.Path != "cmd/main.go" || m.current().staged {
 		t.Fatal("unstaging lost selected tree file")
 	}
@@ -111,23 +114,54 @@ func TestTreeStageUnstageAndParentNavigation(t *testing.T) {
 	}
 }
 
-func TestChangesStageAllShortcutTogglesUnbornIndex(t *testing.T) {
+func TestChangesStageAndUnstageAllShortcutsWorkWithUnbornIndex(t *testing.T) {
 	m := explorerWorkspace(t)
 	defer m.Close()
 	drain(t, m, m.selectSection(changes))
 	selectChanged(t, m, "cmd/main.go", false)
-	drain(t, m, press(m, " "))
+	drain(t, m, press(m, "s"))
+	selectChanged(t, m, "README.md", false)
 
-	for _, staged := range []bool{true, false} {
-		drain(t, m, press(m, "a"))
+	for _, tc := range []struct {
+		oldKey string
+		staged bool
+	}{{"a", true}, {"A", false}} {
+		if cmd := press(m, tc.oldKey); cmd != nil || m.busy {
+			t.Fatalf("removed shortcut %q started a Git operation", tc.oldKey)
+		}
+		drain(t, m, press(m, "S"))
 		if len(m.snapshot.Changes) != 3 {
 			t.Fatalf("expected three changes, got %+v", m.snapshot.Changes)
 		}
 		for _, change := range m.snapshot.Changes {
-			if change.Staged() != staged || change.Unstaged() == staged {
-				t.Fatalf("expected staged=%v, got %+v", staged, change)
+			if change.Staged() != tc.staged || change.Unstaged() == tc.staged {
+				t.Fatalf("expected staged=%v, got %+v", tc.staged, change)
 			}
 		}
+	}
+}
+
+func TestChangesDiscardAllShortcutConfirmsAndPreservesIndex(t *testing.T) {
+	m := explorerWorkspace(t)
+	defer m.Close()
+	drain(t, m, m.selectSection(changes))
+	selectChanged(t, m, "README.md", false)
+	drain(t, m, press(m, "s"))
+	if cmd := press(m, "D"); cmd != nil || m.modal != "" {
+		t.Fatal("D opened discard from a staged row")
+	}
+	selectChanged(t, m, "cmd/main.go", false)
+	if cmd := press(m, "D"); cmd != nil || m.modal != "confirm" || m.busy {
+		t.Fatal("repository discard did not wait for confirmation")
+	}
+	drain(t, m, press(m, "enter"))
+	if m.modal != "" || len(m.snapshot.Changes) != 3 {
+		t.Fatal("the default choice did not cancel repository discard")
+	}
+	press(m, "D")
+	drain(t, m, press(m, "x"))
+	if len(m.snapshot.Changes) != 1 || m.snapshot.Changes[0].Path != "README.md" || !m.snapshot.Changes[0].Staged() {
+		t.Fatalf("discard affected the index or left worktree changes: %+v", m.snapshot.Changes)
 	}
 }
 
@@ -138,7 +172,7 @@ func TestChangesDiscardAndStashShortcuts(t *testing.T) {
 	selectChanged(t, m, "cmd/main.go", false)
 	path := filepath.Join(m.repo.Root, "cmd", "main.go")
 
-	press(m, "s")
+	press(m, "t")
 	if m.modal != "stash" {
 		t.Fatalf("expected stash prompt, got %q", m.modal)
 	}
@@ -162,7 +196,7 @@ func TestChangesDiscardAndStashShortcuts(t *testing.T) {
 	if _, err := m.repo.Run(m.ctx, "commit", "--no-gpg-sign", "--allow-empty", "-m", "initial"); err != nil {
 		t.Fatal(err)
 	}
-	press(m, "s")
+	press(m, "t")
 	drain(t, m, press(m, "enter"))
 	if len(m.snapshot.Changes) != 0 {
 		t.Fatalf("stash left changes in the working tree: %+v", m.snapshot.Changes)

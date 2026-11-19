@@ -30,9 +30,23 @@ func (m *Model) scopedChanges(entry item) []gitservice.Change {
 	return result
 }
 
+func (m *Model) discardScopeReason(entry *item) string {
+	if entry == nil || entry.staged {
+		return m.tr("Select an unstaged item or repository to discard changes")
+	}
+	scope := item{repoHeader: true, repository: entry.repository}
+	return m.changeActionDisabled(scope, "discard", m.scopedChanges(scope))
+}
+
 func (m *Model) changeActionDisabled(entry item, id string, scope []gitservice.Change) string {
 	if m.busy {
 		return m.tr("Wait for the current Git operation to finish")
+	}
+	if entry.change != nil && (id == "stage" || id == "unstage") {
+		return m.stageFileReason(*entry.change, id == "unstage")
+	}
+	if id == "stage" && entry.repoHeader && m.hasDirtyTabsInRepository(entry.repository) {
+		return m.tr("Save edited files before staging all changes")
 	}
 	if len(scope) == 0 {
 		return m.tr("No changes in this scope")
@@ -66,7 +80,7 @@ func (m *Model) changeActionDisabled(entry item, id string, scope []gitservice.C
 			return m.tr("Submodule has file changes; stage and commit them in its repository")
 		}
 		for _, c := range scope {
-			if m.fileDirty(c.Path) {
+			if !c.GitlinkDirty && m.fileDirty(c.Path) {
 				return m.tr("Save files in this scope first")
 			}
 		}
@@ -76,7 +90,8 @@ func (m *Model) changeActionDisabled(entry item, id string, scope []gitservice.C
 
 func (m *Model) runScopeAction(entry item, id string) tea.Cmd {
 	scope := m.scopedChanges(entry)
-	if len(scope) == 0 {
+	if reason := m.changeActionDisabled(entry, id, scope); reason != "" {
+		m.notice = reason
 		return nil
 	}
 	if id == "stage" {
@@ -86,11 +101,10 @@ func (m *Model) runScopeAction(entry item, id string) tea.Cmd {
 				stageable = append(stageable, c)
 			}
 		}
-		if len(stageable) == 0 {
-			m.notice = m.tr("Submodule has file changes; stage and commit them in its repository")
-			return nil
-		}
-		scope = stageable
+		return m.stageChanges(stageable, false, "Stage")
+	}
+	if id == "unstage" {
+		return m.stageChanges(scope, true, "Unstage Changes")
 	}
 	if id == "open" {
 		for _, c := range scope {
@@ -100,40 +114,37 @@ func (m *Model) runScopeAction(entry item, id string) tea.Cmd {
 		}
 		return nil
 	}
+	if id != "discard" {
+		return nil
+	}
 	run := func() tea.Cmd {
 		// Recheck editor state when a confirmation is accepted.
 		if reason := m.changeActionDisabled(entry, id, scope); reason != "" {
 			m.notice = reason
 			return nil
 		}
-		title := map[string]string{"stage": "Stage", "unstage": "Unstage Changes", "discard": "Discard"}[id]
 		language := m.displayLanguage
-		return m.operation(title, func() (string, error) {
+		return m.operation("Discard", func() (string, error) {
 			for i, c := range scope {
-				var err error
-				switch id {
-				case "stage":
-					_, err = m.repo.Stage(m.ctx, c)
-				case "unstage":
-					_, err = m.repo.Unstage(m.ctx, c)
-				case "discard":
-					_, err = m.repo.Discard(m.ctx, c)
-				}
-				if err != nil {
+				if _, err := m.repo.Discard(m.ctx, c); err != nil {
 					return "", fmt.Errorf(i18n.Text(language, "Completed %d/%d, %s: %w"), i, len(scope), c.Path, err)
 				}
 			}
 			return "", nil
 		})
 	}
-	if id != "discard" {
-		return run()
-	}
 	name := entry.folder
 	if name == "" {
 		name = m.tr("%s changes", m.repositoryName(entry.repository))
 	}
-	cmd := m.askDiscard(m.tr("Discard changes to %d files in %s?", len(scope), name), run)
+	title := m.tr("Discard changes to %d files in %s?", len(scope), name)
+	if entry.repoHeader {
+		title = m.tr("Discard all unstaged changes in %s (%d files)?", m.repositoryName(entry.repository), len(scope))
+	}
+	cmd := m.askDiscard(title, run)
+	if entry.repoHeader {
+		m.confirmationButton = 1
+	}
 	m.confirmationDetail = m.tr("Only affects this scope. Untracked files will be deleted and cannot be recovered by Git.")
 	return cmd
 }

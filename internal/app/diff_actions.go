@@ -25,7 +25,12 @@ func (m *Model) hoveredDiffButtons() diffButtons {
 	}
 	top := m.viewport.YOffset()
 	i := top + y - m.contentRow()
-	if i >= len(m.diffRowHunks) || m.diffRowHunks[i] < 0 || m.partialDiscardReason() != "" {
+	if i >= len(m.diffRowHunks) || m.diffRowHunks[i] < 0 {
+		return diffButtons{}
+	}
+	canStage := m.partialStageReason(m.diffStaged) == ""
+	canDiscard := m.partialDiscardReason() == ""
+	if !canStage && !canDiscard {
 		return diffButtons{}
 	}
 	hunk := m.diffRowHunks[i]
@@ -64,6 +69,11 @@ func (m *Model) hoveredDiffButtons() diffButtons {
 		width = diffSeparatorWidth
 	}
 	y = m.contentRow() + anchor - top
+	if !canDiscard {
+		return diffButtons{
+			hunk: hunk, stage: diffButtonPosition{column, y, width}, visible: true,
+		}
+	}
 	discard := diffButtonPosition{column, y, width}
 	stage := diffButtonPosition{column, y + 1, width}
 	if end-start == 1 {
@@ -72,6 +82,9 @@ func (m *Model) hoveredDiffButtons() diffButtons {
 		}
 		discard = diffButtonPosition{column, y, 1}
 		stage = diffButtonPosition{column + 1, y, max(1, width-1)}
+	}
+	if !canStage {
+		stage = diffButtonPosition{}
 	}
 	return diffButtons{hunk: hunk, discard: discard, stage: stage, visible: true}
 }
@@ -82,7 +95,7 @@ func (m *Model) diffButtonAt(pos diffButtonPosition, x, y int) bool {
 }
 
 func (m *Model) drawDiffButton(line string, y int, pos diffButtonPosition, glyph string) string {
-	if y != pos.y || m.fileFindAt(m.mainX()+pos.x+pos.width-1, y) {
+	if pos.width == 0 || y != pos.y || m.fileFindAt(m.mainX()+pos.x+pos.width-1, y) {
 		return line
 	}
 	fg, bg := m.colors.InputForeground, m.colors.Input
@@ -120,6 +133,10 @@ func (m *Model) diffButtonHint(buttons diffButtons) string {
 		return m.tr("Discard Selected Ranges")
 	case discard:
 		return m.tr("Discard Hunk")
+	case m.diffStaged && ranges:
+		return m.tr("Unstage Selected Ranges")
+	case m.diffStaged:
+		return m.tr("Unstage Hunk")
 	case ranges:
 		return m.tr("Stage Selected Ranges")
 	default:
@@ -150,5 +167,11 @@ func (m *Model) clickDiffButton(msg tea.MouseClickMsg) (tea.Cmd, bool) {
 	if ranges {
 		title = "Stage Selected Ranges"
 	}
-	return m.stageDiffLines(false, title, selected), true
+	if m.diffStaged {
+		title = "Unstage Hunk"
+		if ranges {
+			title = "Unstage Selected Ranges"
+		}
+	}
+	return m.stageDiffLines(m.diffStaged, title, selected), true
 }

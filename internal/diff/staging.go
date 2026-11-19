@@ -10,13 +10,13 @@ func (p Patch) PartialStagingError() error {
 	if len(p.Hunks) == 0 {
 		return fmt.Errorf("No text changes to stage partially")
 	}
-	header := p.Hunks[0].Header
+	header := p.Hunks[0].header
 	if strings.Contains(header, "\nrename from ") || strings.Contains(header, "\ncopy from ") ||
 		strings.Contains(header, " 160000\n") || strings.Contains(header, " 120000\n") {
 		return fmt.Errorf("Stage this file as a whole")
 	}
 	for _, h := range p.Hunks[1:] {
-		if h.Header != header {
+		if h.header != header {
 			return fmt.Errorf("Stage this file as a whole")
 		}
 	}
@@ -33,7 +33,7 @@ func (p Patch) StagingPatch(path string, reverse bool, selected func(*Line) bool
 	var body strings.Builder
 	delta, applied := 0, 0
 	for _, h := range p.Hunks {
-		match := hunkPattern.FindStringSubmatch(h.Lines[0])
+		match := hunkPattern.FindStringSubmatch(p.Lines[h.start].Text)
 		source := 1
 		if reverse {
 			source = 3
@@ -65,7 +65,7 @@ func (p Patch) StagingPatch(path string, reverse bool, selected func(*Line) bool
 		if p.DeletedFile {
 			modePrefix = "deleted file mode "
 		}
-		for _, line := range strings.Split(p.Hunks[0].Header, "\n") {
+		for _, line := range strings.Split(p.Hunks[0].header, "\n") {
 			if mode, ok := strings.CutPrefix(line, modePrefix); ok {
 				if sourceMissing {
 					metadata, oldPath = "new file mode "+mode+"\n", "/dev/null"
@@ -127,7 +127,7 @@ func (p Patch) stagingHunk(h Hunk, reverse bool, selected func(*Line) bool) (str
 		flushEdits()
 		before, after = before[:0], after[:0]
 	}
-	lines := p.Lines[h.start+1 : h.start+len(h.Lines)]
+	lines := p.Lines[h.start+1 : h.end]
 	source, target := Deleted, Added
 	if reverse {
 		source, target = target, source

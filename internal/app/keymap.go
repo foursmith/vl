@@ -77,12 +77,13 @@ var pickerKeys = struct{ Up, Down, PageUp, PageDown, First, Last, Accept key.Bin
 }
 
 const (
-	changesStageKey          = "space"
-	changesStageAllKey       = "a"
+	stageKey                 = "s"
+	stageScopeKey            = "S"
 	changesCommitKey         = "c"
-	changesDiscardKey        = "d"
+	discardKey               = "d"
+	discardScopeKey          = "D"
 	changesDiscardConfirmKey = "x"
-	changesStashKey          = "s"
+	changesStashKey          = "t"
 	changesFetchKey          = "f"
 	changesPullKey           = "p"
 	changesPushKey           = "P"

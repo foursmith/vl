@@ -95,3 +95,48 @@ func (m *Model) refreshActiveDiff() tea.Cmd {
 	}
 	return m.loadDiff(d, false)
 }
+
+func canFollowIndex(d *diffState) bool {
+	return d.diffChange != nil && (d.diffStaged && d.diffChange.Unstaged() || !d.diffStaged && d.diffChange.Staged())
+}
+
+// Move tabs whose source side vanished, including tabs saved before they are revisited.
+func (m *Model) reconcileIndexDiffTabs() {
+	for i := len(m.tabs) - 1; i >= 0; i-- {
+		d := m.tabs[i].diff
+		if d == nil || !d.followIndex || !canFollowIndex(d) {
+			continue
+		}
+		c := d.diffChange
+		if d.diffStaged && !c.Staged() || !d.diffStaged && !c.Unstaged() {
+			m.followIndexDiff(i)
+		}
+	}
+}
+
+func (m *Model) followIndexDiff(index int) {
+	source := m.tabs[index]
+	d := source.diff
+	d.followIndex = false
+	target := diffTarget{path: d.diffPath, repository: d.diffRepository, staged: !d.diffStaged}
+	for i, t := range m.tabs {
+		if t.diff == nil || !t.diff.matches(target) {
+			continue
+		}
+		active := index == m.activeTab
+		m.tabs[i].preview = t.preview && source.preview
+		m.removeTabAt(index)
+		if active {
+			if i > index {
+				i--
+			}
+			m.selectTab(i)
+		}
+		return
+	}
+	d.diffStaged = target.staged
+	d.cancelLoad()
+	d.diffStale = true
+	m.setDiffImages(d, nil)
+	d.clearContent()
+}

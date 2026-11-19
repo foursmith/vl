@@ -247,11 +247,9 @@ func (m *Model) runChangeRowAction(index int, id string) tea.Cmd {
 	}
 	entry := m.items[index]
 	m.selected, m.sidebar = index, true
-	for _, a := range m.changeRowActions(entry, m.sidebarContentWidth()) {
-		if a.id == id && a.disabled != "" {
-			m.notice = a.disabled
-			return nil
-		}
+	if m.busy {
+		m.notice = m.tr("Wait for the current Git operation to finish")
+		return nil
 	}
 	if entry.repoHeader {
 		switch id {
@@ -266,13 +264,17 @@ func (m *Model) runChangeRowAction(index int, id string) tea.Cmd {
 	}
 	switch id {
 	case "open":
+		if reason := m.changeActionDisabled(entry, id, m.scopedChanges(entry)); reason != "" {
+			m.notice = reason
+			return nil
+		}
 		return m.openFileInExplorer(entry.change.Path)
 	case "discard":
-		return m.discard()
-	case "stage":
-		return m.stageSelected(false)
-	case "unstage":
-		return m.stageSelected(true)
+		if !entry.staged {
+			return m.discardFile(*entry.change, "")
+		}
+	case "stage", "unstage":
+		return m.stageFile(*entry.change, id == "unstage")
 	}
 	return nil
 }

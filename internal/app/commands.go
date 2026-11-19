@@ -24,22 +24,27 @@ func (m *Model) actions() []action {
 	}
 	target := m.selectedRepository()
 	suffix := " · " + m.repositoryName(target)
-	commitLabel, stageAllLabel := m.tr("Git: Commit Staged")+suffix, m.tr("Git: Stage All Changes")+suffix
-	var remoteTarget, toggleStageAllKey, stashKey, discardKey, fetchKey, pullKey, pushKey string
-	stageKey, unstageKey, stageAllKey := "s", "u", "a"
+	stageTarget := target
+	if !m.sidebar && m.diffOpen && m.diffChange != nil {
+		stageTarget = m.diffRepository
+	}
+	stageSuffix := " · " + m.repositoryName(stageTarget)
+	var remoteTarget, stageAllKey, unstageAllKey, stashKey, fetchKey, pullKey, pushKey string
 	refreshKey := workbenchKeys.Refresh.Help().Key
 	if m.sidebar && m.section != search {
 		refreshKey = workbenchKeys.SidebarRefresh.Help().Key
 	}
 	if m.section == changes {
 		remoteTarget = target
-		stageKey, unstageKey, stageAllKey = "", "", ""
-		toggleStageAllKey, stashKey, discardKey = changesStageAllKey, changesStashKey, changesDiscardKey
+		if m.sidebar {
+			if m.stageScopeUnstages(m.current()) {
+				unstageAllKey = stageScopeKey
+			} else {
+				stageAllKey = stageScopeKey
+			}
+			stashKey = changesStashKey
+		}
 		fetchKey, pullKey, pushKey = changesFetchKey, changesPullKey, changesPushKey
-	}
-	fileReason := ""
-	if m.current() == nil || m.current().change == nil {
-		fileReason = m.tr("Select a file in Changes")
 	}
 	tabReason := ""
 	if m.activeTab < 0 {
@@ -75,11 +80,9 @@ func (m *Model) actions() []action {
 		{"view.sidebarRight", m.tr("View: Move Sidebar Right"), "", "", func() tea.Cmd { m.SetSidebarLayout(m.sidebarWidth, true); return nil }},
 		{"view.sidebarResetWidth", m.tr("View: Reset Sidebar Width"), "", "", func() tea.Cmd { m.SetSidebarLayout(0, m.sidebarRight); return nil }},
 		{"git.refresh", m.tr("Git: Refresh"), refreshKey, "", m.refreshView},
-		{"git.stage", m.tr("Git: Stage Changes"), stageKey, fileReason, func() tea.Cmd { return m.stageSelected(false) }},
-		{"git.unstage", m.tr("Git: Unstage Changes"), unstageKey, fileReason, func() tea.Cmd { return m.stageSelected(true) }},
-		{"git.stageAll", stageAllLabel, stageAllKey, "", func() tea.Cmd { return m.stageAllInRepository(target) }},
-		{"git.toggleStageAll", m.tr("Git: Toggle Stage All Changes") + suffix, toggleStageAllKey, "", func() tea.Cmd { return m.toggleStageAll(target) }},
-		{"git.commit", commitLabel, changesCommitKey, m.commitDisabled(target), func() tea.Cmd { return m.commitInRepository(target) }},
+		{"git.stageAll", m.tr("Git: Stage All Changes") + stageSuffix, stageAllKey, m.repositoryStageReason(stageTarget, false), func() tea.Cmd { return m.stageRepository(stageTarget, false) }},
+		{"git.unstageAll", m.tr("Git: Unstage All Changes") + stageSuffix, unstageAllKey, m.repositoryStageReason(stageTarget, true), func() tea.Cmd { return m.stageRepository(stageTarget, true) }},
+		{"git.commit", m.tr("Git: Commit Staged") + suffix, changesCommitKey, m.commitDisabled(target), func() tea.Cmd { return m.commitInRepository(target) }},
 		{"git.fetch", m.tr("Git: Fetch"), fetchKey, "", func() tea.Cmd { return m.fetch(remoteTarget) }},
 		{"git.pull", m.tr("Git: Pull (Fast Forward Only)"), pullKey, "", func() tea.Cmd { return m.pull(remoteTarget) }},
 		{"git.push", m.tr("Git: Push"), pushKey, "", func() tea.Cmd { return m.push(remoteTarget) }},
@@ -96,11 +99,33 @@ func (m *Model) actions() []action {
 		{"git.stashPop", m.tr("Git: Pop Latest Stash"), "", "", func() tea.Cmd {
 			return m.ask(m.tr("Apply and remove the latest stash?"), func() tea.Cmd { return m.gitOperation("Stash pop", "stash", "pop") })
 		}},
-		{"git.discard", m.tr("Git: Discard Unstaged Changes"), discardKey, fileReason, m.discard},
 		{"file.open", m.tr("File: Open Selected File"), "e", openReason, m.editSelected},
 		{"file.keepOpen", m.tr("View: Keep Editor"), "", tabReason, m.keepTab},
 		{"file.closeOthers", m.tr("View: Close Other Editors"), "", "", m.closeOtherTabs},
 		{"file.closeAll", m.tr("View: Close All Editors"), "", "", m.closeAllTabs},
+	}
+	if m.sidebar && m.section == changes {
+		if entry := m.current(); entry != nil {
+			scope := item{repoHeader: true, repository: entry.repository}
+			actions = append(actions, action{"git.discardAll", m.tr("Git: %s", m.tr("Discard All Changes")) + suffix,
+				discardScopeKey, m.discardScopeReason(entry), func() tea.Cmd { return m.runScopeAction(scope, "discard") }})
+			for _, a := range m.changeRowActions(*entry, m.sidebarContentWidth()) {
+				if (a.id == "stage" || a.id == "unstage" || a.id == "discard") && !entry.repoHeader {
+					targetKey := entry.key
+					shortcut := stageKey
+					if a.id == "discard" {
+						shortcut = discardKey
+					}
+					actions = append(actions, action{"git." + a.id, m.tr("Git: %s", a.label), shortcut, a.disabled, func() tea.Cmd {
+						if i := m.sidebarRowWithKey(targetKey); m.section == changes && i >= 0 {
+							return m.runChangeRowAction(i, a.id)
+						}
+						m.notice = m.tr("Target changed; reopen the menu")
+						return nil
+					}})
+				}
+			}
+		}
 	}
 	if m.snapshot.NoRepository {
 		for i := range actions {
@@ -110,7 +135,7 @@ func (m *Model) actions() []action {
 		}
 		actions = append(actions, action{id: "git.init", label: m.tr("Git: Initialize Repository"), run: m.initializeRepository})
 	}
-	if m.diffOpen && !m.editing() {
+	if !m.sidebar && m.diffOpen {
 		actions = append(actions, m.reviewActions()...)
 	}
 	return append(editorActions, actions...)
@@ -388,6 +413,13 @@ func (m *Model) operation(title string, run func() (string, error)) tea.Cmd {
 }
 
 func (m *Model) startOperation(title string, run func() (string, error)) tea.Cmd {
+	return m.startOperationResult(title, func() operationMsg {
+		_, err := run()
+		return operationMsg{err: err}
+	})
+}
+
+func (m *Model) startOperationResult(title string, run func() operationMsg) tea.Cmd {
 	if m.busy {
 		m.notice = m.tr("Wait for the current Git operation")
 		return nil
@@ -402,12 +434,7 @@ func (m *Model) startOperation(title string, run func() (string, error)) tea.Cmd
 	m.loading = false
 	for _, t := range m.tabs {
 		if d := t.diff; d != nil {
-			d.diffSeq++
-			if d.diffCancel != nil {
-				d.diffCancel()
-				d.diffCancel = nil
-			}
-			d.diffLoading = false
+			d.cancelLoad()
 		}
 	}
 	fetchDone := m.autoFetch.done
@@ -418,8 +445,9 @@ func (m *Model) startOperation(title string, run func() (string, error)) tea.Cmd
 		if fetchDone != nil {
 			<-fetchDone
 		}
-		_, err := run()
-		return operationMsg{title: title, err: err}
+		result := run()
+		result.title = title
+		return result
 	}
 }
 
@@ -471,7 +499,7 @@ func (m *Model) refreshView() tea.Cmd {
 
 func (m *Model) changesKey(k string) (bool, tea.Cmd) {
 	switch k {
-	case changesStageKey:
+	case stageKey:
 		if entry := m.current(); entry != nil {
 			id := "stage"
 			if entry.staged {
@@ -480,15 +508,22 @@ func (m *Model) changesKey(k string) (bool, tea.Cmd) {
 			return true, m.runChangeRowAction(m.selected, id)
 		}
 		return true, nil
-	case changesStageAllKey:
-		return true, m.toggleStageAll(m.selectedRepository())
+	case stageScopeKey, "shift+s":
+		return true, m.stageRepository(m.selectedRepository(), m.stageScopeUnstages(m.current()))
 	case changesCommitKey:
 		return true, m.commit()
-	case changesDiscardKey:
+	case discardKey:
 		if entry := m.current(); entry != nil && !entry.staged && !entry.repoHeader {
 			return true, m.runChangeRowAction(m.selected, "discard")
 		}
 		return true, nil
+	case discardScopeKey, "shift+d":
+		entry := m.current()
+		if reason := m.discardScopeReason(entry); reason != "" {
+			m.notice = reason
+			return true, nil
+		}
+		return true, m.runScopeAction(item{repoHeader: true, repository: entry.repository}, "discard")
 	case changesStashKey:
 		return true, m.stash(m.selectedRepository())
 	case changesFetchKey:
@@ -502,25 +537,10 @@ func (m *Model) changesKey(k string) (bool, tea.Cmd) {
 	}
 }
 
-func (m *Model) stageSelected(unstage bool) tea.Cmd {
-	entry := m.current()
-	if m.section == changes && entry != nil && entry.repoHeader {
-		scope := *entry
-		scope.staged = unstage
-		id := "stage"
-		if unstage {
-			id = "unstage"
-		}
-		return m.runScopeAction(scope, id)
-	}
-	if entry == nil || entry.change == nil {
-		m.notice = m.tr("Select a changed file first")
-		return nil
-	}
-	return m.stageFile(*entry.change, unstage)
-}
-
 func (m *Model) stageFileReason(c gitservice.Change, unstage bool) string {
+	if m.busy {
+		return m.tr("Wait for the current Git operation to finish")
+	}
 	if !unstage && c.GitlinkDirty {
 		return m.tr("Submodule has file changes; stage and commit them in its repository")
 	}
@@ -541,58 +561,75 @@ func (m *Model) stageFile(c gitservice.Change, unstage bool) tea.Cmd {
 		m.notice = reason
 		return nil
 	}
+	title := m.tr("Stage %s", c.Path)
 	if unstage {
-		return m.operation(m.tr("Unstage %s", c.Path), func() (string, error) { return m.repo.Unstage(m.ctx, c) })
+		title = m.tr("Unstage %s", c.Path)
 	}
-	return m.operation(m.tr("Stage %s", c.Path), func() (string, error) { return m.repo.Stage(m.ctx, c) })
+	return m.stageChanges([]gitservice.Change{c}, unstage, title)
 }
 
-func (m *Model) stageAll() tea.Cmd {
-	return m.stageAllInRepository(m.selectedRepository())
-}
-
-func (m *Model) stageAllInRepository(target string) tea.Cmd {
-	if m.hasDirtyTabsInRepository(target) {
-		m.notice = m.tr("Save edited files before staging all changes")
-		return nil
-	}
-	return m.operation("Stage all", func() (string, error) {
-		repo, err := m.repo.RepositoryAt(m.ctx, target)
-		if err != nil {
-			return "", err
-		}
-		return repo.Run(m.ctx, "add", "--all", "--", ".")
+func (m *Model) stageChanges(scope []gitservice.Change, unstage bool, title string) tea.Cmd {
+	return m.indexOperation(scope, unstage, title, func() error {
+		return m.repo.StageChanges(m.ctx, scope, unstage)
 	})
 }
 
-func (m *Model) toggleStageAll(target string) tea.Cmd {
+func (m *Model) indexOperation(scope []gitservice.Change, unstage bool, title string, apply func() error) tea.Cmd {
+	if m.snapshot.NoRepository {
+		m.notice = m.tr("This folder is not a Git repository")
+		return nil
+	}
+	sources := make(map[[2]string]*diffState)
+	for _, t := range m.tabs {
+		if d := t.diff; d != nil && d.diffChange != nil && d.diffStaged == unstage {
+			sources[[2]string{d.diffRepository, d.diffPath}] = d
+		}
+	}
+	var affected []*diffState
+	for _, c := range scope {
+		if d := sources[[2]string{c.Repository, c.Path}]; d != nil {
+			affected = append(affected, d)
+		}
+	}
+	return m.startOperationResult(title, func() operationMsg {
+		if err := apply(); err != nil {
+			return operationMsg{err: err}
+		}
+		return operationMsg{indexDiffs: affected}
+	})
+}
+
+func (m *Model) stageScopeUnstages(entry *item) bool {
+	if entry == nil || !entry.repoHeader {
+		return entry != nil && entry.staged
+	}
 	staged := false
 	for _, c := range m.snapshot.Changes {
-		if c.Repository != target {
-			continue
+		if c.Repository == entry.repository {
+			if c.Unstaged() && !c.GitlinkDirty {
+				return false
+			}
+			staged = staged || c.Staged()
 		}
-		if c.Unstaged() && !c.GitlinkDirty {
-			return m.stageAllInRepository(target)
-		}
-		staged = staged || c.Staged()
 	}
-	if staged {
-		return m.unstageAllInRepository(target)
-	}
-	return nil
+	return staged
 }
 
-func (m *Model) unstageAllInRepository(target string) tea.Cmd {
-	return m.gitOperationInRepository(target, "Unstage Changes", "reset", "-q", "--", ".")
+func (m *Model) stageRepository(target string, unstage bool) tea.Cmd {
+	entry := item{repoHeader: true, repository: target, staged: unstage}
+	if unstage {
+		return m.runScopeAction(entry, "unstage")
+	}
+	return m.runScopeAction(entry, "stage")
 }
 
-func (m *Model) stageHunk(reverse bool) tea.Cmd {
-	index := m.diffHunk
-	title := "Stage Hunk"
-	if reverse {
-		title = "Unstage Hunk"
+func (m *Model) repositoryStageReason(target string, unstage bool) string {
+	entry := item{repoHeader: true, repository: target, staged: unstage}
+	id := "stage"
+	if unstage {
+		id = "unstage"
 	}
-	return m.stageDiffLines(reverse, title, func(line *diff.Line) bool { return line.Hunk == index })
+	return m.changeActionDisabled(entry, id, m.scopedChanges(entry))
 }
 
 func (m *Model) stageDiffLines(reverse bool, title string, selected func(*diff.Line) bool) tea.Cmd {
@@ -601,23 +638,23 @@ func (m *Model) stageDiffLines(reverse bool, title string, selected func(*diff.L
 		return nil
 	}
 	c, source, workspace := *m.diffChange, m.patch, m.repo
-	return m.operation(title, func() (string, error) {
+	return m.indexOperation([]gitservice.Change{c}, reverse, title, func() error {
 		current, err := workspace.Diff(m.ctx, c, reverse)
 		if err != nil {
-			return "", err
+			return err
 		}
 		if current != source.Raw {
-			return "", fmt.Errorf("Diff changed; refresh before staging")
+			return fmt.Errorf("Diff changed; refresh before staging")
 		}
 		repo, local, err := workspace.ForChange(m.ctx, c)
 		if err != nil {
-			return "", err
+			return err
 		}
 		patch, err := source.StagingPatch(local.Path, reverse, selected)
 		if err != nil {
-			return "", err
+			return err
 		}
-		return repo.ApplyHunk(m.ctx, patch, false)
+		return repo.ApplyIndexPatch(m.ctx, patch)
 	})
 }
 
@@ -687,22 +724,25 @@ func (m *Model) editDiff() tea.Cmd {
 	return nil
 }
 
-func (m *Model) discard() tea.Cmd {
-	entry := m.current()
-	if entry == nil || entry.change == nil {
-		return nil
+func (m *Model) discardFileReason(c gitservice.Change) string {
+	if m.busy {
+		return m.tr("Wait for the current Git operation to finish")
 	}
-	c := *entry.change
 	if c.Gitlink {
-		m.notice = m.tr("Cannot discard a repository directory as a file")
-		return nil
+		return m.tr("Cannot discard a repository directory as a file")
 	}
-	if c.Conflicted() || entry.staged {
-		m.notice = m.tr("Select a non-conflicted working-tree file to discard")
-		return nil
+	if c.Conflicted() || !c.Unstaged() {
+		return m.tr("Select a non-conflicted working-tree file to discard")
 	}
 	if m.hasDirtyTabsInRepository(c.Repository) {
-		m.notice = m.tr("Save or close edited files before discarding")
+		return m.tr("Save or close edited files before discarding")
+	}
+	return ""
+}
+
+func (m *Model) discardFile(c gitservice.Change, expectedDiff string) tea.Cmd {
+	if reason := m.discardFileReason(c); reason != "" {
+		m.notice = reason
 		return nil
 	}
 	title := m.tr("Permanently discard unstaged edits to %s?", c.Path)
@@ -710,12 +750,26 @@ func (m *Model) discard() tea.Cmd {
 		title = m.tr("Delete untracked file %s?", c.Path)
 	}
 	cmd := m.askDiscard(title, func() tea.Cmd {
-		if m.hasDirtyTabsInRepository(c.Repository) {
-			m.notice = m.tr("Save or close edited files before discarding")
+		if reason := m.discardFileReason(c); reason != "" {
+			m.notice = reason
 			return nil
 		}
-		return m.operation("Discard", func() (string, error) { return m.repo.Discard(m.ctx, c) })
+		return m.operation("Discard", func() (string, error) {
+			if expectedDiff != "" {
+				current, err := m.repo.Diff(m.ctx, c, false)
+				if err != nil {
+					return "", err
+				}
+				if current != expectedDiff {
+					return "", fmt.Errorf("Diff changed; refresh before discarding")
+				}
+			}
+			return m.repo.Discard(m.ctx, c)
+		})
 	})
+	if expectedDiff != "" {
+		m.confirmationButton = 1
+	}
 	if c.Untracked() {
 		m.confirmationDetail = m.tr("This file cannot be recovered by Git.")
 	}

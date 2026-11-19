@@ -246,9 +246,12 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 				var shortcut string
 				switch a.id {
 				case "stage", "unstage":
-					shortcut = "Space"
+					shortcut = stageKey
+					if entry.repoHeader && !m.stageScopeUnstages(entry) {
+						shortcut += " / " + stageScopeKey
+					}
 				case "discard":
-					shortcut = changesDiscardKey
+					shortcut = discardKey
 				case "commit":
 					shortcut = changesCommitKey
 				case "refresh":
@@ -259,10 +262,21 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 			if entry.repoHeader {
 				scope := *entry
 				scope.staged = true
+				shortcut := ""
+				if m.stageScopeUnstages(entry) {
+					shortcut = stageScopeKey
+				}
 				actions = append(actions, action{
 					label:    m.tr("Unstage All Changes"),
+					key:      shortcut,
 					disabled: m.changeActionDisabled(scope, "unstage", m.scopedChanges(scope)),
-					run:      bind(func() tea.Cmd { return m.unstageAllInRepository(scope.repository) }),
+					run:      bind(func() tea.Cmd { return m.runScopeAction(scope, "unstage") }),
+				})
+				actions = append(actions, action{
+					label:    m.tr("Discard All Changes"),
+					key:      discardScopeKey,
+					disabled: m.discardScopeReason(entry),
+					run:      bind(func() tea.Cmd { return m.runScopeAction(*entry, "discard") }),
 				})
 			}
 		} else if m.section == search && entry != nil {

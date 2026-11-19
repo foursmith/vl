@@ -1,7 +1,6 @@
 package diff
 
 import (
-	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -24,9 +23,8 @@ type Line struct {
 	Hunk     int
 }
 type Hunk struct {
-	Header string
-	Lines  []string
-	start  int
+	header     string
+	start, end int
 }
 type Patch struct {
 	Raw                  string
@@ -55,7 +53,7 @@ func Parse(raw string) Patch {
 			old, _ = strconv.Atoi(match[1])
 			newLine, _ = strconv.Atoi(match[3])
 			hunk = len(p.Hunks)
-			p.Hunks = append(p.Hunks, Hunk{Header: header, Lines: []string{text}, start: len(p.Lines)})
+			p.Hunks = append(p.Hunks, Hunk{header: header, start: len(p.Lines), end: len(p.Lines) + 1})
 			line.Kind, line.Hunk = HunkHeader, hunk
 		} else if hunk >= 0 && len(text) > 0 && strings.ContainsRune(" +-\\", rune(text[0])) {
 			line.Hunk = hunk
@@ -73,7 +71,7 @@ func Parse(raw string) Patch {
 				old++
 				newLine++
 			}
-			p.Hunks[hunk].Lines = append(p.Hunks[hunk].Lines, text)
+			p.Hunks[hunk].end++
 		} else {
 			hunk = -1
 			header += text + "\n"
@@ -83,20 +81,6 @@ func Parse(raw string) Patch {
 		p.Lines = append(p.Lines, line)
 	}
 	return p
-}
-
-func (p Patch) HunkPatch(index int) (string, error) {
-	if index < 0 || index >= len(p.Hunks) {
-		return "", fmt.Errorf("select a diff hunk first")
-	}
-	h := p.Hunks[index]
-	if strings.Contains(h.Header, " 160000\n") {
-		return "", fmt.Errorf("stage submodule pointers as a whole file")
-	}
-	if strings.Contains(h.Header, "rename from ") || strings.Contains(h.Header, "copy from ") || strings.Contains(h.Header, "new file mode ") || strings.Contains(h.Header, "deleted file mode ") {
-		return "", fmt.Errorf("stage added, deleted, copied or renamed files as a whole")
-	}
-	return h.Header + strings.Join(h.Lines, "\n") + "\n", nil
 }
 
 type Pair struct {

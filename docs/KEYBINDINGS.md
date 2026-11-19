@@ -72,16 +72,17 @@ name ending in `-copy` if the default destination is the source itself.
 
 | Shortcut | Action |
 | --- | --- |
-| `Space` | Stage or unstage the selected change or group |
-| `a` | Toggle Stage All for the selected repository |
+| `s` | Stage a working-tree row or unstage a staged row. Applies to the file, folder, or group selected. On the repository header, stages the repository. |
+| `Shift+S` | Stage all in the selected repository from a working-tree row, or unstage all from a staged row. On the repository header, stages first when there are stageable changes. |
 | `c` | Commit |
 | `d` | Open Discard Changes for the selected unstaged item. Confirm with `x` or the dialog. |
-| `s` | Open Stash Changes, including untracked files |
+| `Shift+D` | Discard all unstaged changes in the selected repository, with confirmation. Available from working-tree rows and repository headers. |
+| `t` | Open Stash Changes, including untracked files |
 | `f` | Fetch |
 | `p` / `P` | Pull (fast-forward only) / Push |
 
-The row's context menu and the Command Palette also expose Stage Changes and
-Unstage Changes.
+The row buttons, context menu, and Command Palette use the same scope.
+Repository-wide actions include collapsed files and act on one Git index.
 
 ## Find and Replace
 
@@ -143,19 +144,29 @@ Find, and Flash bindings as in a text tab.
 | Shortcut | Action |
 | --- | --- |
 | `[` / `]` in Normal mode | Previous / Next Hunk |
+| `s` | Stage or unstage selected changed lines, or the current hunk when there is no selection |
+| `Shift+S` | Stage or unstage the entire file |
+| `d` | Discard selected changes or the current hunk, with confirmation |
+| `Shift+D` | Discard all unstaged changes to this file, with confirmation |
 | `Ctrl+D` | Toggle Inline View (inline / side by side) |
 | `Shift+F10` / right-click | Open diff actions, including staging, unstaging, and discarding unstaged hunks or selected changes |
 | `Ctrl+C` | Copy selected source text to the system clipboard |
 | `Space 1` … `Space 9` / `Space q` | Switch tabs / close the tab |
 
-In a side-by-side diff, click a side or run **Focus Other Diff Side** from the
-Command Palette. Motions and selections use the source shown on that side.
+In a side-by-side diff, keyboard navigation uses the right pane. You can
+select text with the mouse in either pane.
 Yanks and copies leave out line numbers and diff markers. Added or deleted
 files open inline, and side-by-side falls back to inline when space runs out.
 
-Hover an unstaged text hunk to reveal `→` (discard, with confirmation) and
-`+` (stage). If the hunk contains selected changes, the buttons act on
-those changes within that hunk.
+Hover a working-tree hunk to reveal `→` (discard, with confirmation) and
+`+` (stage). Hover a staged hunk to reveal `−` (unstage). If the hunk
+contains selected changes, its buttons act on those changes within the hunk.
+Use the whole-file action for binary diffs. History and pull request diffs
+are read-only.
+
+After staging or unstaging, a Diff tab follows the changes when its current
+side becomes empty. If both sides are open, the tab for the resulting side is
+reused.
 
 ## Image preview
 

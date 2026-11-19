@@ -156,7 +156,7 @@ func TestLocalSearchCentersDiffRows(t *testing.T) {
 		showDiffFixture(m)
 		m.renderDiff()
 		setTestFind(m, "old value 19")
-		if m.reviewRight {
+		if m.diffLayout.split {
 			setTestFind(m, "new value 19")
 		}
 		m.findNext()

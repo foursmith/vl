@@ -24,6 +24,26 @@ func changeKey(repo string, staged bool, kind, path string) string {
 	return changePrefix(repo, staged) + kind + ":" + path
 }
 
+func (m *Model) changesSelectionAfterRefresh(previous item) int {
+	repository := -1
+	for i, row := range m.items {
+		if row.repository != previous.repository {
+			continue
+		}
+		switch {
+		case row.repoHeader:
+			repository = i
+		case previous.change != nil && row.change != nil && row.change.Path == previous.change.Path:
+			return i
+		case previous.folder != "" && row.folder == previous.folder:
+			return i
+		case previous.header && !previous.repoHeader && row.header:
+			return i
+		}
+	}
+	return repository
+}
+
 func changeStatus(c *gitservice.Change, staged bool) byte {
 	if c.Conflicted() {
 		return '!'

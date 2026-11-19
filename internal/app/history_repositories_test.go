@@ -111,7 +111,7 @@ func TestHistoryChildOnlyCommitDiffAndRefresh(t *testing.T) {
 	if !m.sidebar || m.diffCommit != id || m.diffPath != "child space/README.md" || !strings.Contains(m.patch.Raw, "+# child history only") {
 		t.Fatalf("child history diff: %s %s\n%s", m.diffCommit, m.diffPath, m.patch.Raw)
 	}
-	if cmd := m.stageHunk(false); cmd != nil {
+	if cmd := m.stageDiffLines(false, "Stage Hunk", nil); cmd != nil {
 		t.Fatal("history diff allowed staging")
 	}
 	if cmd := m.editDiff(); cmd != nil {

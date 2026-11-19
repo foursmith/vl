@@ -145,17 +145,17 @@ func TestRepositoryStageAndCommitDoNotCrossIndexes(t *testing.T) {
 		t.Fatal(err)
 	}
 	selectRepository(t, m, "")
-	drain(t, m, m.stageAll())
+	drain(t, m, press(m, "S"))
 	for _, c := range m.snapshot.Changes {
 		if c.Repository == "child space" && c.Staged() {
 			t.Fatal("parent stage all staged child index")
 		}
 	}
 	selectChanged(t, m, "README.md", true)
-	drain(t, m, m.stageSelected(true))
+	drain(t, m, press(m, "s"))
 	selectRepository(t, m, "child space")
 	for _, staged := range []bool{true, false, true} {
-		drain(t, m, press(m, "a"))
+		drain(t, m, press(m, "S"))
 		status, err := child.Run(m.ctx, "diff", "--cached", "--name-only")
 		if err != nil || (strings.TrimSpace(status) == "README.md") != staged {
 			t.Fatalf("child staged=%v: %q, %v", staged, status, err)
@@ -213,7 +213,7 @@ func TestRepositoryCommitDraftsAreIndependentAndFailuresKeepDraft(t *testing.T) 
 	drain(t, m, m.refresh())
 	for _, target := range []string{"", "child space"} {
 		selectRepository(t, m, target)
-		drain(t, m, m.stageAll())
+		drain(t, m, press(m, "S"))
 		drain(t, m, m.commit())
 		m.input.SetValue("draft:" + target)
 		drain(t, m, press(m, "esc"))
@@ -308,7 +308,7 @@ func TestRepositoryHeaderMouseCommitAndFrameWidths(t *testing.T) {
 	}
 	drain(t, m, m.refresh())
 	selectRepository(t, m, "child space")
-	drain(t, m, m.stageSelected(false))
+	drain(t, m, press(m, "s"))
 	for _, width := range []int{30, 48, 120} {
 		for _, height := range []int{8, 24} {
 			m.Update(tea.WindowSizeMsg{Width: width, Height: height})
@@ -362,14 +362,14 @@ func TestDirtyEditorInParentDoesNotBlockChildStaging(t *testing.T) {
 	m.openFile("README.md")
 	m.document().Insert("unsaved parent edit")
 	selectRepository(t, m, "child space")
-	drain(t, m, m.stageAll())
+	drain(t, m, press(m, "S"))
 	for _, c := range m.snapshot.Changes {
 		if c.Repository == "child space" && !c.Staged() {
 			t.Fatal("unrelated dirty parent editor blocked child staging")
 		}
 	}
 	selectRepository(t, m, "")
-	if cmd := m.stageAll(); cmd != nil {
+	if cmd := press(m, "S"); cmd != nil {
 		t.Fatal("parent staging ignored its own dirty editor")
 	}
 }

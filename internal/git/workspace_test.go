@@ -99,24 +99,24 @@ func TestWorkspaceNestedFilesAndOwningRepositories(t *testing.T) {
 		t.Fatalf("child diff: %q %v", raw, err)
 	}
 	indexBefore := run(t, root, "ls-files", "--stage", "--", "child space")
-	hunk, err := patchdiff.Parse(raw).HunkPatch(0)
+	repo, local, err := root.ForChange(ctx, c)
 	if err != nil {
 		t.Fatal(err)
 	}
-	repo, _, err := root.ForChange(ctx, c)
+	hunk, err := patchdiff.Parse(raw).StagingPatch(local.Path, false, func(line *patchdiff.Line) bool { return line.Hunk == 0 })
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := repo.ApplyHunk(ctx, hunk, false); err != nil {
+	if err := repo.ApplyIndexPatch(ctx, hunk); err != nil {
 		t.Fatal(err)
 	}
 	if got := run(t, child, "show", ":file.txt"); got != "child edit\n" {
 		t.Fatal(got)
 	}
-	if _, err := root.Unstage(ctx, c); err != nil {
+	if err := root.StageChanges(ctx, []Change{c}, true); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := root.Stage(ctx, n); err != nil {
+	if err := root.StageChanges(ctx, []Change{n}, false); err != nil {
 		t.Fatal(err)
 	}
 	if got := run(t, nested, "show", ":file.txt"); got != "nested edit\n" {
@@ -172,7 +172,7 @@ func TestWorkspaceDiscardAndStaleOwnership(t *testing.T) {
 	if err := os.Remove(filepath.Join(child.Root, ".git")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := root.Stage(ctx, c); err == nil {
+	if err := root.StageChanges(ctx, []Change{c}, false); err == nil {
 		t.Fatal("stale child ownership fell back to parent")
 	}
 	if _, _, err := root.ForChange(ctx, Change{Repository: "../outside", Path: "file.txt"}); err == nil {
@@ -194,19 +194,19 @@ func TestWorkspaceKeepsParentCommitPointerSeparate(t *testing.T) {
 	if err != nil || !strings.Contains(raw, "Subproject commit") {
 		t.Fatalf("%q %v", raw, err)
 	}
-	if _, err := patchdiff.Parse(raw).HunkPatch(0); err == nil {
+	if err := patchdiff.Parse(raw).PartialStagingError(); err == nil {
 		t.Fatal("pointer allowed partial staging")
 	}
 	if _, err := root.Discard(ctx, c); err == nil {
 		t.Fatal("directory discarded as a file")
 	}
-	if _, err := root.Stage(ctx, c); err != nil {
+	if err := root.StageChanges(ctx, []Change{c}, false); err != nil {
 		t.Fatal(err)
 	}
 	if !changeAt(t, snapshot(t, root), "child space").Staged() {
 		t.Fatal("parent pointer not staged")
 	}
-	if _, err := root.Unstage(ctx, c); err != nil {
+	if err := root.StageChanges(ctx, []Change{c}, true); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -231,7 +231,7 @@ func TestWorkspaceChildRenamePathsAndUntrackedDiscard(t *testing.T) {
 	if c.Original != "child space/file.txt" || c.Repository != "child space" {
 		t.Fatalf("rename: %+v", c)
 	}
-	if _, err := root.Unstage(ctx, c); err != nil {
+	if err := root.StageChanges(ctx, []Change{c}, true); err != nil {
 		t.Fatal(err)
 	}
 	write(t, child, "untracked.txt", "remove me")

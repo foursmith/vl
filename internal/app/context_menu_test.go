@@ -288,11 +288,16 @@ func TestDiffContextMenuStagesAndUnstagesMouseSelection(t *testing.T) {
 		m.Update(tea.MouseMotionMsg{X: x, Y: y})
 		buttons := m.hoveredDiffButtons()
 		if !buttons.visible {
-			t.Fatal("hovered unstaged hunk has no buttons")
+			t.Fatal("hovered hunk has no buttons")
 		}
 		pos, glyph := buttons.stage, "+"
 		if discard {
 			pos, glyph = buttons.discard, "→"
+		} else if m.diffStaged {
+			glyph = "−"
+			if buttons.discard.width != 0 {
+				t.Fatal("staged hunk exposed a discard button")
+			}
 		}
 		x, y = m.mainX()+pos.x, pos.y
 		m.Update(tea.MouseMotionMsg{X: x, Y: y})
@@ -310,8 +315,8 @@ func TestDiffContextMenuStagesAndUnstagesMouseSelection(t *testing.T) {
 		t.Fatalf("index after staging selection: %q", got)
 	}
 	open(true)
-	menuAt("+FIRST")
-	drain(t, m, chooseContextAction(t, m, "Unstage Selected Ranges"))
+	x, y = selectLine("+FIRST")
+	drain(t, m, clickButton(x, y, false, "Unstage Selected Ranges"))
 	if got := run("show", ":README.md"); got != before {
 		t.Fatalf("index after unstaging selection: %q", got)
 	}
@@ -321,10 +326,19 @@ func TestDiffContextMenuStagesAndUnstagesMouseSelection(t *testing.T) {
 	}
 
 	open(false)
+	selectLine("+FIRST")
+	drain(t, m, press(m, "s"))
+	if got := run("show", ":README.md"); got != "FIRST\nsecond\nlast\n" {
+		t.Fatalf("shortcut staged outside the selection: %q", got)
+	}
+	open(true)
+	menuAt("+FIRST")
+	drain(t, m, chooseContextAction(t, m, "Unstage Selected Ranges"))
+	open(false)
 	menuAt("+FIRST")
 	drain(t, m, chooseContextAction(t, m, "Stage Selected Ranges"))
-	menuAt("+SECOND")
-	drain(t, m, chooseContextAction(t, m, "Discard Selected Ranges"))
+	selectLine("+SECOND")
+	drain(t, m, press(m, "d"))
 	if m.modal != "confirm" || m.busy {
 		t.Fatal("partial discard must require confirmation")
 	}
@@ -340,6 +354,18 @@ func TestDiffContextMenuStagesAndUnstagesMouseSelection(t *testing.T) {
 	}
 	if got := run("show", ":README.md"); got != staged {
 		t.Fatalf("discard changed the index: %q", got)
+	}
+	if err := os.WriteFile(path, []byte(after), 0644); err != nil {
+		t.Fatal(err)
+	}
+	drain(t, m, m.refresh())
+	open(false)
+	if cmd := press(m, "D"); cmd != nil || m.modal != "confirm" || m.busy {
+		t.Fatal("whole-file discard did not wait for confirmation")
+	}
+	drain(t, m, press(m, "x"))
+	if got, err := os.ReadFile(path); err != nil || string(got) != staged {
+		t.Fatalf("whole-file discard did not restore the index version: %q, %v", got, err)
 	}
 }
 

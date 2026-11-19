@@ -174,6 +174,35 @@ func (m *Model) statusLayout() []statusSegment {
 	}
 	rightX := m.width - rightWidth
 	notice := m.notice
+	if notice == "" && m.modal == "" && m.contextMenu == nil {
+		switch {
+		case m.sidebar && m.section == changes && m.current() != nil:
+			notice = m.tr("%s/%s: stage or unstage · %s/%s: discard", stageKey, stageScopeKey, discardKey, discardScopeKey)
+		case !m.sidebar && m.diffOpen && m.diffChange != nil:
+			file, hunk := m.tr("Stage File"), m.tr("Stage Hunk")
+			if m.diffStaged {
+				file, hunk = m.tr("Unstage File"), m.tr("Unstage Hunk")
+			}
+			notice = stageScopeKey + ": " + file
+			if m.partialStageReason(m.diffStaged) == "" {
+				start, end := m.diffSelection.bounds()
+				if len(m.selectedDiffChanges()) > 0 {
+					hunk = m.tr("Stage Selected Ranges")
+					if m.diffStaged {
+						hunk = m.tr("Unstage Selected Ranges")
+					}
+				} else if m.diffHunk < 0 || m.diffSelection.active && start != end {
+					hunk = ""
+				}
+				if hunk != "" {
+					notice = stageKey + ": " + hunk + " · " + notice
+				}
+			}
+			if !m.diffStaged {
+				notice += " · " + m.tr("%s/%s: discard", discardKey, discardScopeKey)
+			}
+		}
+	}
 	if m.sidebar && m.section == search && notice == "" {
 		notice = m.tr("%s: fields/results", searchKeys.NextField.Help().Key)
 		if m.search.replace && m.search.focus == 1 {

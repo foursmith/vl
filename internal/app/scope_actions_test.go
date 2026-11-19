@@ -104,12 +104,18 @@ func TestGroupHoverStageUnstageAndOpenAll(t *testing.T) {
 		t.Fatalf("open all created %d tabs", len(m.tabs))
 	}
 	drain(t, m, clickScopeAction(t, m, "", true, false, "stage"))
+	if current := m.current(); current == nil || !current.header || !current.staged {
+		t.Fatal("selection did not follow the staged group")
+	}
 	for _, c := range m.snapshot.Changes {
 		if !c.Staged() {
 			t.Fatalf("group missed %s", c.Path)
 		}
 	}
 	drain(t, m, clickScopeAction(t, m, "", true, true, "unstage"))
+	if current := m.current(); current == nil || !current.header || current.repoHeader || current.staged {
+		t.Fatal("selection did not follow the unstaged group")
+	}
 	for _, c := range m.snapshot.Changes {
 		if c.Staged() {
 			t.Fatalf("group unstage missed %s", c.Path)

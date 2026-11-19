@@ -406,3 +406,94 @@ func TestEmptyInitialDiffClosesButErrorsAndMetadataStayOpen(t *testing.T) {
 		t.Fatal("non-text changes were treated as empty")
 	}
 }
+
+func TestStageFileFollowsChangesAcrossIndex(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	defer m.Close()
+	m.section = changes
+	drain(t, m, m.refresh())
+	drain(t, m, m.openSelected())
+	tab := m.diffState
+
+	for _, stage := range []bool{true, false} {
+		_, cmd := m.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModShift, Text: "S"})
+		drain(t, m, cmd)
+		if len(m.tabs) != 1 || m.diffState != tab || tab.diffStaged != stage ||
+			m.sidebar || m.tabs[0].preview || !strings.Contains(tab.patch.Raw, "+package main") {
+			t.Fatalf("stage=%t: tabs=%d active=%t staged=%t raw=%q notice=%q snapshot=%+v", stage, len(m.tabs), m.diffState == tab, tab.diffStaged, tab.patch.Raw, m.notice, m.snapshot.Changes)
+		}
+	}
+}
+
+func TestStageHunkFollowsOnlyWhenSourceDiffIsEmpty(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	defer m.Close()
+	run := func(args ...string) {
+		t.Helper()
+		if _, err := m.repo.Run(m.ctx, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	const name = "file.txt"
+	middle := strings.Repeat("same\n", 10)
+	write := func(first, last string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(m.repo.Root, name), []byte(first+"\n"+middle+last+"\n"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("first", "last")
+	run("add", name)
+	run("-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-m", "Initial")
+	write("new first", "new last")
+	m.section = changes
+	drain(t, m, m.refresh())
+	drain(t, m, m.openSelected())
+	source := m.diffState
+
+	drain(t, m, press(m, "s"))
+	if m.diffState != source || source.diffStaged || len(source.patch.Hunks) != 1 {
+		t.Fatal("staging one hunk switched away from the remaining worktree diff")
+	}
+	change := *source.diffChange
+	cmd, _ := m.loadSidebarFile(item{change: &change, staged: true})
+	staged := m.diffState
+	drain(t, m, cmd)
+	m.activateTab(0)
+	drain(t, m, press(m, "s"))
+	if len(m.tabs) != 1 || m.diffState != staged || m.tabs[0].preview ||
+		!strings.Contains(staged.patch.Raw, "+new first") || !strings.Contains(staged.patch.Raw, "+new last") {
+		t.Fatal("staging the last hunk did not reuse the existing staged diff")
+	}
+}
+
+func TestBulkStageFollowsEachOpenDiffWithoutTakingFocus(t *testing.T) {
+	m := tabWorkspace(t, 2)
+	defer m.Close()
+	m.section = changes
+	drain(t, m, m.refresh())
+	var tabs []*diffState
+	for _, name := range []string{"file0.go", "file1.go"} {
+		selectChanged(t, m, name, false)
+		drain(t, m, m.openSelected())
+		tabs = append(tabs, m.diffState)
+	}
+	m.sidebar = true
+	active := m.activeTab
+	_, cmd := m.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModShift, Text: "S"})
+	drain(t, m, cmd)
+	if len(m.tabs) != 2 || m.activeTab != active || !m.sidebar || !m.diffStaged {
+		t.Fatal("bulk staging removed the visible diff or changed focus")
+	}
+	session := m.Session()
+	if len(session.Tabs) != 2 || !session.Tabs[0].Staged || !session.Tabs[1].Staged ||
+		tabs[0].diffLoading || !tabs[0].diffStale {
+		t.Fatal("bulk staging did not persist a background tab without loading it")
+	}
+	slot := m.tabLayout()[0]
+	_, cmd = m.Update(tea.MouseClickMsg{X: m.mainX() + slot.x + 2, Y: tabRow, Button: tea.MouseLeft})
+	drain(t, m, cmd)
+	if len(m.tabs) != 2 || m.diffState != tabs[0] || !m.diffStaged {
+		t.Fatal("bulk staging removed the background diff when selected")
+	}
+}

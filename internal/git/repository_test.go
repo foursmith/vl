@@ -102,11 +102,12 @@ func TestWorkflowAndHunkRoundTrip(t *testing.T) {
 	if len(patch.Hunks) != 2 {
 		t.Fatalf("expected 2 hunks: %s", raw)
 	}
-	hunk, err := patch.HunkPatch(0)
+	firstHunk := func(line *patchdiff.Line) bool { return line.Hunk == 0 }
+	hunk, err := patch.StagingPatch(c.Path, false, firstHunk)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = r.ApplyHunk(ctx, hunk, false); err != nil {
+	if err = r.ApplyIndexPatch(ctx, hunk); err != nil {
 		t.Fatal(err)
 	}
 	index := run(t, r, "show", ":code.go")
@@ -124,17 +125,17 @@ func TestWorkflowAndHunkRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	hunk, err = patchdiff.Parse(raw).HunkPatch(0)
+	hunk, err = patchdiff.Parse(raw).StagingPatch(c.Path, true, firstHunk)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = r.ApplyHunk(ctx, hunk, true); err != nil {
+	if err = r.ApplyIndexPatch(ctx, hunk); err != nil {
 		t.Fatal(err)
 	}
 	if got := run(t, r, "show", ":code.go"); got != original.String() {
 		t.Fatal("unstaging did not restore index")
 	}
-	if _, err = r.Stage(ctx, c); err != nil {
+	if err = r.StageChanges(ctx, []Change{c}, false); err != nil {
 		t.Fatal(err)
 	}
 	run(t, r, "commit", "-m", "changed")
@@ -195,7 +196,7 @@ func TestPartialStagingUpdatesOnlySelectedIndexLines(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if _, err := r.ApplyHunk(ctx, patch, false); err != nil {
+				if err := r.ApplyIndexPatch(ctx, patch); err != nil {
 					t.Fatalf("apply: %v\n%s", err, patch)
 				}
 			}
@@ -209,7 +210,7 @@ func TestPartialStagingUpdatesOnlySelectedIndexLines(t *testing.T) {
 					t.Fatalf("new file still in index: %q", got)
 				}
 				apply(false, test.selectLine)
-				if _, err := r.Unstage(ctx, Change{Path: path}); err != nil {
+				if err := r.StageChanges(ctx, []Change{{Path: path}}, true); err != nil {
 					t.Fatal(err)
 				}
 				if got := run(t, r, "ls-files", "--", path); got != "" {
@@ -247,14 +248,14 @@ func TestLiteralPathsRenameAndUnbornRepository(t *testing.T) {
 	if err != nil || !strings.Contains(raw, "+one") {
 		t.Fatalf("untracked diff: %s %v", raw, err)
 	}
-	if _, err = r.Stage(ctx, c); err != nil {
+	if err = r.StageChanges(ctx, []Change{c}, false); err != nil {
 		t.Fatal(err)
 	}
 	staged := run(t, r, "diff", "--cached", "--name-only", "-z")
 	if staged != name+"\x00" {
 		t.Fatalf("pathspec was not literal: %q", staged)
 	}
-	if _, err = r.Unstage(ctx, Change{Path: name, Index: 'A', Worktree: ' '}); err != nil {
+	if err = r.StageChanges(ctx, []Change{{Path: name, Index: 'A', Worktree: ' '}}, true); err != nil {
 		t.Fatal(err)
 	}
 	if got := run(t, r, "diff", "--cached", "--name-only", "-z"); got != "" {
@@ -270,7 +271,7 @@ func TestLiteralPathsRenameAndUnbornRepository(t *testing.T) {
 	if len(s.Changes) != 1 || s.Changes[0].Original != name || s.Changes[0].Path != "renamed.txt" {
 		t.Fatalf("rename parse: %+v", s.Changes)
 	}
-	if _, err = r.Unstage(ctx, s.Changes[0]); err != nil {
+	if err = r.StageChanges(ctx, s.Changes, true); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -293,7 +294,7 @@ func TestStageRenameThenDelete(t *testing.T) {
 		if err != nil || len(changes) != 1 || changes[0] != want {
 			t.Fatalf("status = %+v, %v, want %+v", changes, err, want)
 		}
-		if _, err := r.Stage(ctx, changes[0]); err != nil {
+		if err := r.StageChanges(ctx, changes, false); err != nil {
 			t.Fatal(err)
 		}
 	}

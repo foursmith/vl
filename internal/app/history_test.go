@@ -36,7 +36,7 @@ func TestHistoryFileReviewAndReadOnlyActions(t *testing.T) {
 	if m.diffPath != "cmd/main.go" || !m.sidebar || !m.tabs[m.activeTab].preview {
 		t.Fatal("wrong per-file diff")
 	}
-	if cmd := m.stageHunk(false); cmd != nil {
+	if cmd := m.stageDiffLines(false, "Stage Hunk", nil); cmd != nil {
 		t.Fatal("history permitted staging")
 	}
 	if cmd := m.editDiff(); cmd != nil || m.editing() {

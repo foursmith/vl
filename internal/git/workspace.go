@@ -117,19 +117,24 @@ func (r *Repository) ForChange(ctx context.Context, c Change) (*Repository, Chan
 	if err != nil {
 		return nil, c, err
 	}
+	c, err = c.localPaths()
+	return repo, c, err
+}
+
+func (c Change) localPaths() (Change, error) {
 	if c.Repository == "" {
-		return repo, c, nil
+		return c, nil
 	}
 	prefix := filepath.ToSlash(filepath.Clean(c.Repository)) + "/"
 	for _, path := range []string{c.Path, c.Original} {
 		if path != "" && (!strings.HasPrefix(path, prefix) || !filepath.IsLocal(strings.TrimPrefix(path, prefix))) {
-			return nil, c, fmt.Errorf("file does not belong to its repository")
+			return c, fmt.Errorf("file does not belong to its repository")
 		}
 	}
 	c.Path = strings.TrimPrefix(c.Path, prefix)
 	c.Original = strings.TrimPrefix(c.Original, prefix)
 	c.Repository = ""
-	return repo, c, nil
+	return c, nil
 }
 
 type workspaceChanges struct {

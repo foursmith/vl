@@ -246,7 +246,7 @@ func (r *Repository) Diff(ctx context.Context, c Change, staged bool) (string, e
 	}
 
 	args := []string{"diff", "--no-ext-diff", "--no-textconv", "--no-color", "--find-renames", "--unified=3", "--submodule=short", "--ignore-submodules=none"}
-	if c.Untracked() {
+	if !staged && c.Untracked() {
 		out, err := r.Run(ctx, append(args, "--no-index", "--", os.DevNull, filepath.Join(r.Root, c.Path))...)
 		var exit *exec.ExitError
 		if errors.As(err, &exit) && exit.ExitCode() == 1 {
@@ -276,42 +276,45 @@ func validObjectID(id string) bool {
 	return true
 }
 
-func (r *Repository) Stage(ctx context.Context, c Change) (string, error) {
-	if c.GitlinkDirty {
-		return "", fmt.Errorf("stage internal files in their own repository")
+// StageChanges updates the index once for an explicitly scoped set of paths.
+func (r *Repository) StageChanges(ctx context.Context, changes []Change, unstage bool) error {
+	if len(changes) == 0 {
+		return nil
 	}
-	r, c, err := r.ForChange(ctx, c)
+	owner := changes[0].Repository
+	repo, err := r.RepositoryAt(ctx, owner)
 	if err != nil {
-		return "", err
+		return err
 	}
-
-	args := []string{"add", "--all", "--", c.Path}
-	// An index rename can leave the original path absent from both the index and worktree.
-	if c.Original != "" && (c.Worktree == 'R' || c.Worktree == 'C') {
-		args = append(args, c.Original)
+	var paths []string
+	for _, c := range changes {
+		if c.Repository != owner {
+			return fmt.Errorf("changes must belong to the same repository")
+		}
+		if !unstage && c.GitlinkDirty {
+			return fmt.Errorf("stage internal files in their own repository")
+		}
+		c, err := c.localPaths()
+		if err != nil {
+			return err
+		}
+		paths = append(paths, c.Path)
+		// For an index rename the old path may already be absent from both sides.
+		if c.Original != "" && (unstage || c.Worktree == 'R' || c.Worktree == 'C') {
+			paths = append(paths, c.Original)
+		}
 	}
-	return r.Run(ctx, args...)
+	args := []string{"add", "--all", "--no-ignore-errors"}
+	if unstage {
+		args = []string{"reset", "-q"}
+	}
+	_, err = repo.run(ctx, strings.Join(paths, "\x00")+"\x00", append(args, "--pathspec-from-file=-", "--pathspec-file-nul")...)
+	return err
 }
 
-func (r *Repository) Unstage(ctx context.Context, c Change) (string, error) {
-	r, c, err := r.ForChange(ctx, c)
-	if err != nil {
-		return "", err
-	}
-
-	args := []string{"reset", "-q", "--", c.Path}
-	if c.Original != "" {
-		args = append(args, c.Original)
-	}
-	return r.Run(ctx, args...)
-}
-
-func (r *Repository) ApplyHunk(ctx context.Context, patch string, reverse bool) (string, error) {
-	args := []string{"apply", "--cached", "--whitespace=nowarn"}
-	if reverse {
-		args = append(args, "--reverse")
-	}
-	return r.run(ctx, patch, args...)
+func (r *Repository) ApplyIndexPatch(ctx context.Context, patch string) error {
+	_, err := r.run(ctx, patch, "apply", "--cached", "--whitespace=nowarn")
+	return err
 }
 
 func (r *Repository) ignored(ctx context.Context, paths []string) (map[string]bool, error) {

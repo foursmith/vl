@@ -103,8 +103,9 @@ type diffMsg struct {
 	images    *diffImages
 }
 type operationMsg struct {
-	title string
-	err   error
+	title      string
+	err        error
+	indexDiffs []*diffState
 }
 type tickMsg time.Time
 type clipboardMsg struct {
@@ -327,13 +328,9 @@ func (m *Model) refreshRepository() tea.Cmd {
 }
 
 func (m *Model) rebuildItems() {
-	key := ""
-	selectedPath := ""
-	if m.selected >= 0 && m.selected < len(m.items) {
-		key = m.items[m.selected].key
-		if c := m.items[m.selected].change; c != nil {
-			selectedPath = c.Path
-		}
+	var previous item
+	if current := m.current(); current != nil {
+		previous = *current
 	}
 	m.items = nil
 	if m.snapshot.NoRepository && (m.section == changes || m.section == history || m.section == pullRequests) {
@@ -356,18 +353,17 @@ func (m *Model) rebuildItems() {
 	}
 	found := false
 	for i := range m.items {
-		if m.items[i].key == key && key != "" {
+		if m.items[i].key == previous.key && previous.key != "" {
 			m.selected = i
 			found = true
 			break
 		}
 	}
-	if !found && selectedPath != "" {
-		for i, row := range m.items {
-			if row.change != nil && row.change.Path == selectedPath {
-				m.selected = i
-				break
-			}
+	if !found && previous.key != "" && m.section == changes {
+		if index := m.changesSelectionAfterRefresh(previous); index >= 0 {
+			m.selected = index
+			m.ensureSidebar()
+			return
 		}
 	}
 	if !found && m.selected >= 0 && len(m.items) > 0 && m.items[m.selected].header {
@@ -796,6 +792,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		previous := m.snapshot
 		m.snapshot = msg.snapshot
 		m.reconcileChangeDiffs(previous)
+		m.reconcileIndexDiffTabs()
 		m.reconcileHistoryRepositories()
 		m.syncWatch()
 		m.rebuildItems()
@@ -833,6 +830,11 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			m.notice = m.tr(msg.err.Error())
 		} else {
 			m.notice = m.tr("%s completed", m.tr(msg.title))
+		}
+		for _, d := range msg.indexDiffs {
+			if d.diffOpen {
+				d.followIndex = true
+			}
 		}
 		if msg.title == "Commit" && msg.err == nil {
 			delete(m.commitDrafts, m.commitRepository)
@@ -1015,6 +1017,9 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	if m.rotateWelcomeArt(k) {
 		return nil
 	}
+	if handled, cmd := m.diffChangeShortcut(k); handled {
+		return cmd
+	}
 	if !m.sidebar && m.editorDocument() != nil {
 		if k == "enter" {
 			if cmd, handled := m.enterMarkdownRemoteImage(); handled {
@@ -1119,20 +1124,8 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		case key.Matches(msg, sidebarKeys.Edit):
 			return m.editSelected()
 		}
-		if m.section != changes {
-			switch k {
-			case "space":
-				entry := m.current()
-				return m.stageSelected(entry != nil && entry.staged)
-			case "s":
-				return m.stageSelected(false)
-			case "u":
-				return m.stageSelected(true)
-			case "c":
-				return m.commit()
-			case "a":
-				return m.stageAll()
-			}
+		if k == changesCommitKey {
+			return m.commit()
 		}
 		return nil
 	}

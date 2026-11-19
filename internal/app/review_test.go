@@ -49,7 +49,7 @@ func TestReadOnlyDiffSharesVimMotionsSelectionAndSearch(t *testing.T) {
 		if m.tabs[m.activeTab].vim.VisualMode || m.diffSelection.active {
 			t.Fatal("yank retained Visual selection")
 		}
-		for _, k := range []string{"i", "X", "d", "d", "p", "u", "tab", "ctrl+v", "ctrl+s"} {
+		for _, k := range []string{"i", "X", "d", "d", "p", "u", "ctrl+v", "ctrl+s"} {
 			press(m, k)
 		}
 		m.Update(tea.PasteMsg{Content: "cannot modify"})
@@ -77,7 +77,40 @@ func TestReadOnlyDiffSharesVimMotionsSelectionAndSearch(t *testing.T) {
 	}
 }
 
-func TestReadOnlyDiffFlashAndSideSwitch(t *testing.T) {
+func TestDiffKeyboardCursorStaysOnRightWhileSelectingLeftText(t *testing.T) {
+	m := reviewWorkspace(t, true)
+	m.review.SetPosition(2, 3)
+	m.ensureTextCursor()
+	initial := m.reviewCursor()
+	right, _ := m.diffPane(true)
+	if initial == nil || initial.X < m.mainX()+right {
+		t.Fatal("side-by-side diff did not start on the right")
+	}
+	for _, msg := range []tea.KeyPressMsg{{Code: tea.KeyTab}, {Code: tea.KeyTab, Mod: tea.ModShift}} {
+		m.Update(msg)
+		if cursor := m.reviewCursor(); cursor == nil || cursor.Position != initial.Position {
+			t.Fatal("Tab moved the diff cursor")
+		}
+	}
+	for i, pair := range m.diffRows {
+		if codeLine(pair.Left) != "old value" {
+			continue
+		}
+		x, y := m.mainX()+m.diffGutter, m.contentRow()+i-m.viewport.YOffset()
+		m.Update(tea.MouseClickMsg{X: x, Y: y, Button: tea.MouseLeft})
+		m.Update(tea.MouseReleaseMsg{X: x + 3, Y: y, Button: tea.MouseLeft})
+		break
+	}
+	if cursor := m.reviewCursor(); cursor == nil || cursor.Position != initial.Position ||
+		m.diffSelectedText() != "old" || m.review.SelectedText() != "" {
+		t.Fatal("left mouse selection changed keyboard focus or lost selected text")
+	}
+	if cmd := m.copy(false); cmd == nil {
+		t.Fatal("left mouse selection was not available to copy")
+	}
+}
+
+func TestReadOnlyDiffFlashAndLeader(t *testing.T) {
 	m := reviewWorkspace(t, true)
 	original := m.review.Text
 	press(m, "f")
@@ -99,26 +132,6 @@ func TestReadOnlyDiffFlashAndSideSwitch(t *testing.T) {
 		t.Fatal("Diff leader has no shared state display")
 	}
 	press(m, "esc")
-	var changeSide func() tea.Cmd
-	for _, a := range m.reviewActions() {
-		if a.id == "diff.otherSide" {
-			changeSide = a.run
-		}
-	}
-	if changeSide == nil {
-		t.Fatal("old side is not keyboard accessible")
-	}
-	changeSide()
-	if m.reviewRight || !strings.Contains(m.review.Text, "old value") || strings.Contains(m.review.Text, "new value") {
-		t.Fatal("old-side projection is incorrect")
-	}
-	press(m, "g")
-	press(m, "g")
-	press(m, "v")
-	press(m, "e")
-	if m.diffSelectedText() != "old" {
-		t.Fatalf("old-side selection copied other content: %q", m.diffSelectedText())
-	}
 }
 
 func TestSharedLeaderCancelsAcrossDialogsAndBlur(t *testing.T) {
@@ -158,17 +171,17 @@ func TestSharedLeaderCancelsAcrossDialogsAndBlur(t *testing.T) {
 	}
 }
 
-func TestReadOnlyDiffHunkNavigationRevealsDeletedSource(t *testing.T) {
+func TestReadOnlyDiffHunkNavigationSelectsDeletionWithoutMovingCursorLeft(t *testing.T) {
 	m := reviewWorkspace(t, true)
 	m.patch = diff.Parse("@@ -1 +1 @@\n-old\n+new\n@@ -20 +19,0 @@\n-deleted only\n")
 	m.renderDiff()
 	m.diffHunk = 0
 	press(m, "]")
-	if m.diffHunk != 1 || m.reviewRight || m.reviewCursor() == nil {
-		t.Fatal("hunk without new-side source did not focus old-side text")
+	if m.diffHunk != 1 || !strings.Contains(plain(m.View().Content), "deleted only") {
+		t.Fatal("hunk without new-side source was not selected and revealed")
 	}
 	row, _ := m.review.Position()
-	if m.review.Lines()[row] != "deleted only" {
-		t.Fatal("hunk command did not synchronize the read-only cursor")
+	if m.review.Lines()[row] != "new" {
+		t.Fatal("hunk navigation moved keyboard focus away from the right pane")
 	}
 }

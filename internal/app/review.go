@@ -24,7 +24,7 @@ func (m *Model) editorDocument() *editor.Document {
 	return nil
 }
 
-func (m *Model) rebuildReview(right bool) {
+func (m *Model) rebuildReview() {
 	old := m.review
 	oldRow, oldCol := 0, 0
 	if old != nil {
@@ -42,7 +42,7 @@ func (m *Model) rebuildReview(right bool) {
 	m.reviewLine = map[*diff.Line]int{}
 	for i, pair := range m.diffRows {
 		line := pair.Left
-		if right {
+		if m.diffLayout.split {
 			line = pair.Right
 		}
 		if line == nil || (line.Kind != diff.Context && line.Kind != diff.Added && line.Kind != diff.Deleted) {
@@ -52,7 +52,6 @@ func (m *Model) rebuildReview(right bool) {
 		m.reviewRows = append(m.reviewRows, i)
 		lines = append(lines, codeLine(line))
 	}
-	m.reviewRight = right
 	m.review = &editor.Document{ReadOnly: true, Path: filepath.Join(m.repo.Root, m.diffPath), Text: strings.Join(lines, "\n"), Anchor: -1}
 	if index, ok := m.reviewLine[oldLine]; ok {
 		oldRow = index
@@ -90,21 +89,20 @@ func (m *Model) syncReviewSelection() {
 	}
 	start, end := documentPoint(d, a), documentPoint(d, b)
 	m.diffSelection = diffSelection{
-		active: true, right: m.reviewRight,
+		active: true, right: m.diffLayout.split,
 		anchor: textPoint{m.reviewRows[min(start.row, len(m.reviewRows)-1)], start.col},
 		cursor: textPoint{m.reviewRows[min(end.row, len(m.reviewRows)-1)], end.col},
 	}
 }
 
 func (m *Model) syncReviewMouse() {
-	if m.images != nil || len(m.diffRows) == 0 {
+	if m.review == nil {
 		return
 	}
 	s := m.diffSelection
-	if m.review == nil || s.right != m.reviewRight {
-		m.rebuildReview(s.right)
-	}
-	if len(m.reviewRows) == 0 {
+	m.tabs[m.activeTab].vim.Reset(m.review)
+	// Left-side selections are painted and copied directly from the diff rows.
+	if s.right != m.diffLayout.split || len(m.reviewRows) == 0 {
 		return
 	}
 	offset := func(p textPoint) int {
@@ -112,7 +110,6 @@ func (m *Model) syncReviewMouse() {
 		i = min(i, len(m.reviewRows)-1)
 		return m.review.LineOffset(i) + min(p.col, m.review.LineRuneCount(i))
 	}
-	m.tabs[m.activeTab].vim.Reset(m.review)
 	m.review.SelectRange(offset(s.anchor), offset(s.cursor))
 }
 
@@ -153,7 +150,7 @@ func (m *Model) ensureTextCursor() {
 		m.viewport.SetYOffset(row - m.contentHeight() + 1)
 	}
 	visual := ansi.StringWidth(expandTabs(d.Text[d.ByteOffset(d.LineOffset(line)):d.ByteOffset(d.Cursor)]))
-	_, width := m.diffPane(m.reviewRight)
+	_, width := m.diffPane(m.diffLayout.split)
 	width = max(1, width-m.diffGutter)
 	if visual < m.diffLeft {
 		m.diffLeft = visual
@@ -177,7 +174,7 @@ func (m *Model) reviewCursor() *tea.Cursor {
 	line, _ := d.Position()
 	y := m.reviewRows[min(line, len(m.reviewRows)-1)] - m.viewport.YOffset()
 	start, end := d.ByteOffset(d.LineOffset(line)), d.ByteOffset(d.Cursor)
-	pane, width := m.diffPane(m.reviewRight)
+	pane, width := m.diffPane(m.diffLayout.split)
 	left := m.mainX() + pane
 	x := left + m.diffGutter + ansi.StringWidth(expandTabs(d.Text[start:end])) - m.diffLeft
 	if y < 0 || y >= m.contentHeight() || x < left+m.diffGutter || x >= left+width || m.fileFindAt(x, m.contentRow()+y) {
@@ -187,19 +184,17 @@ func (m *Model) reviewCursor() *tea.Cursor {
 }
 
 func (m *Model) reviewToRow(row int) {
-	if m.review == nil || len(m.reviewRows) == 0 {
+	if m.review == nil {
 		return
 	}
-	i := min(sort.SearchInts(m.reviewRows, row), len(m.reviewRows)-1)
-	if m.diffLayout.split && m.diffRowHunks[m.reviewRows[i]] != m.diffHunk {
-		m.rebuildReview(!m.reviewRight)
-		if len(m.reviewRows) == 0 {
-			return
-		}
-		i = min(sort.SearchInts(m.reviewRows, row), len(m.reviewRows)-1)
+	m.tabs[m.activeTab].vim.Reset(m.review)
+	m.diffSelection = diffSelection{}
+	i := sort.SearchInts(m.reviewRows, row)
+	// A deletion-only hunk still gets selected and scrolled into view.
+	if i == len(m.reviewRows) || m.diffRowHunks[m.reviewRows[i]] != m.diffHunk {
+		return
 	}
 	m.review.SetPosition(i, 0)
-	m.tabs[m.activeTab].vim.Reset(m.review)
 	m.ensureTextCursor()
 }
 
@@ -208,7 +203,7 @@ func (m *Model) textViewport() (top, left, width, gutter int) {
 		t := &m.tabs[m.activeTab]
 		return t.editorDisplayTop(), t.left, m.mainWidth(), 7
 	}
-	_, width = m.diffPane(m.reviewRight)
+	_, width = m.diffPane(m.diffLayout.split)
 	return m.viewport.YOffset(), m.diffLeft, width, m.diffGutter
 }
 
@@ -225,8 +220,11 @@ func (m *Model) textRowAt(y int) int {
 }
 
 func (m *Model) partialStageReason(reverse bool) string {
-	if m.diffChange == nil || m.diffLoading || m.diffStale || m.editing() || m.diffStaged != reverse {
+	if m.diffChange == nil || m.editing() || m.diffStaged != reverse {
 		return m.tr("Open a working-tree or index diff first")
+	}
+	if m.diffLoading || m.diffStale {
+		return m.tr("Wait for the diff to finish refreshing")
 	}
 	c := *m.diffChange
 	if reason := m.stageFileReason(c, reverse); reason != "" {
@@ -242,6 +240,9 @@ func (m *Model) partialStageReason(reverse bool) string {
 }
 
 func (m *Model) partialDiscardReason() string {
+	if m.busy {
+		return m.tr("Wait for the current Git operation to finish")
+	}
 	if m.diffChange == nil || m.diffStaged || m.diffLoading || m.diffStale || m.editing() {
 		return m.tr("Open a working-tree diff first")
 	}
@@ -287,8 +288,10 @@ func (m *Model) selectedDiffChanges() map[*diff.Line]bool {
 func (m *Model) reviewActions() []action {
 	var actions []action
 	sourceReason := ""
-	if m.diffChange == nil || m.diffLoading || m.diffStale {
+	if m.diffChange == nil {
 		sourceReason = m.tr("Open a working-tree or index diff first")
+	} else if m.diffLoading || m.diffStale {
+		sourceReason = m.tr("Wait for the diff to finish refreshing")
 	}
 	if m.diffChange != nil {
 		reverse := m.diffStaged
@@ -299,7 +302,7 @@ func (m *Model) reviewActions() []action {
 		target, raw := m.diffState, m.patch.Raw
 		bind := func(stale string, run func() tea.Cmd) func() tea.Cmd {
 			return func() tea.Cmd {
-				if m.diffState != target || m.diffChange == nil || m.diffLoading || m.diffStale || m.patch.Raw != raw {
+				if m.diffState != target || m.diffChange == nil || m.diffStaged != reverse || m.diffLoading || m.diffStale || m.patch.Raw != raw {
 					m.notice = m.tr(stale)
 					return nil
 				}
@@ -309,48 +312,96 @@ func (m *Model) reviewActions() []action {
 		stage := func(run func() tea.Cmd) func() tea.Cmd { return bind("Diff changed; refresh before staging", run) }
 		partialReason := m.partialStageReason(reverse)
 		discardReason := m.partialDiscardReason()
-		addDiscard := func(id, label, prompt string, selected func(*diff.Line) bool) {
+		addDiscard := func(id, label, prompt, shortcut string, selected func(*diff.Line) bool) {
 			if reverse {
 				return
 			}
-			actions = append(actions, action{id: id, label: m.tr(label), disabled: discardReason,
+			actions = append(actions, action{id: id, label: m.tr(label), key: shortcut, disabled: discardReason,
 				run: bind("Diff changed; refresh before discarding", func() tea.Cmd {
 					return m.discardDiffLines(m.tr(prompt, m.diffPath), selected)
 				}),
 			})
 		}
 		selected := m.selectedDiffChanges()
+		hunkStageKey, hunkDiscardKey := stageKey, discardKey
+		if start, end := m.diffSelection.bounds(); m.diffSelection.active && start != end {
+			hunkStageKey, hunkDiscardKey = "", ""
+		}
 		if len(selected) != 0 {
 			inRange := func(line *diff.Line) bool { return selected[line] }
-			actions = append(actions, action{id: prefix + "Ranges", label: m.tr(ranges), disabled: partialReason, run: stage(func() tea.Cmd {
+			actions = append(actions, action{id: prefix + "Ranges", label: m.tr(ranges), key: stageKey, disabled: partialReason, run: stage(func() tea.Cmd {
 				return m.stageDiffLines(reverse, ranges, inRange)
 			})})
-			addDiscard("diff.discardRanges", "Discard Selected Ranges", "Permanently discard the selected edits to %s?", inRange)
+			addDiscard("diff.discardRanges", "Discard Selected Ranges", "Permanently discard the selected edits to %s?", discardKey, inRange)
 		}
 		if index := m.diffHunk; index >= 0 && index < len(m.patch.Hunks) {
-			actions = append(actions, action{id: prefix + "Hunk", label: m.tr(hunk), disabled: partialReason, run: stage(func() tea.Cmd {
-				return m.stageHunk(reverse)
+			inHunk := func(line *diff.Line) bool { return line.Hunk == index }
+			actions = append(actions, action{id: prefix + "Hunk", label: m.tr(hunk), key: hunkStageKey, disabled: partialReason, run: stage(func() tea.Cmd {
+				return m.stageDiffLines(reverse, hunk, inHunk)
 			})})
-			addDiscard("diff.discardHunk", "Discard Hunk", "Permanently discard this hunk in %s?", func(line *diff.Line) bool {
-				return line.Hunk == index
-			})
+			addDiscard("diff.discardHunk", "Discard Hunk", "Permanently discard this hunk in %s?", hunkDiscardKey, inHunk)
 		}
 		fileReason := sourceReason
 		if fileReason == "" {
 			fileReason = m.stageFileReason(*m.diffChange, reverse)
 		}
-		actions = append(actions, action{id: prefix + "File", label: m.tr(file), disabled: fileReason, run: stage(func() tea.Cmd {
+		actions = append(actions, action{id: prefix + "File", label: m.tr(file), key: stageScopeKey, disabled: fileReason, run: stage(func() tea.Cmd {
 			return m.stageFile(*m.diffChange, reverse)
 		})})
+		if !reverse {
+			reason := sourceReason
+			if reason == "" && raw == "" {
+				reason = m.tr("Open a working-tree diff first")
+			}
+			if reason == "" {
+				reason = m.discardFileReason(*m.diffChange)
+			}
+			actions = append(actions, action{id: "diff.discardFile", label: m.tr("Discard File"), key: discardScopeKey, disabled: reason,
+				run: bind("Diff changed; refresh before discarding", func() tea.Cmd { return m.discardFile(*m.diffChange, raw) })})
+		}
 	}
 	actions = append(actions, action{id: "diff.edit", label: m.tr("Open Working Tree File"), disabled: sourceReason, run: m.editDiff})
-	if m.diffLayout.split && m.review != nil {
-		actions = append(actions, action{id: "diff.otherSide", label: m.tr("Focus Other Diff Side"), run: func() tea.Cmd {
-			m.cancelFlash()
-			m.rebuildReview(!m.reviewRight)
-			m.ensureTextCursor()
-			return nil
-		}})
-	}
 	return actions
+}
+
+func (m *Model) diffChangeShortcut(k string) (bool, tea.Cmd) {
+	if m.sidebar || !m.diffOpen || m.diffChange == nil {
+		return false, nil
+	}
+	switch k {
+	case "shift+s":
+		k = stageScopeKey
+	case "shift+d":
+		k = discardScopeKey
+	case stageKey, stageScopeKey, discardKey, discardScopeKey:
+	default:
+		return false, nil
+	}
+	if m.tabs[m.activeTab].vim.CommandPending() {
+		return false, nil
+	}
+	for _, action := range m.reviewActions() {
+		if action.key != k {
+			continue
+		}
+		if action.disabled != "" {
+			m.notice = action.disabled
+			return true, nil
+		}
+		return true, action.run()
+	}
+	if k == discardKey || k == discardScopeKey {
+		if m.diffStaged {
+			m.notice = m.tr("Open a working-tree diff first")
+		} else if start, end := m.diffSelection.bounds(); m.diffSelection.active && start != end {
+			m.notice = m.tr("Select changed lines to discard")
+		} else {
+			m.notice = m.tr("Use %s to discard changes to the whole file", discardScopeKey)
+		}
+	} else if start, end := m.diffSelection.bounds(); m.diffSelection.active && start != end {
+		m.notice = m.tr("Select changed lines to stage or unstage")
+	} else {
+		m.notice = m.tr("Use %s to stage or unstage the whole file", stageScopeKey)
+	}
+	return true, nil
 }

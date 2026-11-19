@@ -21,13 +21,13 @@ type diffState struct {
 	review           *editor.Document
 	reviewRows       []int
 	reviewLine       map[*diff.Line]int
-	reviewRight      bool
 	patch            diff.Patch
 	diffPath         string
 	diffOriginal     string
 	diffRepository   string
 	diffChange       *gitservice.Change
 	diffStaged       bool
+	followIndex      bool
 	diffHunk         int
 	diffRowHunks     []int
 	diffRows         []diff.Pair
@@ -82,14 +82,18 @@ func (d *diffState) clearContent() {
 	d.viewport.GotoTop()
 }
 
-func (d *diffState) close() {
-	d.diffOpen = false
+func (d *diffState) cancelLoad() {
 	d.diffSeq++
 	if d.diffCancel != nil {
 		d.diffCancel()
 		d.diffCancel = nil
 	}
 	d.diffLoading = false
+}
+
+func (d *diffState) close() {
+	d.diffOpen = false
+	d.cancelLoad()
 	d.read = nil
 	d.clearContent()
 }
@@ -166,12 +170,9 @@ func (m *Model) loadDiff(d *diffState, reset bool) tea.Cmd {
 }
 
 func (m *Model) loadVersionedDiff(d *diffState, reset bool, read func(context.Context) (string, string, error)) tea.Cmd {
-	if d.diffCancel != nil {
-		d.diffCancel()
-	}
+	d.cancelLoad()
 	ctx, cancel := context.WithCancel(m.ctx)
 	d.diffCancel = cancel
-	d.diffSeq++
 	d.diffLoading = true
 	d.diffStale = false
 	if reset {
@@ -210,9 +211,15 @@ func (m *Model) finishDiff(msg diffMsg) tea.Cmd {
 	if msg.prVersion != "" {
 		d.diffPRVersion = msg.prVersion
 	}
+	followIndex := d.followIndex
+	d.followIndex = false
 	if msg.raw == "" {
 		for i, t := range m.tabs {
 			if t.diff == d {
+				if followIndex && canFollowIndex(d) {
+					m.followIndexDiff(i)
+					return nil
+				}
 				m.removeTabAt(i)
 				break
 			}
@@ -443,7 +450,7 @@ func (m *Model) diffRow(line *diff.Line, width int, right bool, selected diffRan
 		emphasis, border = m.colors.DeletedText, m.colors.DeletedBorder
 	}
 	overlay := diffCodeOverlay{changeBorder: border}
-	if logical, ok := m.reviewLine[line]; ok && right == m.reviewRight && m.review != nil {
+	if logical, ok := m.reviewLine[line]; ok && right == m.diffLayout.split && m.review != nil {
 		overlay.offset = m.review.LineOffset(logical)
 		overlay.matches = m.fileSearchRowRanges(m.review, logical)
 		if m.flashValid() {

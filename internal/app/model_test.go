@@ -95,7 +95,7 @@ func TestAppEditStageCommitWorkflow(t *testing.T) {
 		t.Fatalf("save: %q", data)
 	}
 	drain(t, m, m.selectSection(changes))
-	drain(t, m, m.stageSelected(false))
+	drain(t, m, press(m, "s"))
 	if !m.current().staged {
 		t.Fatal("staged file not selected")
 	}

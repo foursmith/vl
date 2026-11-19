@@ -191,8 +191,12 @@ func (m *Model) View() tea.View {
 	for y := 0; y < m.bodyHeight(); y++ {
 		line := main[y]
 		if key.diffButtons.visible {
+			glyph := "+"
+			if m.diffStaged {
+				glyph = "−"
+			}
 			line = m.drawDiffButton(line, y, key.diffButtons.discard, "→")
-			line = m.drawDiffButton(line, y, key.diffButtons.stage, "+")
+			line = m.drawDiffButton(line, y, key.diffButtons.stage, glyph)
 		}
 		if index := y - m.contentRow(); index >= 0 && index < len(find) {
 			line = row(ansi.Cut(line, 0, findOffset), findOffset, m.colors.Foreground, m.colors.Background) + find[index]
@@ -334,10 +338,6 @@ func (m *Model) renderDiff() {
 	if m.diffRows != nil && m.diffLayout == key {
 		return
 	}
-	reviewRight := key.split
-	if key.split && m.diffLayout.split && m.review != nil {
-		reviewRight = m.reviewRight
-	}
 	m.diffLayout = key
 	m.diffSelection = diffSelection{}
 	m.diffDrag = nil
@@ -397,7 +397,7 @@ func (m *Model) renderDiff() {
 	}
 	// The viewport only tracks row geometry; the shared document owns search.
 	m.viewport.SetContentLines(make([]string, len(m.diffRows)))
-	m.rebuildReview(reviewRight)
+	m.rebuildReview()
 	m.viewport.SetHeight(m.contentHeight())
 }
 
