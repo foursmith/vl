@@ -114,9 +114,11 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 			}
 		}
 	}
+	treeEnd, outline := m.outlineLayout()
 	hovered := m.hoveredSidebarRow()
 	sticky := m.sidebarStickyRows()
-	for y := len(lines); y < h; y++ {
+	treeFocused := m.sidebar && !(treeEnd < h && m.outlineFocused)
+	for y := len(lines); y < treeEnd; y++ {
 		i := m.sideTop + y - headerHeight
 		if offset := y - headerHeight; offset < len(sticky) {
 			i = sticky[offset]
@@ -129,7 +131,7 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 				bg = m.colors.Hover
 			}
 			if i == m.selected {
-				bg = m.colors.SidebarSelection(m.sidebar)
+				bg = m.colors.SidebarSelection(treeFocused)
 			}
 			state := treeRowState{selected: i == m.selected, hovered: i == hovered}
 			switch {
@@ -143,13 +145,13 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 			default:
 				text, fg = m.historyRow(entry, w, bg)
 			}
-			if i == m.selected && m.monochrome && m.sidebar {
+			if i == m.selected && m.monochrome && treeFocused {
 				text = ">" + ansi.Cut(text, 1, w)
 			}
 		}
 		lines = append(lines, row(text, w, theme.Readable(fg, bg), bg))
 	}
-	return lines[:h]
+	return m.appendOutline(lines, w, treeEnd, outline)[:h]
 }
 
 type treeRowState struct{ selected, hovered bool }
@@ -251,6 +253,11 @@ func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 	if m.section == search {
 		return m.clickSearch(msg.X, y)
 	}
+	if header, outline := m.outlineLayout(); y >= header && y < m.bodyHeight() {
+		m.clickOutline(y, header, outline)
+		return nil
+	}
+	m.outlineFocused = false
 	w := m.sidebarContentWidth()
 	i := m.sidebarRowAt(y)
 	if y < headerHeight || i < 0 || i >= len(m.items) {

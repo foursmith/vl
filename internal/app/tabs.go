@@ -117,6 +117,8 @@ func (m *Model) selectTab(index int) {
 	m.stopTextDrag()
 	m.imagePan = nil
 	m.activeTab = index
+	m.outlineFocused = false
+	m.clampSidebarScroll()
 	m.diffState = m.emptyDiff
 	if t := &m.tabs[index]; t.diff != nil {
 		m.diffState = t.diff
@@ -144,6 +146,7 @@ func (m *Model) activateTab(index int) {
 
 func (m *Model) focusEditor() {
 	m.sidebar = false
+	m.outlineFocused = false
 	m.keepTab()
 }
 
@@ -270,6 +273,8 @@ func (m *Model) removeTabAt(index int) {
 	}
 	if len(m.tabs) == 0 {
 		m.activeTab = -1
+		m.outlineFocused = false
+		m.clampSidebarScroll()
 		m.diffState = m.emptyDiff
 		m.sidebar = !m.editorOnly
 	} else if wasActive {

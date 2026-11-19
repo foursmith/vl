@@ -1,4 +1,6 @@
 {
+  "Outline": "大纲",
+  "No headings": "暂无标题",
   "Load image": "加载图片",
   "Loading image…": "正在加载图片…",
   "Retry image (curl required)": "重试加载图片（需要 curl）",

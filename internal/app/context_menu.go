@@ -194,6 +194,9 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 		actions = append(actions, action{label: label, key: key, run: run})
 	}
 	if m.sidebarAt(x) && y >= headerHeight && y < m.bodyHeight() {
+		if header, _ := m.outlineLayout(); y >= header {
+			return nil
+		}
 		m.sidebar = true
 		entry := m.selectSidebarRow(m.sidebarRowAt(y))
 		if entry == nil {

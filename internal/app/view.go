@@ -141,7 +141,7 @@ type hoverRenderCache struct {
 }
 
 type hoverRenderKey struct {
-	row                   int
+	row, outlineRow       int
 	menu                  *contextMenu
 	menuSelected, menuTop int
 	picker                int
@@ -160,7 +160,7 @@ func (m *Model) View() tea.View {
 		return v
 	}
 	key := hoverRenderKey{
-		row: m.hoveredSidebarRow(), hint: m.hoverHint(),
+		row: m.hoveredSidebarRow(), outlineRow: m.hoveredOutlineRow(), hint: m.hoverHint(),
 		picker:      m.hoveredPickerIndex(),
 		divider:     m.sidebarDividerAt(m.hoverX, m.hoverY),
 		diffButtons: m.hoveredDiffButtons(),

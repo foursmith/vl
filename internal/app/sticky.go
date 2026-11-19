@@ -183,13 +183,13 @@ func (m *Model) sidebarStickyRows() []int {
 			}
 		}
 	}
-	return stickyRows(m.stickyTree, m.sideTop, stickyLimit(m.bodyHeight()-headerHeight))
+	return stickyRows(m.stickyTree, m.sideTop, stickyLimit(m.treeList().height))
 }
 
 func (m *Model) sidebarRowAt(y int) int {
 	l := m.sidebarList()
 	y -= l.start
-	if y < 0 {
+	if y < 0 || y >= l.height {
 		return -1
 	}
 	sticky := m.sidebarStickyRows()

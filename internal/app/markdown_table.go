@@ -21,9 +21,11 @@ var markdownParser = goldmark.New(goldmark.WithExtensions(extension.Table)).Pars
 type tablePadding map[int]int
 
 type markdownLayout struct {
-	source string
-	rows   map[int]tablePadding
-	images []markdownImageRef
+	source                      string
+	rows                        map[int]tablePadding
+	images                      []markdownImageRef
+	headings                    []outlineEntry
+	outlineSelected, outlineTop int
 }
 
 func (t *tab) tableRows() map[int]tablePadding {
@@ -31,10 +33,17 @@ func (t *tab) tableRows() map[int]tablePadding {
 	return t.markdown.rows
 }
 
-func (t *tab) syncMarkdown() {
-	switch strings.ToLower(filepath.Ext(t.doc.Path)) {
+func isMarkdownPath(path string) bool {
+	switch strings.ToLower(filepath.Ext(path)) {
 	case ".md", ".markdown", ".mdown", ".mkdn", ".mkd":
+		return true
 	default:
+		return false
+	}
+}
+
+func (t *tab) syncMarkdown() {
+	if !isMarkdownPath(t.doc.Path) {
 		return
 	}
 	cache := &t.markdown
@@ -42,7 +51,7 @@ func (t *tab) syncMarkdown() {
 		return
 	}
 	*cache = markdownLayout{source: t.doc.Text}
-	if !strings.Contains(cache.source, "|") && !strings.Contains(cache.source, "![") {
+	if !strings.ContainsAny(cache.source, "#=-|") && !strings.Contains(cache.source, "![") {
 		return
 	}
 
@@ -51,14 +60,31 @@ func (t *tab) syncMarkdown() {
 	for i := 1; i < len(source); i++ {
 		starts[i] = starts[i-1] + len(source[i-1]) + 1
 	}
-	doc := markdownParser.Parse(text.NewReader([]byte(cache.source)))
+	lineAt := func(offset int) int {
+		return sort.Search(len(starts), func(i int) bool { return starts[i] > offset }) - 1
+	}
+	raw := []byte(cache.source)
+	doc := markdownParser.Parse(text.NewReader(raw))
+	var levels []int
 	_ = ast.Walk(doc, func(node ast.Node, entering bool) (ast.WalkStatus, error) {
 		if !entering {
 			return ast.WalkContinue, nil
 		}
+		if heading, ok := node.(*ast.Heading); ok && heading.Lines().Len() > 0 {
+			pos := heading.Lines().At(0).Start
+			line := lineAt(pos)
+			label := strings.Join(strings.Fields(string(heading.Text(raw))), " ")
+			if label != "" && line >= 0 {
+				for len(levels) > 0 && levels[len(levels)-1] >= heading.Level {
+					levels = levels[:len(levels)-1]
+				}
+				cache.headings = append(cache.headings, outlineEntry{label: label, line: line, depth: len(levels)})
+				levels = append(levels, heading.Level)
+			}
+		}
 		if image, ok := node.(*ast.Image); ok {
 			pos := image.Pos()
-			line := sort.Search(len(starts), func(i int) bool { return starts[i] > pos }) - 1
+			line := lineAt(pos)
 			if path, remote := markdownImagePath(t.doc.Path, image.Destination); line >= 0 && path != "" {
 				cache.images = append(cache.images, markdownImageRef{line, path, remote})
 			}
@@ -71,7 +97,7 @@ func (t *tab) syncMarkdown() {
 		var rows []markdownTableRow
 		for child := table.FirstChild(); child != nil; child = child.NextSibling() {
 			pos := child.Pos()
-			line := sort.Search(len(starts), func(i int) bool { return starts[i] > pos }) - 1
+			line := lineAt(pos)
 			rows = append(rows, splitMarkdownTableRow(line, source[line], pos-starts[line]))
 			if child == table.FirstChild() {
 				// Goldmark records the header and body positions. The delimiter

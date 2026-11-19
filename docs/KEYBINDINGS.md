@@ -83,6 +83,7 @@ the item and `F2` to switch back to the sidebar.
 
 | Shortcut | Action |
 | --- | --- |
+| `Tab` / `Shift+Tab` | Switch focus between the file tree and Outline |
 | `L` | Split the selected compact folder chain |
 | `dd` / `Delete` | Delete the selected file or folder after confirmation |
 | `yy` | Yank the selected file or folder into the Explorer's file clipboard |
@@ -93,6 +94,10 @@ Save edits to the source before copying. Paste stays within the current
 workspace, refuses symlinks and special files, and skips `.git` metadata.
 Existing paths are protected. Copying into the source's parent suggests a
 name ending in `-copy` if the default destination is the source itself.
+
+Outline appears for the active Markdown file. Use `j` / `k` to select a section and
+`Enter` to jump to it, or click the entry. Click the Outline heading to toggle
+it. From within Outline, press `Left` to collapse it and `Right` to reopen it.
 
 ### Changes
 

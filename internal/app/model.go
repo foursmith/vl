@@ -164,6 +164,8 @@ type Model struct {
 	sidebar, sidebarVisible bool
 	sidebarWidth            int
 	sidebarRight            bool
+	outlineCollapsed        bool
+	outlineFocused          bool
 	resizingSidebar         bool
 	textDrag                *editor.Document
 	diffDrag                *diffState
@@ -426,6 +428,7 @@ func (m *Model) selectSectionInRepository(s section, repository string) tea.Cmd 
 		}
 	}
 	m.section = s
+	m.outlineFocused = false
 	m.sidebar = true
 	m.sidebarVisible = true
 	m.selected = -1
@@ -930,7 +933,10 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 				delta = -3
 			}
 			l := m.sidebarList()
-			if msg.Y >= l.start {
+			if header, outline := m.outlineLayout(); msg.Y >= header {
+				l = outline
+			}
+			if l.count > 0 && msg.Y >= l.start && msg.Y < l.start+l.height {
 				*l.top += delta
 				l.clampScroll()
 			}
@@ -1037,6 +1043,14 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		}
 		if handled, cmd := m.vimKey(k); handled {
 			return cmd
+		}
+	}
+	if m.sidebar && m.section == explorer {
+		if m.outlineKey(k) {
+			return nil
+		}
+		if m.outlineHasFocus() {
+			return m.executeCommand(route.command, "")
 		}
 	}
 	if m.sidebar && m.section == explorer && key.Matches(msg, sidebarKeys.Paste) {

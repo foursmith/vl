@@ -16,7 +16,8 @@ type sidebarList struct {
 }
 
 func (m *Model) treeList() sidebarList {
-	return sidebarList{&m.selected, &m.sideTop, len(m.items), headerHeight, max(1, m.bodyHeight()-headerHeight)}
+	end, _ := m.outlineLayout()
+	return sidebarList{&m.selected, &m.sideTop, len(m.items), headerHeight, max(1, end-headerHeight)}
 }
 func (m *Model) searchList() sidebarList {
 	start := m.searchResultY()
@@ -122,6 +123,7 @@ func (m *Model) selectSidebarRow(index int) *item {
 	}
 	*l.selected = index
 	m.sidebar = true
+	m.outlineFocused = false
 	if m.section == search {
 		m.focusSearch(2)
 	}
