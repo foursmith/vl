@@ -59,9 +59,3 @@ license metadata are recorded in the dependency's `grammars/MANIFEST.md`.
 The VS Code theme JSON files embedded under `internal/theme/themes` are covered
 by the Microsoft MIT notice above. They come from the
 [VS Code 1.135.0 default themes](https://github.com/microsoft/vscode/tree/08d4889f9ec4a1685d257b9b95de036c8e1ce1e5/extensions/theme-defaults/themes).
-
-## Source Code Pro
-
-The Home wordmark's 3D mesh is based on the uppercase V and L from
-[Source Code Pro Bold 2.042](https://github.com/adobe-fonts/source-code-pro/releases/tag/2.042R-u%2F1.062R-i%2F1.026R-vf).
-The upstream license is preserved under [third_party/source-code-pro](third_party/source-code-pro/).
