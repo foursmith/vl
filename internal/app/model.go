@@ -116,6 +116,7 @@ type clipboardMsg struct {
 }
 
 type Model struct {
+	workbenchKeymap                    *workbenchKeymap
 	findWidget                         findWidgetState
 	fileSearchOptionsDialog            bool
 	navigationState                    navigationState
@@ -211,7 +212,7 @@ type Model struct {
 	confirm                 func() tea.Cmd
 	confirmationDetail      string
 	confirmationLabel       string
-	confirmationKey         string
+	confirmationKey         key.Binding
 	confirmationButton      int
 	dialogTop               int
 	search                  searchState
@@ -994,26 +995,28 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	if handled, cmd := m.pathCompletionKey(k); handled {
 		return cmd
 	}
-	updatePath := msg.Text != "" || k == "backspace" || k == "delete"
+	updatePath := msg.Text != "" || matchesShortcut(k, eraseCharacter) || k == "delete"
 	if !updatePath {
 		m.pathCompletion = nil
 	}
-	if key.Matches(msg, workbenchKeys.CloseOthers) {
+	route := m.resolveWorkbenchShortcut(k)
+	if route.has(beforeInput) {
 		m.leaderTarget = ""
 		m.navigationState = navigationState{}
-		return m.closeOtherTabs()
+		return m.executeCommand(route.command, "")
 	}
 	if m.fileFindFocused() {
-		if handled, cmd := m.fileFindKey(msg); handled {
-			return cmd
+		if !route.has(fromFileFind) {
+			return m.fileFindKey(msg)
+		}
+		if route.has(blurFileFind) {
+			m.blurFileFind()
 		}
 	}
-	if m.editorOnly && key.Matches(msg, workbenchKeys.Recent, workbenchKeys.Search, workbenchKeys.Explorer, workbenchKeys.Changes, workbenchKeys.History, workbenchKeys.PullRequests, workbenchKeys.Sidebar, workbenchKeys.Focus, workbenchKeys.DiffLayout) {
+	if m.editorOnly && route.has(workspaceOnly) {
 		return nil
 	}
-	if m.sidebar && m.section == search &&
-		!key.Matches(msg, searchWorkbenchKeys...) &&
-		!key.Matches(msg, workbenchKeys.Recent, workbenchKeys.Save, workbenchKeys.Close) {
+	if m.sidebar && m.section == search && !route.has(fromSidebarSearch) {
 		return m.searchKey(msg)
 	}
 	if m.editing() && m.sidebar {
@@ -1029,7 +1032,7 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		return cmd
 	}
 	if !m.sidebar && m.editorDocument() != nil {
-		if k == "enter" {
+		if matchesShortcut(k, pickerKeys.Accept) {
 			if cmd, handled := m.enterMarkdownRemoteImage(); handled {
 				return cmd
 			}
@@ -1051,69 +1054,8 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	if handled, cmd := m.navigationKey(msg); handled {
 		return cmd
 	}
-	if key.Matches(msg, workbenchKeys.ContextMenu) {
-		if m.sidebar {
-			return m.openSidebarContextMenu()
-		}
-		if cursor := m.editorCursor(); cursor != nil {
-			return m.openContextMenu(cursor.X, cursor.Y)
-		}
-		return m.openContextMenu(m.mainX()+2, m.contentRow())
-	}
-	switch {
-	case key.Matches(msg, workbenchKeys.Quit, workbenchKeys.Copy):
-		if key.Matches(msg, workbenchKeys.Copy) && !m.sidebar && (m.editing() || m.diffOpen) {
-			return m.copy(false)
-		}
-		return m.quit()
-	case key.Matches(msg, workbenchKeys.Files):
-		return m.openQuickFiles()
-	case key.Matches(msg, workbenchKeys.Recent):
-		return m.openRecentWorkspaces()
-	case key.Matches(msg, workbenchKeys.Commands):
-		return m.openPalette()
-	case key.Matches(msg, workbenchKeys.Search):
-		return m.openSearch()
-	case key.Matches(msg, workbenchKeys.Explorer):
-		return m.selectSection(explorer)
-	case key.Matches(msg, workbenchKeys.Changes):
-		return m.selectSection(changes)
-	case key.Matches(msg, workbenchKeys.History):
-		return m.selectSection(history)
-	case key.Matches(msg, workbenchKeys.PullRequests):
-		return m.selectSection(pullRequests)
-	case key.Matches(msg, workbenchKeys.Sidebar):
-		return m.toggleSidebar()
-	case key.Matches(msg, workbenchKeys.Focus):
-		if m.sidebar {
-			m.blurFileFind()
-			m.focusEditor()
-		} else {
-			m.sidebar = true
-			m.sidebarVisible = true
-			m.resize()
-		}
-		return nil
-	case key.Matches(msg, workbenchKeys.Refresh), m.sidebar && key.Matches(msg, workbenchKeys.SidebarRefresh):
-		return m.refreshView()
-	case key.Matches(msg, workbenchKeys.DiffLayout):
-		m.split = !m.split
-		m.renderDiff()
-		return nil
-	case key.Matches(msg, workbenchKeys.Save):
-		return m.runShortcut(shortcut{action: shortcutSave})
-	case key.Matches(msg, workbenchKeys.Close):
-		return m.runShortcut(shortcut{action: shortcutClose})
-	case key.Matches(msg, workbenchKeys.Find):
-		return m.openFileFind()
-	case key.Matches(msg, workbenchKeys.Escape):
-		if m.editorOnly {
-			return nil
-		}
-		m.sidebar = true
-		m.sidebarVisible = true
-		m.resize()
-		return nil
+	if route.command != "" {
+		return m.executeCommand(route.command, "")
 	}
 	if m.sidebar {
 		if m.section == pullRequests && !key.Matches(msg, sidebarKeys.Open) {
@@ -1132,22 +1074,22 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		case key.Matches(msg, sidebarKeys.Edit):
 			return m.editSelected()
 		}
-		if k == changesCommitKey {
+		if matchesShortcut(k, gitKeys.Commit) {
 			return m.commit()
 		}
 		return nil
 	}
 	if m.currentImage() != nil {
-		switch k {
-		case "+", "=", "-":
+		switch {
+		case matchesShortcut(k, imageKeys.ZoomIn), matchesShortcut(k, imageKeys.ZoomOut):
 			factor := 1.25
-			if k == "-" {
+			if matchesShortcut(k, imageKeys.ZoomOut) {
 				factor = 1 / factor
 			}
 			m.zoomImage(factor, m.mainX()+m.mainWidth()/2, m.contentRow()+m.contentHeight()/2)
-		case "0":
+		case matchesShortcut(k, imageKeys.Fit):
 			m.resetImageZoom()
-		case "enter":
+		case matchesShortcut(k, imageKeys.Keep):
 			return m.keepTab()
 		}
 		return nil
@@ -1156,29 +1098,29 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		if m.tabs[m.activeTab].vim.InsertMode {
 			d.BeginEditGroup()
 		}
-		switch k {
-		case "ctrl+z":
+		switch {
+		case matchesShortcut(k, editorKeys.Undo):
 			d.Undo()
-		case "ctrl+y", "ctrl+shift+z":
+		case matchesShortcut(k, editorKeys.Redo):
 			d.Redo()
-		case "ctrl+a":
+		case matchesShortcut(k, editorKeys.SelectAll):
 			d.SelectAll()
-		case "ctrl+x":
+		case matchesShortcut(k, editorKeys.Cut):
 			return m.copy(true)
-		case "ctrl+v":
+		case matchesShortcut(k, editorKeys.Paste):
 			if d.ReadOnly {
 				return nil
 			}
 			return m.paste()
-		case "backspace":
+		case matchesShortcut(k, eraseCharacter):
 			d.Delete(true)
-		case "delete":
+		case k == "delete":
 			d.Delete(false)
-		case "enter":
+		case matchesShortcut(k, pickerKeys.Accept):
 			d.Insert("\n")
-		case "tab":
+		case k == "tab":
 			d.Insert("\t")
-		case "pgup", "pgdown":
+		case k == "pgup", k == "pgdown":
 			dir := "up"
 			if k == "pgdown" {
 				dir = "down"
@@ -1206,7 +1148,7 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		}
 		return nil
 	}
-	if k == "enter" {
+	if matchesShortcut(k, pickerKeys.Accept) {
 		return m.keepTab()
 	}
 	return nil

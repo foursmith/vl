@@ -149,18 +149,19 @@ func (m *Model) validPathCompletion() bool {
 
 func (m *Model) pathCompletionKey(k string) (bool, tea.Cmd) {
 	c := m.pathCompletion
-	if c == nil || len(c.matches) == 0 || (k != "up" && k != "down" && k != "tab") {
+	if c == nil || len(c.matches) == 0 || (!matchesShortcut(k, pickerKeys.Up) &&
+		!matchesShortcut(k, pickerKeys.Down) && !matchesShortcut(k, completionAccept)) {
 		return false, nil
 	}
 	if !m.validPathCompletion() || m.editorCursor() == nil || m.width < 30 || m.height < 8 {
 		return false, nil
 	}
-	switch k {
-	case "up":
+	switch {
+	case matchesShortcut(k, pickerKeys.Up):
 		c.selected = max(0, c.selected-1)
-	case "down":
+	case matchesShortcut(k, pickerKeys.Down):
 		c.selected = min(len(c.matches)-1, c.selected+1)
-	case "tab":
+	case matchesShortcut(k, completionAccept):
 		suffix := c.matches[c.selected][len(c.prefix):]
 		c.doc.BeginEditGroup()
 		c.doc.Insert(suffix)
@@ -207,7 +208,8 @@ func (m *Model) pathCompletionOverlay(base []string, cursor *tea.Cursor) []strin
 			if m.monochrome {
 				label = "> " + name
 			}
-			label = row(label, width-5, fg, bg) + " Tab "
+			hint := " " + completionAccept.Help().Key + " "
+			label = row(label, width-ansi.StringWidth(hint), fg, bg) + hint
 		}
 		lines = append(lines, row(label, width, fg, bg))
 	}

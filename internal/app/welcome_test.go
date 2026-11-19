@@ -28,8 +28,8 @@ func TestWelcomeFitsTerminalAndSidebarLayouts(t *testing.T) {
 			}
 			content := ansi.Strip(strings.Join(m.mainLines(), "\n"))
 			for _, a := range welcomeActions {
-				key := a.key
-				if size.w == 30 && a.command == "commands" {
+				key := m.welcomeShortcut(a.command)
+				if size.w == 30 && a.command == commandPalette {
 					key = "F1"
 				}
 				if !strings.Contains(content, a.label) || !strings.Contains(content, key) {

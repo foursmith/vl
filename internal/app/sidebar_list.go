@@ -74,7 +74,7 @@ func (m *Model) sidebarNavigationKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 		scope += fmt.Sprintf(":%d", m.search.seq)
 	}
 	action, count, handled := m.navigationState.key(scope, msg.String())
-	if m.section == search && (action == "dd" || key.Matches(msg, sidebarKeys.Delete)) {
+	if m.section == search && (action == sidebarDeleteSequence || key.Matches(msg, sidebarKeys.Delete)) {
 		m.dismissSearchResult(*l.selected)
 		return true, nil
 	}
@@ -84,7 +84,7 @@ func (m *Model) sidebarNavigationKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 	switch action {
 	case "":
 		return true, nil
-	case "dd", "yy":
+	case sidebarDeleteSequence, sidebarCopySequence:
 		if m.section != explorer {
 			return true, nil
 		}
@@ -92,7 +92,7 @@ func (m *Model) sidebarNavigationKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 			m.notice = m.tr("File operations act on one selected entry")
 			return true, nil
 		}
-		if action == "dd" {
+		if action == sidebarDeleteSequence {
 			return true, m.deleteSelectedEntry()
 		}
 		return true, m.yankEntry()

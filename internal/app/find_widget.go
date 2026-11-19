@@ -206,28 +206,28 @@ func (m *Model) toggleFileReplacement() tea.Cmd {
 	}
 	return m.focusFileFind(0)
 }
-func (m *Model) fileFindKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
+func (m *Model) fileFindKey(msg tea.KeyPressMsg) tea.Cmd {
 	switch {
-	case key.Matches(msg, workbenchKeys.Escape):
+	case key.Matches(msg, dismissKey):
 		m.closeFileFind()
-		return true, nil
-	case key.Matches(msg, workbenchKeys.Find):
-		return true, m.focusFileFind(0)
+		return nil
+	case m.matchWorkbenchCommand(msg.String(), commandFind):
+		return m.focusFileFind(0)
 	case key.Matches(msg, pickerKeys.Down):
 		m.navigateFileFind(1)
-		return true, nil
+		return nil
 	case key.Matches(msg, pickerKeys.Up):
 		m.navigateFileFind(-1)
-		return true, nil
+		return nil
 	case key.Matches(msg, searchKeys.NextField, searchKeys.PreviousField):
 		if m.search.replace && m.editing() {
-			return true, m.focusFileFind(1 - m.search.focus)
+			return m.focusFileFind(1 - m.search.focus)
 		}
 		m.blurFileFind()
-		return true, nil
+		return nil
 	case key.Matches(msg, pickerKeys.Accept):
 		if m.search.focus == 1 {
-			return true, m.replaceFileFind(false)
+			return m.replaceFileFind(false)
 		}
 		changed := m.findOptions.Query != m.search.query.Value()
 		m.adoptSearchState()
@@ -237,14 +237,9 @@ func (m *Model) fileFindKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 			m.centerTextCursor()
 		}
 		m.blurFileFind()
-		return true, nil
-	case key.Matches(msg, searchWorkbenchKeys...), key.Matches(msg, workbenchKeys.Refresh):
-		m.blurFileFind()
-		return false, nil
-	case key.Matches(msg, workbenchKeys.Save):
-		return false, nil
+		return nil
 	}
-	return true, m.fileFindInput(msg)
+	return m.fileFindInput(msg)
 }
 func (m *Model) fileFindControls(w int) []searchPanelControl {
 	var controls []searchPanelControl
@@ -276,7 +271,7 @@ func (m *Model) fileFindControls(w int) []searchPanelControl {
 	hints := []string{"Match Case", "Match Whole Word", "Use Regular Expression", "Previous Match", "Next Match"}
 	ids = append(ids, "close")
 	labels = append(labels, "×")
-	hints = append(hints, shortcutHint("Close Find", workbenchKeys.Escape))
+	hints = append(hints, shortcutHint("Close Find", dismissKey))
 	add(fileFindQueryRow, w-1, ids, labels, hints)
 	if m.editing() {
 		toggleRow := fileFindQueryRow

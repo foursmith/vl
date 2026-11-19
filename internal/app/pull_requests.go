@@ -524,7 +524,7 @@ func (m *Model) requestPullRequestDiff(entry item) tea.Cmd {
 }
 
 func (m *Model) pullRequestSidebarMessage() []string {
-	shortcut := workbenchKeys.SidebarRefresh.Help().Key
+	shortcut := m.workbenchRuleHint(sidebarRefreshRuleID)
 	switch {
 	case m.snapshot.NoRepository:
 		return []string{m.tr("Not a Git repository")}

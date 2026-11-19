@@ -106,14 +106,20 @@ func (m *Model) gitStatusSegments() []statusSegment {
 func (m *Model) statusLayout() []statusSegment {
 	left := []statusSegment{{id: "init", text: m.tr("Initialize Repository")}}
 	if m.editorOnly {
-		shortcuts := workbenchKeys.Save.Help().Key + " · " + workbenchKeys.Close.Help().Key + " · " + workbenchKeys.Commands.Help().Key
+		var hints []string
+		for _, id := range [...]commandID{commandSave, commandClose, commandPalette} {
+			if hint := m.commandShortcutHint(id); hint != "" {
+				hints = append(hints, hint)
+			}
+		}
+		shortcuts := strings.Join(hints, " · ")
 		label := shortcuts
 		if d := m.document(); d != nil {
 			label = safe(filepath.Base(d.Path))
 			if d.Dirty() {
 				label += " *"
 			}
-			if m.width >= 100 {
+			if m.width >= 100 && shortcuts != "" {
 				label += " · " + shortcuts
 			}
 		}
@@ -177,13 +183,13 @@ func (m *Model) statusLayout() []statusSegment {
 	if notice == "" && m.modal == "" && m.contextMenu == nil {
 		switch {
 		case m.sidebar && m.section == changes && m.current() != nil:
-			notice = m.tr("%s/%s: stage or unstage · %s/%s: discard", stageKey, stageScopeKey, discardKey, discardScopeKey)
+			notice = m.tr("%s/%s: stage or unstage · %s/%s: discard", gitKeys.Stage.Help().Key, gitKeys.StageScope.Help().Key, gitKeys.Discard.Help().Key, gitKeys.DiscardScope.Help().Key)
 		case !m.sidebar && m.diffOpen && m.diffChange != nil:
 			file, hunk := m.tr("Stage File"), m.tr("Stage Hunk")
 			if m.diffStaged {
 				file, hunk = m.tr("Unstage File"), m.tr("Unstage Hunk")
 			}
-			notice = stageScopeKey + ": " + file
+			notice = gitKeys.StageScope.Help().Key + ": " + file
 			if m.partialStageReason(m.diffStaged) == "" {
 				start, end := m.diffSelection.bounds()
 				if len(m.selectedDiffChanges()) > 0 {
@@ -195,11 +201,11 @@ func (m *Model) statusLayout() []statusSegment {
 					hunk = ""
 				}
 				if hunk != "" {
-					notice = stageKey + ": " + hunk + " · " + notice
+					notice = gitKeys.Stage.Help().Key + ": " + hunk + " · " + notice
 				}
 			}
 			if !m.diffStaged {
-				notice += " · " + m.tr("%s/%s: discard", discardKey, discardScopeKey)
+				notice += " · " + m.tr("%s/%s: discard", gitKeys.Discard.Help().Key, gitKeys.DiscardScope.Help().Key)
 			}
 		}
 	}

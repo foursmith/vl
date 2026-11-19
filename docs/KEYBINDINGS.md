@@ -7,6 +7,22 @@ differently in vl.
 
 Keys are case-sensitive. `Ctrl+P` is a chord. `Space w` and `gg` are sequences.
 
+## Adding a binding in code
+
+Edit `workbenchKeybindings` in [keymap.go](../internal/app/keymap.go) to bind an
+existing workbench command. Each rule declares the command ID, its display
+label, the accepted key names, and any focus conditions. Add an alternative key
+to the same rule, or add a rule for the same command if it needs a different
+focus condition. The command palette and menus read their hints from this table.
+Define new operations in [workbench_commands.go](../internal/app/workbench_commands.go).
+
+The workbench compiles its default rules into a keymap shared by dispatch and
+shortcut hints. Rule IDs default to their command IDs. Give a rule an explicit
+ID when a command has more than one binding with different focus conditions.
+The keymap builder accepts ordered assignments, replacements, and removals by
+rule ID and preserves each rule's command and focus conditions. A rule with no
+default key still gives the user a target to bind.
+
 ## Workbench
 
 | Shortcut | Action |

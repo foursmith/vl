@@ -27,7 +27,7 @@ func (n *navigationState) key(scope, k string) (string, int, bool) {
 		n.pending = ""
 		n.count = 0
 		if k == pending {
-			if k == "g" {
+			if k == navigationFirstPrefix {
 				return "first", count, true
 			}
 			return k + k, count, true
@@ -35,32 +35,32 @@ func (n *navigationState) key(scope, k string) (string, int, bool) {
 		// Cancel an unfinished operator, then handle this key normally.
 		count = 1
 	}
-	switch k {
-	case "g", "d", "y":
+	switch {
+	case k == navigationFirstPrefix, k == navigationDeletePrefix, k == navigationCopyPrefix:
 		n.pending = k
 		return "", 0, true
-	case "G":
+	case matchesShortcut(k, navigationKeys.Last):
 		explicit := n.count > 0
 		n.count = 0
 		if explicit {
 			return "first", count, true
 		}
 		return "last", 1, true
-	case "j", "down":
+	case matchesShortcut(k, navigationKeys.Down):
 		k = "down"
-	case "k", "up":
+	case matchesShortcut(k, navigationKeys.Up):
 		k = "up"
-	case "h", "left":
+	case matchesShortcut(k, navigationKeys.Left):
 		k = "left"
-	case "l", "right":
+	case matchesShortcut(k, navigationKeys.Right):
 		k = "right"
-	case "pgup":
+	case matchesShortcut(k, pickerKeys.PageUp):
 		k = "pageUp"
-	case "pgdown":
+	case matchesShortcut(k, pickerKeys.PageDown):
 		k = "pageDown"
-	case "home":
+	case matchesShortcut(k, pickerKeys.First):
 		k = "first"
-	case "end":
+	case matchesShortcut(k, pickerKeys.Last):
 		k = "last"
 	default:
 		n.count = 0
@@ -74,13 +74,10 @@ func (m *Model) navigationKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 	if !m.sidebar && m.currentImage() != nil {
 		k := msg.String()
 		digit := len(k) == 1 && k[0] >= '0' && k[0] <= '9' && (k != "0" || m.navigationState.count > 0)
-		switch k {
-		case "h", "j", "k", "l", "left", "right", "up", "down":
-		default:
-			if !digit {
-				m.navigationState = navigationState{}
-				return false, nil
-			}
+		if !digit && !matchesShortcut(k, navigationKeys.Left) && !matchesShortcut(k, navigationKeys.Right) &&
+			!matchesShortcut(k, navigationKeys.Up) && !matchesShortcut(k, navigationKeys.Down) {
+			m.navigationState = navigationState{}
+			return false, nil
 		}
 		action, count, _ := m.navigationState.key(fmt.Sprintf("image:%d", m.activeTab), k)
 		switch action {

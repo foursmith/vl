@@ -96,7 +96,7 @@ func (m *Model) repositoryRowActions(entry item) []rowAction {
 	case pullRequests:
 		return []rowAction{
 			{id: "filter", glyph: m.symbol(symbolFilter), label: m.tr("Filter Pull Requests") + " · " + m.pullRequestFilterLabel(m.pullRequestFilter)},
-			{id: "refresh", glyph: m.symbol(symbolRefresh), label: m.tr("Refresh") + " · " + workbenchKeys.SidebarRefresh.Help().Key},
+			{id: "refresh", glyph: m.symbol(symbolRefresh), label: m.tr("Refresh") + " · " + m.workbenchRuleHint(sidebarRefreshRuleID)},
 		}
 	}
 	return nil
@@ -143,6 +143,24 @@ func (m *Model) changeRowActions(entry item, w int) []rowAction {
 		}
 	}
 	return actions
+}
+
+func (m *Model) changeRowShortcut(entry *item, id string) string {
+	switch id {
+	case "stage", "unstage":
+		if entry.repoHeader && !m.stageScopeUnstages(entry) {
+			return gitKeys.Stage.Help().Key + " / " + gitKeys.StageScope.Help().Key
+		}
+		return gitKeys.Stage.Help().Key
+	case "discard":
+		return gitKeys.Discard.Help().Key
+	case "commit":
+		return gitKeys.Commit.Help().Key
+	case "refresh":
+		return m.workbenchRuleHint(sidebarRefreshRuleID)
+	default:
+		return ""
+	}
 }
 
 func (m *Model) changeActionRow(entry item, text string, w int, fg, bg string, state treeRowState, actions []rowAction) string {
@@ -194,7 +212,7 @@ func (m *Model) hoverHint() string {
 		for _, nav := range m.navigation() {
 			x := m.hoverX - m.sideX()
 			if nav.section == pullRequests && x >= nav.x && x < nav.x+nav.width {
-				return m.tr("Pull Requests") + " · " + workbenchKeys.PullRequests.Help().Key
+				return m.tr("Pull Requests") + " · " + m.commandShortcutHint(commandPullRequests)
 			}
 		}
 	}

@@ -155,10 +155,14 @@ func (m *Model) keepTab() tea.Cmd {
 }
 
 func (m *Model) closeTab() tea.Cmd {
-	if m.activeTab < 0 || m.activeTab >= len(m.tabs) {
+	return m.closeTabAt(m.activeTab)
+}
+
+func (m *Model) closeTabAt(index int) tea.Cmd {
+	if index < 0 || index >= len(m.tabs) {
 		return nil
 	}
-	return m.requestCloseTabs([]tab{m.tabs[m.activeTab]})
+	return m.requestCloseTabs(m.tabs[index : index+1])
 }
 
 func (m *Model) closeAllTabs() tea.Cmd {
@@ -455,7 +459,7 @@ func (m *Model) clickTab(msg tea.MouseClickMsg) tea.Cmd {
 		close := msg.Button == tea.MouseMiddle || msg.Y == tabRow && x >= slot.x+slot.width-3
 		if close {
 			m.lastClickKey = ""
-			return m.requestCloseTabs([]tab{m.tabs[slot.index]})
+			return m.closeTabAt(slot.index)
 		}
 		m.lastClickKey = ""
 		m.activateTab(slot.index)

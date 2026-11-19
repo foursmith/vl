@@ -97,6 +97,13 @@ func TestRuntimeSwitchKeepsAlternateScreen(t *testing.T) {
 	t.Setenv("XDG_STATE_HOME", "")
 	first, second := t.TempDir(), t.TempDir()
 	m := New(t.Context(), &gitservice.Repository{Root: first}, false)
+	keymap, err := buildWorkbenchKeymap([]workbenchKeyOverride{
+		{id: string(commandPalette), binding: binding("F8", "", "f8")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.workbenchKeymap = keymap
 	m.themeNotifications, m.themeNotificationsOwned = true, true
 	m.Update(tea.WindowSizeMsg{Width: 92, Height: 28})
 	r := NewRuntime(m, func(old *Model, repo *gitservice.Repository) *Model {
@@ -117,6 +124,9 @@ func TestRuntimeSwitchKeepsAlternateScreen(t *testing.T) {
 				}
 				if !r.View().AltScreen || current.ThemeNotificationRestoreSequence() != ansi.ResetModeLightDark {
 					t.Error("switch lost alternate screen or terminal subscription ownership")
+				}
+				if current.commandShortcutHint(commandPalette) != "F8" || current.resolveWorkbenchShortcut("f8").command != commandPalette {
+					t.Error("switch lost the active shortcut configuration")
 				}
 				return nil
 			}

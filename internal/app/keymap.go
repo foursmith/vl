@@ -1,47 +1,74 @@
 package app
 
-import "charm.land/bubbles/v2/key"
+import (
+	"slices"
+	"strings"
+
+	"charm.land/bubbles/v2/key"
+)
 
 func binding(display, description string, keys ...string) key.Binding {
 	return key.NewBinding(key.WithKeys(keys...), key.WithHelp(display, description))
 }
 
-// Bindings also supply the shortcut labels shown in commands and menus.
-var workbenchKeys = struct {
-	Quit, Copy, Files, Recent, Commands                                         key.Binding
-	Explorer, Search, Changes, History, Sidebar, Focus, Refresh, SidebarRefresh key.Binding
-	PullRequests                                                                key.Binding
-	DiffLayout, Save, Close, CloseOthers, Find, Escape, ContextMenu             key.Binding
-}{
-	Quit:         binding("Ctrl+Q", "Quit", "ctrl+q"),
-	Copy:         binding("Ctrl+C", "Copy", "ctrl+c"),
-	Files:        binding("Ctrl+P", "Go to File", "ctrl+p"),
-	Recent:       binding("Ctrl+H", "Open Recent Workspace", "ctrl+h"),
-	Commands:     binding("Ctrl+Shift+P", "Commands", "ctrl+shift+p", "f1"),
-	Explorer:     binding("Ctrl+1", "Explorer", "ctrl+1"),
-	Search:       binding("Ctrl+2", "Search", "ctrl+2", "ctrl+shift+f"),
-	Changes:      binding("Ctrl+3", "Changes", "ctrl+3"),
-	History:      binding("Ctrl+4", "History", "ctrl+4"),
-	PullRequests: binding("Ctrl+5", "Pull Requests", "ctrl+5"),
-	Sidebar:      binding("Ctrl+L", "Toggle sidebar", "ctrl+l"),
-	Focus:        binding("F2", "Switch focus", "f2"),
-
-	Refresh:        binding("F5", "Refresh", "f5"),
-	SidebarRefresh: binding("r", "Refresh", "r", "R", "shift+r"),
-	DiffLayout:     binding("Ctrl+D", "Toggle Inline View", "ctrl+d"),
-	Save:           binding("Ctrl+S", "Save", "ctrl+s"),
-	Close:          binding("Ctrl+W", "Close Editor", "ctrl+w"),
-	CloseOthers:    binding("Ctrl+Shift+W", "Close Other Editors", "ctrl+shift+w", "ctrl+shift+W"),
-	Find:           binding("Ctrl+F", "Find", "ctrl+f"),
-	Escape:         binding("Esc", "Dismiss", "esc"),
-	ContextMenu:    binding("Shift+F10", "Context menu", "shift+f10"),
+// Input handlers that already decoded the event reuse its key string.
+func matchesShortcut(name string, binding key.Binding) bool {
+	return binding.Enabled() && slices.Contains(binding.Keys(), name)
 }
 
-// These workbench shortcuts take priority over both search input surfaces.
-var searchWorkbenchKeys = []key.Binding{
-	workbenchKeys.Quit, workbenchKeys.Files, workbenchKeys.Commands,
-	workbenchKeys.Explorer, workbenchKeys.Search, workbenchKeys.Changes, workbenchKeys.History, workbenchKeys.PullRequests,
-	workbenchKeys.Sidebar, workbenchKeys.Focus,
+// App-level bindings are grouped by the surface that owns the input.
+// Commands, menus and hints use the same binding for their display.
+const (
+	commandPaletteFunctionKey = "F1"
+	sidebarRefreshRuleID      = "git.refresh.sidebar"
+	leftArrow                 = "left"
+	rightArrow                = "right"
+)
+
+var workbenchCopyKey = binding("Ctrl+C", "Copy", "ctrl+c")
+var dismissKey = binding("Esc", "Dismiss", "esc")
+var sidebarRefreshKey = binding("r", "Refresh", "r", "R", "shift+r")
+
+// Declare defaults in precedence order. The last matching rule wins, so
+// context-specific rules can share a key with a workbench fallback.
+var workbenchKeybindings = []workbenchShortcut{
+	{binding: binding("Ctrl+Q", "Quit", "ctrl+q"), context: fromSearch, command: commandQuit},
+	{id: "app.quit.copyFallback", binding: workbenchCopyKey, command: commandQuit, hideHint: true, when: func(m *Model) bool {
+		return !m.contentCopyFocused()
+	}},
+	{binding: workbenchCopyKey, command: commandCopy, when: (*Model).contentCopyFocused},
+	{binding: binding("Ctrl+P", "Go to File", "ctrl+p"), context: fromSearch, command: commandFiles},
+	{binding: binding("Ctrl+H", "Open Recent Workspace", "ctrl+h"), context: workspaceOnly | fromSidebarSearch, command: commandRecent},
+	{binding: binding("Ctrl+Shift+P", "Commands", "ctrl+shift+p", strings.ToLower(commandPaletteFunctionKey)), context: fromSearch, command: commandPalette},
+	{binding: binding("Ctrl+2", "Search", "ctrl+2", "ctrl+shift+f"), context: workspaceOnly | fromSearch, command: commandSearch},
+	{binding: binding("Ctrl+1", "Explorer", "ctrl+1"), context: workspaceOnly | fromSearch, command: commandExplorer},
+	{binding: binding("Ctrl+3", "Changes", "ctrl+3"), context: workspaceOnly | fromSearch, command: commandChanges},
+	{binding: binding("Ctrl+4", "History", "ctrl+4"), context: workspaceOnly | fromSearch, command: commandHistory},
+	{binding: binding("Ctrl+5", "Pull Requests", "ctrl+5"), context: workspaceOnly | fromSearch, command: commandPullRequests},
+	{binding: binding("Ctrl+L", "Toggle sidebar", "ctrl+l"), context: workspaceOnly | fromSearch, command: commandSidebar},
+	{binding: binding("F2", "Switch focus", "f2"), context: workspaceOnly | fromSearch, command: commandFocus},
+	{binding: binding("F5", "Refresh", "f5"), context: fromFileFind | blurFileFind, command: commandRefresh},
+	{id: sidebarRefreshRuleID, binding: sidebarRefreshKey, command: commandRefresh, when: func(m *Model) bool {
+		return m.sidebar && m.section != search
+	}},
+	{binding: binding("Ctrl+D", "Toggle Inline View", "ctrl+d"), context: workspaceOnly, command: commandDiffLayout},
+	{binding: binding("Ctrl+S", "Save", "ctrl+s"), context: fromSidebarSearch | fromFileFind, command: commandSave},
+	{binding: binding("Ctrl+W", "Close Editor", "ctrl+w"), context: fromSidebarSearch, command: commandClose},
+	{binding: binding("Ctrl+Shift+W", "Close Other Editors", "ctrl+shift+w", "ctrl+shift+W"), context: beforeInput, command: commandCloseOthers},
+	{command: commandCloseAll},
+	{binding: binding("Ctrl+F", "Find", "ctrl+f"), command: commandFind},
+	{binding: dismissKey, command: commandFocusSidebar},
+	{binding: binding("Shift+F10", "Context menu", "shift+f10"), command: commandContextMenu},
+}
+
+var editorKeys = struct {
+	Cut, Paste, SelectAll, Undo, Redo key.Binding
+}{
+	Cut:       binding("Ctrl+X", "Cut", "ctrl+x"),
+	Paste:     binding("Ctrl+V", "Paste", "ctrl+v"),
+	SelectAll: binding("Ctrl+A", "Select All", "ctrl+a"),
+	Undo:      binding("Ctrl+Z", "Undo", "ctrl+z"),
+	Redo:      binding("Ctrl+Y", "Redo", "ctrl+y", "ctrl+shift+z"),
 }
 
 var searchKeys = struct {
@@ -78,14 +105,76 @@ var pickerKeys = struct{ Up, Down, PageUp, PageDown, First, Last, Accept key.Bin
 }
 
 const (
-	stageKey                 = "s"
-	stageScopeKey            = "S"
-	changesCommitKey         = "c"
-	discardKey               = "d"
-	discardScopeKey          = "D"
-	changesDiscardConfirmKey = "x"
-	changesStashKey          = "t"
-	changesFetchKey          = "f"
-	changesPullKey           = "p"
-	changesPushKey           = "P"
+	navigationFirstPrefix  = "g"
+	navigationDeletePrefix = "d"
+	navigationCopyPrefix   = "y"
+	navigationLeftLetter   = "h"
+	navigationRightLetter  = "l"
+	sidebarDeleteSequence  = navigationDeletePrefix + navigationDeletePrefix
+	sidebarCopySequence    = navigationCopyPrefix + navigationCopyPrefix
 )
+
+var navigationKeys = struct {
+	Left, Right, Up, Down, Last key.Binding
+}{
+	Left:  binding("←", "Left", leftArrow, navigationLeftLetter),
+	Right: binding("→", "Right", rightArrow, navigationRightLetter),
+	Up:    binding("↑", "Up", "up", "k"),
+	Down:  binding("↓", "Down", "down", "j"),
+	Last:  binding("G", "Last", "G"),
+}
+
+var dialogKeys = struct{ Accept, Save, Discard, Toggle key.Binding }{
+	Accept:  binding("Enter", "Confirm", "enter", "space"),
+	Save:    binding("s", "Save", "s"),
+	Discard: binding("d", "Don't Save", "d"),
+	Toggle:  binding("Space", "Toggle option", "space", " "),
+}
+
+var completionAccept = binding("Tab", "Insert completion", "tab")
+var eraseCharacter = binding("Backspace", "Delete previous character", "backspace")
+
+var gitKeys = struct {
+	Stage, StageScope, Discard, DiscardScope, ConfirmDiscard key.Binding
+	Commit, Stash, Fetch, Pull, Push                         key.Binding
+}{
+	Stage:          binding("s", "Stage or unstage", "s"),
+	StageScope:     binding("S", "Stage or unstage scope", "S", "shift+s"),
+	Discard:        binding("d", "Discard changes", "d"),
+	DiscardScope:   binding("D", "Discard changes in scope", "D", "shift+d"),
+	ConfirmDiscard: binding("x", "Confirm discard", "x"),
+	Commit:         binding("c", "Commit staged changes", "c"),
+	Stash:          binding("t", "Stash changes", "t"),
+	Fetch:          binding("f", "Fetch", "f"),
+	Pull:           binding("p", "Pull", "p"),
+	Push:           binding("P", "Push", "P", "shift+p"),
+}
+
+func isDiffGitShortcut(name string) bool {
+	for _, shortcut := range [...]key.Binding{gitKeys.Stage, gitKeys.StageScope, gitKeys.Discard, gitKeys.DiscardScope} {
+		if matchesShortcut(name, shortcut) {
+			return true
+		}
+	}
+	return false
+}
+
+var leaderKeys = struct {
+	Prefix, Previous, Next, Save, Close, SaveClose key.Binding
+}{
+	Prefix:    binding("Space", "Leader", "space", " "),
+	Previous:  binding("←", "Previous tab", leftArrow),
+	Next:      binding("→", "Next tab", rightArrow),
+	Save:      binding("w", "Save", "w"),
+	Close:     binding("q", "Close editor", "q"),
+	SaveClose: binding("z", "Save and close editor", "z"),
+}
+
+var imageKeys = struct {
+	ZoomIn, ZoomOut, Fit, Keep key.Binding
+}{
+	ZoomIn:  binding("+", "Zoom in", "+", "="),
+	ZoomOut: binding("-", "Zoom out", "-"),
+	Fit:     binding("0", "Fit to Window", "0"),
+	Keep:    binding("Enter", "Keep editor", "enter"),
+}

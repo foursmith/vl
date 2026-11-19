@@ -30,21 +30,17 @@ func (m *Model) actions() []action {
 	}
 	stageSuffix := " · " + m.repositoryName(stageTarget)
 	var remoteTarget, stageAllKey, unstageAllKey, stashKey, fetchKey, pullKey, pushKey string
-	refreshKey := workbenchKeys.Refresh.Help().Key
-	if m.sidebar && m.section != search {
-		refreshKey = workbenchKeys.SidebarRefresh.Help().Key
-	}
 	if m.section == changes {
 		remoteTarget = target
 		if m.sidebar {
 			if m.stageScopeUnstages(m.current()) {
-				unstageAllKey = stageScopeKey
+				unstageAllKey = gitKeys.StageScope.Help().Key
 			} else {
-				stageAllKey = stageScopeKey
+				stageAllKey = gitKeys.StageScope.Help().Key
 			}
-			stashKey = changesStashKey
+			stashKey = gitKeys.Stash.Help().Key
 		}
-		fetchKey, pullKey, pushKey = changesFetchKey, changesPullKey, changesPushKey
+		fetchKey, pullKey, pushKey = gitKeys.Fetch.Help().Key, gitKeys.Pull.Help().Key, gitKeys.Push.Help().Key
 	}
 	tabReason := ""
 	if m.activeTab < 0 {
@@ -59,30 +55,30 @@ func (m *Model) actions() []action {
 		githubReason = m.tr("No GitHub remote found")
 	}
 	actions := []action{
-		{"workspace.openRecent", m.tr("File: Open Recent Workspace"), workbenchKeys.Recent.Help().Key, "", m.openRecentWorkspaces},
+		m.commandAction(commandRecent, "File: Open Recent Workspace", "", ""),
 
-		{"view.explorer", m.tr("View: Show Explorer"), workbenchKeys.Explorer.Help().Key, "", func() tea.Cmd { return m.selectSection(explorer) }},
+		m.commandAction(commandExplorer, "View: Show Explorer", "", ""),
 		{"explorer.newFile", m.tr("Explorer: New File"), "", "", func() tea.Cmd { return m.newEntry(false) }},
 		{"explorer.newFolder", m.tr("Explorer: New Folder"), "", "", func() tea.Cmd { return m.newEntry(true) }},
 		{"explorer.collapseAll", m.tr("Explorer: Collapse Folders in Explorer"), "", "", m.collapseFolders},
 		{"search.options", m.tr("Search: Options"), "", "", m.openSearchOptions},
 		{"search.replace", m.tr("Search: Replace in Files"), "", "", m.openReplace},
-		{"view.search", m.tr("Search: Find in Files"), workbenchKeys.Search.Help().Key, "", m.openSearch},
-		{"view.changes", m.tr("View: Changes"), workbenchKeys.Changes.Help().Key, "", func() tea.Cmd { return m.selectSection(changes) }},
-		{"view.history", m.tr("View: Commit History"), workbenchKeys.History.Help().Key, "", func() tea.Cmd { return m.selectSection(history) }},
-		{"view.pullRequests", m.tr("View: Pull Requests"), workbenchKeys.PullRequests.Help().Key, "", func() tea.Cmd { return m.selectSection(pullRequests) }},
+		m.commandAction(commandSearch, "Search: Find in Files", "", ""),
+		m.commandAction(commandChanges, "View: Changes", "", ""),
+		m.commandAction(commandHistory, "View: Commit History", "", ""),
+		m.commandAction(commandPullRequests, "View: Pull Requests", "", ""),
 		{"view.pullRequestFilter", m.tr("Filter Pull Requests"), "", "", func() tea.Cmd {
 			return tea.Batch(m.selectSection(pullRequests), m.openPullRequestFilter())
 		}},
-		{"view.diff", m.tr("Diff Editor: Toggle Inline View"), workbenchKeys.DiffLayout.Help().Key, "", func() tea.Cmd { m.split = !m.split; m.renderDiff(); return nil }},
-		{"view.sidebar", m.tr("View: Toggle Sidebar"), workbenchKeys.Sidebar.Help().Key, "", m.toggleSidebar},
+		m.commandAction(commandDiffLayout, "Diff Editor: Toggle Inline View", "", ""),
+		m.commandAction(commandSidebar, "View: Toggle Sidebar", "", ""),
 		{"view.sidebarLeft", m.tr("View: Move Sidebar Left"), "", "", func() tea.Cmd { m.SetSidebarLayout(m.sidebarWidth, false); return nil }},
 		{"view.sidebarRight", m.tr("View: Move Sidebar Right"), "", "", func() tea.Cmd { m.SetSidebarLayout(m.sidebarWidth, true); return nil }},
 		{"view.sidebarResetWidth", m.tr("View: Reset Sidebar Width"), "", "", func() tea.Cmd { m.SetSidebarLayout(0, m.sidebarRight); return nil }},
-		{"git.refresh", m.tr("Git: Refresh"), refreshKey, "", m.refreshView},
+		m.commandAction(commandRefresh, "Git: Refresh", "", ""),
 		{"git.stageAll", m.tr("Git: Stage All Changes") + stageSuffix, stageAllKey, m.repositoryStageReason(stageTarget, false), func() tea.Cmd { return m.stageRepository(stageTarget, false) }},
 		{"git.unstageAll", m.tr("Git: Unstage All Changes") + stageSuffix, unstageAllKey, m.repositoryStageReason(stageTarget, true), func() tea.Cmd { return m.stageRepository(stageTarget, true) }},
-		{"git.commit", m.tr("Git: Commit Staged") + suffix, changesCommitKey, m.commitDisabled(target), func() tea.Cmd { return m.commitInRepository(target) }},
+		{"git.commit", m.tr("Git: Commit Staged") + suffix, gitKeys.Commit.Help().Key, m.commitDisabled(target), func() tea.Cmd { return m.commitInRepository(target) }},
 		{"git.fetch", m.tr("Git: Fetch"), fetchKey, "", func() tea.Cmd { return m.fetch(remoteTarget) }},
 		{"git.pull", m.tr("Git: Pull (Fast Forward Only)"), pullKey, "", func() tea.Cmd { return m.pull(remoteTarget) }},
 		{"git.push", m.tr("Git: Push"), pushKey, "", func() tea.Cmd { return m.push(remoteTarget) }},
@@ -99,24 +95,20 @@ func (m *Model) actions() []action {
 		{"git.stashPop", m.tr("Git: Pop Latest Stash"), "", "", func() tea.Cmd {
 			return m.ask(m.tr("Apply and remove the latest stash?"), func() tea.Cmd { return m.gitOperation("Stash pop", "stash", "pop") })
 		}},
-		{"file.open", m.tr("File: Open Selected File"), "e", openReason, m.editSelected},
+		{"file.open", m.tr("File: Open Selected File"), sidebarKeys.Edit.Help().Key, openReason, m.editSelected},
 		{"file.keepOpen", m.tr("View: Keep Editor"), "", tabReason, m.keepTab},
-		{"file.closeOthers", m.tr("View: Close Other Editors"), workbenchKeys.CloseOthers.Help().Key, "", m.closeOtherTabs},
-		{"file.closeAll", m.tr("View: Close All Editors"), "", "", m.closeAllTabs},
+		m.commandAction(commandCloseOthers, "View: Close Other Editors", "", ""),
+		m.commandAction(commandCloseAll, "View: Close All Editors", "", ""),
 	}
 	if m.sidebar && m.section == changes {
 		if entry := m.current(); entry != nil {
 			scope := item{repoHeader: true, repository: entry.repository}
 			actions = append(actions, action{"git.discardAll", m.tr("Git: %s", m.tr("Discard All Changes")) + suffix,
-				discardScopeKey, m.discardScopeReason(entry), func() tea.Cmd { return m.runScopeAction(scope, "discard") }})
+				gitKeys.DiscardScope.Help().Key, m.discardScopeReason(entry), func() tea.Cmd { return m.runScopeAction(scope, "discard") }})
 			for _, a := range m.changeRowActions(*entry, m.sidebarContentWidth()) {
 				if (a.id == "stage" || a.id == "unstage" || a.id == "discard") && !entry.repoHeader {
 					targetKey := entry.key
-					shortcut := stageKey
-					if a.id == "discard" {
-						shortcut = discardKey
-					}
-					actions = append(actions, action{"git." + a.id, m.tr("Git: %s", a.label), shortcut, a.disabled, func() tea.Cmd {
+					actions = append(actions, action{"git." + a.id, m.tr("Git: %s", a.label), m.changeRowShortcut(entry, a.id), a.disabled, func() tea.Cmd {
 						if i := m.sidebarRowWithKey(targetKey); m.section == changes && i >= 0 {
 							return m.runChangeRowAction(i, a.id)
 						}
@@ -265,7 +257,7 @@ func (m *Model) ask(title string, run func() tea.Cmd) tea.Cmd {
 	m.confirm = run
 	m.confirmationDetail = ""
 	m.confirmationLabel = m.tr("Confirm")
-	m.confirmationKey = ""
+	m.confirmationKey = key.Binding{}
 	m.confirmationButton = 0
 	return m.prompt("confirm", title, "")
 }
@@ -273,43 +265,43 @@ func (m *Model) ask(title string, run func() tea.Cmd) tea.Cmd {
 func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 	k := msg.String()
 	if m.modal == "searchOptions" {
-		if (k == "space" || k == " ") && m.input.Value() == "" {
+		if matchesShortcut(k, dialogKeys.Toggle) && m.input.Value() == "" {
 			return m.selectPickerChoice()
 		}
 	}
 
 	if m.confirmationDialog() {
-		if m.modal == "confirm" && k == m.confirmationKey {
+		if m.modal == "confirm" && matchesShortcut(k, m.confirmationKey) {
 			m.confirmationButton = 0
 			return m.chooseConfirmation()
 		}
 		count := len(m.confirmationActions())
-		switch k {
-		case "right", "l", "tab":
+		switch {
+		case matchesShortcut(k, navigationKeys.Right), matchesShortcut(k, searchKeys.NextField):
 			m.confirmationButton = (m.confirmationButton + 1) % count
 			return nil
-		case "left", "h", "shift+tab":
+		case matchesShortcut(k, navigationKeys.Left), matchesShortcut(k, searchKeys.PreviousField):
 			m.confirmationButton = (m.confirmationButton + count - 1) % count
 			return nil
-		case "enter", "space":
+		case matchesShortcut(k, dialogKeys.Accept):
 			return m.chooseConfirmation()
 		}
 	}
 	if m.confirmationDialog() {
 		l := m.dialogLayout()
 		top := l.top
-		switch k {
-		case "up", "k":
+		switch {
+		case matchesShortcut(k, navigationKeys.Up):
 			top--
-		case "down", "j":
+		case matchesShortcut(k, navigationKeys.Down):
 			top++
-		case "pgup":
+		case matchesShortcut(k, pickerKeys.PageUp):
 			top -= l.page
-		case "pgdown":
+		case matchesShortcut(k, pickerKeys.PageDown):
 			top += l.page
-		case "home":
+		case matchesShortcut(k, pickerKeys.First):
 			top = 0
-		case "end":
+		case matchesShortcut(k, pickerKeys.Last):
 			top = l.maxTop
 		}
 		if top != l.top {
@@ -318,25 +310,22 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 		}
 	}
 	if m.isPicker() {
-		switch {
-		case key.Matches(msg, workbenchKeys.Files):
-			return m.openQuickFiles()
-		case key.Matches(msg, workbenchKeys.Commands):
-			return m.openPalette()
+		if command := m.widgetWorkbenchCommand(k, commandFiles, commandPalette); command != "" {
+			return m.executeCommand(command, "")
 		}
 	}
 	if m.modal == "close" {
-		switch k {
-		case "s":
+		switch {
+		case matchesShortcut(k, dialogKeys.Save):
 			return m.chooseClose("save")
-		case "d":
+		case matchesShortcut(k, dialogKeys.Discard):
 			return m.chooseClose("discard")
-		case "esc":
+		case matchesShortcut(k, dismissKey):
 			return m.chooseClose("cancel")
 		}
 		return nil
 	}
-	if key.Matches(msg, workbenchKeys.Escape) {
+	if key.Matches(msg, dismissKey) {
 		restore := m.cancelThemePreview()
 		m.rememberCommitDraft()
 		m.modal = ""
@@ -353,7 +342,7 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 		}
 	}
 
-	if k == "enter" && !m.isPicker() {
+	if matchesShortcut(k, pickerKeys.Accept) && !m.isPicker() {
 		if m.modal == "commit" && strings.TrimSpace(m.input.Value()) == "" {
 			return nil
 		}
@@ -498,8 +487,8 @@ func (m *Model) refreshView() tea.Cmd {
 }
 
 func (m *Model) changesKey(k string) (bool, tea.Cmd) {
-	switch k {
-	case stageKey:
+	switch {
+	case matchesShortcut(k, gitKeys.Stage):
 		if entry := m.current(); entry != nil {
 			id := "stage"
 			if entry.staged {
@@ -508,29 +497,29 @@ func (m *Model) changesKey(k string) (bool, tea.Cmd) {
 			return true, m.runChangeRowAction(m.selected, id)
 		}
 		return true, nil
-	case stageScopeKey, "shift+s":
+	case matchesShortcut(k, gitKeys.StageScope):
 		return true, m.stageRepository(m.selectedRepository(), m.stageScopeUnstages(m.current()))
-	case changesCommitKey:
+	case matchesShortcut(k, gitKeys.Commit):
 		return true, m.commit()
-	case discardKey:
+	case matchesShortcut(k, gitKeys.Discard):
 		if entry := m.current(); entry != nil && !entry.staged && !entry.repoHeader {
 			return true, m.runChangeRowAction(m.selected, "discard")
 		}
 		return true, nil
-	case discardScopeKey, "shift+d":
+	case matchesShortcut(k, gitKeys.DiscardScope):
 		entry := m.current()
 		if reason := m.discardScopeReason(entry); reason != "" {
 			m.notice = reason
 			return true, nil
 		}
 		return true, m.runScopeAction(item{repoHeader: true, repository: entry.repository}, "discard")
-	case changesStashKey:
+	case matchesShortcut(k, gitKeys.Stash):
 		return true, m.stash(m.selectedRepository())
-	case changesFetchKey:
+	case matchesShortcut(k, gitKeys.Fetch):
 		return true, m.fetch(m.selectedRepository())
-	case changesPullKey:
+	case matchesShortcut(k, gitKeys.Pull):
 		return true, m.pull(m.selectedRepository())
-	case changesPushKey, "shift+p":
+	case matchesShortcut(k, gitKeys.Push):
 		return true, m.push(m.selectedRepository())
 	default:
 		return false, nil
@@ -778,8 +767,8 @@ func (m *Model) discardFile(c gitservice.Change, expectedDiff string) tea.Cmd {
 
 func (m *Model) askDiscard(title string, run func() tea.Cmd) tea.Cmd {
 	cmd := m.ask(title, run)
-	m.confirmationKey = changesDiscardConfirmKey
-	m.confirmationLabel += " (" + changesDiscardConfirmKey + ")"
+	m.confirmationKey = gitKeys.ConfirmDiscard
+	m.confirmationLabel = shortcutHint(m.confirmationLabel, m.confirmationKey)
 	return cmd
 }
 

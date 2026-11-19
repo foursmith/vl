@@ -185,7 +185,7 @@ func (m *Model) selectedSearchRow() (searchRow, bool) {
 func (m *Model) searchKey(msg tea.KeyPressMsg) tea.Cmd {
 	s := &m.search
 	switch {
-	case key.Matches(msg, workbenchKeys.Find):
+	case m.matchWorkbenchCommand(msg.String(), commandFind):
 		return m.focusSearch(0)
 	case key.Matches(msg, searchKeys.NextField, searchKeys.PreviousField):
 		order := []int{0}
@@ -209,7 +209,7 @@ func (m *Model) searchKey(msg tea.KeyPressMsg) tea.Cmd {
 			step = -1
 		}
 		return m.focusSearch(order[(index+step+len(order))%len(order)])
-	case key.Matches(msg, workbenchKeys.Escape):
+	case key.Matches(msg, dismissKey):
 		return m.focusSearch(2)
 	case key.Matches(msg, sidebarKeys.Open):
 		if s.focus == 2 {
@@ -231,7 +231,7 @@ func (m *Model) searchKey(msg tea.KeyPressMsg) tea.Cmd {
 	if key.Matches(msg, searchKeys.FocusQuery) {
 		return m.focusSearch(0)
 	}
-	if key.Matches(msg, workbenchKeys.ContextMenu) {
+	if m.matchWorkbenchCommand(msg.String(), commandContextMenu) {
 		return m.openSidebarContextMenu()
 	}
 	_, cmd := m.sidebarNavigationKey(msg)

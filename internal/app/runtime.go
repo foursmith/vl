@@ -70,6 +70,7 @@ func (r *Runtime) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	_, cmd := old.Update(msg)
 	if next := old.nextRepository; next != nil && r.switchWorkspace != nil {
 		updated := r.switchWorkspace(old, next)
+		updated.workbenchKeymap = old.workbenchKeymap
 		// These describe the terminal, whose lifetime spans all workspaces.
 		updated.width, updated.height = old.width, old.height
 		updated.monochrome = old.monochrome

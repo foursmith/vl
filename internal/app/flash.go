@@ -66,11 +66,11 @@ func (m *Model) flashKey(msg tea.KeyPressMsg) tea.Cmd {
 	}
 	f := m.flash
 	k := msg.String()
-	switch k {
-	case "esc":
+	switch {
+	case matchesShortcut(k, dismissKey):
 		m.cancelFlash()
 		return nil
-	case "backspace":
+	case matchesShortcut(k, eraseCharacter):
 		iter := graphemes.FromString(f.query)
 		end := 0
 		for iter.Next() {
@@ -81,14 +81,14 @@ func (m *Model) flashKey(msg tea.KeyPressMsg) tea.Cmd {
 		f.explicit = false
 		m.rebuildFlash()
 		return nil
-	case "tab", "shift+tab":
+	case matchesShortcut(k, searchKeys.NextField), matchesShortcut(k, searchKeys.PreviousField):
 		if f.labels == "" {
 			f.explicit = true
 			m.labelFlash()
 		} else if len(f.targets) > len(f.labels) {
 			pages := (len(f.targets) + len(f.labels) - 1) / len(f.labels)
 			delta := 1
-			if k == "shift+tab" {
+			if matchesShortcut(k, searchKeys.PreviousField) {
 				delta = -1
 			}
 			f.page = (f.page + delta + pages) % pages
@@ -96,7 +96,7 @@ func (m *Model) flashKey(msg tea.KeyPressMsg) tea.Cmd {
 		}
 		m.flashRevision++
 		return nil
-	case "enter":
+	case matchesShortcut(k, pickerKeys.Accept):
 		index := f.page * max(1, len(f.labels))
 		if index < len(f.targets) {
 			return m.finishFlash(f.targets[index].offset)

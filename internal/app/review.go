@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -295,7 +296,17 @@ func (m *Model) selectedDiffChanges() map[*diff.Line]bool {
 }
 
 func (m *Model) reviewActions() []action {
+	return m.reviewActionsForKey("")
+}
+
+func (m *Model) reviewActionsForKey(pressed string) []action {
 	var actions []action
+	add := func(a action, shortcut key.Binding) {
+		if pressed == "" || matchesShortcut(pressed, shortcut) {
+			a.key = shortcut.Help().Key
+			actions = append(actions, a)
+		}
+	}
 	sourceReason := ""
 	if m.diffChange == nil {
 		sourceReason = m.tr("Open a working-tree or index diff first")
@@ -321,42 +332,42 @@ func (m *Model) reviewActions() []action {
 		stage := func(run func() tea.Cmd) func() tea.Cmd { return bind("Diff changed; refresh before staging", run) }
 		partialReason := m.partialStageReason(reverse)
 		discardReason := m.partialDiscardReason()
-		addDiscard := func(id, label, prompt, shortcut string, selected func(*diff.Line) bool) {
+		addDiscard := func(id, label, prompt string, shortcut key.Binding, selected func(*diff.Line) bool) {
 			if reverse {
 				return
 			}
-			actions = append(actions, action{id: id, label: m.tr(label), key: shortcut, disabled: discardReason,
+			add(action{id: id, label: m.tr(label), disabled: discardReason,
 				run: bind("Diff changed; refresh before discarding", func() tea.Cmd {
 					return m.discardDiffLines(m.tr(prompt, m.diffPath), selected)
 				}),
-			})
+			}, shortcut)
 		}
 		selected := m.selectedDiffChanges()
-		hunkStageKey, hunkDiscardKey := stageKey, discardKey
+		hunkStageKey, hunkDiscardKey := gitKeys.Stage, gitKeys.Discard
 		if start, end := m.diffSelection.bounds(); m.diffSelection.active && start != end {
-			hunkStageKey, hunkDiscardKey = "", ""
+			hunkStageKey, hunkDiscardKey = key.Binding{}, key.Binding{}
 		}
 		if len(selected) != 0 {
 			inRange := func(line *diff.Line) bool { return selected[line] }
-			actions = append(actions, action{id: prefix + "Ranges", label: m.tr(ranges), key: stageKey, disabled: partialReason, run: stage(func() tea.Cmd {
+			add(action{id: prefix + "Ranges", label: m.tr(ranges), disabled: partialReason, run: stage(func() tea.Cmd {
 				return m.stageDiffLines(reverse, ranges, inRange)
-			})})
-			addDiscard("diff.discardRanges", "Discard Selected Ranges", "Permanently discard the selected edits to %s?", discardKey, inRange)
+			})}, gitKeys.Stage)
+			addDiscard("diff.discardRanges", "Discard Selected Ranges", "Permanently discard the selected edits to %s?", gitKeys.Discard, inRange)
 		}
 		if index := m.diffHunk; index >= 0 && index < len(m.patch.Hunks) {
 			inHunk := func(line *diff.Line) bool { return line.Hunk == index }
-			actions = append(actions, action{id: prefix + "Hunk", label: m.tr(hunk), key: hunkStageKey, disabled: partialReason, run: stage(func() tea.Cmd {
+			add(action{id: prefix + "Hunk", label: m.tr(hunk), disabled: partialReason, run: stage(func() tea.Cmd {
 				return m.stageDiffLines(reverse, hunk, inHunk)
-			})})
+			})}, hunkStageKey)
 			addDiscard("diff.discardHunk", "Discard Hunk", "Permanently discard this hunk in %s?", hunkDiscardKey, inHunk)
 		}
 		fileReason := sourceReason
 		if fileReason == "" {
 			fileReason = m.stageFileReason(*m.diffChange, reverse)
 		}
-		actions = append(actions, action{id: prefix + "File", label: m.tr(file), key: stageScopeKey, disabled: fileReason, run: stage(func() tea.Cmd {
+		add(action{id: prefix + "File", label: m.tr(file), disabled: fileReason, run: stage(func() tea.Cmd {
 			return m.stageFile(*m.diffChange, reverse)
-		})})
+		})}, gitKeys.StageScope)
 		if !reverse {
 			reason := sourceReason
 			if reason == "" && raw == "" {
@@ -365,11 +376,11 @@ func (m *Model) reviewActions() []action {
 			if reason == "" {
 				reason = m.discardFileReason(*m.diffChange)
 			}
-			actions = append(actions, action{id: "diff.discardFile", label: m.tr("Discard File"), key: discardScopeKey, disabled: reason,
-				run: bind("Diff changed; refresh before discarding", func() tea.Cmd { return m.discardFile(*m.diffChange, raw) })})
+			add(action{id: "diff.discardFile", label: m.tr("Discard File"), disabled: reason,
+				run: bind("Diff changed; refresh before discarding", func() tea.Cmd { return m.discardFile(*m.diffChange, raw) })}, gitKeys.DiscardScope)
 		}
 	}
-	actions = append(actions, action{id: "diff.edit", label: m.tr("Open Working Tree File"), disabled: sourceReason, run: m.editDiff})
+	add(action{id: "diff.edit", label: m.tr("Open Working Tree File"), disabled: sourceReason, run: m.editDiff}, key.Binding{})
 	return actions
 }
 
@@ -377,40 +388,32 @@ func (m *Model) diffChangeShortcut(k string) (bool, tea.Cmd) {
 	if m.sidebar || !m.diffOpen || m.diffChange == nil {
 		return false, nil
 	}
-	switch k {
-	case "shift+s":
-		k = stageScopeKey
-	case "shift+d":
-		k = discardScopeKey
-	case stageKey, stageScopeKey, discardKey, discardScopeKey:
-	default:
+	if !isDiffGitShortcut(k) {
 		return false, nil
 	}
 	if m.tabs[m.activeTab].vim.CommandPending() {
 		return false, nil
 	}
-	for _, action := range m.reviewActions() {
-		if action.key != k {
-			continue
-		}
+	if actions := m.reviewActionsForKey(k); len(actions) != 0 {
+		action := actions[0]
 		if action.disabled != "" {
 			m.notice = action.disabled
 			return true, nil
 		}
 		return true, action.run()
 	}
-	if k == discardKey || k == discardScopeKey {
+	if matchesShortcut(k, gitKeys.Discard) || matchesShortcut(k, gitKeys.DiscardScope) {
 		if m.diffStaged {
 			m.notice = m.tr("Open a working-tree diff first")
 		} else if start, end := m.diffSelection.bounds(); m.diffSelection.active && start != end {
 			m.notice = m.tr("Select changed lines to discard")
 		} else {
-			m.notice = m.tr("Use %s to discard changes to the whole file", discardScopeKey)
+			m.notice = m.tr("Use %s to discard changes to the whole file", gitKeys.DiscardScope.Help().Key)
 		}
 	} else if start, end := m.diffSelection.bounds(); m.diffSelection.active && start != end {
 		m.notice = m.tr("Select changed lines to stage or unstage")
 	} else {
-		m.notice = m.tr("Use %s to stage or unstage the whole file", stageScopeKey)
+		m.notice = m.tr("Use %s to stage or unstage the whole file", gitKeys.StageScope.Help().Key)
 	}
 	return true, nil
 }

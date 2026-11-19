@@ -47,13 +47,7 @@ func (m *Model) contextMenuInput(msg tea.Msg) (tea.Cmd, bool) {
 	case tea.KeyPressMsg:
 		m.navigationState = navigationState{}
 		k := msg.String()
-		if k == "h" {
-			k = "esc"
-		}
-		if k == "l" {
-			k = "enter"
-		}
-		if k != "d" && k != "y" {
+		if k != navigationDeletePrefix && k != navigationCopyPrefix && k != navigationLeftLetter && k != navigationRightLetter {
 			action, count, handled := menu.navigation.key(fmt.Sprintf("menu:%d", menu.selected), k)
 			if handled {
 				switch action {
@@ -79,17 +73,17 @@ func (m *Model) contextMenuInput(msg tea.Msg) (tea.Cmd, bool) {
 		} else {
 			menu.navigation = navigationState{}
 		}
-		switch k {
-		case "esc", "shift+f10":
+		switch {
+		case matchesShortcut(k, dismissKey), m.matchWorkbenchCommand(k, commandContextMenu), k == navigationLeftLetter:
 			m.contextMenu = nil
-		case "ctrl+q":
+		case m.matchWorkbenchCommand(k, commandQuit):
 			m.contextMenu = nil
-			return m.quit(), true
-		case "tab":
+			return m.executeCommand(commandQuit, ""), true
+		case matchesShortcut(k, searchKeys.NextField):
 			m.moveContextMenu(1)
-		case "shift+tab":
+		case matchesShortcut(k, searchKeys.PreviousField):
 			m.moveContextMenu(-1)
-		case "enter", "space":
+		case matchesShortcut(k, dialogKeys.Accept), k == navigationRightLetter:
 			return m.runContextMenu(), true
 		}
 		return nil, true
@@ -233,38 +227,24 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 					add(m.tr("Split Folders"), sidebarKeys.SplitFolders.Help().Key, bind(m.splitFolderChain))
 				}
 				if !entry.header {
-					add(m.tr("Copy"), "yy", bind(m.yankEntry))
+					add(m.tr("Copy"), sidebarCopySequence, bind(m.yankEntry))
 				}
 			}
 			add(m.tr("Paste"), sidebarKeys.Paste.Help().Key, bind(m.pasteEntryPrompt))
 			add(m.tr("New File…"), "", bind(func() tea.Cmd { return m.newEntry(false) }))
 			add(m.tr("New Folder…"), "", bind(func() tea.Cmd { return m.newEntry(true) }))
-			add(m.tr("Refresh"), workbenchKeys.SidebarRefresh.Help().Key, m.refreshView)
+			actions = append(actions, m.commandAction(commandRefresh, "Refresh", "", ""))
 			add(m.tr("Collapse Folders"), "", m.collapseFolders)
 		} else if m.section == changes && entry != nil {
 			for _, a := range m.changeRowActions(*entry, m.sidebarContentWidth()) {
-				var shortcut string
-				switch a.id {
-				case "stage", "unstage":
-					shortcut = stageKey
-					if entry.repoHeader && !m.stageScopeUnstages(entry) {
-						shortcut += " / " + stageScopeKey
-					}
-				case "discard":
-					shortcut = discardKey
-				case "commit":
-					shortcut = changesCommitKey
-				case "refresh":
-					shortcut = workbenchKeys.SidebarRefresh.Help().Key
-				}
-				actions = append(actions, action{label: a.label, key: shortcut, disabled: a.disabled, run: bind(func() tea.Cmd { return m.runChangeRowAction(m.selected, a.id) })})
+				actions = append(actions, action{label: a.label, key: m.changeRowShortcut(entry, a.id), disabled: a.disabled, run: bind(func() tea.Cmd { return m.runChangeRowAction(m.selected, a.id) })})
 			}
 			if entry.repoHeader {
 				scope := *entry
 				scope.staged = true
 				shortcut := ""
 				if m.stageScopeUnstages(entry) {
-					shortcut = stageScopeKey
+					shortcut = gitKeys.StageScope.Help().Key
 				}
 				actions = append(actions, action{
 					label:    m.tr("Unstage All Changes"),
@@ -274,13 +254,13 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 				})
 				actions = append(actions, action{
 					label:    m.tr("Discard All Changes"),
-					key:      discardScopeKey,
+					key:      gitKeys.DiscardScope.Help().Key,
 					disabled: m.discardScopeReason(entry),
 					run:      bind(func() tea.Cmd { return m.runScopeAction(*entry, "discard") }),
 				})
 			}
 		} else if m.section == search && entry != nil {
-			add(m.tr("Dismiss Result"), "dd / "+sidebarKeys.Delete.Help().Key, bind(func() tea.Cmd { m.dismissSearchResult(m.search.selected); return nil }))
+			add(m.tr("Dismiss Result"), sidebarDeleteSequence+" / "+sidebarKeys.Delete.Help().Key, bind(func() tea.Cmd { m.dismissSearchResult(m.search.selected); return nil }))
 		} else if m.section == pullRequests {
 			if entry != nil {
 				if entry.repoHeader {
@@ -290,7 +270,7 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 					add(m.tr("Open on GitHub"), sidebarKeys.OpenPullRequest.Help().Key, func() tea.Cmd { return m.openBrowser(entry.pullRequest.URL) })
 				}
 			}
-			add(m.tr("Refresh"), workbenchKeys.SidebarRefresh.Help().Key, m.refreshView)
+			actions = append(actions, m.commandAction(commandRefresh, "Refresh", "", ""))
 		}
 		if entry != nil {
 			if m.selectedEntryPath() != "" {
@@ -298,7 +278,7 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 				if entry.folder != "" {
 					label = m.tr("Delete Folder…")
 				}
-				add(label, "dd / "+sidebarKeys.Delete.Help().Key, bind(m.deleteSelectedEntry))
+				add(label, sidebarDeleteSequence+" / "+sidebarKeys.Delete.Help().Key, bind(m.deleteSelectedEntry))
 			}
 			path := entryPath(entry)
 			if path != "" {
@@ -317,13 +297,15 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 					if selected {
 						reason = ""
 					}
-					actions = append(actions, action{label: m.tr("Copy"), key: workbenchKeys.Copy.Help().Key, disabled: reason, run: func() tea.Cmd { return m.copy(false) }}, action{label: m.tr("Cut"), key: "Ctrl+X", disabled: reason, run: func() tea.Cmd { return m.copy(true) }})
-					add(m.tr("Paste"), "Ctrl+V", m.paste)
-					add(m.tr("Select All"), "Ctrl+A", func() tea.Cmd { m.document().SelectAll(); return nil })
-					add(m.tr("Undo"), "Ctrl+Z", func() tea.Cmd { m.document().Undo(); m.ensureEditor(); return nil })
-					add(m.tr("Redo"), "Ctrl+Y", func() tea.Cmd { m.document().Redo(); m.ensureEditor(); return nil })
-					add(m.tr("Save"), workbenchKeys.Save.Help().Key, m.save)
-					add(m.tr("Find…"), workbenchKeys.Find.Help().Key, m.openFileFind)
+					actions = append(actions,
+						m.commandAction(commandCopy, "Copy", reason, ""),
+						action{label: m.tr("Cut"), key: editorKeys.Cut.Help().Key, disabled: reason, run: func() tea.Cmd { return m.copy(true) }},
+					)
+					add(m.tr("Paste"), editorKeys.Paste.Help().Key, m.paste)
+					add(m.tr("Select All"), editorKeys.SelectAll.Help().Key, func() tea.Cmd { m.document().SelectAll(); return nil })
+					add(m.tr("Undo"), editorKeys.Undo.Help().Key, func() tea.Cmd { m.document().Undo(); m.ensureEditor(); return nil })
+					add(m.tr("Redo"), editorKeys.Redo.Help().Key, func() tea.Cmd { m.document().Redo(); m.ensureEditor(); return nil })
+					actions = append(actions, m.commandAction(commandSave, "Save", "", ""), m.commandAction(commandFind, "Find…", "", ""))
 				} else if m.diffOpen {
 					if index := m.viewport.YOffset() + y - m.contentRow(); y >= m.contentRow() && index < len(m.diffRowHunks) {
 						m.diffHunk = m.diffRowHunks[index]
@@ -333,11 +315,10 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 					if m.diffSelectedText() == "" {
 						reason = m.tr("Select text first")
 					}
-					actions = append(actions, action{label: m.tr("Copy"), key: workbenchKeys.Copy.Help().Key, disabled: reason, run: func() tea.Cmd { return m.copy(false) }})
-					add(m.tr("Toggle Inline View"), workbenchKeys.DiffLayout.Help().Key, func() tea.Cmd { m.split = !m.split; m.renderDiff(); return nil })
-					add(m.tr("Find…"), workbenchKeys.Find.Help().Key, m.openFileFind)
+					actions = append(actions, m.commandAction(commandCopy, "Copy", reason, ""))
+					actions = append(actions, m.commandAction(commandDiffLayout, "Toggle Inline View", "", ""), m.commandAction(commandFind, "Find…", "", ""))
 				} else if m.currentImage() != nil {
-					add(m.tr("Fit to Window"), "0", func() tea.Cmd { m.resetImageZoom(); return nil })
+					add(m.tr("Fit to Window"), imageKeys.Fit.Help().Key, func() tea.Cmd { m.resetImageZoom(); return nil })
 				}
 				actions = append(actions, m.copyPathActions(m.tabs[m.activeTab].path())...)
 			}
@@ -373,23 +354,10 @@ func (m *Model) tabContextActions(x int) []action {
 		}
 		target := m.tabs[slot.index]
 		targetKey := target.clickKey()
-		bind := func(run func(int) tea.Cmd) func() tea.Cmd {
-			return func() tea.Cmd {
-				for i, t := range m.tabs {
-					if t.clickKey() == targetKey {
-						return run(i)
-					}
-				}
-				m.notice = m.tr("Target changed; reopen the menu")
-				return nil
-			}
-		}
 		actions := []action{
-			{label: m.tr("Close"), key: workbenchKeys.Close.Help().Key, run: bind(func(i int) tea.Cmd {
-				return m.requestCloseTabs(m.tabs[i : i+1])
-			})},
-			{label: m.tr("Close Others"), key: workbenchKeys.CloseOthers.Help().Key, run: bind(m.closeOtherTabsExcept)},
-			{label: m.tr("Close All"), run: m.closeAllTabs},
+			m.commandAction(commandClose, "Close", "", targetKey),
+			m.commandAction(commandCloseOthers, "Close Others", "", targetKey),
+			m.commandAction(commandCloseAll, "Close All", "", ""),
 		}
 		return append(actions, m.copyPathActions(target.path())...)
 	}

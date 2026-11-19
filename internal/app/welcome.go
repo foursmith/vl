@@ -9,16 +9,27 @@ import (
 )
 
 type welcomeAction struct {
-	label, key, command string
+	label   string
+	command commandID
 }
 
-const welcomeCommandsKey = "F1"
-
 var welcomeActions = []welcomeAction{
-	{"Show All Commands", welcomeCommandsKey + " / " + workbenchKeys.Commands.Help().Key, "commands"},
-	{"Go to File", workbenchKeys.Files.Help().Key, "files"},
-	{"Open Recent Workspace", workbenchKeys.Recent.Help().Key, "recent"},
-	{"Quit", workbenchKeys.Quit.Help().Key, "quit"},
+	{"Show All Commands", commandPalette},
+	{"Go to File", commandFiles},
+	{"Open Recent Workspace", commandRecent},
+	{"Quit", commandQuit},
+}
+
+func (m *Model) welcomeShortcut(id commandID) string {
+	hint := m.commandShortcutHint(id)
+	if id == commandPalette && hint != "" && hint != commandPaletteFunctionKey && m.hasWelcomePaletteAlias() {
+		return commandPaletteFunctionKey + " / " + hint
+	}
+	return hint
+}
+
+func (m *Model) hasWelcomePaletteAlias() bool {
+	return m.resolveWorkbenchShortcut(strings.ToLower(commandPaletteFunctionKey)).command == commandPalette
 }
 
 func (m *Model) welcomeVisible() bool {
@@ -35,7 +46,7 @@ func (m *Model) welcomeCellAspect() float64 {
 func (m *Model) welcomeLayout() (x, y, width, logoRows int) {
 	minimumWidth := 2
 	for _, a := range welcomeActions {
-		minimumWidth = max(minimumWidth, ansi.StringWidth(m.tr(a.label))+1+ansi.StringWidth(a.key))
+		minimumWidth = max(minimumWidth, ansi.StringWidth(m.tr(a.label))+1+ansi.StringWidth(m.welcomeShortcut(a.command)))
 	}
 	width = min(max(42, minimumWidth), max(1, m.mainWidth()-4))
 	width = min(max(width, minimumWidth), max(1, m.mainWidth()))
@@ -81,9 +92,9 @@ func (m *Model) welcomeLines() []string {
 		if actionRow >= len(lines) {
 			break
 		}
-		label, key := m.tr(a.label), a.key
-		if a.command == "commands" && ansi.StringWidth(label)+1+ansi.StringWidth(key) > width {
-			key = welcomeCommandsKey
+		label, key := m.tr(a.label), m.welcomeShortcut(a.command)
+		if a.command == commandPalette && ansi.StringWidth(label)+1+ansi.StringWidth(key) > width && m.hasWelcomePaletteAlias() {
+			key = commandPaletteFunctionKey
 		}
 		key = ansi.Truncate(key, width, "")
 		label = ansi.Truncate(label, max(0, width-ansi.StringWidth(key)-1), "…")
@@ -110,17 +121,7 @@ func (m *Model) clickWelcome(msg tea.MouseClickMsg) tea.Cmd {
 	if msg.X < x || msg.X >= x+width || index < 0 || index >= len(welcomeActions) {
 		return nil
 	}
-	switch welcomeActions[index].command {
-	case "commands":
-		return m.openPalette()
-	case "files":
-		return m.openQuickFiles()
-	case "recent":
-		return m.openRecentWorkspaces()
-	case "quit":
-		return m.quit()
-	}
-	return nil
+	return m.executeCommand(welcomeActions[index].command, "")
 }
 
 func (m *Model) dragWelcomeArt(x, y int) {
@@ -141,14 +142,14 @@ func (m *Model) rotateWelcomeArt(key string) bool {
 	if logoRows <= 1 {
 		return false
 	}
-	switch key {
-	case "left":
+	switch {
+	case key == leftArrow:
 		m.welcomeOrbit.rotate(-.16, 0)
-	case "right":
+	case key == rightArrow:
 		m.welcomeOrbit.rotate(.16, 0)
-	case "up":
+	case matchesShortcut(key, pickerKeys.Up):
 		m.welcomeOrbit.rotate(0, .16)
-	case "down":
+	case matchesShortcut(key, pickerKeys.Down):
 		m.welcomeOrbit.rotate(0, -.16)
 	default:
 		return false

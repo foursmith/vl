@@ -347,7 +347,7 @@ func TestDiffContextMenuStagesAndUnstagesMouseSelection(t *testing.T) {
 		t.Fatalf("cancel changed the working file: %q, %v", got, err)
 	}
 	drain(t, m, clickButton(m.mainX()+2, m.contentRow(), true, "Discard Selected Ranges"))
-	drain(t, m, press(m, changesDiscardConfirmKey))
+	drain(t, m, press(m, gitKeys.ConfirmDiscard.Help().Key))
 	const staged = "FIRST\nsecond\nlast\n"
 	if got, err := os.ReadFile(path); err != nil || string(got) != staged {
 		t.Fatalf("working file after discarding hunk: %q, %v", got, err)

@@ -37,10 +37,10 @@ func (m *Model) editorActions() []action {
 		{"theme.select", m.tr("Preferences: Color Theme"), "", "", m.openThemePicker},
 		{"statusBar.style", m.tr("Preferences: Status Bar Style"), "", "", m.openStatusBarStylePicker},
 		{"language.select", m.tr("Preferences: Configure Display Language"), "", "", m.openLanguagePicker},
-		{"file.save", m.tr("File: Save"), workbenchKeys.Save.Help().Key, docReason, m.save},
-		{"file.close", m.tr("View: Close Editor"), workbenchKeys.Close.Help().Key, tabReason, m.closeTab},
+		m.commandAction(commandSave, "File: Save", docReason, ""),
+		m.commandAction(commandClose, "View: Close Editor", tabReason, ""),
 		{"edit.replace", m.tr("Find: Replace Current View"), "", docReason, m.openFileReplace},
-		{"edit.find", m.tr("Find: Search Current View"), workbenchKeys.Find.Help().Key, "", m.openFileFind},
-		{"app.quit", m.tr("Quit"), workbenchKeys.Quit.Help().Key, "", m.quit},
+		m.commandAction(commandFind, "Find: Search Current View", "", ""),
+		m.commandAction(commandQuit, "Quit", "", ""),
 	}
 }
