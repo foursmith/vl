@@ -28,7 +28,11 @@ func TestWelcomeFitsTerminalAndSidebarLayouts(t *testing.T) {
 			}
 			content := ansi.Strip(strings.Join(m.mainLines(), "\n"))
 			for _, a := range welcomeActions {
-				if !strings.Contains(content, a.label) || !strings.Contains(content, a.key) {
+				key := a.key
+				if size.w == 30 && a.command == "commands" {
+					key = "F1"
+				}
+				if !strings.Contains(content, a.label) || !strings.Contains(content, key) {
 					t.Fatalf("welcome shortcut missing in %dx%d: %s", size.w, size.h, a.label)
 				}
 			}
@@ -46,7 +50,7 @@ func TestWelcomeClicksUseRenderedCoordinates(t *testing.T) {
 			m := tabWorkspace(t, 0)
 			m.SetSidebarLayout(35, right)
 			x, y, _, logoRows := m.welcomeLayout()
-			m.Update(tea.MouseClickMsg{X: m.mainX() + x + 1, Y: editorContentRow + y + logoRows + m.welcomeGap(logoRows) + i, Button: tea.MouseLeft})
+			_, cmd := m.Update(tea.MouseClickMsg{X: m.mainX() + x + 1, Y: editorContentRow + y + logoRows + m.welcomeGap(logoRows) + i, Button: tea.MouseLeft})
 			switch a.command {
 			case "commands":
 				if m.modal != "quick" || !m.commandPicker() {
@@ -59,6 +63,13 @@ func TestWelcomeClicksUseRenderedCoordinates(t *testing.T) {
 			case "recent":
 				if m.modal != "recent" {
 					t.Fatal("recent workspace link missed")
+				}
+			case "quit":
+				if cmd == nil {
+					t.Fatal("quit link missed")
+				}
+				if _, ok := cmd().(tea.QuitMsg); !ok {
+					t.Fatal("quit link did not quit")
 				}
 			}
 		}

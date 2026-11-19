@@ -12,10 +12,13 @@ type welcomeAction struct {
 	label, key, command string
 }
 
+const welcomeCommandsKey = "F1"
+
 var welcomeActions = []welcomeAction{
-	{"Show All Commands", workbenchKeys.Commands.Help().Key, "commands"},
+	{"Show All Commands", welcomeCommandsKey + " / " + workbenchKeys.Commands.Help().Key, "commands"},
 	{"Go to File", workbenchKeys.Files.Help().Key, "files"},
 	{"Open Recent Workspace", workbenchKeys.Recent.Help().Key, "recent"},
+	{"Quit", workbenchKeys.Quit.Help().Key, "quit"},
 }
 
 func (m *Model) welcomeVisible() bool {
@@ -78,8 +81,12 @@ func (m *Model) welcomeLines() []string {
 		if actionRow >= len(lines) {
 			break
 		}
-		key := ansi.Truncate(a.key, width, "")
-		label := ansi.Truncate(m.tr(a.label), max(0, width-ansi.StringWidth(key)-1), "…")
+		label, key := m.tr(a.label), a.key
+		if a.command == "commands" && ansi.StringWidth(label)+1+ansi.StringWidth(key) > width {
+			key = welcomeCommandsKey
+		}
+		key = ansi.Truncate(key, width, "")
+		label = ansi.Truncate(label, max(0, width-ansi.StringWidth(key)-1), "…")
 		padding := width - ansi.StringWidth(label) - ansi.StringWidth(key)
 		lines[actionRow] = strings.Repeat(" ", x) +
 			theme.Style(m.colors.Muted, m.colors.Background).Render(label) + strings.Repeat(" ", padding) +
@@ -110,6 +117,8 @@ func (m *Model) clickWelcome(msg tea.MouseClickMsg) tea.Cmd {
 		return m.openQuickFiles()
 	case "recent":
 		return m.openRecentWorkspaces()
+	case "quit":
+		return m.quit()
 	}
 	return nil
 }
