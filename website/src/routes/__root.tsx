@@ -1,19 +1,19 @@
 import type { JSX } from "@solidjs/web"
 import { createRootRoute, HeadContent, Scripts } from "@tanstack/solid-router"
+import { siteUrl } from "../docs-paths"
 import stylesheet from "../styles.css?url"
 
 const title = "VL — VS Code-like Terminal Workbench with Vim-like Keybindings"
 const description = "A VS Code-like terminal workbench with Vim-like keybindings. Browse code, review diffs, and make quick edits."
-const siteUrl = "https://vl.foursmith.com/"
-const imageUrl = new URL("og.png", siteUrl).href
-const imageAlt = "Blue ANSI VL wordmark in the terminal workbench."
+const imageUrl = new URL("og.png?v=2", siteUrl).href
+const imageAlt = "Blue 3D VL wordmark above the workbench shortcuts and Install link."
 
 export const Route = createRootRoute({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { name: "theme-color", content: "#0e0f11" },
+      { name: "theme-color", content: "#181818" },
       { title },
       { name: "description", content: description },
       { property: "og:type", content: "website" },
@@ -34,7 +34,6 @@ export const Route = createRootRoute({
     ],
     links: [
       { rel: "icon", type: "image/png", sizes: "96x96", href: "/favicon.png" },
-      { rel: "canonical", href: siteUrl },
       { rel: "stylesheet", href: stylesheet },
     ],
     scripts: [

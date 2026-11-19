@@ -3,4 +3,16 @@
   <url>
     <loc>https://vl.foursmith.com/</loc>
   </url>
+  <url>
+    <loc>https://vl.foursmith.com/docs/</loc>
+  </url>
+  <url>
+    <loc>https://vl.foursmith.com/docs/install</loc>
+  </url>
+  <url>
+    <loc>https://vl.foursmith.com/docs/shortcuts</loc>
+  </url>
+  <url>
+    <loc>https://vl.foursmith.com/docs/vim</loc>
+  </url>
 </urlset>

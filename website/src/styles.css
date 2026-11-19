@@ -1,27 +1,19 @@
 @import "tailwindcss" source("./");
 
-@font-face {
-  font-family: Geist;
-  src: url("@fontsource-variable/geist/files/geist-latin-wght-normal.woff2") format("woff2");
-  font-style: normal;
-  font-weight: 100 900;
-  font-display: swap;
-}
-
 @theme {
-  --font-sans: Geist, system-ui, sans-serif;
+  --font-sans: system-ui, sans-serif;
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  --color-canvas: #0e0f11;
+  --color-canvas: #181818;
   --color-ink: #ededee;
   --color-muted: #a0a1a6;
   --color-line: #27292d;
-  --color-inset: #0b0c0e;
-  --color-panel: #121315;
-  --color-accent: #78b1e0;
+  --color-workspace: #1f1f1f;
+  --color-accent: #4daafc;
 }
 
 @layer base {
   html {
+    --tab-height: 2.5rem;
     color-scheme: dark;
     font-synthesis: none;
     @apply bg-canvas text-ink antialiased;
@@ -34,6 +26,12 @@
   :focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 4px;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html:has(.docs-frame) {
+      scroll-behavior: smooth;
+    }
   }
 }
 
@@ -67,18 +65,167 @@
     @apply absolute -top-1 -left-1 size-full rounded-tl-xs border-t border-l border-current;
   }
 
-  .ansi-stage {
-    background-image: radial-gradient(circle, #ffffff15 0.65px, transparent 0.9px);
-    background-size: 14px 14px;
-    background-position: center;
+  [data-copy-state="copied"] .copy-icon {
+    @apply h-2 w-3.5 -translate-y-0.5 -rotate-45 rounded-none border-0 border-b-2 border-s-2 text-accent;
   }
 
-  .ansi-frame {
-    @apply inline-grid font-mono leading-none select-none;
-    font-variant-ligatures: none;
+  [data-copy-state="copied"] .copy-icon::before {
+    content: none;
   }
 
-  .ansi-frame > span {
-    color: color-mix(in srgb, var(--color-accent) var(--ink-opacity), var(--color-inset));
+  [data-copy-state="failed"] .copy-icon {
+    @apply size-auto border-0 font-mono font-semibold text-accent;
+  }
+
+  [data-copy-state="failed"] .copy-icon::before {
+    content: "!";
+    @apply static border-0;
+  }
+
+  .tab-bar {
+    @apply flex flex-wrap items-stretch border-b border-line bg-canvas;
+  }
+
+  .control,
+  .tab {
+    @apply inline-flex shrink-0 cursor-pointer items-center justify-center whitespace-nowrap text-muted hover:text-ink focus-visible:-outline-offset-2;
+  }
+
+  .tab {
+    min-height: var(--tab-height);
+    @apply border-e border-b border-line border-b-transparent px-2 font-mono text-[0.6875rem] hover:bg-line/60 sm:px-6 sm:text-xs;
+  }
+
+  .tab:is([aria-pressed="true"], [aria-selected="true"], [aria-current="page"]) {
+    @apply border-b-accent bg-canvas text-ink;
+  }
+
+  .control {
+    @apply min-h-9 rounded-sm border border-transparent font-sans text-sm leading-none font-medium hover:bg-line;
+  }
+
+  .control-icon {
+    @apply w-9;
+  }
+
+  .code-box {
+    @apply rounded-sm border border-line bg-canvas;
+  }
+
+  .code-block {
+    @apply grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 p-2;
+  }
+
+  .code-block pre {
+    @apply min-w-0 px-2 py-2 text-sm leading-relaxed wrap-anywhere whitespace-pre-wrap text-ink;
+  }
+
+  .site-link {
+    @apply underline-offset-4 hover:underline;
+  }
+
+  .text-link {
+    @apply inline-block text-sm font-medium text-accent;
+  }
+
+  kbd {
+    @apply rounded-xs border border-line px-1.5 py-0.5 text-xs whitespace-nowrap text-ink;
+  }
+
+  .docs-frame {
+    --site-header-height: calc(3.5rem + 1px);
+    --docs-navigation-height: calc(var(--tab-height) + 1px);
+    --docs-header-height: var(--site-header-height);
+
+    @variant md {
+      --docs-header-height: calc(var(--site-header-height) + var(--docs-navigation-height));
+    }
+  }
+
+  .docs-navigation {
+    @apply md:sticky md:z-9;
+    top: var(--site-header-height);
+  }
+
+  .doc-outline {
+    top: var(--docs-header-height);
+    max-height: calc(100dvh - var(--docs-header-height));
+  }
+
+  .doc-body {
+    @apply space-y-4 leading-relaxed text-muted;
+  }
+
+  .doc-body > :is(p, ul, ol) {
+    max-width: 72ch;
+  }
+
+  .doc-body :is(h1, h2, h3, h4) {
+    @apply font-semibold tracking-tight text-ink;
+    scroll-margin-top: calc(var(--docs-header-height) + 1rem);
+  }
+
+  .doc-body h1 {
+    @apply section-title mb-6;
+  }
+
+  .doc-body h2 {
+    @apply mt-10 border-t border-line pt-5 text-2xl;
+  }
+
+  .doc-body h3 {
+    @apply mt-7 text-lg;
+  }
+
+  .doc-body h4 {
+    @apply mt-5;
+  }
+
+  .doc-body :is(ul, ol) {
+    @apply space-y-1.5 ps-6 marker:text-accent;
+  }
+
+  .doc-body ul {
+    @apply list-disc;
+  }
+
+  .doc-body ol {
+    @apply list-decimal;
+  }
+
+  .doc-body a {
+    @apply wrap-anywhere text-accent underline decoration-accent/40 underline-offset-3 hover:decoration-accent;
+  }
+
+  .doc-body strong {
+    @apply font-semibold text-ink;
+  }
+
+  .doc-body :not(pre) > code {
+    @apply px-1 py-0.5 text-[0.9em] wrap-anywhere text-ink;
+  }
+
+  .doc-table {
+    @apply overflow-x-auto rounded-sm border border-line;
+  }
+
+  .doc-table table {
+    @apply w-full text-start text-sm;
+  }
+
+  .doc-table table:has(th:nth-child(3)) {
+    @apply min-w-[28rem];
+  }
+
+  .doc-table :is(th, td) {
+    @apply border-b border-line px-3 py-2 text-start align-top;
+  }
+
+  .doc-table th {
+    @apply font-medium text-ink;
+  }
+
+  .doc-table tbody tr:last-child td {
+    @apply border-b-0;
   }
 }

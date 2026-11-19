@@ -7,7 +7,7 @@ bun install --frozen-lockfile
 bun run dev
 ```
 
-`bun run build` prerenders the landing page into `dist/client/` for static hosting.
+`bun run build` prerenders the landing page and documentation into `dist/client/` for static hosting.
 Run `bun run preview` to serve the production build locally and
 `bun run typecheck` to check the TypeScript sources.
 

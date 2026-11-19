@@ -3,21 +3,25 @@ type OutlinePoint = [x: number, y: number]
 type Triangle = [Point, Point, Point]
 type Indices = [number, number, number]
 
-const columns = 60
-const rows = 17
-const cellAspect = 0.6
+// Use the Home view's full-size grid and the terminal's default 8 × 16 cell.
+const columns = 94
+const rows = 29
+const cellAspect = 8 / 16
 const samplesPerEdge = 4
 const samplesPerCell = samplesPerEdge ** 2
 const sampleWidth = columns * samplesPerEdge
 const sampleHeight = rows * samplesPerEdge
 const scale = samplesPerEdge * Math.min((columns - 2) / 3.56, (rows - 1) / (2.32 * cellAspect))
-const ramp = ["░", "░", "░", "▒", "▒", "▓", "▓", "▓", "█"]
+// Coverage of the native shade characters when drawn as solid color.
+const density = [25, 25, 25, 50, 50, 75, 75, 75, 100]
 
-export const restingPose = { yaw: Math.PI / 15, pitch: 0 }
+export const wordmarkAspect = columns * cellAspect / rows
+
+export const restingPose = { yaw: 0, pitch: -39 * Math.PI / 180 }
 
 // Port of internal/app/welcome_art.go. Use the same Source Code Pro Bold
 // outline and cap triangulation as the native welcome screen.
-const letters = [
+const mesh = [
   extrudeLetter(
     [
       [-.993, -.88], [-1.525, .88], [-1.104, .88], [-.893, .059], [-.823, -.219], [-.748, -.505],
@@ -29,7 +33,7 @@ const letters = [
     [[.343, -.88], [.343, .88], [.740, .88], [.740, -.545], [1.522, -.545], [1.522, -.88]],
     [[0, 1, 2], [0, 2, 3], [5, 0, 3], [3, 4, 5]],
   ),
-]
+].flat()
 
 function extrudeLetter(outline: OutlinePoint[], caps: Indices[]): Triangle[] {
   function inward([ax, ay]: OutlinePoint, [bx, by]: OutlinePoint): OutlinePoint {
@@ -99,7 +103,7 @@ function rasterTriangle(a: Point, b: Point, c: Point, depth: Float64Array, shade
       if (shades[index] !== 0 && z <= depth[index]) continue
       depth[index] = z
       const shade = Math.min(1, Math.max(0, base + .11 * z - .05 * y / sampleHeight))
-      shades[index] = 1 + Math.round(shade * (ramp.length - 1))
+      shades[index] = 1 + Math.round(shade * (density.length - 1))
     }
   }
 }
@@ -117,37 +121,13 @@ export function projectWordmark(yaw: number, pitch: number) {
     return [sampleWidth * .5 + horizontal * scale, sampleHeight * .5 - vertical * scale * cellAspect, sp * y + cp * rotatedZ]
   }
 
-  const projected = letters.map((mesh) => rasterizeLetter(mesh, project))
-  // The letters share vertical bounds so their glyph rows remain aligned.
-  const top = Math.min(...projected.map((letter) => letter.top))
-  const bottom = Math.max(...projected.map((letter) => letter.bottom))
-  return projected.map(({ tones, glyphs, left, right }) =>
-    ramp.map((_, layer) => {
-      let text = ""
-      for (let row = top; row < bottom; row++) {
-        if (row > top) text += "\n"
-        for (let column = left; column < right; column++) {
-          const index = row * columns + column
-          text += tones[index] === layer + 1 ? ramp[glyphs[index] - 1] : " "
-        }
-      }
-      return text
-    }),
-  )
-}
-
-function rasterizeLetter(mesh: Triangle[], project: (point: Point) => Point) {
   const depth = new Float64Array(sampleWidth * sampleHeight)
   const shades = new Uint8Array(depth.length)
   for (const [a, b, c] of mesh) rasterTriangle(project(a), project(b), project(c), depth, shades)
 
-  const tones = new Uint8Array(columns * rows)
-  const glyphs = new Uint8Array(tones.length)
-  let left = columns
-  let right = 0
-  let top = rows
-  let bottom = 0
+  const frame: number[][] = []
   for (let row = 0; row < rows; row++) {
+    const opacities: number[] = []
     for (let column = 0; column < columns; column++) {
       let lit = 0
       let covered = 0
@@ -160,17 +140,16 @@ function rasterizeLetter(mesh: Triangle[], project: (point: Point) => Point) {
           covered++
         }
       }
-      if (covered === 0) continue
-      const index = row * columns + column
+      if (covered === 0) {
+        opacities.push(0)
+        continue
+      }
       const tone = Math.round(lit / covered)
-      const coverage = Math.ceil(covered * ramp.length / samplesPerCell)
-      tones[index] = tone
-      glyphs[index] = Math.min(tone, coverage)
-      left = Math.min(left, column)
-      right = Math.max(right, column + 1)
-      top = Math.min(top, row)
-      bottom = row + 1
+      const coverage = Math.ceil(covered * density.length / samplesPerCell)
+      const shade = .56 + .44 * (tone - 1) / (density.length - 1)
+      opacities.push(density[Math.min(tone, coverage) - 1] * shade)
     }
+    frame.push(opacities)
   }
-  return { tones, glyphs, left, right, top, bottom }
+  return frame
 }

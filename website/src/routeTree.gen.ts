@@ -10,33 +10,86 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DocsRouteImport } from './routes/docs'
+import { Route as DocsIndexRouteImport } from './routes/docs.index'
+import { Route as DocsInstallRouteImport } from './routes/docs.install'
+import { Route as DocsShortcutsRouteImport } from './routes/docs.shortcuts'
+import { Route as DocsVimRouteImport } from './routes/docs.vim'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DocsRoute = DocsRouteImport.update({
+  id: '/docs',
+  path: '/docs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsIndexRoute = DocsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DocsRoute,
+} as any)
+const DocsInstallRoute = DocsInstallRouteImport.update({
+  id: '/install',
+  path: '/install',
+  getParentRoute: () => DocsRoute,
+} as any)
+const DocsShortcutsRoute = DocsShortcutsRouteImport.update({
+  id: '/shortcuts',
+  path: '/shortcuts',
+  getParentRoute: () => DocsRoute,
+} as any)
+const DocsVimRoute = DocsVimRouteImport.update({
+  id: '/vim',
+  path: '/vim',
+  getParentRoute: () => DocsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/docs': typeof DocsRouteWithChildren
+  '/docs/install': typeof DocsInstallRoute
+  '/docs/shortcuts': typeof DocsShortcutsRoute
+  '/docs/vim': typeof DocsVimRoute
+  '/docs/': typeof DocsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/docs/install': typeof DocsInstallRoute
+  '/docs/shortcuts': typeof DocsShortcutsRoute
+  '/docs/vim': typeof DocsVimRoute
+  '/docs': typeof DocsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/docs': typeof DocsRouteWithChildren
+  '/docs/install': typeof DocsInstallRoute
+  '/docs/shortcuts': typeof DocsShortcutsRoute
+  '/docs/vim': typeof DocsVimRoute
+  '/docs/': typeof DocsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    '/' | '/docs' | '/docs/install' | '/docs/shortcuts' | '/docs/vim' | '/docs/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/docs/install' | '/docs/shortcuts' | '/docs/vim' | '/docs'
+  id:
+    | '__root__'
+    | '/'
+    | '/docs'
+    | '/docs/install'
+    | '/docs/shortcuts'
+    | '/docs/vim'
+    | '/docs/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DocsRoute: typeof DocsRouteWithChildren
 }
 
 declare module '@tanstack/solid-router' {
@@ -48,11 +101,63 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/docs': {
+      id: '/docs'
+      path: '/docs'
+      fullPath: '/docs'
+      preLoaderRoute: typeof DocsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs/': {
+      id: '/docs/'
+      path: '/'
+      fullPath: '/docs/'
+      preLoaderRoute: typeof DocsIndexRouteImport
+      parentRoute: typeof DocsRoute
+    }
+    '/docs/install': {
+      id: '/docs/install'
+      path: '/install'
+      fullPath: '/docs/install'
+      preLoaderRoute: typeof DocsInstallRouteImport
+      parentRoute: typeof DocsRoute
+    }
+    '/docs/shortcuts': {
+      id: '/docs/shortcuts'
+      path: '/shortcuts'
+      fullPath: '/docs/shortcuts'
+      preLoaderRoute: typeof DocsShortcutsRouteImport
+      parentRoute: typeof DocsRoute
+    }
+    '/docs/vim': {
+      id: '/docs/vim'
+      path: '/vim'
+      fullPath: '/docs/vim'
+      preLoaderRoute: typeof DocsVimRouteImport
+      parentRoute: typeof DocsRoute
+    }
   }
 }
 
+interface DocsRouteChildren {
+  DocsInstallRoute: typeof DocsInstallRoute
+  DocsShortcutsRoute: typeof DocsShortcutsRoute
+  DocsVimRoute: typeof DocsVimRoute
+  DocsIndexRoute: typeof DocsIndexRoute
+}
+
+const DocsRouteChildren: DocsRouteChildren = {
+  DocsInstallRoute: DocsInstallRoute,
+  DocsShortcutsRoute: DocsShortcutsRoute,
+  DocsVimRoute: DocsVimRoute,
+  DocsIndexRoute: DocsIndexRoute,
+}
+
+const DocsRouteWithChildren = DocsRoute._addFileChildren(DocsRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DocsRoute: DocsRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
