@@ -37,6 +37,7 @@ type diffState struct {
 	diffLayout       diffLayoutKey
 	diffSelection    diffSelection
 	diffLoading      bool
+	diffStale        bool
 	diffCancel       context.CancelFunc
 	diffSyntaxCancel context.CancelFunc
 	diffSyntax       map[*diff.Line][]highlight.Span
@@ -111,6 +112,10 @@ func (d *diffState) matches(target diffTarget) bool {
 
 func (m *Model) requestDiff(target diffTarget, read func(context.Context) (string, error)) tea.Cmd {
 	d := m.openDiffTab(target)
+	// Update refreshes an outdated Changes diff after selection.
+	if d.diffChange != nil && (d.diffStale || d.diffLoading || d.patch.Raw != "") {
+		return nil
+	}
 	d.read = read
 	return m.loadDiff(d, true)
 }
@@ -123,16 +128,18 @@ func (m *Model) openDiffTab(target diffTarget) *diffState {
 			break
 		}
 	}
+	var d *diffState
 	if index < 0 {
-		d := newDiffState()
+		d = newDiffState()
 		d.diffOpen = true
 		d.diffPath, d.diffRepository, d.diffCommit = target.path, target.repository, target.commit
 		d.diffStaged = target.staged
-		index = m.insertTab(tab{diff: d, preview: target.preview})
-	} else if !target.preview {
-		m.tabs[index].preview = false
+	} else {
+		d = m.tabs[index].diff
+		if !target.preview {
+			m.tabs[index].preview = false
+		}
 	}
-	d := m.tabs[index].diff
 	d.diffPR, d.diffPRVersion = target.pr, target.prVersion
 	d.diffChange = target.change
 	if target.change != nil {
@@ -141,6 +148,9 @@ func (m *Model) openDiffTab(target diffTarget) *diffState {
 	// Commit metadata must not enable worktree staging or editing actions.
 	if target.commit != "" || target.pr.Number != 0 {
 		d.diffChange = nil
+	}
+	if index < 0 {
+		index = m.insertTab(tab{diff: d, preview: target.preview})
 	}
 	// Opening selects a tab; refreshing an existing tab is handled separately.
 	m.selectTab(index)
@@ -163,6 +173,7 @@ func (m *Model) loadVersionedDiff(d *diffState, reset bool, read func(context.Co
 	d.diffCancel = cancel
 	d.diffSeq++
 	d.diffLoading = true
+	d.diffStale = false
 	if reset {
 		m.setDiffImages(d, nil)
 		d.clearContent()
@@ -180,43 +191,15 @@ func (m *Model) loadVersionedDiff(d *diffState, reset bool, read func(context.Co
 	}
 }
 
-// Refresh tab-owned sources, never the sidebar selection. Keep focus, tab
-// order, scroll and hunk position while new Git output is being fetched.
-func (m *Model) refreshDiffs() tea.Cmd {
-	var commands []tea.Cmd
-	for _, t := range m.tabs {
-		d := t.diff
-		if d == nil || d.diffCommit != "" || d.diffPR.Number != 0 || d.read == nil {
-			continue
-		}
-		if d.diffChange != nil {
-			change := *d.diffChange
-			found := false
-			for _, c := range m.snapshot.Changes {
-				if c.Path == d.diffPath && c.Repository == d.diffRepository {
-					change, found = c, true
-					break
-				}
-			}
-			if !found {
-				change.Index, change.Worktree = ' ', ' '
-			}
-			staged := d.diffStaged
-			d.diffChange = &change
-			workspace := m.repo
-			d.read = func(ctx context.Context) (string, error) { return workspace.Diff(ctx, change, staged) }
-		}
-		commands = append(commands, m.loadDiff(d, false))
-	}
-	return tea.Batch(commands...)
-}
-
 func (m *Model) finishDiff(msg diffMsg) tea.Cmd {
 	d := msg.target
 	if d == nil || !d.diffOpen || msg.seq != d.diffSeq {
 		return nil
 	}
 	d.diffLoading = false
+	if d.diffStale {
+		return nil
+	}
 	if d.diffPR.Number != 0 {
 		d.read = nil
 	}

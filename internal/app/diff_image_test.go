@@ -66,7 +66,7 @@ func TestDiffImagesRenameDeleteAndReplyOwnership(t *testing.T) {
 		t.Fatal(err)
 	}
 	c.Worktree = 'D'
-	drain(t, m, m.requestDiff(diffTarget{path: c.Path, change: &c}, readImageDiff(m, c, false, "")))
+	drain(t, m, m.refresh())
 	if m.images.sides[0] == nil || m.images.sides[1] != nil || m.images.errors[1] != nil {
 		t.Fatal("deleted image did not leave an absent right side")
 	}

@@ -230,7 +230,7 @@ func TestExplorerDirectoryReplacementAndCollapse(t *testing.T) {
 	}
 }
 
-func TestNewDiffRequestCancelsPreviousPreview(t *testing.T) {
+func TestDiffRefreshSupersedesPendingPreview(t *testing.T) {
 	m := explorerWorkspace(t)
 	drain(t, m, m.selectSection(changes))
 	for i, entry := range m.items {
@@ -240,9 +240,10 @@ func TestNewDiffRequestCancelsPreviousPreview(t *testing.T) {
 		}
 	}
 	previous := m.preview()
-	current := m.preview()
+	m.invalidateDiffs()
+	current := m.refreshActiveDiff()
 	if previous == nil || current == nil {
-		t.Fatal("preview did not schedule Git work")
+		t.Fatal("preview or refresh did not schedule Git work")
 	}
 	stale := previous().(diffMsg)
 	if stale.err == nil {

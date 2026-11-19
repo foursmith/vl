@@ -3,11 +3,14 @@ package app
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
 	gitservice "github.com/foursmith/vl/internal/git"
+	"github.com/foursmith/vl/internal/watcher"
 )
 
 func diffTabText(label string) string {
@@ -243,6 +246,87 @@ func TestDiffSidebarSingleDoubleClickAndEnter(t *testing.T) {
 	}
 }
 
+func TestChangesClickReusesDiffUntilRefresh(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	defer m.Close()
+	m.section = changes
+	change := gitservice.Change{Path: "file0.go", Index: '?', Worktree: '?'}
+	m.items = []item{{key: change.Path, change: &change}}
+	click := tea.MouseClickMsg{X: 5, Y: headerHeight, Button: tea.MouseLeft}
+	first := m.click(click)
+	if first == nil || !m.diffLoading {
+		t.Fatal("first click did not start loading the diff")
+	}
+	if cmd := m.click(click); cmd != nil {
+		t.Fatal("clicking while a diff is loading started another Git read")
+	}
+	drain(t, m, first)
+	before := m.patch.Raw
+	if !strings.Contains(before, "+package main") {
+		t.Fatalf("first click did not load the Changes diff: %q", before)
+	}
+	if err := os.WriteFile(filepath.Join(m.repo.Root, change.Path), []byte("package updated\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if cmd := m.click(click); cmd != nil || m.diffLoading || m.patch.Raw != before {
+		t.Fatal("clicking an open Changes item did not reuse the loaded diff")
+	}
+	m.snapshot.Changes = []gitservice.Change{change}
+	m.invalidateDiffs()
+	cmd := m.refreshActiveDiff()
+	if !m.diffLoading || m.patch.Raw != before || !strings.Contains(plain(m.View().Content), "package main") {
+		t.Fatal("refresh hid the existing diff before Git replied")
+	}
+	drain(t, m, cmd)
+	if m.diffLoading || !strings.Contains(m.patch.Raw, "+package updated") {
+		t.Fatal("Git reply did not update the visible diff")
+	}
+}
+
+func TestChangesRefreshesOnlyVisibleOutdatedDiff(t *testing.T) {
+	m := tabWorkspace(t, 2)
+	defer m.Close()
+	m.section = changes
+	var states []*diffState
+	for _, path := range []string{"file0.go", "file1.go"} {
+		change := gitservice.Change{Path: path, Index: '?', Worktree: '?'}
+		m.snapshot.Changes = append(m.snapshot.Changes, change)
+		cmd, _ := m.loadSidebarFile(item{change: &change})
+		m.keepTab()
+		drain(t, m, cmd)
+		states = append(states, m.diffState)
+	}
+	background, visible := states[0], states[1]
+	changeOnDisk := func(path, text string) {
+		t.Helper()
+		path = filepath.Join(m.repo.Root, path)
+		if err := os.WriteFile(path, []byte(text), 0644); err != nil {
+			t.Fatal(err)
+		}
+		m.handleWatch(watcher.Batch{Paths: []string{path}})
+		_, cmd := m.Update(nil)
+		drain(t, m, cmd)
+	}
+	backgroundSeq, visibleSeq := background.diffSeq, visible.diffSeq
+	changeOnDisk("file0.go", "package background\n")
+	if !background.diffStale || background.diffSeq != backgroundSeq || visible.diffSeq != visibleSeq {
+		t.Fatal("editing a background file ran a diff or failed to invalidate it")
+	}
+	changeOnDisk("file1.go", "package visible\n")
+	if background.diffSeq != backgroundSeq || visible.diffSeq != visibleSeq+1 || !strings.Contains(m.patch.Raw, "+package visible") {
+		t.Fatal("editing the visible file did not refresh just its diff")
+	}
+	slot := m.tabLayout()[0]
+	_, cmd := m.Update(tea.MouseClickMsg{X: m.mainX() + slot.x + 2, Y: tabRow, Button: tea.MouseLeft})
+	if m.diffState != background || !background.diffLoading || !strings.Contains(m.patch.Raw, "+package main") {
+		t.Fatal("switching to an outdated diff did not retain its content while loading")
+	}
+	drain(t, m, cmd)
+	if background.diffSeq != backgroundSeq+1 || !strings.Contains(m.patch.Raw, "+package background") {
+		t.Fatal("background diff did not update on selection")
+	}
+}
+
 func TestRemovedHistoryRepositoryClosesItsTabsAndKeepsOtherReview(t *testing.T) {
 	m := tabWorkspace(t, 0)
 	m.snapshot.Repositories = []string{"child"}
@@ -281,7 +365,14 @@ func TestEmptyDiffClosesOnlyItsOwnTab(t *testing.T) {
 				m.activateTab(0)
 			}
 			d.read = func(context.Context) (string, error) { return "", nil }
-			drain(t, m, m.refreshDiffs())
+			m.invalidateDiffs()
+			if !active {
+				if cmd := m.refreshActiveDiff(); cmd != nil {
+					t.Fatal("inactive diff refreshed while a document was showing")
+				}
+				m.activateTab(1)
+			}
+			drain(t, m, m.refreshActiveDiff())
 			if len(m.tabs) != 1 || m.document() != doc || m.diffOpen || d.diffOpen {
 				t.Fatal("empty diff did not close safely or left the wrong tab bound")
 			}

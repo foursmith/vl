@@ -225,7 +225,7 @@ func (m *Model) textRowAt(y int) int {
 }
 
 func (m *Model) partialStageReason(reverse bool) string {
-	if m.diffChange == nil || m.diffLoading || m.editing() || m.diffStaged != reverse {
+	if m.diffChange == nil || m.diffLoading || m.diffStale || m.editing() || m.diffStaged != reverse {
 		return m.tr("Open a working-tree or index diff first")
 	}
 	c := *m.diffChange
@@ -242,7 +242,7 @@ func (m *Model) partialStageReason(reverse bool) string {
 }
 
 func (m *Model) partialDiscardReason() string {
-	if m.diffChange == nil || m.diffStaged || m.diffLoading || m.editing() {
+	if m.diffChange == nil || m.diffStaged || m.diffLoading || m.diffStale || m.editing() {
 		return m.tr("Open a working-tree diff first")
 	}
 	c := *m.diffChange
@@ -287,7 +287,7 @@ func (m *Model) selectedDiffChanges() map[*diff.Line]bool {
 func (m *Model) reviewActions() []action {
 	var actions []action
 	sourceReason := ""
-	if m.diffChange == nil || m.diffLoading {
+	if m.diffChange == nil || m.diffLoading || m.diffStale {
 		sourceReason = m.tr("Open a working-tree or index diff first")
 	}
 	if m.diffChange != nil {
@@ -299,7 +299,7 @@ func (m *Model) reviewActions() []action {
 		target, raw := m.diffState, m.patch.Raw
 		bind := func(stale string, run func() tea.Cmd) func() tea.Cmd {
 			return func() tea.Cmd {
-				if m.diffState != target || m.diffChange == nil || m.diffLoading || m.patch.Raw != raw {
+				if m.diffState != target || m.diffChange == nil || m.diffLoading || m.diffStale || m.patch.Raw != raw {
 					m.notice = m.tr(stale)
 					return nil
 				}

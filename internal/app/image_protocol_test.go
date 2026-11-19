@@ -79,7 +79,7 @@ func TestDiffImagesSurviveTerminalRenderer(t *testing.T) {
 		t.Fatal("unchanged image diff retransmitted pixels")
 	}
 	left, right := m.images.sides[0], m.images.sides[1]
-	drain(t, m, m.refreshDiffs())
+	drain(t, m, m.refresh())
 	if m.images.sides[0] != left || m.images.sides[1] != right {
 		t.Fatal("unchanged refresh replaced image placements")
 	}
@@ -89,7 +89,7 @@ func TestDiffImagesSurviveTerminalRenderer(t *testing.T) {
 		t.Fatal("unchanged refresh retransmitted pixels")
 	}
 	writePreviewPNG(t, filepath.Join(m.repo.Root, "image.png"), 140, 60)
-	drain(t, m, m.refreshDiffs())
+	drain(t, m, m.refresh())
 	if m.images.sides[0] != left || m.images.sides[1] == right || m.images.sides[1].Bounds().Dx() != 140 {
 		t.Fatal("changed refresh replaced the unchanged side or retained old pixels")
 	}

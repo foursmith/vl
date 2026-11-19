@@ -186,7 +186,6 @@ func (r *Repository) readChanges(ctx context.Context) (workspaceChanges, error) 
 		if historyErr != nil {
 			metadata.MetadataError = historyErr.Error()
 		}
-		state.states[path] = metadata
 		for descendant, data := range nested.states {
 			state.states[filepath.ToSlash(filepath.Join(path, descendant))] = data
 		}
@@ -197,7 +196,9 @@ func (r *Repository) readChanges(ctx context.Context) (workspaceChanges, error) 
 		dirs, err := child.MetadataDirectories(ctx)
 		if err == nil {
 			state.metadata = append(state.metadata, dirs...)
+			metadata.GitDirectories = dirs
 		}
+		state.states[path] = metadata
 		state.metadata = append(state.metadata, nested.metadata...)
 		for _, c := range nested.changes {
 			c.Path = filepath.ToSlash(filepath.Join(path, c.Path))

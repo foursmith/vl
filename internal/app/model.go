@@ -307,6 +307,11 @@ func (m *Model) tick() tea.Cmd {
 }
 
 func (m *Model) refresh() tea.Cmd {
+	m.invalidateDiffs()
+	return m.refreshRepository()
+}
+
+func (m *Model) refreshRepository() tea.Cmd {
 	if m.editorOnly {
 		return nil
 	}
@@ -516,12 +521,15 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}
 		if m.watchDirty && !m.loading && !m.busy {
 			m.watchDirty = false
-			cmd := m.refresh()
+			cmd := m.refreshRepository()
 			if next == nil {
 				next = cmd
 			} else {
 				next = tea.Batch(next, cmd)
 			}
+		}
+		if cmd := m.refreshActiveDiff(); cmd != nil {
+			next = tea.Batch(next, cmd)
 		}
 		if m.diffOpen && !m.diffLoading && m.patch.Raw != "" && m.diffSyntax == nil && m.diffSyntaxCancel == nil {
 			cmd := m.highlightDiff()
@@ -785,8 +793,9 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			m.notice = m.tr(msg.err.Error())
 			return m, nil
 		}
-		wasNoRepository := m.snapshot.NoRepository
+		previous := m.snapshot
 		m.snapshot = msg.snapshot
+		m.reconcileChangeDiffs(previous)
 		m.reconcileHistoryRepositories()
 		m.syncWatch()
 		m.rebuildItems()
@@ -798,8 +807,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		if m.section == explorer {
 			commands = append(commands, m.refreshTree())
 		}
-		commands = append(commands, m.refreshPullRequests(m.section == pullRequests && wasNoRepository))
-		commands = append(commands, m.refreshDiffs(), m.restoreSession())
+		commands = append(commands, m.refreshPullRequests(m.section == pullRequests && previous.NoRepository), m.restoreSession())
 		if initial && len(m.tabs) == 0 && m.section == changes {
 			commands = append(commands, m.preview())
 		}
@@ -1227,7 +1235,8 @@ func (m *Model) saveEditor(closeAfter bool) tea.Cmd {
 		return nil
 	}
 	m.notice = m.tr("Saved %s", filepath.Base(d.Path))
-	refresh := m.refresh()
+	m.invalidateWorktreeDiffs(d.Path)
+	refresh := m.refreshRepository()
 	if closeAfter {
 		return tea.Batch(refresh, m.closeTab())
 	}

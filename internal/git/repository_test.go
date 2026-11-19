@@ -1,12 +1,14 @@
 package git
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	patchdiff "github.com/foursmith/vl/internal/diff"
 )
@@ -40,6 +42,34 @@ func write(t *testing.T, r *Repository, path, text string) {
 	t.Helper()
 	if err := os.WriteFile(filepath.Join(r.Root, path), []byte(text), 0644); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestWorktreeDiffDoesNotWriteIndex(t *testing.T) {
+	r := repository(t)
+	run(t, r, "config", "diff.autoRefreshIndex", "true")
+	const path = "code.go"
+	write(t, r, path, "package main\n")
+	run(t, r, "add", "--", path)
+	run(t, r, "commit", "-m", "initial")
+	index := filepath.Join(r.Root, ".git", "index")
+	before, err := os.ReadFile(index)
+	if err != nil {
+		t.Fatal(err)
+	}
+	changed := time.Now().Add(time.Hour)
+	if err := os.Chtimes(filepath.Join(r.Root, path), changed, changed); err != nil {
+		t.Fatal(err)
+	}
+	if raw, err := r.Diff(context.Background(), Change{Path: path, Index: ' ', Worktree: 'M'}, false); err != nil || raw != "" {
+		t.Fatalf("timestamp-only change produced a diff: %q, %v", raw, err)
+	}
+	after, err := os.ReadFile(index)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(before, after) {
+		t.Fatal("reading the worktree diff rewrote the Git index")
 	}
 }
 

@@ -25,6 +25,10 @@ type fileReloadMsg struct {
 	err      error
 }
 
+func coversPath(directoryOrFile, path string) bool {
+	return path == directoryOrFile || strings.HasPrefix(path, directoryOrFile+string(filepath.Separator))
+}
+
 func (m *Model) startWatcher() tea.Cmd {
 	ctx := m.ctx
 	return func() tea.Msg {
@@ -57,6 +61,11 @@ func (m *Model) syncWatch() {
 	for _, t := range m.tabs {
 		if t.diff == nil {
 			config.Directories = append(config.Directories, filepath.Dir(t.path()))
+		} else if d := t.diff; d.diffCommit == "" && d.diffPR.Number == 0 && !d.diffStaged {
+			config.Directories = append(config.Directories, filepath.Dir(filepath.Join(m.repo.Root, d.diffPath)))
+			if d.diffOriginal != "" {
+				config.Directories = append(config.Directories, filepath.Dir(filepath.Join(m.repo.Root, d.diffOriginal)))
+			}
 		}
 	}
 	for _, path := range m.snapshot.Repositories {
@@ -71,18 +80,24 @@ func (m *Model) syncWatch() {
 func (m *Model) handleWatch(batch watcher.Batch) tea.Cmd {
 	if batch.Err != nil {
 		m.watchDirty = true
+		m.invalidateDiffs()
 		m.notice = m.tr("File watcher: %s", batch.Err.Error())
 	}
 	for _, path := range batch.Paths {
 		metadata := false
 		for _, dir := range m.snapshot.GitDirectories {
-			if path == dir || strings.HasPrefix(path, dir+string(filepath.Separator)) {
+			if coversPath(dir, path) {
 				metadata = true
 				break
 			}
 		}
 		if metadata && strings.HasSuffix(path, ".lock") {
 			continue
+		}
+		if !metadata {
+			m.invalidateWorktreeDiffs(path)
+		} else if filepath.Base(path) == "index" {
+			m.invalidateIndexDiffs(filepath.Dir(path))
 		}
 		m.watchDirty = true
 	}
@@ -101,7 +116,7 @@ func (m *Model) reloadWatchedFiles(paths []string) tea.Cmd {
 		}
 		changed := paths == nil
 		for _, path := range paths {
-			if path == t.path() || strings.HasPrefix(t.path(), path+string(filepath.Separator)) {
+			if coversPath(path, t.path()) {
 				changed = true
 				break
 			}

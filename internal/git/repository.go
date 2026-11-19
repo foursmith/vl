@@ -116,6 +116,10 @@ func (r *Repository) FetchInBackground(ctx context.Context) {
 
 func (r *Repository) command(ctx context.Context, options []string, args ...string) *exec.Cmd {
 	base := []string{"--no-pager", "-c", "color.ui=false", "-c", "core.quotepath=false"}
+	if args[0] == "diff" {
+		// A preview's stat refresh would write the index and wake the watcher.
+		base = append(base, "-c", "diff.autoRefreshIndex=false")
+	}
 	cmd := exec.CommandContext(ctx, "git", append(append(base, options...), args...)...)
 	cmd.Dir = r.Root
 	literal := "1"
