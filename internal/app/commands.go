@@ -410,7 +410,14 @@ func (m *Model) startOperation(title string, run func() (string, error)) tea.Cmd
 			d.diffLoading = false
 		}
 	}
+	fetchDone := m.autoFetch.done
+	if fetchDone != nil {
+		m.autoFetch.cancel()
+	}
 	return func() tea.Msg {
+		if fetchDone != nil {
+			<-fetchDone
+		}
 		_, err := run()
 		return operationMsg{title: title, err: err}
 	}
@@ -436,15 +443,15 @@ func (m *Model) gitOperationInRepository(target, title string, args ...string) t
 }
 
 func (m *Model) fetch(target string) tea.Cmd {
-	return m.gitOperationInRepository(target, "Fetch", "fetch", "--all", "--prune")
+	return m.showRemoteProgress(m.gitOperationInRepository(target, "Fetch", "fetch", "--all", "--prune"), target, "sync")
 }
 
 func (m *Model) pull(target string) tea.Cmd {
-	return m.gitOperationInRepository(target, "Pull", "pull", "--ff-only")
+	return m.showRemoteProgress(m.gitOperationInRepository(target, "Pull", "pull", "--ff-only"), target, "pull")
 }
 
 func (m *Model) push(target string) tea.Cmd {
-	return m.gitOperationInRepository(target, "Push", "push")
+	return m.showRemoteProgress(m.gitOperationInRepository(target, "Push", "push"), target, "push")
 }
 
 func (m *Model) stash(target string) tea.Cmd {

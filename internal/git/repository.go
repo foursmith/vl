@@ -102,11 +102,21 @@ func (r *Repository) Run(ctx context.Context, args ...string) (string, error) {
 	return r.run(ctx, "", args...)
 }
 
-func (r *Repository) run(ctx context.Context, input string, args ...string) (string, error) {
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+const gitCommandTimeout = 2 * time.Minute
+
+func (r *Repository) FetchInBackground(ctx context.Context) {
+	// Use Git's default remote, including the current branch's configured upstream.
+	ctx, cancel := context.WithTimeout(ctx, gitCommandTimeout)
 	defer cancel()
+	cmd := r.command(ctx, []string{"-c", "credential.interactive=false"},
+		"fetch", "--no-write-fetch-head", "--no-recurse-submodules", "--no-auto-maintenance")
+	detachGitProcess(cmd)
+	_ = cmd.Run() // Auto Fetch retries on the next interval.
+}
+
+func (r *Repository) command(ctx context.Context, options []string, args ...string) *exec.Cmd {
 	base := []string{"--no-pager", "-c", "color.ui=false", "-c", "core.quotepath=false"}
-	cmd := exec.CommandContext(ctx, "git", append(base, args...)...)
+	cmd := exec.CommandContext(ctx, "git", append(append(base, options...), args...)...)
 	cmd.Dir = r.Root
 	literal := "1"
 	// Stash uses Git-generated pathspecs to clean the files it saves.
@@ -118,6 +128,13 @@ func (r *Repository) run(ctx context.Context, input string, args ...string) (str
 	if args[0] == "status" {
 		cmd.Env = append(cmd.Env, "GIT_OPTIONAL_LOCKS=0")
 	}
+	return cmd
+}
+
+func (r *Repository) run(ctx context.Context, input string, args ...string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, gitCommandTimeout)
+	defer cancel()
+	cmd := r.command(ctx, nil, args...)
 	if input != "" {
 		cmd.Stdin = strings.NewReader(input)
 	}

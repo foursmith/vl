@@ -156,9 +156,16 @@ type repositoryRowLayout struct {
 
 func (m *Model) layoutRepositoryRow(entry item, width int) repositoryRowLayout {
 	layout := repositoryRowLayout{prefix: m.repositoryHeaderPrefix(entry), width: width, actions: m.repositoryRowActions(entry)}
-	buttonWidth := len(layout.actions) * sidebarRowActionWidth
+	buttonWidth := 0
+	for _, action := range layout.actions {
+		buttonWidth += action.displayWidth()
+	}
+	labelMinWidth := ansi.StringWidth(layout.prefix) + 2
+	if m.section == history && width < labelMinWidth+buttonWidth {
+		layout.actions, buttonWidth = nil, 0
+	}
 	if entry.branch != "" {
-		budget := max(0, min(18, width-ansi.StringWidth(layout.prefix)-2-buttonWidth-1))
+		budget := max(0, min(18, width-labelMinWidth-buttonWidth-1))
 		if branch := ansi.Truncate(" "+safe(entry.branch), budget, "…"); branch != "" {
 			layout.branch = branch + " "
 		}

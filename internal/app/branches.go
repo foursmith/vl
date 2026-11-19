@@ -92,7 +92,10 @@ func (m *Model) checkout(repoPath string, ref gitservice.Ref, detach bool) tea.C
 }
 
 func (m *Model) syncRepository() tea.Cmd {
-	target := m.statusRepository()
+	return m.syncRepositoryAt(m.statusRepository())
+}
+
+func (m *Model) syncRepositoryAt(target string) tea.Cmd {
 	state := m.repositoryState(target)
 	if state.Detached {
 		m.notice = m.tr("Cannot sync a branch with detached HEAD")
@@ -105,13 +108,14 @@ func (m *Model) syncRepository() tea.Cmd {
 	if state.Upstream == "" {
 		return m.publishBranchInRepository(target)
 	}
-	return m.operation("Sync", func() (string, error) {
+	cmd := m.operation("Sync", func() (string, error) {
 		repo, err := m.repo.RepositoryAt(m.ctx, target)
 		if err != nil {
 			return "", err
 		}
 		return repo.Sync(m.ctx)
 	})
+	return m.showRemoteProgress(cmd, target, "sync")
 }
 
 func (m *Model) publishBranch() tea.Cmd {
@@ -136,13 +140,14 @@ func (m *Model) publishBranchInRepository(target string) tea.Cmd {
 				m.notice = m.tr("Save or close unsaved files first")
 				return nil
 			}
-			return m.operation("Publish", func() (string, error) {
+			cmd := m.operation("Publish", func() (string, error) {
 				repo, err := m.repo.RepositoryAt(m.ctx, target)
 				if err != nil {
 					return "", err
 				}
 				return repo.Publish(m.ctx, remote.Name, branch)
 			})
+			return m.showRemoteProgress(cmd, target, "sync")
 		}})
 	}
 	return m.prompt("remotes", m.tr("Select a remote to publish the branch"), "")

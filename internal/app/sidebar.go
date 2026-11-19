@@ -281,6 +281,12 @@ func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 		m.lastClickKey = ""
 		return m.openBranchPicker(entry.repository, "")
 	}
+	if m.section == history && entry.repoHeader {
+		if action := rowActionAt(actions, msg.X); action != nil {
+			m.lastClickKey = ""
+			return m.runRepositoryRemoteAction(entry.repository, action.id)
+		}
+	}
 	if m.section == changes {
 		if action := rowActionAt(actions, msg.X); action != nil {
 			m.lastClickKey = ""

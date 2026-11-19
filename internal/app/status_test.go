@@ -230,6 +230,43 @@ func TestStatusGeometryAndEditorMetadata(t *testing.T) {
 	}
 }
 
+func TestRemoteProgressKeepsCountsAndActionPositions(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	m.snapshot = gitservice.Snapshot{Branch: "main", Upstream: "origin/main", TrackingKnown: true, Behind: 12, Ahead: 3}
+	m.selectSection(history)
+	width := m.sidebarContentWidth()
+	header := m.items[0]
+	before := statusPart(t, m, "sync")
+	original := m.layoutRepositoryRow(header, width)
+	m.showRemoteProgress(m.startOperation("Pull", func() (string, error) { return "", nil }), "", "pull")
+	progress := m.remoteProgress
+	for _, frame := range remoteProgressFrames {
+		m.Update(remoteProgressFrameMsg{progress: progress})
+		got := statusPart(t, m, "sync")
+		if got.x != before.x || got.width != before.width || got.pullOffset != before.pullOffset ||
+			got.pushOffset != before.pushOffset || !strings.Contains(got.text, "12"+frame+" 3"+m.symbol(symbolUp)) {
+			t.Fatalf("status controls moved or lost their counts: %+v", got)
+		}
+		during := m.layoutRepositoryRow(header, width)
+		if during.branchStart != original.branchStart || len(during.actions) != 3 {
+			t.Fatalf("History controls shifted: %+v", during)
+		}
+		for i, action := range during.actions {
+			if action.x != original.actions[i].x || action.width != original.actions[i].width {
+				t.Fatalf("History action moved: %+v", action)
+			}
+		}
+		if during.actions[1].glyph != "12"+frame || !during.actions[1].running {
+			t.Fatalf("History did not animate the Pull icon: %+v", during.actions)
+		}
+	}
+	m.Update(operationMsg{title: "Pull"})
+	m.Update(remoteProgressFrameMsg{progress: progress})
+	if m.remoteProgress != nil || statusPart(t, m, "sync") != before {
+		t.Fatal("completed Pull left its progress indicator visible")
+	}
+}
+
 func TestReferencePickerMouseSelectionAndFrameWidth(t *testing.T) {
 	m := branchWorkspace(t)
 	m.openBranchPicker("", "")
@@ -367,7 +404,7 @@ func TestFileRepositoryUsesDeepestDirectoryBoundary(t *testing.T) {
 	}
 }
 
-func TestStatusSyncAndPublishTargetChildRepository(t *testing.T) {
+func TestStatusRemoteActionsTargetChildRepository(t *testing.T) {
 	m, child := repositoryBranchWorkspace(t)
 	remote := filepath.Join(t.TempDir(), "remote.git")
 	for _, args := range [][]string{
@@ -404,6 +441,73 @@ func TestStatusSyncAndPublishTargetChildRepository(t *testing.T) {
 		t.Fatalf("missing child ahead count: %q", got)
 	}
 	parentHead := m.snapshot.Head
+	runRemoteAction := func(cmd tea.Cmd, title string) {
+		t.Helper()
+		if cmd == nil {
+			t.Fatalf("%s button did not start an operation", title)
+		}
+		drain(t, m, cmd)
+		if m.notice != title+" completed" {
+			t.Fatalf("%s button result: %s", title, m.notice)
+		}
+	}
+	segment := statusPart(t, m, "sync")
+	before, _, found := strings.Cut(segment.text, m.symbol(symbolUp))
+	if !found {
+		t.Fatalf("missing Push button in %q", segment.text)
+	}
+	runRemoteAction(m.click(tea.MouseClickMsg{X: segment.x + 1 + ansi.StringWidth(before), Y: m.height - 1, Button: tea.MouseLeft}), "Push")
+	state = m.snapshot.RepositoryStates["child space"]
+	if !state.TrackingKnown || state.Ahead != 0 || state.Behind != 0 || m.snapshot.Head != parentHead {
+		t.Fatal("push failed or modified parent", m.notice)
+	}
+	if _, err := child.Run(m.ctx, "reset", "--hard", "HEAD^"); err != nil {
+		t.Fatal(err)
+	}
+	drain(t, m, m.refresh())
+	if state = m.snapshot.RepositoryStates["child space"]; state.Behind != 1 {
+		t.Fatalf("expected child to be one behind: %+v", state)
+	}
+	m.openFile("README.md")
+	drain(t, m, m.selectSection(history))
+	clickHistoryAction := func(id, title string) {
+		t.Helper()
+		for y := headerHeight; y < m.height-1; y++ {
+			index := m.sidebarRowAt(y)
+			if index < 0 || !m.items[index].repoHeader || m.items[index].repository != "child space" {
+				continue
+			}
+			layout := m.layoutRepositoryRow(m.items[index], m.sidebarContentWidth())
+			for _, action := range layout.actions {
+				if action.id == id {
+					line := plain(m.sidebarLines()[y])
+					if !strings.Contains(line, action.glyph) || !strings.Contains(line, "child-topic") {
+						t.Fatalf("History title or %s button missing from %q", title, line)
+					}
+					runRemoteAction(m.click(tea.MouseClickMsg{X: m.sideX() + action.x + 1, Y: y, Button: tea.MouseLeft}), title)
+					return
+				}
+			}
+		}
+		t.Fatalf("missing History %s action", title)
+	}
+	clickHistoryAction("pull", "Pull")
+	if state = m.snapshot.RepositoryStates["child space"]; state.Behind != 0 || m.snapshot.Head != parentHead {
+		t.Fatal("pull failed or modified parent", m.notice)
+	}
+	if _, err := child.Run(m.ctx, "commit", "--allow-empty", "-m", "history push"); err != nil {
+		t.Fatal(err)
+	}
+	drain(t, m, m.refresh())
+	clickHistoryAction("push", "Push")
+	if state = m.snapshot.RepositoryStates["child space"]; state.Ahead != 0 || m.snapshot.Head != parentHead {
+		t.Fatal("History push failed or modified parent", m.notice)
+	}
+	if _, err := child.Run(m.ctx, "commit", "--allow-empty", "-m", "sync"); err != nil {
+		t.Fatal(err)
+	}
+	drain(t, m, m.refresh())
+	m.openFile("child space/README.md")
 	cmd := m.clickStatus(statusPart(t, m, "sync").x + 1)
 	m.openFile("README.md")
 	drain(t, m, cmd)

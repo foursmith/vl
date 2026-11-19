@@ -13,6 +13,8 @@ import (
 type statusSegment struct {
 	id, text string
 	x, width int
+	// Offsets within the sync segment, including its left padding.
+	pullOffset, pushOffset int
 }
 
 const (
@@ -73,7 +75,7 @@ func (m *Model) gitStatusSegments() []statusSegment {
 	if untracked {
 		marks += "?"
 	}
-	branchIcon, syncIcon, githubIcon := m.symbol(symbolBranch), m.symbol(symbolSync), m.symbol(symbolGitHub)
+	branchIcon, githubIcon := m.symbol(symbolBranch), m.symbol(symbolGitHub)
 	branchBudget := max(4, min(30, m.width/3)-ansi.StringWidth(marks)-3)
 	prefix := ""
 	if len(m.snapshot.Repositories) > 0 {
@@ -82,15 +84,12 @@ func (m *Model) gitStatusSegments() []statusSegment {
 		prefix = name + " · "
 	}
 	branch = prefix + ansi.Truncate(safe(branch), max(1, branchBudget-ansi.StringWidth(prefix)), "…") + marks
-	sync := syncIcon
-	if m.busy {
-		sync = "…"
-	} else if state.Upstream == "" && !state.Detached {
-		sync = m.symbol(symbolPublish) + m.tr(" Publish")
-	} else if state.TrackingKnown {
-		sync = fmt.Sprintf("%s %d%s %d%s", syncIcon, state.Behind, m.symbol(symbolArrowDown), state.Ahead, m.symbol(symbolUp))
-	} else if state.Upstream != "" {
-		sync += " " + m.symbol(symbolWarning)
+	actions := m.repositoryRemoteActions(target, state)
+	sync := statusSegment{id: "sync", text: actions[0].glyph}
+	if len(actions) == 3 {
+		sync.pullOffset = actions[0].displayWidth()
+		sync.pushOffset = sync.pullOffset + actions[1].displayWidth() - 1
+		sync.text += " " + actions[1].glyph + " " + actions[2].glyph
 	}
 	changeIcon, changeCount := m.symbol(symbolDiff), repositoryChanges
 	if conflicts > 0 {
@@ -98,7 +97,7 @@ func (m *Model) gitStatusSegments() []statusSegment {
 	}
 	return []statusSegment{
 		{id: "branch", text: branchIcon + " " + branch},
-		{id: "sync", text: sync},
+		sync,
 		{id: "github", text: githubIcon},
 		{id: "changes", text: fmt.Sprintf("%s %d", changeIcon, changeCount)},
 	}
@@ -260,7 +259,14 @@ func (m *Model) clickStatus(x int) tea.Cmd {
 		case "branch":
 			return m.openBranchPicker(m.statusRepository(), "")
 		case "sync":
-			return m.syncRepository()
+			offset := x - segment.x
+			action := "sync"
+			if segment.pushOffset > 0 && offset >= segment.pushOffset {
+				action = "push"
+			} else if segment.pullOffset > 0 && offset >= segment.pullOffset {
+				action = "pull"
+			}
+			return m.runRepositoryRemoteAction(m.statusRepository(), action)
 		case "github":
 			return m.openGitHub()
 		case "changes":

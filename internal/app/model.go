@@ -150,6 +150,8 @@ type Model struct {
 	cancel                  context.CancelFunc
 	watcher                 *watcher.Watcher
 	watchDirty              bool
+	autoFetch               autoFetchState
+	terminalBlurred         bool
 	repo                    *gitservice.Repository
 	width, height           int
 	nerd                    bool
@@ -169,6 +171,7 @@ type Model struct {
 	refreshSeq              int
 	refreshCancel           context.CancelFunc
 	loading, busy           bool
+	remoteProgress          *remoteProgress
 	*diffState              // Bound to the active diff tab; documents use emptyDiff.
 	emptyDiff               *diffState
 	split                   bool
@@ -284,6 +287,7 @@ func (m *Model) Init() tea.Cmd {
 		commands = append(commands, m.scheduleHighlight())
 	}
 	if !m.editorOnly {
+		m.autoFetch.next = time.Now()
 		commands = append(commands, m.refresh())
 	}
 	return tea.Batch(commands...)
@@ -292,6 +296,9 @@ func (m *Model) tick() tea.Cmd {
 	delay := 3 * time.Second
 	if m.watcher != nil {
 		delay = 30 * time.Second
+	}
+	if remaining := time.Until(m.autoFetch.next); remaining > 0 && !m.terminalBlurred {
+		delay = min(delay, remaining)
 	}
 	delay = m.pullRequestTickDelay(delay)
 	return delayedMessage(m.ctx, delay, func(t time.Time) tea.Msg { return tickMsg(t) })
@@ -490,6 +497,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			}
 		}
 		if !m.hoverOnly {
+			next = tea.Batch(next, m.startAutoFetch())
 			if cmd := m.loadVisibleHistory(); cmd != nil {
 				next = tea.Batch(next, cmd)
 			}
@@ -706,7 +714,10 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			}
 			m.resizingSidebar = false
 		}
+	case tea.FocusMsg:
+		m.terminalBlurred = false
 	case tea.BlurMsg:
+		m.terminalBlurred = true
 		m.welcomeOrbit.dragging = false
 		m.leaderTarget = ""
 		m.imagePan = nil
@@ -749,6 +760,8 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		m.width, m.height = max(1, msg.Width), max(1, msg.Height)
 		m.resize()
 		return m, tea.Raw(ansi.WindowOp(16))
+	case autoFetchFinishedMsg:
+		m.finishAutoFetch(msg)
 	case tickMsg:
 		pullRequestRefresh := m.refreshPullRequests(false)
 		if !m.loading && !m.busy {
@@ -789,8 +802,17 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 	case diffMsg:
 		return m, m.finishDiff(msg)
 
+	case remoteProgressFrameMsg:
+		if progress := msg.progress; progress != nil && m.remoteProgress == progress {
+			progress.frame++
+			return m, progress.tick(120 * time.Millisecond)
+		}
 	case operationMsg:
 		m.busy = false
+		if progress := m.remoteProgress; progress != nil {
+			progress.cancel()
+			m.remoteProgress = nil
+		}
 		if msg.err != nil {
 			m.notice = m.tr(msg.err.Error())
 		} else {

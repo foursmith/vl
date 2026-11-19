@@ -1,22 +1,80 @@
 package app
 
 import (
+	"fmt"
+
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
+	gitservice "github.com/foursmith/vl/internal/git"
 )
 
 type rowAction struct {
 	id, glyph, label, disabled string
 	x, width                   int
+	running                    bool
 }
 
 const sidebarRowActionWidth = 3
 
 func layoutRowActions(actions []rowAction, end int) {
-	for i := range actions {
-		actions[i].width = sidebarRowActionWidth
-		actions[i].x = end - (len(actions)-i)*sidebarRowActionWidth
+	for i := len(actions) - 1; i >= 0; i-- {
+		actions[i].width = actions[i].displayWidth()
+		end -= actions[i].width
+		actions[i].x = end
 	}
+}
+
+func (a rowAction) displayWidth() int {
+	return ansi.StringWidth(a.glyph) + 2
+}
+
+func (m *Model) repositoryRemoteActions(target string, state gitservice.Snapshot) []rowAction {
+	progress := m.remoteProgress
+	action := func(id, label string, symbol uiSymbol) rowAction {
+		button := rowAction{id: id, label: label, glyph: m.symbol(symbol)}
+		switch {
+		case progress != nil && progress.target == target && progress.action == id:
+			button.running, button.disabled = true, progress.hint
+			if progress.frame >= 0 {
+				button.glyph = remoteProgressFrames[progress.frame%len(remoteProgressFrames)]
+			}
+		case m.busy:
+			button.disabled = m.tr("Wait for the current Git operation to finish")
+		}
+		return button
+	}
+	if state.Upstream == "" && !state.Detached {
+		publish := action("sync", m.tr("Publish"), symbolPublish)
+		publish.glyph += m.tr(" Publish")
+		return []rowAction{publish}
+	}
+	sync := action("sync", m.tr("Sync"), symbolSync)
+	if state.TrackingKnown {
+		pull := action("pull", m.tr("Pull"), symbolArrowDown)
+		pull.glyph = fmt.Sprintf("%d%s", state.Behind, pull.glyph)
+		push := action("push", m.tr("Push"), symbolUp)
+		push.glyph = fmt.Sprintf("%d%s", state.Ahead, push.glyph)
+		return []rowAction{sync, pull, push}
+	}
+	if state.Upstream != "" {
+		sync.glyph += " " + m.symbol(symbolWarning)
+	}
+	return []rowAction{sync}
+}
+
+func (m *Model) runRepositoryRemoteAction(target, id string) tea.Cmd {
+	if m.busy {
+		return nil
+	}
+	switch id {
+	case "sync":
+		return m.syncRepositoryAt(target)
+	case "pull":
+		return m.pull(target)
+	case "push":
+		return m.push(target)
+	}
+	return nil
 }
 
 func (m *Model) repositoryRowActions(entry item) []rowAction {
@@ -33,6 +91,8 @@ func (m *Model) repositoryRowActions(entry item) []rowAction {
 			}
 		}
 		return actions
+	case history:
+		return m.repositoryRemoteActions(entry.repository, m.repositoryState(entry.repository))
 	case pullRequests:
 		return []rowAction{
 			{id: "filter", glyph: m.symbol(symbolFilter), label: m.tr("Filter Pull Requests") + " · " + m.pullRequestFilterLabel(m.pullRequestFilter)},
@@ -104,7 +164,9 @@ func (m *Model) renderRowActions(actions []rowAction, bg string) string {
 	hoverX := m.hoverX - m.sideX()
 	for _, action := range actions {
 		color := m.colors.Foreground
-		if action.disabled != "" {
+		if action.running {
+			color = m.colors.Accent
+		} else if action.disabled != "" {
 			color = m.colors.LineNumber
 		} else if hoverX >= action.x && hoverX < action.x+action.width {
 			color = m.colors.Strong

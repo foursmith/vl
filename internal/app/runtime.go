@@ -70,6 +70,7 @@ func (r *Runtime) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// These describe the terminal, whose lifetime spans all workspaces.
 		updated.width, updated.height = old.width, old.height
 		updated.monochrome = old.monochrome
+		updated.terminalBlurred = old.terminalBlurred
 		updated.cellWidth, updated.cellHeight = old.cellWidth, old.cellHeight
 		updated.kittySupported, updated.kittyProbeDone = old.kittySupported, old.kittyProbeDone
 		updated.themeNotifications, updated.themeNotificationsOwned = old.themeNotifications, old.themeNotificationsOwned
