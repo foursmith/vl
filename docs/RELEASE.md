@@ -38,8 +38,37 @@ make package VERSION=0.0.0-dev
    and check that all six archives, both installers, and `checksums.txt` are attached.
    The tag sets the value printed by `vl --version`, without the leading `v`.
    Tags such as `v0.1.0-rc.1` create prerelease drafts.
-3. Review the generated notes, update them for users, and publish the draft
+3. Review the `changelogithub`-generated notes and publish the existing draft
    from GitHub. If uploading fails, rerun the failed job before publishing. It
    can refresh the assets on an existing draft.
 
 GitHub Release visibility follows the repository's visibility.
+
+## Update the Homebrew tap
+
+After the Release workflow succeeds and the stable GitHub release is public,
+update `foursmith/tap/vl`. Prereleases skip this step.
+
+1. In `/Users/ourongxing/Dev/homebrew-tap`, download `checksums.txt` from the
+   published release. Set `tag` to the version you just published.
+
+   ```sh
+   cd /Users/ourongxing/Dev/homebrew-tap
+   tag=v0.1.0
+   gh release download "$tag" --repo foursmith/vl --pattern checksums.txt --output -
+   ```
+
+2. In `Formula/vl.rb`, set `version` to the tag without the leading `v`.
+   Update the tag and archive filename in all four URLs. Copy the SHA-256 for
+   each exact archive filename from the published `checksums.txt`. The formula
+   uses `darwin` and `linux` archives for `arm64` and `x86_64`.
+3. Verify that Homebrew resolves `foursmith/tap/vl` to the formula in this
+   checkout (`brew tap-info foursmith/tap`), then fetch all four archives to
+   verify their URLs and checksums.
+
+   ```sh
+   HOMEBREW_NO_AUTO_UPDATE=1 brew fetch --all-platforms foursmith/tap/vl
+   ```
+
+4. Commit `Formula/vl.rb` in the tap repository and push it to the tap's
+   `main` branch.
