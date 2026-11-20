@@ -8,6 +8,32 @@ import (
 	"testing"
 )
 
+func TestVSCodeExtensionDirsFindBothUserDirectories(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Setenv("PATH", filepath.Join(home, "empty-path"))
+	var want []string
+	for _, editor := range []string{".vscode", ".vscode-oss"} {
+		dir := filepath.Join(home, editor, "extensions")
+		if err := os.MkdirAll(dir, 0700); err != nil {
+			t.Fatal(err)
+		}
+		real, err := filepath.EvalSymlinks(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want = append(want, real)
+	}
+	dirs, err := VSCodeExtensionDirs()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(dirs) < 2 || dirs[0] != want[0] || dirs[1] != want[1] {
+		t.Fatalf("extension directories = %v, want user directories %v first", dirs, want)
+	}
+}
+
 func TestWindowsVSCodeExtensionDirs(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("Windows installation discovery")

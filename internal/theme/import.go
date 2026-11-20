@@ -33,9 +33,16 @@ func VSCodeExtensionDirs() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	candidates := []string{filepath.Join(home, ".vscode", "extensions")}
+	candidates := []string{
+		filepath.Join(home, ".vscode", "extensions"),
+		filepath.Join(home, ".vscode-oss", "extensions"),
+	}
 	var windowsInstalls []string
-	if code, err := exec.LookPath("code"); err == nil {
+	for _, launcher := range []string{"code", "code-oss"} {
+		code, err := exec.LookPath(launcher)
+		if err != nil {
+			continue
+		}
 		if resolved, err := filepath.EvalSymlinks(code); err == nil {
 			install := filepath.Join(filepath.Dir(resolved), "..")
 			if runtime.GOOS == "windows" {
