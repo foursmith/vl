@@ -26,12 +26,13 @@ func (j *highlightJob) stop() {
 }
 
 type highlightRequest struct {
-	session    *highlight.Session
-	theme      *theme.Theme
-	doc        *editor.Document
-	text, path string
-	seq        uint64
-	ctx        context.Context
+	session  *highlight.Session
+	theme    *theme.Theme
+	doc      *editor.Document
+	text     string
+	language highlight.LanguageInfo
+	seq      uint64
+	ctx      context.Context
 }
 type highlightStartMsg struct{ request highlightRequest }
 type highlightResultMsg struct {
@@ -45,13 +46,19 @@ func (m *Model) scheduleHighlight() tea.Cmd {
 	}
 	t := &m.tabs[m.activeTab]
 	text := t.doc.Text
-	if t.vim.InsertMode || t.highlightText == text {
+	if t.highlightText == text {
+		t.highlightJob.stop()
+		t.syntaxPending = false
+		return nil
+	}
+	if t.vim.InsertMode && !t.syntaxPending {
 		t.highlightJob.stop()
 		return nil
 	}
-	if len(text) > highlight.MaxBytes || text == "" {
+	if len(text) > highlight.MaxBytes || text == "" || (t.syntax.ID != "" && t.syntax.Scope == "") {
 		t.clearHighlight()
 		t.highlightText, t.highlighter = text, nil
+		t.syntaxPending = false
 		return nil
 	}
 	if t.highlightJob.pending && t.highlightJob.text == text {
@@ -64,7 +71,7 @@ func (m *Model) scheduleHighlight() tea.Cmd {
 	if t.highlighter == nil {
 		t.highlighter = &highlight.Session{}
 	}
-	request := highlightRequest{session: t.highlighter, theme: m.colorTheme, doc: t.doc, text: text, path: t.doc.Path, seq: t.highlightJob.seq, ctx: ctx}
+	request := highlightRequest{session: t.highlighter, theme: m.colorTheme, doc: t.doc, text: text, language: t.documentLanguage(), seq: t.highlightJob.seq, ctx: ctx}
 	// Coalesce typing bursts before updating the incremental tokenizer.
 	delay := 30 * time.Millisecond
 	if len(text) > 32<<10 {
@@ -91,7 +98,7 @@ func (m *Model) startHighlight(request highlightRequest) tea.Cmd {
 		return nil
 	}
 	return func() tea.Msg {
-		return highlightResultMsg{request, request.session.Lines(request.ctx, request.path, request.text, request.theme)}
+		return highlightResultMsg{request, request.session.Lines(request.ctx, request.language, request.text, request.theme)}
 	}
 }
 
@@ -102,6 +109,7 @@ func (m *Model) finishHighlight(msg highlightResultMsg) {
 		t.highlightSource = t.doc.Lines()
 		t.renderedRows = nil
 		t.guides = nil
+		t.syntaxPending = false
 	}
 }
 

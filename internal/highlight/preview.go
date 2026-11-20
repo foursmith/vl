@@ -23,8 +23,8 @@ type Preview struct {
 	lastSpans []Span
 }
 
-func NewPreview(path string, colors *theme.Theme) *Preview {
-	scope := grammars.ScopeForFilename(path)
+func NewPreview(language LanguageInfo, colors *theme.Theme) *Preview {
+	scope := language.Scope
 	if scope == "" {
 		return nil
 	}

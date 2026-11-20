@@ -72,12 +72,17 @@ func (m *Model) setDiffScrollRows() {
 	m.viewport.SetContentLines(make([]string, rows))
 }
 
-func (d *diffState) clearContent() {
+func (d *diffState) clearSyntax() {
 	if d.diffSyntaxCancel != nil {
 		d.diffSyntaxCancel()
 		d.diffSyntaxCancel = nil
 	}
-	d.diffSyntax, d.diffEmphasis = nil, nil
+	d.diffSyntax = nil
+}
+
+func (d *diffState) clearContent() {
+	d.clearSyntax()
+	d.diffEmphasis = nil
 	d.patch = diff.Patch{}
 	d.images = nil
 	d.diffRows, d.diffRowHunks = nil, nil
@@ -296,10 +301,7 @@ func (m *Model) highlightDiff() tea.Cmd {
 	if m.images != nil {
 		return nil
 	}
-	if m.diffSyntaxCancel != nil {
-		m.diffSyntaxCancel()
-	}
-	m.diffSyntax = nil
+	m.diffState.clearSyntax()
 	if m.patch.Raw == "" {
 		return nil
 	}
@@ -307,25 +309,47 @@ func (m *Model) highlightDiff() tea.Cmd {
 	m.diffSyntaxCancel = cancel
 	target := m.diffState
 	patch, path, seq := m.patch, m.diffPath, m.diffSeq
+	var language highlight.LanguageInfo
+	for _, t := range m.tabs {
+		if t.diff == target {
+			language = t.syntax
+			break
+		}
+	}
 	colors := m.colorTheme
 	return func() tea.Msg {
-		return diffSyntaxMsg{target: target, seq: seq, raw: patch.Raw, ctx: ctx, spans: diffSpans(ctx, patch, path, colors)}
+		return diffSyntaxMsg{target: target, seq: seq, raw: patch.Raw, ctx: ctx, spans: diffSpans(ctx, patch, path, colors, language)}
 	}
 }
 
 // Tokenize each side separately so removed code cannot change the new side's
 // string/comment state. Bound all syntax work by the editor's byte budget.
-func diffSpans(ctx context.Context, patch diff.Patch, path string, colors *theme.Theme) map[*diff.Line][]highlight.Span {
+func diffSpans(ctx context.Context, patch diff.Patch, path string, colors *theme.Theme, language highlight.LanguageInfo) map[*diff.Line][]highlight.Span {
 	if len(patch.Raw) > highlight.MaxBytes || ctx.Err() != nil {
 		return nil
 	}
 	result := make(map[*diff.Line][]highlight.Span)
+	if language.ID != "" && language.Scope == "" {
+		return result
+	}
 	// One session shares exact line/start-state tokens across the two sides.
 	// Each call still starts lexical state at the beginning of its own text.
 	var syntax highlight.Session
 	var old, added []*diff.Line
 	flush := func() {
-		for _, side := range [][]*diff.Line{old, added} {
+		if len(old) == 0 && len(added) == 0 {
+			return
+		}
+		sides := [2][]*diff.Line{old, added}
+		old, added = nil, nil
+		selected := language
+		if selected.ID == "" {
+			selected = highlight.Language(path)
+		}
+		if selected.Scope == "" {
+			return
+		}
+		for _, side := range sides {
 			if len(side) == 0 {
 				continue
 			}
@@ -334,14 +358,13 @@ func diffSpans(ctx context.Context, patch diff.Patch, path string, colors *theme
 				source.WriteString(line.Text[1:])
 				source.WriteByte('\n')
 			}
-			spans := syntax.Lines(ctx, path, source.String(), colors)
+			spans := syntax.Lines(ctx, selected, source.String(), colors)
 			for i, line := range side {
 				if i < len(spans) {
 					result[line] = spans[i]
 				}
 			}
 		}
-		old, added = nil, nil
 	}
 	for i := range patch.Lines {
 		if ctx.Err() != nil {

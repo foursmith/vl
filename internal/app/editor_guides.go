@@ -46,7 +46,7 @@ func (t *tab) editorGuides(source []string) *editorGuides {
 	}
 	g := &editorGuides{path: t.doc.Path, text: t.doc.Text}
 	t.guides = g
-	if len(t.doc.Text) > highlight.MaxBytes || highlight.Language(t.doc.Path).ID == "text" {
+	if len(t.doc.Text) > highlight.MaxBytes || t.documentLanguage().ID == "text" {
 		return g
 	}
 	g.indents = make([]int, len(source))

@@ -82,6 +82,9 @@ type tab struct {
 	spans            [][]highlight.Span
 	highlightJob     highlightJob
 	highlighter      *highlight.Session
+	syntax           highlight.LanguageInfo
+	syntaxRecord     string
+	syntaxPending    bool
 	renderKey        editorRenderKey
 	renderedRows     map[int]editorRenderedRow
 	guides           *editorGuides

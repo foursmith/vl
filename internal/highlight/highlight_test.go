@@ -175,5 +175,5 @@ func TestLightModernInheritedSyntaxAndFonts(t *testing.T) {
 
 func highlightOnce(ctx context.Context, path, text string, colors *theme.Theme) [][]Span {
 	var session Session
-	return session.Lines(ctx, path, text, colors)
+	return session.Lines(ctx, Language(path), text, colors)
 }

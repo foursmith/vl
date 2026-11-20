@@ -22,11 +22,11 @@ func TestFilePositionStoreSharesAliasesAndKeepsFilesIndependent(t *testing.T) {
 	if err := store.Save(first, want); err != nil {
 		t.Fatal(err)
 	}
-	key, err := filePositionKey(first)
+	record, err := fileStatePath(store.Dir, first)
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, err := os.ReadFile(store.recordPath(key))
+	data, err := os.ReadFile(record)
 	if err != nil {
 		t.Fatal(err)
 	}

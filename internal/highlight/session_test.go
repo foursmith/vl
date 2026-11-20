@@ -24,7 +24,7 @@ func TestSessionMatchesFreshHighlightAcrossEdits(t *testing.T) {
 		"",
 		"var 中文 = `multi\nline`\n",
 	} {
-		got := session.Lines(ctx, "file.go", text, colors)
+		got := session.Lines(ctx, Language("file.go"), text, colors)
 		want := referenceLines(ctx, "file.go", text, colors)
 		if !reflect.DeepEqual(got, want) {
 			t.Fatalf("incremental mismatch for %q\ngot: %#v\nwant: %#v", text, got, want)
@@ -36,14 +36,14 @@ func TestSessionSharesOnlyMatchingLexicalStates(t *testing.T) {
 	ctx := context.Background()
 	colors := theme.Builtin("dark_modern")
 	var session Session
-	first := session.Lines(ctx, "file.go", "var n = 1\nvar other = 2", colors)
+	first := session.Lines(ctx, Language("file.go"), "var n = 1\nvar other = 2", colors)
 	saved := append([]Span(nil), first[0]...)
-	second := session.Lines(ctx, "file.go", "var n = 1\nvar other = 3", colors)
+	second := session.Lines(ctx, Language("file.go"), "var n = 1\nvar other = 3", colors)
 	if len(first[0]) == 0 || &first[0][0] != &second[0][0] {
 		t.Fatal("unchanged context did not share spans")
 	}
 	text := "/*\nvar n = 1\n*/"
-	got := session.Lines(ctx, "file.go", text, colors)
+	got := session.Lines(ctx, Language("file.go"), text, colors)
 	if !reflect.DeepEqual(got, referenceLines(ctx, "file.go", text, colors)) {
 		t.Fatal("shared tokens ignored the line's lexical state")
 	}
@@ -62,18 +62,18 @@ func TestSessionThemeGrammarAndCancellation(t *testing.T) {
 		{"file.go", "dark_modern"},
 	} {
 		colors := theme.Builtin(tc.theme)
-		if got, want := session.Lines(ctx, tc.path, text, colors), referenceLines(ctx, tc.path, text, colors); !reflect.DeepEqual(got, want) {
+		if got, want := session.Lines(ctx, Language(tc.path), text, colors), referenceLines(ctx, tc.path, text, colors); !reflect.DeepEqual(got, want) {
 			t.Fatalf("stale theme or grammar for %+v", tc)
 		}
 	}
 	old := session.doc
 	cancelled, cancel := context.WithCancel(ctx)
 	cancel()
-	if got := session.Lines(cancelled, "file.go", "/*", theme.Builtin("dark_modern")); got != nil || session.doc != old {
+	if got := session.Lines(cancelled, Language("file.go"), "/*", theme.Builtin("dark_modern")); got != nil || session.doc != old {
 		t.Fatal("cancelled request changed session")
 	}
 	colors := theme.Builtin("dark_modern")
-	if got := session.Lines(ctx, "file.go", text, colors); !reflect.DeepEqual(got, referenceLines(ctx, "file.go", text, colors)) {
+	if got := session.Lines(ctx, Language("file.go"), text, colors); !reflect.DeepEqual(got, referenceLines(ctx, "file.go", text, colors)) {
 		t.Fatal("cancelled request corrupted later work")
 	}
 }
@@ -86,7 +86,7 @@ func TestSessionConcurrentSnapshots(t *testing.T) {
 		workers.Go(func() {
 			for j := 0; j < 8; j++ {
 				text := fmt.Sprintf("/* worker %d */\nvar n = %d\n", i, j)
-				got := session.Lines(context.Background(), "file.go", text, colors)
+				got := session.Lines(context.Background(), Language("file.go"), text, colors)
 				want := referenceLines(context.Background(), "file.go", text, colors)
 				if !reflect.DeepEqual(got, want) {
 					t.Error("concurrent request received another snapshot's spans")
@@ -102,15 +102,15 @@ func TestSessionLineLimitAndRecovery(t *testing.T) {
 	ctx := context.Background()
 	colors := theme.Builtin("dark_modern")
 	text := "package main\n" + strings.Repeat("x", 20_001) + "\nvar n int\n"
-	got := session.Lines(ctx, "file.go", text, colors)
+	got := session.Lines(ctx, Language("file.go"), text, colors)
 	if !reflect.DeepEqual(got, referenceLines(ctx, "file.go", text, colors)) {
 		t.Fatal("line limit propagated incomplete lexical state")
 	}
 	text = "package main\n/* repaired */\nvar n int\n"
-	if got := session.Lines(ctx, "file.go", text, colors); !reflect.DeepEqual(got, referenceLines(ctx, "file.go", text, colors)) {
+	if got := session.Lines(ctx, Language("file.go"), text, colors); !reflect.DeepEqual(got, referenceLines(ctx, "file.go", text, colors)) {
 		t.Fatal("editing a stopped line did not repair following lines")
 	}
-	if got := session.Lines(ctx, "file.go", strings.Repeat("x", MaxBytes+1), colors); got != nil {
+	if got := session.Lines(ctx, Language("file.go"), strings.Repeat("x", MaxBytes+1), colors); got != nil {
 		t.Fatal("oversized snapshot was tokenized")
 	}
 }
@@ -118,20 +118,22 @@ func TestSessionLineLimitAndRecovery(t *testing.T) {
 func BenchmarkSessionEdit(b *testing.B) {
 	ctx := context.Background()
 	colors := theme.Builtin("dark_modern")
+	language := Language("file.go")
 	var session Session
 	text := strings.Repeat("var value = \"sample\" // 中文\n", 5000)
-	session.Lines(ctx, "file.go", text, colors)
+	session.Lines(ctx, language, text, colors)
 	cut := strings.Index(text, "\n") + 1
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		session.Lines(ctx, "file.go", fmt.Sprintf("var changed = %d\n", i)+text[cut:], colors)
+		session.Lines(ctx, language, fmt.Sprintf("var changed = %d\n", i)+text[cut:], colors)
 	}
 }
 
 func BenchmarkDiffHighlightShared(b *testing.B) {
 	ctx := context.Background()
 	colors := theme.Builtin("dark_modern")
+	language := Language("file.go")
 	var source strings.Builder
 	for i := 0; i < 2000; i++ {
 		fmt.Fprintf(&source, "var value%d = %d\n", i, i)
@@ -144,8 +146,8 @@ func BenchmarkDiffHighlightShared(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				if shared {
 					var session Session
-					session.Lines(ctx, "file.go", old, colors)
-					session.Lines(ctx, "file.go", added, colors)
+					session.Lines(ctx, language, old, colors)
+					session.Lines(ctx, language, added, colors)
 				} else {
 					referenceLines(ctx, "file.go", old, colors)
 					referenceLines(ctx, "file.go", added, colors)

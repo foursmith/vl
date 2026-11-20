@@ -1,12 +1,9 @@
 package config
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
-	"path/filepath"
 	"slices"
 )
 
@@ -41,27 +38,12 @@ func NewFilePositionStore() (*FilePositionStore, error) {
 	return &FilePositionStore{Dir: dir}, nil
 }
 
-func filePositionKey(path string) (string, error) {
-	abs, err := filepath.Abs(path)
-	if err != nil {
-		return "", err
-	}
-	if real, err := filepath.EvalSymlinks(abs); err == nil {
-		abs = real
-	}
-	return filepath.Clean(abs), nil
-}
-
-func (s *FilePositionStore) recordPath(path string) string {
-	return filepath.Join(s.Dir, fmt.Sprintf("%x.json", sha256.Sum256([]byte(path))))
-}
-
 func (s *FilePositionStore) Load(path string) (FilePosition, bool, error) {
-	key, err := filePositionKey(path)
+	record, err := fileStatePath(s.Dir, path)
 	if err != nil {
 		return FilePosition{}, false, err
 	}
-	data, err := os.ReadFile(s.recordPath(key))
+	data, err := os.ReadFile(record)
 	if errors.Is(err, os.ErrNotExist) {
 		return FilePosition{}, false, nil
 	}
@@ -76,9 +58,9 @@ func (s *FilePositionStore) Load(path string) (FilePosition, bool, error) {
 }
 
 func (s *FilePositionStore) Save(path string, position FilePosition) error {
-	key, err := filePositionKey(path)
+	record, err := fileStatePath(s.Dir, path)
 	if err != nil {
 		return err
 	}
-	return saveJSON(s.recordPath(key), position)
+	return saveJSON(record, position)
 }

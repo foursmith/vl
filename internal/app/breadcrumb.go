@@ -6,7 +6,6 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 	"github.com/foursmith/vl/internal/fileicon"
-	"github.com/foursmith/vl/internal/highlight"
 	"github.com/foursmith/vl/internal/theme"
 )
 
@@ -93,13 +92,4 @@ func (m *Model) layoutBreadcrumb(path string, width int) breadcrumbLayout {
 		prefixWidth: prefixWidth, separatorWidth: separatorWidth,
 		fileStart: fileStart, fileEnd: min(width, 1+ansi.StringWidth(content)),
 	}
-}
-
-// Cache the current file's language for the footer.
-func (m *Model) language(path string) highlight.LanguageInfo {
-	if m.languagePath != path || m.languageInfo.ID == "" {
-		m.languagePath = path
-		m.languageInfo = highlight.Language(path)
-	}
-	return m.languageInfo
 }

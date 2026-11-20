@@ -85,11 +85,7 @@ func (m *Model) applyTheme(selected *theme.Theme) tea.Cmd {
 	for i := range m.tabs {
 		t := &m.tabs[i]
 		if d := t.diff; d != nil {
-			if d.diffSyntaxCancel != nil {
-				d.diffSyntaxCancel()
-				d.diffSyntaxCancel = nil
-			}
-			d.diffSyntax = nil
+			d.clearSyntax()
 		}
 		t.clearHighlight()
 	}

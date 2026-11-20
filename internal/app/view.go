@@ -148,6 +148,7 @@ type hoverRenderKey struct {
 	picker                int
 	findX                 int
 	findY                 int
+	statusX               int
 	hint                  string
 	divider               bool
 	diffButtons           diffButtons
@@ -172,6 +173,9 @@ func (m *Model) View() tea.View {
 	}
 	if m.fileFindAt(m.hoverX, m.hoverY) {
 		key.findX, key.findY = m.hoverX+1, m.hoverY+1
+	}
+	if m.hoverY == m.height-1 {
+		key.statusX = m.hoverX + 1
 	}
 	if m.hoverOnly && m.hoverRender.main != nil && m.hoverRender.key == key {
 		return m.hoverRender.view

@@ -49,14 +49,14 @@ func TestSharedDiffSyntaxKeepsSideAndHunkStatesSeparate(t *testing.T) {
 	patch := diff.Parse("--- a/file.go\n+++ b/file.go\n@@ -1,3 +1,3 @@\n-/*\n+// opening\n var n = 1\n-*/\n+// closing\n@@ -20 +20 @@\n-var later = 1\n+var later = 2\n")
 	colors := theme.Builtin("dark_modern")
 	ctx := context.Background()
-	got := diffSpans(ctx, patch, "file.go", colors)
-	oldSide := new(highlight.Session).Lines(ctx, "file.go", "/*\nvar n = 1\n*/\n", colors)
+	got := diffSpans(ctx, patch, "file.go", colors, highlight.LanguageInfo{})
+	oldSide := new(highlight.Session).Lines(ctx, highlight.Language("file.go"), "/*\nvar n = 1\n*/\n", colors)
 	for i := range patch.Lines {
 		line := &patch.Lines[i]
 		if line.Kind != diff.Context && line.Kind != diff.Added && line.Kind != diff.Deleted {
 			continue
 		}
-		want := new(highlight.Session).Lines(ctx, "file.go", line.Text[1:]+"\n", colors)[0]
+		want := new(highlight.Session).Lines(ctx, highlight.Language("file.go"), line.Text[1:]+"\n", colors)[0]
 		if line.Kind == diff.Deleted && line.Text == "-*/" {
 			want = oldSide[2]
 		}
@@ -113,7 +113,7 @@ func TestDiffThemeGuttersSyntaxAndMissingLines(t *testing.T) {
 	m.diffPath = "file.go"
 	m.patch = diff.Parse("--- a/file.go\n+++ b/file.go\n@@ -9999,2 +9999,3 @@\n-var old = 1\n+var value = 2\n+// added\n same\n")
 	m.renderDiff()
-	m.diffSyntax = diffSpans(m.ctx, m.patch, m.diffPath, m.colorTheme)
+	m.diffSyntax = diffSpans(m.ctx, m.patch, m.diffPath, m.colorTheme, highlight.LanguageInfo{})
 	foundSyntax, foundPlaceholder := false, false
 	for _, pair := range m.diffRows {
 		if pair.Right == nil || pair.Left == nil {
@@ -189,7 +189,7 @@ func TestDiffSyntaxResultsCannotReplaceNewPatch(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if diffSpans(ctx, m.patch, "file.go", theme.Builtin("dark_modern")) != nil {
+	if diffSpans(ctx, m.patch, "file.go", theme.Builtin("dark_modern"), highlight.LanguageInfo{}) != nil {
 		t.Fatal("cancelled work continued")
 	}
 }

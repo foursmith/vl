@@ -179,6 +179,11 @@ func (m *Model) statusLayout() []statusSegment {
 		}
 	}
 	rightX := m.width - rightWidth
+	nextX := rightX
+	for i := range right {
+		right[i].x = nextX
+		nextX += right[i].width
+	}
 	notice := m.notice
 	if notice == "" && m.modal == "" && m.contextMenu == nil {
 		switch {
@@ -223,6 +228,9 @@ func (m *Model) statusLayout() []statusSegment {
 	if hint := m.hoverHint(); hint != "" {
 		notice = hint
 	}
+	if len(right) > 0 && m.hoveredStatusLanguage(right[len(right)-1]) {
+		notice = m.tr("Change Syntax Highlighting")
+	}
 	if m.flashValid() {
 		notice = m.tr("Type to search · label to jump · Tab next · Esc cancel")
 	}
@@ -230,12 +238,7 @@ func (m *Model) statusLayout() []statusSegment {
 		text := ansi.Truncate(safe(notice), gap-2, "…")
 		result = append(result, statusSegment{id: "notice", x: x, width: gap, text: text})
 	}
-	for _, segment := range right {
-		segment.x = rightX
-		result = append(result, segment)
-		rightX += segment.width
-	}
-	return result
+	return append(result, right...)
 }
 
 func (m *Model) vimModeBackground() string {
@@ -274,6 +277,9 @@ func (m *Model) statusLine() string {
 		if pureStyle && segment.id == "vim" && modeBackground != "" {
 			fg, bg = "#FFFFFF", modeBackground
 		}
+		if m.hoveredStatusLanguage(segment) {
+			fg, bg = theme.Readable(m.colors.HoverForeground, m.colors.Hover), m.colors.Hover
+		}
 		text.WriteString(row(" "+segment.text+" ", segment.width, fg, bg))
 		x = segment.x + segment.width
 	}
@@ -281,6 +287,12 @@ func (m *Model) statusLine() string {
 		text.WriteString(row("", m.width-x, foreground, background))
 	}
 	return text.String()
+}
+
+func (m *Model) hoveredStatusLanguage(segment statusSegment) bool {
+	return segment.id == "language" && m.modal == "" && m.contextMenu == nil &&
+		m.hoverY == m.height-1 && m.hoverX >= segment.x && m.hoverX < segment.x+segment.width &&
+		m.canSetFileSyntax()
 }
 
 func (m *Model) clickStatus(x int) tea.Cmd {
@@ -306,6 +318,8 @@ func (m *Model) clickStatus(x int) tea.Cmd {
 			return m.openGitHub()
 		case "changes":
 			return m.selectSectionInRepository(changes, m.statusRepository())
+		case "language":
+			return m.openFileSyntaxPicker()
 		}
 	}
 	return nil

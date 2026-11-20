@@ -100,6 +100,14 @@ Run `./bin/vl` from the checkout or copy it into a directory on your `PATH`.
 - **Editor mode.** Run `vl path/to/file` to open a single file in the Vim-like editor.
 - **Preview mode.** Run `vl preview path/to/file` to print syntax-highlighted code in your terminal.
 
+Click the language in the bottom-right status bar or choose **Change Syntax
+Highlighting** from the command palette to set a file's syntax. The choice is
+saved per file and applies to `vl preview` as well. Choose **Auto Detect** to
+detect syntax from the filename or a recognized shebang, such as
+`#!/bin/sh`, `#!/usr/bin/env node`, or
+`#!/usr/bin/env python3`. Choose **Plain Text** to disable syntax highlighting
+for that file.
+
 See [Keyboard shortcuts](docs/KEYBINDINGS.md) for the workbench and
 [Where vl differs from Vim](docs/VIM.md#where-vl-differs-from-vim) for editor keys.
 

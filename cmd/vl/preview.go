@@ -130,6 +130,22 @@ func loadPreviewTheme(override string) (*theme.Theme, error) {
 	return theme.Builtin("dark_modern"), nil
 }
 
+func previewLanguage(path string, firstLine []byte) highlight.LanguageInfo {
+	if record, err := config.FileSyntaxPath(path); err == nil {
+		if id, err := config.LoadFileSyntax(record); err == nil && id != "" {
+			if language := highlight.LanguageByID(id); language.ID != "" {
+				return language
+			}
+		}
+	}
+	language := highlight.Language(path)
+	firstLine = bytes.TrimPrefix(firstLine, []byte("\xef\xbb\xbf"))
+	if bytes.HasPrefix(firstLine, []byte("#!")) {
+		language = language.WithShebang(string(firstLine))
+	}
+	return language
+}
+
 func writePreview(out io.Writer, path string, opt previewOptions) error {
 	info, err := os.Stat(path)
 	if err != nil {
@@ -156,12 +172,16 @@ func writePreview(out io.Writer, path string, opt previewOptions) error {
 		contextStart = max(0, opt.skip-previewContextLines)
 	}
 	var syntax *highlight.Preview
+	var language highlight.LanguageInfo
 	styles := make(map[previewStyle]string)
 	plain := opt.colors == nil && opt.width == 0 && !opt.lineNumbers
 	for index := 0; opt.lines == 0 || index-opt.skip < opt.lines; index++ {
 		line, err := reader.ReadSlice('\n')
 		if len(line) == 0 && err == io.EOF {
 			break
+		}
+		if index == 0 && opt.colors != nil {
+			language = previewLanguage(path, line)
 		}
 		shortened := err == bufio.ErrBufferFull
 		if index >= contextStart {
@@ -202,7 +222,7 @@ func writePreview(out io.Writer, path string, opt previewOptions) error {
 		visible := index >= opt.skip
 		var spans []highlight.Span
 		if index == contextStart && opt.colors != nil {
-			syntax = highlight.NewPreview(path, opt.colors)
+			syntax = highlight.NewPreview(language, opt.colors)
 		}
 		if syntax != nil && !shortened {
 			spans = syntax.Line(source, visible)

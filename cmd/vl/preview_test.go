@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/foursmith/vl/internal/config"
 	"github.com/foursmith/vl/internal/highlight"
 	"github.com/foursmith/vl/internal/theme"
 )
@@ -48,6 +50,61 @@ func TestPreviewHighlightsFirstTypeScriptLine(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "\x1b[38;2;197;134;192mimport") || ansi.Strip(out.String()) != source {
 		t.Fatalf("first line lost syntax highlighting: %q", out.String())
+	}
+}
+
+func TestPreviewDetectsShellShebangBeforeContextWindow(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "script")
+	line := "if true; then echo hello; fi\n"
+	source := "#!/bin/sh\n" + strings.Repeat("\n", previewContextLines) + line
+	if err := os.WriteFile(path, []byte(source), 0600); err != nil {
+		t.Fatal(err)
+	}
+	var out, stderr bytes.Buffer
+	args := []string{"--skip=" + strconv.Itoa(previewContextLines+1), "--lines=1", "--color=always", "--theme=dark_modern", path}
+	if status := runPreview(args, &out, &stderr); status != 0 {
+		t.Fatalf("status %d: %s", status, stderr.String())
+	}
+	if got := out.String(); got == line || ansi.Strip(got) != line {
+		t.Fatalf("shell syntax missing from preview: %q", got)
+	}
+}
+
+func TestPreviewHonorsSavedSyntax(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	path := filepath.Join(t.TempDir(), "script")
+	line := "const greeting = \"hello\";\n"
+	if err := os.WriteFile(path, []byte("#!/bin/sh\n"+line), 0600); err != nil {
+		t.Fatal(err)
+	}
+	record, err := config.FileSyntaxPath(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	render := func(id string) string {
+		t.Helper()
+		if err := config.SaveFileSyntax(record, id); err != nil {
+			t.Fatal(err)
+		}
+		var out, stderr bytes.Buffer
+		args := []string{"--skip=1", "--lines=1", "--color=always", "--theme=dark_modern", path}
+		if status := runPreview(args, &out, &stderr); status != 0 {
+			t.Fatalf("status %d: %s", status, stderr.String())
+		}
+		if got := ansi.Strip(out.String()); got != line {
+			t.Fatalf("preview text = %q, want %q", got, line)
+		}
+		return out.String()
+	}
+	automatic := render("")
+	if manual := render("javascript"); manual == automatic || !strings.Contains(manual, "\x1b[38;2;86;156;214mconst") {
+		t.Fatalf("JavaScript override was not used: %q", manual)
+	}
+	if plain := render("text"); plain != line {
+		t.Fatalf("plain text override retained syntax colors: %q", plain)
+	}
+	if reset := render(""); reset != automatic {
+		t.Fatalf("reset did not restore shebang detection: %q", reset)
 	}
 }
 

@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	textmate "github.com/eugenioenko/textmate-go"
-	"github.com/eugenioenko/textmate-go/grammars"
 
 	"github.com/foursmith/vl/internal/theme"
 )
@@ -25,17 +24,14 @@ type Session struct {
 	spans  map[*textmate.Token][]Span
 }
 
-func (s *Session) Lines(ctx context.Context, path, text string, colors *theme.Theme) [][]Span {
-	if len(text) > MaxBytes || ctx.Err() != nil {
+func (s *Session) Lines(ctx context.Context, language LanguageInfo, text string, colors *theme.Theme) [][]Span {
+	scope := language.Scope
+	if scope == "" || len(text) > MaxBytes || ctx.Err() != nil {
 		return nil
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if ctx.Err() != nil {
-		return nil
-	}
-	scope := grammars.ScopeForFilename(path)
-	if scope == "" {
 		return nil
 	}
 	if s.doc == nil || s.scope != scope {

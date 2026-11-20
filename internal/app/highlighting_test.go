@@ -19,7 +19,7 @@ func TestHighlightSessionSurvivesEditsAndUndo(t *testing.T) {
 		t.Helper()
 		request := m.scheduleHighlight()().(highlightStartMsg).request
 		m.finishHighlight(m.startHighlight(request)().(highlightResultMsg))
-		want := new(highlight.Session).Lines(m.ctx, request.path, request.text, request.theme)
+		want := new(highlight.Session).Lines(m.ctx, highlight.Language(m.document().Path), request.text, request.theme)
 		if !reflect.DeepEqual(m.tabs[0].spans, want) {
 			t.Fatal("incremental app result differs from fresh highlight")
 		}

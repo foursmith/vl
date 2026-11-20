@@ -67,6 +67,7 @@ func (m *Model) openDocument(path string, preview bool) bool {
 func (m *Model) insertTab(next tab) int {
 	defer m.syncWatch()
 	m.restoreFilePosition(&next)
+	m.restoreFileSyntax(&next)
 	m.keepEditedTabs()
 	if next.preview {
 		for i := range m.tabs {
