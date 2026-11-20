@@ -469,6 +469,7 @@ func TestStatusRemoteActionsTargetChildRepository(t *testing.T) {
 		t.Fatalf("expected child to be one behind: %+v", state)
 	}
 	m.openFile("README.md")
+	m.SetSidebarLayout(38, false)
 	drain(t, m, m.selectSection(history))
 	clickHistoryAction := func(id, title string) {
 		t.Helper()

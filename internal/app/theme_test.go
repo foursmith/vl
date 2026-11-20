@@ -499,7 +499,7 @@ func TestPickerHasContinuousFrame(t *testing.T) {
 	for i := 0; i < layout.count; i++ {
 		cells := uv.NewStyledString(lines[layout.y+3+i]).Lines(ansi.GraphemeWidth)[0]
 		for _, x := range []int{layout.x, layout.x + layout.width - 1} {
-			if cells[x].Content != "│" || !sameColor(cells[x].Style.Fg, lipgloss.Color(m.colors.PopupBorder)) || !sameColor(cells[x].Style.Bg, lipgloss.Color(m.colors.Popup)) {
+			if cells[x].Content != "│" || !sameColor(cells[x].Style.Fg, lipgloss.Color(m.colors.PopupBorder)) || !sameColor(cells[x].Style.Bg, lipgloss.Color(m.colors.Panel)) {
 				t.Fatal("picker edge vanished on result row")
 			}
 		}

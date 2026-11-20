@@ -16,7 +16,7 @@ func (m *Model) pickerHeading(a action) bool {
 }
 
 func (m *Model) pickerRow(a action, index, width, hovered int) string {
-	fg, bg := m.colors.PopupForeground, m.colors.Popup
+	fg, bg := m.colors.PopupForeground, m.colors.Panel
 	if m.pickerHeading(a) {
 		label := ansi.Truncate("  "+a.label, width, "…")
 		if remaining := width - ansi.StringWidth(label); remaining > 2 {

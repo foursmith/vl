@@ -21,11 +21,12 @@ func TestNavigationShowsChangesAndOpenPullRequestCounts(t *testing.T) {
 		m.snapshot.Changes = make([]gitservice.Change, tc.count)
 		m.openPullRequestCount = tc.count
 		lines := m.sidebarLines()
-		if got := plain(lines[0])[8:13]; got != "G   H" {
+		offset := m.sideX()
+		if got := plain(lines[0])[offset+8 : offset+13]; got != "G   H" {
 			t.Fatalf("changes count displaced the navigation icons: %q", got)
 		}
 		cells := uv.NewStyledString(lines[1]).Lines(ansi.GraphemeWidth)[0]
-		for _, start := range []int{2 * sidebarNavigationWidth, 4 * sidebarNavigationWidth} {
+		for _, start := range []int{offset + 2*sidebarNavigationWidth, offset + 4*sidebarNavigationWidth} {
 			if got := plain(lines[1])[start : start+sidebarNavigationWidth]; got != tc.want {
 				t.Errorf("count %d at column %d rendered %q, want %q", tc.count, start, got, tc.want)
 			}
@@ -52,9 +53,9 @@ func TestNavigationAndTabsShareCompactHeaderWithoutTitleBar(t *testing.T) {
 		t.Fatalf("navigation and tabs are not aligned: %q", first)
 	}
 	sidebar := m.sidebarLines()
-	for i, item := range m.navigation() {
-		x := 4 * i
-		if strings.TrimRight(ansi.Strip(ansi.Cut(sidebar[0], x, x+4)), " ") != item.glyph {
+	for _, item := range m.navigation() {
+		x := m.sideX() + item.x
+		if strings.TrimRight(ansi.Strip(ansi.Cut(sidebar[0], x, x+item.width)), " ") != item.glyph {
 			t.Fatalf("navigation icon %q did not start at column %d", item.glyph, x)
 		}
 	}
@@ -126,7 +127,7 @@ func TestDialogClicksDismissOnlyOutside(t *testing.T) {
 		if kind != "confirm" && kind != "commit" {
 			cells := uv.NewStyledString(layout.content[1]).Lines(ansi.GraphemeWidth)[0]
 			for _, cell := range cells {
-				if !sameColor(cell.Style.Bg, lipgloss.Color(m.colors.Popup)) {
+				if !sameColor(cell.Style.Bg, lipgloss.Color(m.colors.Panel)) {
 					t.Fatalf("%s dialog input must share the frame background", kind)
 				}
 			}

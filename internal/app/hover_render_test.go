@@ -58,7 +58,8 @@ func TestAllSidebarTreesShareHoverRendering(t *testing.T) {
 				y := headerHeight + i
 				m.Update(tea.MouseMotionMsg{X: 8, Y: y})
 				assertFreshHoverFrame(t, m)
-				cells := uv.NewStyledString(m.sidebarLines()[y]).Lines(ansi.GraphemeWidth)[0]
+				content := ansi.Cut(m.sidebarLines()[y], m.sideX(), m.sideWidth())
+				cells := uv.NewStyledString(content).Lines(ansi.GraphemeWidth)[0]
 				for _, cell := range cells {
 					if !sameColor(cell.Style.Bg, lipgloss.Color(theme.Builtin("dark_modern").Palette().Hover)) {
 						t.Fatal("tree row did not use the shared hover background")
@@ -115,7 +116,7 @@ func TestHoverActionFramesMatchFullRender(t *testing.T) {
 	m.View()
 	for i, entry := range m.items {
 		y := headerHeight + i - m.sideTop
-		for _, action := range m.changeRowActions(entry, m.sideWidth()) {
+		for _, action := range m.changeRowActions(entry, m.sidebarContentWidth()) {
 			m.Update(tea.MouseMotionMsg{X: m.sideX() + action.x + 1, Y: y})
 			assertFreshHoverFrame(t, m)
 		}

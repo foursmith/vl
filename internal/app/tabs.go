@@ -316,6 +316,10 @@ type tabSlot struct {
 	control         int
 }
 
+func (s tabSlot) contains(x int) bool {
+	return x >= s.x && x < s.x+s.width
+}
+
 func (m *Model) tabLabel(index int) string {
 	t := m.tabs[index]
 	label := filepath.Base(t.path())
@@ -437,48 +441,80 @@ func (m *Model) doubleClick(key string) bool {
 	return double
 }
 
-func (m *Model) clickTab(msg tea.MouseClickMsg) tea.Cmd {
+func (m *Model) tabSlotAt(x int) (tabSlot, bool) {
+	if x < 0 {
+		return tabSlot{}, false
+	}
 	for _, slot := range m.tabLayout() {
-		x := msg.X - m.mainX()
-		if x < slot.x || x >= slot.x+slot.width {
-			continue
+		if slot.contains(x) {
+			return slot, true
 		}
-		if slot.control != 0 {
-			if msg.Button == tea.MouseLeft {
-				count := len(m.tabs)
-				m.tabStart = min(max(0, count-1), max(0, m.tabStart+slot.control))
-			}
-			return nil
-		}
-		close := msg.Button == tea.MouseMiddle || msg.Y == tabRow && x >= slot.x+slot.width-3
-		if close {
-			m.lastClickKey = ""
-			return m.closeTabAt(slot.index)
-		}
-		m.lastClickKey = ""
-		m.activateTab(slot.index)
+	}
+	return tabSlot{}, false
+}
+
+func (m *Model) tabHoverColumn() int {
+	if m.hoverY != tabRow || m.editorOnly || m.modal != "" || m.contextMenu != nil ||
+		m.resizingSidebar || m.mainShowsSidebar() {
+		return -1
+	}
+	return m.hoverX - m.mainX()
+}
+
+func (m *Model) hoveredTab() int {
+	if slot, ok := m.tabSlotAt(m.tabHoverColumn()); ok && slot.control == 0 {
+		return slot.index
+	}
+	return -1
+}
+
+func (m *Model) clickTab(msg tea.MouseClickMsg) tea.Cmd {
+	x := msg.X - m.mainX()
+	slot, ok := m.tabSlotAt(x)
+	if !ok {
 		return nil
 	}
+	if slot.control != 0 {
+		if msg.Button == tea.MouseLeft {
+			count := len(m.tabs)
+			m.tabStart = min(max(0, count-1), max(0, m.tabStart+slot.control))
+		}
+		return nil
+	}
+	m.lastClickKey = ""
+	if msg.Button == tea.MouseMiddle || msg.Button == tea.MouseLeft && msg.Y == tabRow &&
+		x >= slot.x+slot.width-3 && (slot.index == m.activeTab || slot.contains(m.tabHoverColumn())) {
+		return m.closeTabAt(slot.index)
+	}
+	m.activateTab(slot.index)
 	return nil
 }
 
 func (m *Model) tabBar() string {
 	w := m.mainWidth()
+	hoverX := m.tabHoverColumn()
 	text := ""
 	x := 0
 	for _, slot := range m.tabLayout() {
-		text += row("", slot.x-x, m.colors.Foreground, m.colors.TabBarBackground)
+		text += row("", slot.x-x, m.colors.Foreground, m.colors.Panel)
 		if slot.control != 0 {
 			glyph := " " + m.symbol(symbolLeft) + " "
 			if slot.control > 0 {
 				glyph = " " + m.symbol(symbolRight) + " "
 			}
-			text += row(glyph, slot.width, theme.Readable(m.colors.Muted, m.colors.TabBarBackground), m.colors.TabBarBackground)
+			text += row(glyph, slot.width, theme.Readable(m.colors.Muted, m.colors.Panel), m.colors.Panel)
 		} else {
 			active := slot.index == m.activeTab
-			fg, bg := m.colors.TabInactiveForeground, m.colors.TabInactiveBackground
+			hovered := slot.contains(hoverX)
+			fg, bg := m.colors.TabInactiveForeground, m.colors.Panel
 			if active {
 				fg, bg = m.colors.TabActiveForeground, m.colors.TabActiveBackground
+			} else if hovered {
+				bg = m.colors.Hover
+				if m.colors.HoverForeground != "" {
+					fg = m.colors.HoverForeground
+				}
+				fg = theme.Readable(fg, bg)
 			}
 			t := m.tabs[slot.index]
 			icon := fileicon.For(t.path(), m.nerd)
@@ -497,9 +533,9 @@ func (m *Model) tabBar() string {
 			}
 			label = ansi.Truncate(label, max(0, slot.width-7-ansi.StringWidth(suffix)), "…") + suffix
 			label += strings.Repeat(" ", max(0, slot.width-7-ansi.StringWidth(label)))
-			closeColor := m.colors.Muted
-			if active {
-				closeColor = m.colors.TabActiveForeground
+			closeButton := "   "
+			if active || hovered {
+				closeButton = theme.TextStyle(m.colors.TabActiveForeground, bg).Render(" " + m.symbol(symbolClose) + " ")
 			}
 			divider := row(" ", 1, fg, bg)
 			if m.colors.TabBorder != "" {
@@ -509,12 +545,12 @@ func (m *Model) tabBar() string {
 			if active {
 				indicator = theme.Style(m.colors.TabActiveBorderTop, bg).Render("▎")
 			}
-			content := indicator + row(glyph, 2, color, bg) + theme.TextStyle(fg, bg).Italic(preview).Underline(m.monochrome && active).Render(label) + theme.TextStyle(closeColor, bg).Render(" "+m.symbol(symbolClose)+" ") + divider
+			content := indicator + row(glyph, 2, color, bg) + theme.TextStyle(fg, bg).Italic(preview).Underline(m.monochrome && active).Render(label) + closeButton + divider
 			text += row(content, slot.width, fg, bg)
 		}
 		x = slot.x + slot.width
 	}
-	return row(text, w, m.colors.Foreground, m.colors.TabBarBackground)
+	return row(text, w, m.colors.Foreground, m.colors.Panel)
 }
 
 func (m *Model) fileDirty(path string) bool {

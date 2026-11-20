@@ -116,7 +116,7 @@ func (m *Model) contentToolbar() string {
 	if w < 68 {
 		buttonColor = m.colors.Muted
 	}
-	text += row(" "+button.label+" ", button.width, buttonColor, m.colors.Panel)
+	text += row(" "+button.label+" ", button.width, buttonColor, m.colors.Background)
 	return row(text, w, m.colors.Foreground, m.colors.Background)
 }
 

@@ -6,11 +6,20 @@ import (
 )
 
 const (
-	minSidebarWidth = 28
-	minMainWidth    = 40
+	minSidebarWidth    = 28
+	minMainWidth       = 40
+	minDockedWidth     = 70
+	sidebarLeftPadding = 1
 )
 
-func (m *Model) sideShown() bool { return !m.editorOnly && m.sidebarVisible && m.width >= 70 }
+func (m *Model) sideShown() bool {
+	return !m.editorOnly && m.sidebarVisible && m.width >= minDockedWidth
+}
+
+func (m *Model) mainShowsSidebar() bool {
+	return m.width < minDockedWidth && m.sidebar && m.sidebarVisible
+}
+
 func (m *Model) sideWidth() int {
 	if !m.sideShown() {
 		return 0
@@ -25,13 +34,18 @@ func (m *Model) sidebarContentWidth() int {
 	if !m.sideShown() {
 		return m.width
 	}
-	return m.sideWidth()
+	return m.sideWidth() - sidebarLeftPadding
 }
+
+// sideX is the screen column where sidebar content begins.
 func (m *Model) sideX() int {
-	if m.sideShown() && m.sidebarRight {
-		return m.mainWidth() + 1
+	if !m.sideShown() {
+		return 0
 	}
-	return 0
+	if m.sidebarRight {
+		return m.dividerX() + 1 + sidebarLeftPadding
+	}
+	return sidebarLeftPadding
 }
 func (m *Model) dividerX() int {
 	if m.sidebarRight {

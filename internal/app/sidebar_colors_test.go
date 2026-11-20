@@ -12,33 +12,73 @@ import (
 	"github.com/foursmith/vl/internal/theme"
 )
 
-func TestSidebarDividerFollowsSurfaceColors(t *testing.T) {
+func TestSidebarDividerMatchesTabBarAndEditorBackgrounds(t *testing.T) {
 	m := newHoverRenderModel(t)
 	const y = 4
 	assertCell := func(glyph, foreground string) {
 		t.Helper()
 		screen := uv.NewScreenBuffer(m.width, m.height)
 		uv.NewStyledString(m.View().Content).Draw(screen, uv.Rect(0, 0, m.width, m.height))
-		cell := screen.CellAt(m.dividerX(), y)
-		if cell.Content != glyph ||
-			(foreground != "" && !sameColor(cell.Style.Fg, lipgloss.Color(foreground))) ||
-			!sameColor(cell.Style.Bg, lipgloss.Color(m.colors.Panel)) {
-			t.Fatalf("unexpected divider cell: %#v", cell)
+		for _, expected := range []struct {
+			y          int
+			background string
+		}{{tabRow, m.colors.Panel}, {y, m.colors.Background}} {
+			cell := screen.CellAt(m.dividerX(), expected.y)
+			if cell.Content != glyph ||
+				(foreground != "" && !sameColor(cell.Style.Fg, lipgloss.Color(foreground))) ||
+				!sameColor(cell.Style.Bg, lipgloss.Color(expected.background)) {
+				t.Fatalf("unexpected divider cell on row %d: %#v", expected.y, cell)
+			}
 		}
 	}
 
-	m.SetColorTheme(theme.Builtin("dark_modern"))
-	assertCell(" ", "")
-	m.Update(tea.MouseMotionMsg{X: m.dividerX(), Y: y})
-	assertCell("│", m.colors.Accent)
-	m.Update(tea.MouseMotionMsg{X: m.mainX() + 8, Y: y})
-	assertCell(" ", "")
+	for _, right := range []bool{false, true} {
+		m.SetColorTheme(theme.Builtin("dark_modern"))
+		m.SetSidebarLayout(38, right)
+		assertCell(" ", "")
+		m.Update(tea.MouseMotionMsg{X: m.dividerX(), Y: y})
+		assertCell("│", m.colors.Accent)
+		m.Update(tea.MouseClickMsg{X: m.dividerX(), Y: y, Button: tea.MouseLeft})
+		m.Update(tea.MouseMotionMsg{X: m.dividerX(), Y: -1, Button: tea.MouseLeft})
+		assertCell("│", m.colors.Accent)
+		m.Update(tea.MouseReleaseMsg{X: m.dividerX(), Y: -1, Button: tea.MouseLeft})
+		m.Update(tea.MouseMotionMsg{X: m.mainX() + 8, Y: y})
+		assertCell(" ", "")
 
-	m.SetColorTheme(decorationTheme(t))
-	if m.colors.SideBarBorder == "" || m.colors.SideBarBorder == m.colors.Panel {
-		t.Fatal("matching surfaces require a visible border")
+		m.SetColorTheme(decorationTheme(t))
+		assertCell(" ", "")
 	}
-	assertCell("│", m.colors.SideBarBorder)
+}
+
+func TestTabBarAndInactiveTabsUseSidebarBackground(t *testing.T) {
+	m := tabWorkspace(t, 2)
+	t.Cleanup(m.Close)
+	th, _ := fixtureTheme(t, "vs-dark", `{"colors":{"sideBar.background":"#332611","editorGroupHeader.tabsBackground":"#141611","tab.inactiveBackground":"#202511","tab.activeBackground":"#231b10"}}`)
+	m.SetColorTheme(th)
+	m.SetSidebarLayout(38, true)
+	m.openFile("file0.go")
+	m.openFile("file1.go")
+
+	screen := uv.NewScreenBuffer(m.width, m.height)
+	uv.NewStyledString(m.View().Content).Draw(screen, uv.Rect(0, 0, m.width, m.height))
+	var activeStart, activeEnd int
+	for _, slot := range m.tabLayout() {
+		if slot.control == 0 && slot.index == m.activeTab {
+			activeStart, activeEnd = slot.x, slot.x+slot.width
+		}
+	}
+	if activeEnd == 0 {
+		t.Fatal("active tab is missing")
+	}
+	for x := 0; x < m.width; x++ {
+		want := m.colors.Panel
+		if x >= activeStart && x < activeEnd {
+			want = m.colors.TabActiveBackground
+		}
+		if bg := screen.CellAt(x, tabRow).Style.Bg; !sameColor(bg, lipgloss.Color(want)) {
+			t.Fatalf("header column %d has background %v, want %s", x, bg, want)
+		}
+	}
 }
 
 func TestSelectedFolderKeepsChevronWithoutAnExtraArrow(t *testing.T) {

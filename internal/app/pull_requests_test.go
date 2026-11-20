@@ -120,13 +120,13 @@ esac
 		if reopened.pullRequestsError == nil || len(reopened.pullRequests) != 2 {
 			t.Fatal("failed refresh discarded the cached PRs")
 		}
-		freshFixture := strings.Replace(string(savedFixture), "Fix toolbar", "Update toolbar", 1)
+		freshFixture := strings.Replace(string(savedFixture), "Fix toolbar", "Tune toolbar", 1)
 		if err := os.WriteFile(fixture, []byte(freshFixture), 0600); err != nil {
 			t.Fatal(err)
 		}
 		_, refresh = reopened.Update(tea.KeyPressMsg{Code: tea.KeyF5})
 		drain(t, reopened, refresh)
-		if row := plain(reopened.sidebarLines()[headerHeight+1]); !strings.Contains(row, "#42 Update toolbar") ||
+		if row := plain(reopened.sidebarLines()[headerHeight+1]); !strings.Contains(row, "#42 Tune toolbar") ||
 			reopened.pullRequestsError != nil {
 			t.Fatalf("row after successful refresh = %q, error = %v", row, reopened.pullRequestsError)
 		}
@@ -225,7 +225,7 @@ esac
 	drain(t, m, press(m, "ctrl+5"))
 	m.snapshot.Branch = "main"
 	m.rebuildItems()
-	layout := m.layoutRepositoryRow(m.items[0], m.sideWidth())
+	layout := m.layoutRepositoryRow(m.items[0], m.sidebarContentWidth())
 	actions := layout.actions
 	clickAction := func(action rowAction) tea.Cmd {
 		_, cmd := m.Update(tea.MouseClickMsg{Button: tea.MouseLeft, X: m.sideX() + action.x + 1, Y: headerHeight})

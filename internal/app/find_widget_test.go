@@ -97,7 +97,7 @@ func TestSharedFindCompactRowsAndUnselectedCount(t *testing.T) {
 	for y, line := range lines {
 		cells := uv.NewStyledString(line).Lines(ansi.GraphemeWidth)[0]
 		for x, cell := range cells {
-			if !sameColor(cell.Style.Bg, lipgloss.Color(m.colors.Popup)) {
+			if !sameColor(cell.Style.Bg, lipgloss.Color(m.colors.Panel)) {
 				t.Fatalf("find box background interrupted at (%d, %d)", x, y)
 			}
 		}
@@ -301,7 +301,7 @@ func TestSharedFindInputOwnerKeepsOwnWidth(t *testing.T) {
 	}
 	m.sidebar = true
 	m.focusSearch(0)
-	m.searchLines(nil, m.sideWidth())
+	m.searchLines(nil, m.sidebarContentWidth())
 	inputWidth = m.search.query.Width()
 	m.View()
 	if m.search.query.Width() != inputWidth {

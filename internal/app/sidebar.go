@@ -23,7 +23,8 @@ const (
 
 func (m *Model) sidebarAt(x int) bool {
 	if m.sideShown() {
-		return x >= m.sideX() && x < m.sideX()+m.sideWidth()
+		start := m.sideX() - sidebarLeftPadding
+		return x >= start && x < start+m.sideWidth()
 	}
 	return x >= 0 && x < m.width && m.sidebar && m.sidebarVisible
 }
@@ -38,7 +39,28 @@ func (m *Model) navigation() []navigationItem {
 	}
 }
 
-func (m *Model) sidebarLines() []string { return m.sidebarLinesWidth(m.sideWidth()) }
+func (m *Model) sidebarNavigationAt(x int) (section, bool) {
+	// Move the hit area one cell left of the rendered slot.
+	x++
+	for _, item := range m.navigation() {
+		if x >= item.x && x < item.x+item.width {
+			return item.section, true
+		}
+	}
+	return 0, false
+}
+
+func (m *Model) sidebarLines() []string {
+	if !m.sideShown() {
+		return nil
+	}
+	lines := m.sidebarLinesWidth(m.sidebarContentWidth())
+	gutter := row("", sidebarLeftPadding, m.colors.SideForeground, m.colors.Panel)
+	for y := range lines {
+		lines[y] = gutter + lines[y]
+	}
+	return lines
+}
 
 func (m *Model) hoveredSidebarRow() int {
 	if m.resizingSidebar || m.modal != "" || m.hoverX < 0 || !m.sidebarAt(m.hoverX) || m.hoverY < headerHeight || m.hoverY >= m.bodyHeight() {
@@ -234,13 +256,11 @@ func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 	msg.X -= m.sideX()
 	y := msg.Y
 	if y >= 0 && y < headerHeight {
-		for _, item := range m.navigation() {
-			if msg.X >= item.x && msg.X < item.x+item.width {
-				if item.section == search {
-					return m.openSearch()
-				}
-				return m.selectSection(item.section)
+		if target, ok := m.sidebarNavigationAt(msg.X); ok {
+			if target == search {
+				return m.openSearch()
 			}
+			return m.selectSection(target)
 		}
 		return nil
 	}

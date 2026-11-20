@@ -50,6 +50,35 @@ func TestSidebarDragBothSidesAndBounds(t *testing.T) {
 	}
 }
 
+func TestSidebarLeftPaddingOnBothSides(t *testing.T) {
+	m := explorerWorkspace(t)
+	for _, right := range []bool{false, true} {
+		m.SetSidebarLayout(38, right)
+		start := 0
+		if right {
+			start = m.dividerX() + 1
+		}
+		frame := strings.Split(m.View().Content, "\n")
+		header := plain(ansi.Cut(frame[0], start, start+m.sideWidth()))
+		prefix := " " + m.navigation()[0].glyph
+		if !strings.HasPrefix(header, prefix) {
+			t.Fatalf("right=%v sidebar begins with %q, want prefix %q", right, header, prefix)
+		}
+		for _, line := range frame[:m.bodyHeight()] {
+			if plain(ansi.Cut(line, start, start+1)) != " " {
+				t.Fatalf("right=%v sidebar content occupies the padding: %q", right, plain(line))
+			}
+		}
+		searchX := start + sidebarNavigationWidth
+		_, cmd := m.Update(tea.MouseClickMsg{X: searchX, Y: 0, Button: tea.MouseLeft})
+		drain(t, m, cmd)
+		if m.section != search {
+			t.Fatalf("right=%v sidebar missed the first cell of Search", right)
+		}
+		drain(t, m, m.selectSection(explorer))
+	}
+}
+
 func TestSidebarRightGeometryAndMouseTargets(t *testing.T) {
 	m := explorerWorkspace(t)
 	m.SetSidebarLayout(38, true)
@@ -82,7 +111,7 @@ func TestSidebarRightGeometryAndMouseTargets(t *testing.T) {
 			for y := range 2 {
 				for dx := range nav.width {
 					drain(t, m, m.selectSection(explorer))
-					_, cmd := m.Update(tea.MouseClickMsg{X: m.sideX() + nav.x + dx, Y: y, Button: tea.MouseLeft})
+					_, cmd := m.Update(tea.MouseClickMsg{X: m.sideX() + nav.x - 1 + dx, Y: y, Button: tea.MouseLeft})
 					drain(t, m, cmd)
 					if m.section != changes {
 						t.Fatalf("right sidebar navigation missed cell (%d, %d)", dx, y)

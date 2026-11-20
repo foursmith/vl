@@ -61,12 +61,6 @@ func (t *Theme) makePalette() Palette {
 	p.LineNumber = t.Color("editorLineNumber.foreground")
 	p.LineNumberActive = t.Color("editorLineNumber.activeForeground")
 	p.Border = get("panel.border", p.Panel)
-	if p.Panel == p.Background {
-		p.SideBarBorder = get("sideBar.border", p.Panel)
-		if p.SideBarBorder == p.Panel {
-			p.SideBarBorder = distinguish(p.Panel, p.Panel, Readable(p.SideForeground, p.Panel), 1.4)
-		}
-	}
 	p.FocusBorder = get("focusBorder", p.Panel)
 	p.FocusOutline = t.Color("contrastActiveBorder")
 	p.Accent = t.Color("textLink.foreground")
@@ -112,20 +106,17 @@ func (t *Theme) makePalette() Palette {
 	p.GitStageDeleted = t.Color("gitDecoration.stageDeletedResourceForeground")
 	p.GitSubmodule = t.Color("gitDecoration.submoduleResourceForeground")
 	p.Ignored = t.Color("gitDecoration.ignoredResourceForeground")
-	p.Popup = p.Panel
 	p.PopupForeground = t.colorOr("quickInput.foreground", t.Color("foreground"))
-	p.PopupSelection = p.selectionTint(get("quickInputList.focusBackground", p.Popup), p.Popup, 1.6)
+	p.PopupSelection = p.selectionTint(get("quickInputList.focusBackground", p.Panel), p.Panel, 1.6)
 	p.PopupSelectionForeground = t.colorOr("quickInputList.focusForeground", p.PopupForeground)
 	// A terminal cannot paint VS Code's widget shadow. This edge is an explicit
 	// terminal adaptation, separate from the raw widget.border registration.
-	p.PopupBorder = get("widget.border", p.Popup)
-	p.PopupBorder = distinguish(p.PopupBorder, p.Popup, Composite(p.PopupForeground, p.Popup), 1.6)
+	p.PopupBorder = get("widget.border", p.Panel)
+	p.PopupBorder = distinguish(p.PopupBorder, p.Panel, Composite(p.PopupForeground, p.Panel), 1.6)
 	p.Input = get("input.background", get("quickInput.background", p.Background))
 	p.InputForeground = t.Color("input.foreground")
 	p.InputPlaceholder = t.Color("input.placeholderForeground")
-	p.TabBarBackground = get("editorGroupHeader.tabsBackground", p.Background)
-	p.TabActiveBackground = get("tab.activeBackground", p.TabBarBackground)
-	p.TabInactiveBackground = get("tab.inactiveBackground", p.TabBarBackground)
+	p.TabActiveBackground = get("tab.activeBackground", p.Panel)
 	p.TabActiveForeground = t.Color("tab.activeForeground")
 	p.TabInactiveForeground = t.Color("tab.inactiveForeground")
 	p.TabBorder = t.Color("tab.border")
@@ -164,12 +155,11 @@ func (t *Theme) makePalette() Palette {
 	p.FoldBackground = t.Color("editor.foldBackground")
 	p.Strong = t.Color("strongForeground")
 	p.Brand = t.Color("disabledForeground")
-	p.MenuBackground = p.Panel
 	p.MenuForeground = t.colorOr("menu.foreground", t.Color("foreground"))
-	p.MenuSelection = p.selectionTint(get("menu.selectionBackground", p.MenuBackground), p.MenuBackground, 1.6)
+	p.MenuSelection = p.selectionTint(get("menu.selectionBackground", p.Panel), p.Panel, 1.6)
 	p.MenuSelectionForeground = t.colorOr("menu.selectionForeground", p.MenuForeground)
-	p.MenuBorder = get("menu.border", p.MenuBackground)
-	p.MenuBorder = distinguish(p.MenuBorder, p.MenuBackground, Composite(p.MenuForeground, p.MenuBackground), 1.6)
+	p.MenuBorder = get("menu.border", p.Panel)
+	p.MenuBorder = distinguish(p.MenuBorder, p.Panel, Composite(p.MenuForeground, p.Panel), 1.6)
 	return p
 }
 

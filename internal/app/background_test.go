@@ -139,7 +139,8 @@ func TestSelectedFilePaintsIconTextAndPadding(t *testing.T) {
 	m.items = []item{{file: "test.go", label: "test.go"}}
 	m.selected = 0
 	m.sidebar = true
-	line := uv.NewStyledString(m.sidebarLines()[headerHeight]).Lines(ansi.GraphemeWidth)[0]
+	content := ansi.Cut(m.sidebarLines()[headerHeight], m.sideX(), m.sideWidth())
+	line := uv.NewStyledString(content).Lines(ansi.GraphemeWidth)[0]
 	for i, cell := range line {
 		if !sameColor(cell.Style.Bg, lipgloss.Color(theme.Builtin("dark_modern").Palette().Selection)) {
 			t.Fatalf("selected cell %d (%q) has background %v", i, cell.Content, cell.Style.Bg)

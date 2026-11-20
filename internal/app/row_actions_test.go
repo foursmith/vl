@@ -25,7 +25,7 @@ func hoverAction(t *testing.T, m *Model, path, id string) (rowAction, int) {
 	m.selected = index
 	m.ensureSidebar()
 	y := headerHeight + index - m.sideTop
-	for _, action := range m.changeRowActions(m.items[index], m.sideWidth()) {
+	for _, action := range m.changeRowActions(m.items[index], m.sidebarContentWidth()) {
 		if action.id == id {
 			m.Update(tea.MouseMotionMsg{X: m.sideX() + action.x + 1, Y: y})
 			return action, y
@@ -73,7 +73,7 @@ func TestHoverStageUnstageAndOpenUseClickedFile(t *testing.T) {
 	m := explorerWorkspace(t)
 	drain(t, m, m.selectSection(changes))
 	a, y := hoverAction(t, m, "cmd/main.go", "stage")
-	_, cmd := m.Update(tea.MouseClickMsg{X: a.x + 1, Y: y, Button: tea.MouseLeft})
+	_, cmd := m.Update(tea.MouseClickMsg{X: m.sideX() + a.x + 1, Y: y, Button: tea.MouseLeft})
 	if cmd == nil {
 		t.Fatal("stage did not schedule work")
 	}
@@ -81,19 +81,19 @@ func TestHoverStageUnstageAndOpenUseClickedFile(t *testing.T) {
 	if m.current() == nil || !m.current().staged || m.current().change.Path != "cmd/main.go" {
 		t.Fatal("hover stage lost target identity")
 	}
-	for _, action := range m.changeRowActions(*m.current(), m.sideWidth()) {
+	for _, action := range m.changeRowActions(*m.current(), m.sidebarContentWidth()) {
 		if action.id == "discard" {
 			t.Fatal("index row exposes a worktree discard action")
 		}
 	}
 	a, y = hoverAction(t, m, "cmd/main.go", "unstage")
-	_, cmd = m.Update(tea.MouseClickMsg{X: a.x + 1, Y: y, Button: tea.MouseLeft})
+	_, cmd = m.Update(tea.MouseClickMsg{X: m.sideX() + a.x + 1, Y: y, Button: tea.MouseLeft})
 	drain(t, m, cmd)
 	if m.current() == nil || m.current().staged {
 		t.Fatal("hover unstage failed")
 	}
 	a, y = hoverAction(t, m, "cmd/main.go", "open")
-	_, cmd = m.Update(tea.MouseClickMsg{X: a.x + 1, Y: y, Button: tea.MouseLeft})
+	_, cmd = m.Update(tea.MouseClickMsg{X: m.sideX() + a.x + 1, Y: y, Button: tea.MouseLeft})
 	drain(t, m, cmd)
 	if !m.editing() || filepath.Base(m.document().Path) != "main.go" {
 		t.Fatal("open action did not open file")
@@ -108,7 +108,7 @@ func TestHoverDiscardRequiresConfirmationAndHonorsCancel(t *testing.T) {
 	drain(t, m, m.selectSection(changes))
 	path := filepath.Join(m.repo.Root, "cmd/main.go")
 	a, y := hoverAction(t, m, "cmd/main.go", "discard")
-	m.Update(tea.MouseClickMsg{X: a.x + 1, Y: y, Button: tea.MouseLeft})
+	m.Update(tea.MouseClickMsg{X: m.sideX() + a.x + 1, Y: y, Button: tea.MouseLeft})
 	if m.modal != "confirm" || !strings.Contains(m.confirmationDetail, "cannot be recovered") || m.busy {
 		t.Fatal("untracked deletion did not require explicit confirmation")
 	}
@@ -117,7 +117,7 @@ func TestHoverDiscardRequiresConfirmationAndHonorsCancel(t *testing.T) {
 		t.Fatal("cancel removed untracked file")
 	}
 	a, y = hoverAction(t, m, "cmd/main.go", "discard")
-	m.Update(tea.MouseClickMsg{X: a.x + 1, Y: y, Button: tea.MouseLeft})
+	m.Update(tea.MouseClickMsg{X: m.sideX() + a.x + 1, Y: y, Button: tea.MouseLeft})
 	drain(t, m, press(m, "enter"))
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatalf("confirmed discard did not remove file: %v", err)
@@ -129,7 +129,7 @@ func TestHoverActionsDisableDuringGitOperation(t *testing.T) {
 	drain(t, m, m.selectSection(changes))
 	a, y := hoverAction(t, m, "cmd/main.go", "stage")
 	m.busy = true
-	_, cmd := m.Update(tea.MouseClickMsg{X: a.x + 1, Y: y, Button: tea.MouseLeft})
+	_, cmd := m.Update(tea.MouseClickMsg{X: m.sideX() + a.x + 1, Y: y, Button: tea.MouseLeft})
 	if cmd != nil || !strings.Contains(m.notice, "Wait") {
 		t.Fatal("busy hover button started another operation")
 	}

@@ -86,7 +86,7 @@ func (m *Model) finishImageRaster(result imageRasterResult) {
 }
 
 func (m *Model) visibleImageSurfaces(visit func(*imageState, int, int)) {
-	if !m.kittySupported || m.width < 30 || m.height < 8 || m.width < 70 && m.sidebar && m.sidebarVisible {
+	if !m.kittySupported || m.width < 30 || m.height < 8 || m.mainShowsSidebar() {
 		return
 	}
 	w, h := m.mainWidth(), m.contentHeight()

@@ -118,7 +118,7 @@ func (t *tab) setEditorDisplayTop(row int) {
 }
 
 func (m *Model) visibleMarkdownImages(visit func(*markdownImageBlock)) {
-	if !m.editing() || !m.kittySupported || m.width < 30 || m.height < 8 || m.width < 70 && m.sidebar && m.sidebarVisible {
+	if !m.editing() || !m.kittySupported || m.width < 30 || m.height < 8 || m.mainShowsSidebar() {
 		return
 	}
 	t := &m.tabs[m.activeTab]

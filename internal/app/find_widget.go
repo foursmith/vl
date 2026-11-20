@@ -28,7 +28,7 @@ const (
 )
 
 func (m *Model) fileFindHeight() int {
-	if !m.findWidget.visible || m.editorDocument() == nil || m.width < 70 && m.sidebar && m.sidebarVisible {
+	if !m.findWidget.visible || m.editorDocument() == nil || m.mainShowsSidebar() {
 		return 0
 	}
 	return min(m.fileFindFrameHeight(), max(0, m.bodyHeight()-m.contentRow()))
@@ -298,7 +298,7 @@ func (m *Model) fileFindControls(w int) []searchPanelControl {
 const searchFieldInset = 3
 
 func (m *Model) frameSearchBox(lines []string, width, height int, title string) {
-	bg := m.colors.Popup
+	bg := m.colors.Panel
 	border := theme.Style(m.colors.PopupBorder, bg)
 	if title = ansi.Truncate(title, max(0, width-6), "…"); title == "" {
 		lines[0] = inputBorderRule(border, width, "╭", "╮")
@@ -337,7 +337,7 @@ func (m *Model) searchFieldLine(input *textinput.Model, active bool, textEnd, bo
 		shown.Blur()
 	}
 	text := ansi.Truncate(m.inputView(shown, x+inset, y), max(0, textEnd-inset-1), "")
-	bg := m.colors.Popup
+	bg := m.colors.Panel
 	return row(label, inset, theme.Readable(m.colors.Muted, bg), bg) + row(text, boxEnd-inset, m.colors.InputForeground, bg)
 }
 func (m *Model) paintSearchControls(lines []string, w int, controls []searchPanelControl, originX, originY int, background string) {
@@ -348,7 +348,7 @@ func (m *Model) paintSearchControls(lines []string, w int, controls []searchPane
 		fg := m.colors.Accent
 		bg := background
 		if c.embedded {
-			fg, bg = m.colors.InputForeground, m.colors.Popup
+			fg, bg = m.colors.InputForeground, m.colors.Panel
 			if c.id == "replaceAll" {
 				fg = m.colors.Accent
 			}
@@ -407,7 +407,7 @@ func (m *Model) fileFindLines() []string {
 	if m.search.replace && m.editing() {
 		field(&m.search.replacement, 1, fileReplaceRow, "Replace")
 	}
-	m.paintSearchControls(lines, w, controls, m.fileFindX(), m.contentRow(), m.colors.Popup)
+	m.paintSearchControls(lines, w, controls, m.fileFindX(), m.contentRow(), m.colors.Panel)
 	m.frameSearchBox(lines, w, m.fileFindFrameHeight(), m.fileFindStatus())
 	return lines
 }

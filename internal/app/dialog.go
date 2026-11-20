@@ -189,11 +189,11 @@ func (m *Model) dialogLayout() dialogLayout {
 		return m.gitMessageLayout()
 	}
 	w := max(6, min(76, m.width-4))
-	paint := func(text, fg string) string { return row(" "+text, w-2, fg, m.colors.Popup) }
+	paint := func(text, fg string) string { return row(" "+text, w-2, fg, m.colors.Panel) }
 	x, y := (m.width-w)/2, min(3, max(0, m.height-5))
 	content := []string{
 		paint(safe(m.modalTitle), m.colors.Foreground),
-		row(" "+m.inputView(m.input, x+2, y+2), w-2, m.colors.InputForeground, m.colors.Popup),
+		row(" "+m.inputView(m.input, x+2, y+2), w-2, m.colors.InputForeground, m.colors.Panel),
 	}
 	return dialogLayout{width: w, x: x, y: y, content: content}
 }
@@ -201,7 +201,7 @@ func (m *Model) dialogLayout() dialogLayout {
 func (m *Model) gitMessageLayout() dialogLayout {
 	w := m.gitMessageDialogWidth()
 	l := dialogLayout{width: w, x: (m.width - w) / 2, y: max(0, (m.height-8)/2)}
-	popup, field := m.colors.Popup, m.colors.Input
+	popup, field := m.colors.Panel, m.colors.Input
 	inner := w - 2
 	paint := func(text, fg string) string { return row(text, inner, fg, popup) }
 
@@ -253,7 +253,7 @@ func (m *Model) confirmationLayout() dialogLayout {
 	center := func(text, fg string) string {
 		text = ansi.Truncate(text, w-4, "…")
 		padding := max(0, (w-2-ansi.StringWidth(text))/2)
-		return row(strings.Repeat(" ", padding)+text, w-2, theme.Readable(fg, m.colors.Popup), m.colors.Popup)
+		return row(strings.Repeat(" ", padding)+text, w-2, theme.Readable(fg, m.colors.Panel), m.colors.Panel)
 	}
 	var message []string
 	for i, text := range []string{m.modalTitle, m.confirmationDetail} {
@@ -279,7 +279,7 @@ func (m *Model) confirmationLayout() dialogLayout {
 	}
 	l.maxTop = max(0, len(message)-l.page)
 	l.top = min(max(0, m.dialogTop), l.maxTop)
-	blank := row("", w-2, m.colors.Foreground, m.colors.Popup)
+	blank := row("", w-2, m.colors.Foreground, m.colors.Panel)
 	for range padding {
 		l.content = append(l.content, blank)
 	}
@@ -295,7 +295,7 @@ func (m *Model) confirmationLayout() dialogLayout {
 	text := strings.Repeat(" ", start)
 	for i, action := range actions {
 		label := action.label
-		fg, bg := m.colors.InputForeground, m.colors.Popup
+		fg, bg := m.colors.InputForeground, m.colors.Panel
 		selected := i == m.confirmationButton
 		if selected {
 			fg, bg = m.colors.PopupSelectionForeground, m.colors.PopupSelection
@@ -313,7 +313,7 @@ func (m *Model) confirmationLayout() dialogLayout {
 			text += strings.Repeat(" ", gap)
 		}
 	}
-	l.content = append(l.content, row(text, w-2, m.colors.Foreground, m.colors.Popup))
+	l.content = append(l.content, row(text, w-2, m.colors.Foreground, m.colors.Panel))
 	for range padding {
 		l.content = append(l.content, blank)
 	}

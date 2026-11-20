@@ -36,7 +36,7 @@ func (m *Model) pickerLayout(rows []action) pickerLayout {
 func (m *Model) pickerOverlay(base []string) []string {
 	rows := m.filteredActions()
 	l := m.pickerLayout(rows)
-	bg := m.colors.Popup
+	bg := m.colors.Panel
 	w := l.width - 2
 	border := theme.Style(m.colors.PopupBorder, bg)
 	box := []string{

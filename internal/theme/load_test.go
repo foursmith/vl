@@ -156,13 +156,10 @@ func TestTerminalPopupSeparatesVitesseBlackSurfaces(t *testing.T) {
 	dir := t.TempDir()
 	file := writeTheme(t, dir, "black.json", `{"colors":{"editor.background":"#000","sideBar.background":"#000","editor.foreground":"#AAA","quickInput.background":"#242424","menu.background":"#303030","quickInput.foreground":"#DBD7CA","quickInputList.focusBackground":"#121212","quickInputList.focusForeground":"#FFFFEE","input.border":"#191919","focusBorder":"#00000000"}}`)
 	p := mustLoad(t, file).Palette()
-	if p.Panel != "#000000" || p.Popup != p.Panel || p.MenuBackground != p.Panel {
-		t.Fatal("popup and menu must share the sidebar background")
-	}
 	if p.PopupForeground != "#DBD7CA" || p.PopupSelectionForeground != "#FFFFEE" {
 		t.Fatal("popup must use quick input text colors")
 	}
-	if contrast(p.PopupBorder, p.Popup) < 1.6 || contrast(p.MenuBorder, p.MenuBackground) < 1.6 || p.PopupSelection != "#121212" {
+	if contrast(p.PopupBorder, p.Panel) < 1.6 || contrast(p.MenuBorder, p.Panel) < 1.6 || p.PopupSelection != "#121212" {
 		t.Fatalf("terminal widget is indistinguishable: popup border=%s menu border=%s selected=%s", p.PopupBorder, p.MenuBorder, p.PopupSelection)
 	}
 }

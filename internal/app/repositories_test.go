@@ -322,7 +322,7 @@ func TestRepositoryHeaderMouseCommitAndFrameWidths(t *testing.T) {
 	selectRepository(t, m, "child space")
 	m.ensureSidebar()
 	var commit rowAction
-	for _, a := range m.changeRowActions(*m.current(), m.sideWidth()) {
+	for _, a := range m.changeRowActions(*m.current(), m.sidebarContentWidth()) {
 		if a.id == "commit" {
 			commit = a
 		}

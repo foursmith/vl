@@ -151,13 +151,13 @@ func (m *Model) runContextMenu() tea.Cmd {
 func (m *Model) contextMenuOverlay(base []string) []string {
 	l := m.contextMenuLayout()
 	menu := m.contextMenu
-	border := theme.Style(m.colors.MenuBorder, m.colors.MenuBackground)
+	border := theme.Style(m.colors.MenuBorder, m.colors.Panel)
 	side := border.Render("│")
 	box := []string{inputBorderRule(border, l.width, "╭", "╮")}
 	for i := 0; i < l.count; i++ {
 		index := menu.top + i
 		a := menu.actions[index]
-		fg, bg := m.colors.MenuForeground, m.colors.MenuBackground
+		fg, bg := m.colors.MenuForeground, m.colors.Panel
 		prefix := " "
 		if index == menu.selected {
 			fg, bg = m.colors.MenuSelectionForeground, m.colors.MenuSelection
@@ -292,7 +292,7 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 				actions = append(actions, m.copyPathActions(path)...)
 			}
 		}
-	} else if x >= m.mainX() && x < m.mainX()+m.mainWidth() && !(m.width < 70 && m.sidebar && m.sidebarVisible) && y >= 0 && y < m.bodyHeight() {
+	} else if x >= m.mainX() && x < m.mainX()+m.mainWidth() && !m.mainShowsSidebar() && y >= 0 && y < m.bodyHeight() {
 		if !m.editorOnly && y == tabRow {
 			actions = m.tabContextActions(x - m.mainX())
 		} else {

@@ -101,6 +101,9 @@ func TestComponentsDoNotBorrowEditorOrPickerColors(t *testing.T) {
 		if !sameColor(cells[l.x+2].Style.Fg, lipgloss.Color(want)) {
 			t.Fatal("context menu borrowed quick input/editor foreground")
 		}
+		if i == 1 && !sameColor(cells[l.x+2].Style.Bg, lipgloss.Color(m.colors.Panel)) {
+			t.Fatal("context menu background differs from the sidebar")
+		}
 	}
 }
 

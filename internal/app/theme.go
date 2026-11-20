@@ -97,7 +97,7 @@ func (m *Model) applyTheme(selected *theme.Theme) tea.Cmd {
 }
 
 func (m *Model) styleInput() {
-	background := m.colors.Popup
+	background := m.colors.Panel
 	state := textinput.StyleState{
 		Text:        theme.Style(m.colors.InputForeground, background),
 		Prompt:      theme.Style(m.colors.InputForeground, background),

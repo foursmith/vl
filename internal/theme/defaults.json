@@ -16,7 +16,6 @@
     "diffEditor.removedTextBackground": "src/vs/platform/theme/common/colors/editorColors.ts",
     "diffEditor.removedTextBorder": "src/vs/platform/theme/common/colors/editorColors.ts",
     "disabledForeground": "src/vs/platform/theme/common/colors/baseColors.ts",
-    "dropdown.background": "src/vs/platform/theme/common/colors/inputColors.ts",
     "dropdown.foreground": "src/vs/platform/theme/common/colors/inputColors.ts",
     "editor.background": "src/vs/platform/theme/common/colors/editorColors.ts",
     "editor.findMatchBackground": "src/vs/platform/theme/common/colors/editorColors.ts",
@@ -38,7 +37,6 @@
     "editorBracketHighlight.foreground4": "src/vs/editor/common/core/editorColorRegistry.ts",
     "editorBracketHighlight.foreground5": "src/vs/editor/common/core/editorColorRegistry.ts",
     "editorBracketHighlight.foreground6": "src/vs/editor/common/core/editorColorRegistry.ts",
-    "editorGroupHeader.tabsBackground": "src/vs/workbench/common/theme.ts",
     "editorIndentGuide.background": "src/vs/editor/common/core/editorColorRegistry.ts",
     "editorIndentGuide.background1": "src/vs/editor/common/core/editorColorRegistry.ts",
     "editorLineNumber.activeForeground": "src/vs/editor/common/core/editorColorRegistry.ts",
@@ -70,12 +68,10 @@
     "list.hoverForeground": "src/vs/platform/theme/common/colors/listColors.ts",
     "list.inactiveSelectionBackground": "src/vs/platform/theme/common/colors/listColors.ts",
     "list.inactiveSelectionForeground": "src/vs/platform/theme/common/colors/listColors.ts",
-    "menu.background": "src/vs/platform/theme/common/colors/menuColors.ts",
     "menu.border": "src/vs/platform/theme/common/colors/menuColors.ts",
     "menu.foreground": "src/vs/platform/theme/common/colors/menuColors.ts",
     "menu.selectionBackground": "src/vs/platform/theme/common/colors/menuColors.ts",
     "menu.selectionForeground": "src/vs/platform/theme/common/colors/menuColors.ts",
-    "panel.background": "src/vs/workbench/common/theme.ts",
     "panel.border": "src/vs/workbench/common/theme.ts",
     "quickInput.background": "src/vs/platform/theme/common/colors/quickpickColors.ts",
     "quickInput.foreground": "src/vs/platform/theme/common/colors/quickpickColors.ts",
@@ -83,14 +79,12 @@
     "quickInputList.focusBackground": "src/vs/platform/theme/common/colors/quickpickColors.ts",
     "quickInputList.focusForeground": "src/vs/platform/theme/common/colors/quickpickColors.ts",
     "sideBar.background": "src/vs/workbench/common/theme.ts",
-    "sideBar.border": "src/vs/workbench/common/theme.ts",
     "sideBar.foreground": "src/vs/workbench/common/theme.ts",
     "strongForeground": "src/vs/platform/theme/common/colors/baseColors.ts",
     "tab.activeBackground": "src/vs/workbench/common/theme.ts",
     "tab.activeBorderTop": "src/vs/workbench/common/theme.ts",
     "tab.activeForeground": "src/vs/workbench/common/theme.ts",
     "tab.border": "src/vs/workbench/common/theme.ts",
-    "tab.inactiveBackground": "src/vs/workbench/common/theme.ts",
     "tab.inactiveForeground": "src/vs/workbench/common/theme.ts",
     "textLink.foreground": "src/vs/platform/theme/common/colors/baseColors.ts",
     "widget.border": "src/vs/platform/theme/common/colors/editorColors.ts"
@@ -307,22 +301,6 @@
         },
         "hcLight": {
           "hex": "#7F7F7F"
-        }
-      }
-    },
-    "dropdown.background": {
-      "variants": {
-        "dark": {
-          "hex": "#3C3C3C"
-        },
-        "light": {
-          "hex": "#FFFFFF"
-        },
-        "hcDark": {
-          "hex": "#000000"
-        },
-        "hcLight": {
-          "hex": "#FFFFFF"
         }
       }
     },
@@ -565,18 +543,6 @@
     },
     "editorBracketHighlight.foreground6": {
       "hex": "#00000000"
-    },
-    "editorGroupHeader.tabsBackground": {
-      "variants": {
-        "dark": {
-          "hex": "#252526"
-        },
-        "light": {
-          "hex": "#F3F3F3"
-        },
-        "hcDark": null,
-        "hcLight": null
-      }
     },
     "editorIndentGuide.background": {
       "ref": "editorWhitespace.foreground"
@@ -1002,9 +968,6 @@
       }
     },
     "list.inactiveSelectionForeground": null,
-    "menu.background": {
-      "ref": "dropdown.background"
-    },
     "menu.border": {
       "variants": {
         "dark": null,
@@ -1025,9 +988,6 @@
     },
     "menu.selectionForeground": {
       "ref": "list.activeSelectionForeground"
-    },
-    "panel.background": {
-      "ref": "editor.background"
     },
     "panel.border": {
       "variants": {
@@ -1111,18 +1071,6 @@
         }
       }
     },
-    "sideBar.border": {
-      "variants": {
-        "dark": null,
-        "light": null,
-        "hcDark": {
-          "ref": "contrastBorder"
-        },
-        "hcLight": {
-          "ref": "contrastBorder"
-        }
-      }
-    },
     "sideBar.foreground": null,
     "strongForeground": {
       "variants": {
@@ -1183,18 +1131,6 @@
         "hcLight": {
           "ref": "contrastBorder"
         }
-      }
-    },
-    "tab.inactiveBackground": {
-      "variants": {
-        "dark": {
-          "hex": "#2D2D2D"
-        },
-        "light": {
-          "hex": "#ECECEC"
-        },
-        "hcDark": null,
-        "hcLight": null
       }
     },
     "tab.inactiveForeground": {

@@ -126,7 +126,7 @@ func (m *Model) clickWelcome(msg tea.MouseClickMsg) tea.Cmd {
 
 func (m *Model) dragWelcomeArt(x, y int) {
 	o := &m.welcomeOrbit
-	if m.modal != "" || !m.welcomeVisible() || m.width < 30 || m.height < 8 || m.width < 70 && m.sidebar && m.sidebarVisible {
+	if m.modal != "" || !m.welcomeVisible() || m.width < 30 || m.height < 8 || m.mainShowsSidebar() {
 		o.dragging = false
 		return
 	}

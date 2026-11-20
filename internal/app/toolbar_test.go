@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/foursmith/vl/internal/diff"
 )
@@ -53,8 +55,15 @@ func TestDiffToolbarControlAndWidth(t *testing.T) {
 	m.diffPath = "nested/path/file.go"
 	for _, width := range []int{30, 70, 120, 180} {
 		m.Update(tea.WindowSizeMsg{Width: width, Height: 24})
-		if ansi.StringWidth(m.contentToolbar()) != m.mainWidth() {
+		toolbar := m.contentToolbar()
+		if ansi.StringWidth(toolbar) != m.mainWidth() {
 			t.Fatalf("toolbar width at %d", width)
+		}
+		button := m.diffModeButton()
+		for _, cell := range uv.NewStyledString(ansi.Cut(toolbar, button.x, button.x+button.width)).Lines(ansi.GraphemeWidth)[0] {
+			if !sameColor(cell.Style.Bg, lipgloss.Color(m.colors.Background)) {
+				t.Fatalf("diff layout button background at %d: %v", width, cell.Style.Bg)
+			}
 		}
 	}
 	button := m.diffModeButton()

@@ -4,14 +4,13 @@ import "charm.land/lipgloss/v2"
 
 // Palette maps supported VS Code workbench color IDs to terminal surfaces.
 type Palette struct {
-	TabActiveBorderTop                                                                 string
-	StickyBorder                                                                       string
-	BreadcrumbForeground, BreadcrumbBackground, StickyBackground                       string
-	SideBarBorder                                                                      string
-	LineNumberActive                                                                   string
-	NavigationForeground, NavigationInactiveForeground                                 string
-	TabBarBackground, TabActiveForeground, TabBorder                                   string
-	MenuBackground, MenuForeground, MenuSelection, MenuSelectionForeground, MenuBorder string
+	TabActiveBorderTop                                                 string
+	StickyBorder                                                       string
+	BreadcrumbForeground, BreadcrumbBackground, StickyBackground       string
+	LineNumberActive                                                   string
+	NavigationForeground, NavigationInactiveForeground                 string
+	TabActiveForeground, TabBorder                                     string
+	MenuForeground, MenuSelection, MenuSelectionForeground, MenuBorder string
 
 	FindMatch                    string
 	FindMatchForeground          string
@@ -27,7 +26,6 @@ type Palette struct {
 	InputPlaceholder            string
 	SideForeground              string
 	TabActiveBackground         string
-	TabInactiveBackground       string
 	TabInactiveForeground       string
 	Background                  string
 	Panel                       string
@@ -61,7 +59,6 @@ type Palette struct {
 	HoverForeground             string
 	Ignored                     string
 	Hover                       string
-	Popup                       string
 	PopupForeground             string
 	PopupBorder                 string
 	PopupSelection              string

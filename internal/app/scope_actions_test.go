@@ -19,17 +19,17 @@ func clickScopeAction(t *testing.T, m *Model, folder string, header, staged bool
 		m.selected = i
 		m.ensureSidebar()
 		y := headerHeight + i - m.sideTop
-		for _, a := range m.changeRowActions(entry, m.sideWidth()) {
+		for _, a := range m.changeRowActions(entry, m.sidebarContentWidth()) {
 			if a.id != id {
 				continue
 			}
-			m.Update(tea.MouseMotionMsg{X: a.x + 1, Y: y})
+			m.Update(tea.MouseMotionMsg{X: m.sideX() + a.x + 1, Y: y})
 			for _, line := range m.sidebarLines() {
 				if ansi.StringWidth(line) != m.sideWidth() {
 					t.Fatal("hover actions overflow sidebar")
 				}
 			}
-			_, cmd := m.Update(tea.MouseClickMsg{X: a.x + 1, Y: y, Button: tea.MouseLeft})
+			_, cmd := m.Update(tea.MouseClickMsg{X: m.sideX() + a.x + 1, Y: y, Button: tea.MouseLeft})
 			return cmd
 		}
 		t.Fatalf("scope missing action %s", id)

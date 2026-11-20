@@ -200,7 +200,7 @@ func (m *Model) pathCompletionOverlay(base []string, cursor *tea.Cursor) []strin
 	x := min(cursor.X, m.mainX()+m.mainWidth()-width)
 	lines := make([]string, 0, count)
 	for i, name := range c.matches[start : start+count] {
-		fg, bg := m.colors.PopupForeground, m.colors.Popup
+		fg, bg := m.colors.PopupForeground, m.colors.Panel
 		label := "  " + name
 		if start+i == c.selected {
 			fg, bg = m.colors.PopupSelectionForeground, m.colors.PopupSelection

@@ -209,11 +209,8 @@ func (m *Model) hoverHint() string {
 		return hint
 	}
 	if m.modal == "" && m.hoverY >= 0 && m.hoverY < headerHeight && m.sidebarAt(m.hoverX) {
-		for _, nav := range m.navigation() {
-			x := m.hoverX - m.sideX()
-			if nav.section == pullRequests && x >= nav.x && x < nav.x+nav.width {
-				return m.tr("Pull Requests") + " · " + m.commandShortcutHint(commandPullRequests)
-			}
+		if target, ok := m.sidebarNavigationAt(m.hoverX - m.sideX()); ok && target == pullRequests {
+			return m.tr("Pull Requests") + " · " + m.commandShortcutHint(commandPullRequests)
 		}
 	}
 	if m.modal == "" && m.section == search && m.sidebarAt(m.hoverX) {

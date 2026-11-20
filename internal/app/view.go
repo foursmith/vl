@@ -142,6 +142,7 @@ type hoverRenderCache struct {
 
 type hoverRenderKey struct {
 	row, outlineRow       int
+	tab                   int
 	menu                  *contextMenu
 	menuSelected, menuTop int
 	picker                int
@@ -161,6 +162,7 @@ func (m *Model) View() tea.View {
 	}
 	key := hoverRenderKey{
 		row: m.hoveredSidebarRow(), outlineRow: m.hoveredOutlineRow(), hint: m.hoverHint(),
+		tab:         m.hoveredTab(),
 		picker:      m.hoveredPickerIndex(),
 		divider:     m.sidebarDividerAt(m.hoverX, m.hoverY),
 		diffButtons: m.hoveredDiffButtons(),
@@ -179,10 +181,22 @@ func (m *Model) View() tea.View {
 		m.inputCaret = nil
 	}
 	side := m.sidebarLines()
+	showSidebar := m.sideShown()
+	var divider, tabDivider string
+	if showSidebar {
+		glyph, color := " ", ""
+		if m.colors.Accent != "" && (m.resizingSidebar || key.divider) {
+			glyph, color = "│", m.colors.Accent
+		}
+		divider = row(glyph, 1, color, m.colors.Background)
+		tabDivider = row(glyph, 1, color, m.colors.Panel)
+	}
 	main := m.hoverRender.main
 	// In narrow terminals the main surface itself contains the sidebar.
-	if !m.hoverOnly || main == nil || m.width < 70 && m.sidebar && m.sidebarVisible {
+	if !m.hoverOnly || main == nil || m.mainShowsSidebar() {
 		main = m.mainLines()
+	} else if key.tab != m.hoverRender.key.tab {
+		main[tabRow] = m.tabBar()
 	}
 	find := m.fileFindLines()
 	findOffset := m.fileFindX() - m.mainX()
@@ -199,20 +213,15 @@ func (m *Model) View() tea.View {
 		if index := y - m.contentRow(); index >= 0 && index < len(find) {
 			line = row(ansi.Cut(line, 0, findOffset), findOffset, m.colors.Foreground, m.colors.Background) + find[index]
 		}
-		if m.sideShown() {
-			color := m.colors.SideBarBorder
-			if m.colors.Accent != "" && (m.resizingSidebar || m.sidebarDividerAt(m.hoverX, m.hoverY)) {
-				color = m.colors.Accent
+		if showSidebar {
+			separator := divider
+			if y == tabRow {
+				separator = tabDivider
 			}
-			glyph := " "
-			if color != "" {
-				glyph = "│"
-			}
-			divider := row(glyph, 1, color, m.colors.Panel)
 			if m.sidebarRight {
-				line += divider + side[y]
+				line += separator + side[y]
 			} else {
-				line = side[y] + divider + line
+				line = side[y] + separator + line
 			}
 		}
 		lines = append(lines, line)
@@ -271,7 +280,7 @@ func (m *Model) editorCursor() *tea.Cursor {
 
 func (m *Model) mainLines() []string {
 	w, h := m.mainWidth(), m.bodyHeight()
-	if m.width < 70 && m.sidebar && m.sidebarVisible {
+	if m.mainShowsSidebar() {
 		return m.sidebarLinesWidth(w)
 	}
 	var lines []string
@@ -767,7 +776,7 @@ func (m *Model) overlay(base []string) []string {
 	}
 	l := m.dialogLayout()
 	w := l.width
-	border := theme.Style(m.colors.PopupBorder, m.colors.Popup)
+	border := theme.Style(m.colors.PopupBorder, m.colors.Panel)
 	box := []string{inputBorderRule(border, w, "╭", "╮")}
 	for _, s := range l.content {
 		box = append(box, border.Render("│")+s+border.Render("│"))
@@ -777,7 +786,7 @@ func (m *Model) overlay(base []string) []string {
 }
 
 func (m *Model) click(msg tea.MouseClickMsg) tea.Cmd {
-	if !m.editorOnly && msg.Y == tabRow && msg.X >= m.mainX() && msg.X < m.mainX()+m.mainWidth() && !(m.width < 70 && m.sidebar && m.sidebarVisible) && (msg.Button == tea.MouseLeft || msg.Button == tea.MouseMiddle) {
+	if !m.editorOnly && msg.Y == tabRow && msg.X >= m.mainX() && msg.X < m.mainX()+m.mainWidth() && !m.mainShowsSidebar() && (msg.Button == tea.MouseLeft || msg.Button == tea.MouseMiddle) {
 		return m.clickTab(msg)
 	}
 	if msg.Button != tea.MouseLeft {

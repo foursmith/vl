@@ -10,6 +10,8 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/foursmith/vl/internal/files"
 	gitservice "github.com/foursmith/vl/internal/git"
@@ -274,6 +276,20 @@ func TestTabCloseHitboxesAndInactiveMiddleClose(t *testing.T) {
 			break
 		}
 	}
+	closeGlyph := m.symbol(symbolClose)
+	if got := strings.Count(plain(m.tabBar()), closeGlyph); got != 1 {
+		t.Fatalf("expected a single close button, got %d", got)
+	}
+	inactiveEnd := slot.x + slot.width
+	closeClick := tea.MouseClickMsg{X: m.mainX() + inactiveEnd - 3, Y: tabRow, Button: tea.MouseLeft}
+	m.click(closeClick)
+	if len(m.tabs) != 3 || m.activeTab != 0 {
+		t.Fatal("clicking the end of an inactive tab did not activate it")
+	}
+	if !strings.Contains(plain(ansi.Cut(m.tabBar(), inactiveEnd-3, inactiveEnd)), closeGlyph) {
+		t.Fatal("close button did not move to the newly active tab")
+	}
+	m.activateTab(2)
 	m.click(tea.MouseClickMsg{X: m.mainX() + slot.x + 2, Y: tabRow, Button: tea.MouseMiddle})
 	if len(m.tabs) != 2 || m.document() != active || m.activeTab != 1 {
 		t.Fatal("closing inactive tab changed active document")
@@ -287,6 +303,53 @@ func TestTabCloseHitboxesAndInactiveMiddleClose(t *testing.T) {
 	m.click(tea.MouseClickMsg{X: m.mainX() + slot.x + slot.width - 3, Y: tabRow, Button: tea.MouseLeft})
 	if len(m.tabs) != 1 || filepath.Base(m.document().Path) != "file1.go" {
 		t.Fatal("visible close button missed tab")
+	}
+}
+
+func TestHoveringInactiveTabHighlightsAndRevealsCloseButton(t *testing.T) {
+	for _, right := range []bool{false, true} {
+		m := tabWorkspace(t, 2)
+		t.Cleanup(m.Close)
+		th, _ := fixtureTheme(t, "vs-dark", `{"colors":{"sideBar.background":"#181818","list.hoverBackground":"#393939","list.hoverForeground":"#DDEEFF","tab.hoverBackground":"#444444","tab.hoverForeground":"#FFFFFF"}}`)
+		m.SetColorTheme(th)
+		m.SetSidebarLayout(28, right)
+		m.openFile("file0.go")
+		m.openFile("file1.go")
+		active := m.document()
+		first := m.tabLayout()[0]
+		x := m.mainX() + first.x
+		closeX := x + first.width - 3
+		glyph := m.symbol(symbolClose)
+		tab := func() string {
+			line := strings.SplitN(m.View().Content, "\n", 2)[0]
+			return ansi.Cut(line, x, x+first.width)
+		}
+
+		if strings.Contains(plain(tab()), glyph) {
+			t.Fatal("inactive tab shows a close button before hover")
+		}
+		m.Update(tea.MouseMotionMsg{X: x, Y: tabRow})
+		hovered := tab()
+		cells := uv.NewStyledString(hovered).Lines(ansi.GraphemeWidth)[0]
+		if !strings.Contains(plain(hovered), glyph) ||
+			!sameColor(cells[0].Style.Bg, lipgloss.Color("#393939")) {
+			t.Fatalf("right=%v hover did not reveal the close button and background", right)
+		}
+		for _, cell := range cells {
+			if cell.Content == "f" && !sameColor(cell.Style.Fg, lipgloss.Color("#DDEEFF")) {
+				t.Fatalf("right=%v tab label did not use sidebar hover foreground", right)
+			}
+		}
+		m.Update(tea.MouseMotionMsg{X: x, Y: editorContentRow})
+		if strings.Contains(plain(tab()), glyph) {
+			t.Fatal("inactive tab still shows its close button after hover")
+		}
+		m.Update(tea.MouseMotionMsg{X: closeX, Y: tabRow})
+		tab()
+		m.Update(tea.MouseClickMsg{X: closeX, Y: tabRow, Button: tea.MouseLeft})
+		if len(m.tabs) != 1 || m.document() != active {
+			t.Fatal("hover close did not close the inactive tab directly")
+		}
 	}
 }
 
