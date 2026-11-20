@@ -91,9 +91,21 @@ func TestSymbolModesPreserveLayoutAcrossWidthsAndHoverTargets(t *testing.T) {
 
 func TestSidebarNavigationUsesActiveColorWithoutChangeDecoration(t *testing.T) {
 	m := tabWorkspace(t, 0)
-	for _, id := range []string{"dark_modern", "light_modern", "light_plus", "hc_black", "hc_light"} {
-		colors := theme.Builtin(id).Palette()
+	imported, _ := fixtureTheme(t, "hc-black", `{"colors":{"sideBar.background":"#121212","activityBar.foreground":"#EAEAEA","activityBar.inactiveForeground":"#8A8A8D"}}`)
+	if colors := imported.Palette(); colors.NavigationForeground != "#EAEAEA" || colors.NavigationInactiveForeground != "#8A8A8D" {
+		t.Fatal("imported activity bar icon colors were ignored")
+	}
+	for _, selected := range []*theme.Theme{
+		theme.Builtin("dark_modern"), theme.Builtin("light_modern"), theme.Builtin("light_plus"),
+		theme.Builtin("hc_black"), theme.Builtin("hc_light"), imported,
+	} {
+		colors := selected.Palette()
 		m.colors = colors
+		activeColor := theme.Readable(colors.NavigationForeground, colors.Panel)
+		inactiveColor := theme.Readable(colors.NavigationInactiveForeground, colors.Panel)
+		if activeColor == inactiveColor {
+			t.Fatalf("theme=%s: active and inactive icons have the same foreground", selected.ID)
+		}
 		for _, nerd := range []bool{false, true} {
 			m.nerd = nerd
 			for _, dirty := range []bool{false, true} {
@@ -105,20 +117,15 @@ func TestSidebarNavigationUsesActiveColorWithoutChangeDecoration(t *testing.T) {
 					m.section = active
 					nav := m.sidebarLinesWidth(40)[0]
 					for _, item := range m.navigation() {
-						want := colors.NavigationInactiveForeground
+						want := inactiveColor
 						if item.section == active {
-							want = colors.NavigationForeground
+							want = activeColor
 						}
 						cells := uv.NewStyledString(ansi.Cut(nav, item.x, item.x+item.width)).Lines(ansi.GraphemeWidth)[0]
-						bg := colors.Panel
-						if item.section == active &&
-							theme.Readable(colors.NavigationForeground, colors.Panel) == theme.Readable(colors.NavigationInactiveForeground, colors.Panel) {
-							bg = colors.SidebarSelection(true)
-						}
 						for _, cell := range cells {
-							if !sameColor(cell.Style.Fg, lipgloss.Color(theme.Readable(want, bg))) ||
-								!sameColor(cell.Style.Bg, lipgloss.Color(bg)) || cell.Style.Underline != 0 {
-								t.Fatalf("theme=%s icons=%v dirty=%v active=%d tab=%d: wrong navigation style", id, nerd, dirty, active, item.section)
+							if !sameColor(cell.Style.Fg, lipgloss.Color(want)) ||
+								!sameColor(cell.Style.Bg, lipgloss.Color(colors.Panel)) || cell.Style.Underline != uv.UnderlineNone {
+								t.Fatalf("theme=%s icons=%v dirty=%v active=%d tab=%d: wrong navigation style", selected.ID, nerd, dirty, active, item.section)
 							}
 						}
 					}

@@ -1,6 +1,7 @@
 package theme
 
 import (
+	"cmp"
 	"encoding/hex"
 	"fmt"
 	"math"
@@ -71,6 +72,20 @@ func (t *Theme) makePalette() Palette {
 	p.Accent = t.Color("textLink.foreground")
 	p.NavigationForeground = t.Color("activityBarTop.foreground")
 	p.NavigationInactiveForeground = t.Color("activityBarTop.inactiveForeground")
+	if (t.Type == "hc-black" || t.Type == "hc-light") &&
+		Readable(p.NavigationForeground, p.Panel) == Readable(p.NavigationInactiveForeground, p.Panel) {
+		// Some themes only specify distinct icon colors for the side activity bar.
+		p.NavigationForeground = cmp.Or(t.colors["activityBarTop.foreground"], t.colors["activityBar.foreground"], p.NavigationForeground)
+		inactive := t.colors["activityBar.inactiveForeground"]
+		active := Readable(p.NavigationForeground, p.Panel)
+		if inactive == "" || Readable(inactive, p.Panel) == active {
+			inactive = WithOpacity(active, .6)
+			if Readable(inactive, p.Panel) == active {
+				p.NavigationForeground = Readable("", p.Panel)
+			}
+		}
+		p.NavigationInactiveForeground = inactive
+	}
 	p.Selection = get("list.activeSelectionBackground", p.Panel)
 	p.SelectionForeground = t.Color("list.activeSelectionForeground")
 	p.InactiveSelection = get("list.inactiveSelectionBackground", p.Panel)
