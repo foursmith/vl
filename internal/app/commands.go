@@ -188,6 +188,16 @@ func (m *Model) filterActions() []action {
 	if m.commandPicker() {
 		query = strings.TrimSpace(strings.TrimPrefix(query, ">"))
 	} else if m.modal == "quick" {
+		query = strings.TrimPrefix(query, "./")
+		if strings.HasSuffix(query, "/") {
+			var rows []action
+			for _, a := range m.palette {
+				if strings.HasPrefix(a.id, query) {
+					rows = append(rows, a)
+				}
+			}
+			return rows
+		}
 		if rows, ok := m.quickPositionActions(query); ok {
 			return rows
 		}

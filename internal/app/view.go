@@ -801,17 +801,8 @@ func (m *Model) click(msg tea.MouseClickMsg) tea.Cmd {
 	if m.fileFindAt(msg.X, msg.Y) {
 		return m.clickFileFind(msg.X-m.mainX(), msg.Y-m.contentRow())
 	}
-	if msg.Y == m.contentRow()-1 && !m.editing() && m.diffOpen {
-		button := m.diffModeButton()
-		if msg.X >= m.mainX()+button.x && msg.X < m.mainX()+button.x+button.width {
-			if m.mainWidth() < 68 {
-				m.notice = m.tr("The editor needs at least 68 columns for side-by-side diff")
-				return nil
-			}
-			m.split = !m.split
-			m.renderDiff()
-		}
-		return nil
+	if !m.editorOnly && !m.mainShowsSidebar() && msg.Y == m.contentRow()-1 {
+		return m.clickContentToolbar(msg.X - m.mainX())
 	}
 	if msg.Y < 0 || msg.Y >= m.bodyHeight() {
 		return nil

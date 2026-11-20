@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/foursmith/vl/internal/theme"
 )
@@ -65,7 +66,21 @@ func (m *Model) diffContext() string {
 	return context
 }
 
+type contentToolbarLayout struct {
+	path   string
+	width  int
+	suffix string
+}
+
 func (m *Model) contentToolbar() string {
+	l := m.layoutContentToolbar()
+	if l.path == "" {
+		return row("", l.width, m.colors.Foreground, m.colors.Background) + l.suffix
+	}
+	return m.breadcrumb(l.path, l.width) + l.suffix
+}
+
+func (m *Model) layoutContentToolbar() contentToolbarLayout {
 	w := m.mainWidth()
 	if im := m.currentImage(); im != nil {
 		label := m.tr(" %.0f%% · 0 Fit ", m.imageRegion().Scale*100)
@@ -73,18 +88,18 @@ func (m *Model) contentToolbar() string {
 			label = m.tr(" %.0f%% · +/- Zoom · Arrows Pan · 0 Fit ", m.imageRegion().Scale*100)
 		}
 		width := min(w, ansi.StringWidth(label))
-		return m.breadcrumb(im.Path, w-width) + row(label, width, m.colors.Muted, m.colors.Background)
+		return contentToolbarLayout{im.Path, w - width, row(label, width, m.colors.Muted, m.colors.Background)}
 	}
 	if m.editing() {
-		return m.breadcrumb(m.document().Path, w)
+		return contentToolbarLayout{path: m.document().Path, width: w}
 	}
 	if !m.diffOpen {
-		return row("", w, m.colors.Foreground, m.colors.Background)
+		return contentToolbarLayout{width: w}
 	}
 	if m.images != nil {
 		label := " " + m.diffContext() + m.tr(" · Image comparison ")
 		width := min(w, ansi.StringWidth(label))
-		return m.breadcrumb(m.diffPath, w-width) + row(label, width, m.colors.Muted, m.colors.Background)
+		return contentToolbarLayout{m.diffPath, w - width, row(label, width, m.colors.Muted, m.colors.Background)}
 	}
 	button := m.diffModeButton()
 	stats := ""
@@ -107,17 +122,43 @@ func (m *Model) contentToolbar() string {
 	}
 	statsWidth := ansi.StringWidth(stats)
 	leftWidth := max(0, button.x-statsWidth)
-	left := row("", leftWidth, m.colors.Muted, m.colors.Background)
-	if m.diffPath != "" {
-		left = m.breadcrumb(m.diffPath, leftWidth)
-	}
-	text := left + row(stats, min(statsWidth, button.x), m.colors.Muted, m.colors.Background)
+	text := row(stats, min(statsWidth, button.x), m.colors.Muted, m.colors.Background)
 	buttonColor := m.colors.Foreground
 	if w < 68 {
 		buttonColor = m.colors.Muted
 	}
 	text += row(" "+button.label+" ", button.width, buttonColor, m.colors.Background)
-	return row(text, w, m.colors.Foreground, m.colors.Background)
+	return contentToolbarLayout{m.diffPath, leftWidth, text}
+}
+
+func (m *Model) clickContentToolbar(x int) tea.Cmd {
+	if !m.editing() && m.diffOpen {
+		button := m.diffModeButton()
+		if x >= button.x && x < button.x+button.width {
+			if m.mainWidth() < 68 {
+				m.notice = m.tr("The editor needs at least 68 columns for side-by-side diff")
+				return nil
+			}
+			m.split = !m.split
+			m.renderDiff()
+			return nil
+		}
+	}
+	l := m.layoutContentToolbar()
+	if l.path == "" || x < 0 || x >= l.width {
+		return nil
+	}
+	dir, hit := m.layoutBreadcrumb(l.path, l.width).parentDirectoryAt(x)
+	if !hit {
+		return nil
+	}
+	if dir == "." {
+		return m.openQuickFiles()
+	}
+	if strings.HasPrefix(dir, ">") {
+		dir = "./" + dir
+	}
+	return m.openQuickPicker(dir + "/")
 }
 
 func hunkLabel(header string) string {
