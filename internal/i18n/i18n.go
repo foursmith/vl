@@ -4,8 +4,9 @@ package i18n
 
 import (
 	_ "embed"
-	"encoding/json"
 	"fmt"
+
+	"github.com/MoeForge/moego/json"
 )
 
 type Language string

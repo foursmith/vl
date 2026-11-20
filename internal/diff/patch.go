@@ -1,9 +1,10 @@
 package diff
 
 import (
-	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/MoeForge/moego/regexp"
 )
 
 type Kind uint8

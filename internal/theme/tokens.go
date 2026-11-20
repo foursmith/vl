@@ -1,9 +1,10 @@
 package theme
 
 import (
-	"encoding/json"
 	"slices"
 	"strings"
+
+	"github.com/MoeForge/moego/json"
 )
 
 type FontStyle uint8

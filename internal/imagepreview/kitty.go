@@ -2,12 +2,12 @@ package imagepreview
 
 import (
 	"bytes"
-	"encoding/base64"
 	"fmt"
 	"image"
-	"image/png"
 	"strings"
 
+	"github.com/MoeForge/moego/base64"
+	"github.com/MoeForge/moego/png"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/charmbracelet/x/ansi/kitty"
 )

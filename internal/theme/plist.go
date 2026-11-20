@@ -2,10 +2,11 @@ package theme
 
 import (
 	"bytes"
-	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io"
+
+	"github.com/MoeForge/moego/json"
 )
 
 // TextMate themes use XML property lists; the decoder never resolves external

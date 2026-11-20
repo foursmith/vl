@@ -2,12 +2,13 @@ package theme
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"path"
 	"strings"
+
+	"github.com/MoeForge/moego/json"
 )
 
 // Theme is immutable after loading and can be shared by background syntax jobs.

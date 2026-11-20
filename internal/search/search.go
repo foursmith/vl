@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/MoeForge/moego/regexp"
 	gitservice "github.com/foursmith/vl/internal/git"
 )
 

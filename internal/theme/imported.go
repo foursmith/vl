@@ -2,14 +2,14 @@ package theme
 
 import (
 	"crypto/sha256"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
+	"github.com/MoeForge/moego/json"
+	"github.com/MoeForge/moego/regexp"
 	"github.com/foursmith/vl/internal/config"
 )
 

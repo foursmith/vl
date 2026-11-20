@@ -1,10 +1,11 @@
 package config
 
 import (
-	"encoding/json"
 	"errors"
 	"os"
 	"slices"
+
+	"github.com/MoeForge/moego/json"
 )
 
 // FilePositionStore shares file positions across all workspaces and editor modes.

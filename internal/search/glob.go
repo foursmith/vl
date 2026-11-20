@@ -2,8 +2,9 @@ package search
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
+
+	"github.com/MoeForge/moego/regexp"
 )
 
 // Search fields accept comma lists, except commas inside braces or classes.

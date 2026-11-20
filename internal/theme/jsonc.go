@@ -2,8 +2,9 @@ package theme
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
+
+	"github.com/MoeForge/moego/json"
 )
 
 func readJSONC(name string, value any) error {
@@ -23,7 +24,7 @@ func decodeJSONC(data []byte, value any) error {
 }
 
 // Remove JSONC comments and trailing commas without touching string contents.
-// Whitespace preserves line/byte positions for encoding/json error diagnostics.
+// Whitespace preserves line/byte positions for JSON error diagnostics.
 func jsonc(input []byte) ([]byte, error) {
 	b := bytes.TrimPrefix(input, []byte{0xef, 0xbb, 0xbf})
 	b = bytes.Clone(b)

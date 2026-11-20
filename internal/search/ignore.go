@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
+
+	"github.com/MoeForge/moego/regexp"
 )
 
 type ignoreRule struct {

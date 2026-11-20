@@ -1,10 +1,11 @@
 package config
 
 import (
-	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
+
+	"github.com/MoeForge/moego/json"
 )
 
 // Dir is vl's preferences directory on every platform.

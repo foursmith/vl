@@ -1,16 +1,17 @@
 package theme
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
+
+	"github.com/MoeForge/moego/json"
+	"github.com/MoeForge/moego/regexp"
 )
 
 type themeContribution struct {

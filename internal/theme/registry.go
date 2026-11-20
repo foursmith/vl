@@ -3,9 +3,10 @@ package theme
 import (
 	_ "embed"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"math"
+
+	"github.com/MoeForge/moego/json"
 )
 
 // Pinned VS Code registrations, extracted from source rather than approximated

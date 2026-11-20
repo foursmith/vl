@@ -2,13 +2,14 @@ package git
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"os/exec"
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/MoeForge/moego/json"
 )
 
 type PullRequest struct {
