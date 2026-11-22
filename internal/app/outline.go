@@ -173,7 +173,7 @@ func (m *Model) outlineKey(k string) bool {
 	if header == m.bodyHeight() {
 		return false
 	}
-	if k == "tab" || k == "shift+tab" {
+	if matchesShortcut(k, sidebarKeys.FocusOutline) {
 		m.outlineFocused = !m.outlineFocused
 		m.navigationState = navigationState{}
 		if m.outlineFocused && l.count > 0 {

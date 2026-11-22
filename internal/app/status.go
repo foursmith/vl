@@ -325,7 +325,7 @@ func (m *Model) statusLayout() []statusSegment {
 	}
 	if notice == "" {
 		notice = fitStatusHints(hints, rightX-x-2)
-		if m.sidebar && m.section == search && notice == "" {
+		if m.sidebar && m.section == search && m.search.focus != 2 && notice == "" {
 			notice = m.tr("%s: fields/results", searchKeys.NextField.Help().Key)
 			if m.search.replace && m.search.focus == 1 {
 				notice = m.tr("%s: replace", sidebarKeys.Open.Help().Key)

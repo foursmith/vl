@@ -21,12 +21,11 @@ const (
 const fromSearch = fromSidebarSearch | fromFileFind | blurFileFind
 
 type workbenchShortcut struct {
-	id       string
-	binding  key.Binding
-	context  shortcutContext
-	command  commandID
-	when     func(*Model) bool
-	hideHint bool
+	id      string
+	binding key.Binding
+	context shortcutContext
+	command commandID
+	when    func(*Model) bool
 }
 
 func (s workbenchShortcut) has(context shortcutContext) bool {
@@ -91,9 +90,7 @@ func compileWorkbenchKeymap(rules []workbenchShortcut) *workbenchKeymap {
 		}
 		rule.binding.SetKeys(slices.Clone(rule.binding.Keys())...)
 		keymap.byID[id] = rule
-		if !rule.hideHint {
-			keymap.byCommand[rule.command] = append(keymap.byCommand[rule.command], rule)
-		}
+		keymap.byCommand[rule.command] = append(keymap.byCommand[rule.command], rule)
 		for _, name := range rule.binding.Keys() {
 			keymap.byKey[name] = append(keymap.byKey[name], rule)
 		}
@@ -130,7 +127,7 @@ func (m *Model) matchWorkbenchCommand(name string, id commandID) bool {
 
 func (m *Model) widgetWorkbenchCommand(name string, accepted ...commandID) commandID {
 	return m.resolveWorkbenchRule(name, func(rule workbenchShortcut) bool {
-		return !rule.hideHint && slices.Contains(accepted, rule.command)
+		return slices.Contains(accepted, rule.command)
 	}).command
 }
 

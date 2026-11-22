@@ -1085,6 +1085,9 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	if m.editorOnly && route.has(workspaceOnly) {
 		return nil
 	}
+	if handled, cmd := m.sidebarTabKey(k); handled {
+		return cmd
+	}
 	if m.sidebar && m.section == search && !route.has(fromSidebarSearch) {
 		return m.searchKey(msg)
 	}
@@ -1166,9 +1169,6 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 			return m.splitFolderChain()
 		case key.Matches(msg, sidebarKeys.Edit):
 			return m.editSelected()
-		}
-		if matchesShortcut(k, gitKeys.Commit) {
-			return m.commit()
 		}
 		return nil
 	}

@@ -29,9 +29,6 @@ var dismissKey = binding("Esc", "Dismiss", "esc")
 // context-specific rules can share a key with a workbench fallback.
 var workbenchKeybindings = []workbenchShortcut{
 	{binding: binding("Ctrl+Q", "Quit", "ctrl+q"), context: fromSearch, command: commandQuit},
-	{id: "app.quit.copyFallback", binding: binding("Ctrl+C", "Quit", "ctrl+c"), command: commandQuit, hideHint: true, when: func(m *Model) bool {
-		return !m.contentCopyFocused()
-	}},
 	{binding: binding("Ctrl+C", "Copy", "ctrl+c"), command: commandCopy, when: (*Model).contentCopyFocused},
 	{binding: binding("Ctrl+G", "Go to File", "ctrl+g"), context: fromSearch, command: commandFiles},
 	{binding: binding("Ctrl+R", "Open Recent Workspace", "ctrl+r"), context: workspaceOnly | fromSidebarSearch, command: commandRecent},
@@ -41,7 +38,7 @@ var workbenchKeybindings = []workbenchShortcut{
 	{binding: binding("Ctrl+3", "Changes", "ctrl+3"), context: workspaceOnly | fromSearch, command: commandChanges},
 	{binding: binding("Ctrl+4", "History", "ctrl+4"), context: workspaceOnly | fromSearch, command: commandHistory},
 	{binding: binding("Ctrl+5", "Pull Requests", "ctrl+5"), context: workspaceOnly | fromSearch, command: commandPullRequests},
-	{binding: binding("Ctrl+L", "Toggle sidebar", "ctrl+l"), context: workspaceOnly | fromSearch, command: commandSidebar},
+	{binding: binding("F12", "Toggle sidebar", "f12"), context: workspaceOnly | fromSearch, command: commandSidebar},
 	{binding: binding("F2", "Switch focus", "f2"), context: workspaceOnly | fromSearch, command: commandFocus},
 	{binding: binding("F5", "Refresh", "f5"), context: fromFileFind | blurFileFind, command: commandRefresh},
 	{id: sidebarRefreshRuleID, binding: binding("r", "Refresh", "r", "R", "shift+r"), command: commandRefresh, when: func(m *Model) bool {
@@ -80,13 +77,14 @@ func shortcutHint(label string, binding key.Binding) string {
 }
 
 var sidebarKeys = struct {
-	Open, Edit, Delete, SplitFolders, Paste, OpenPullRequest key.Binding
+	Open, Edit, Delete, SplitFolders, Paste, FocusOutline, OpenPullRequest key.Binding
 }{
 	Open:            binding("Enter", "Open selected item", "enter"),
 	Edit:            binding("e", "Edit selected file", "e"),
 	Delete:          binding("Del", "Delete selected item", "delete"),
 	SplitFolders:    binding("L", "Split Folders", "L", "shift+l"),
 	Paste:           binding("p", "Paste", "p"),
+	FocusOutline:    binding("o", "Focus Outline", "o"),
 	OpenPullRequest: binding("o", "Open on GitHub", "o"),
 }
 

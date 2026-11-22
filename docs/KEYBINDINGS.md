@@ -39,7 +39,7 @@ In confirmation dialogs, use `←`/`→` or `Tab` to select a button, `Enter` to
 | `Ctrl+P` | Show Command Palette |
 | `Ctrl+R` | Open Recent Workspace. Prompts if there are unsaved changes. |
 | `Ctrl+1` / `Ctrl+2` / `Ctrl+3` / `Ctrl+4` / `Ctrl+5` | Focus Explorer / Search / Changes / History / Pull Requests |
-| `Ctrl+L` | Toggle Sidebar |
+| `F12` | Toggle Sidebar |
 | `F2` | Focus the sidebar or the editor |
 | `Ctrl+S` | Save |
 | `Ctrl+W` | Close Editor. Prompts if the file has unsaved changes. |
@@ -56,8 +56,7 @@ commands, or use `:line[:column]` to jump within the current file. See the
 use `Up` / `Down` to select a result, `PageUp` / `PageDown` to page, and `Enter` to
 accept. `Esc` dismisses the picker.
 
-`Ctrl+C` copies selected text when the text or diff editor has focus. In the
-main workbench outside those editors and text inputs, `Ctrl+C` can quit vl.
+`Ctrl+C` copies selected text when the text or diff editor has focus.
 
 ### Terminal compatibility
 
@@ -75,6 +74,7 @@ copy the selection inside vl.
 
 | Shortcut | Action |
 | --- | --- |
+| `Tab` / `Shift+Tab` | Cycle to the next / previous sidebar tab |
 | `j` / `k` or `Down` / `Up` | Select and preview the next / previous item |
 | `gg` / `G` | Select the first / last item |
 | `3j`, `5gg`, `5G` | Move down three items or jump to the fifth item |
@@ -91,11 +91,14 @@ editor with `F2`, or clicking the editor or its tab keeps that tab open. Scrolli
 and image zoom leave it in preview. On narrow terminals, use `Enter` to open
 the item and `F2` to switch back to the sidebar.
 
+Cycling follows the order of the sidebar icons and wraps at both ends.
+When cycling to Search, focus starts in the results. Press `/` to edit the query.
+
 ### Explorer
 
 | Shortcut | Action |
 | --- | --- |
-| `Tab` / `Shift+Tab` | Switch focus between the file tree and Outline |
+| `o` | Switch focus between the file tree and Outline |
 | `L` | Split the selected compact folder chain |
 | `dd` / `Delete` | Delete the selected file or folder after confirmation |
 | `yy` | Yank the selected file or folder into the Explorer's file clipboard |
@@ -153,7 +156,7 @@ Read-only diffs support Find.
 | Shortcut | Action |
 | --- | --- |
 | `Ctrl+2` | Find in Files |
-| `Tab` / `Shift+Tab` | Cycle through the visible fields and results |
+| `Tab` / `Shift+Tab` from a field | Move through the visible fields and into the results |
 | `Enter` in the search field | Run the search and focus the results |
 | `Esc` from a field | Focus the results |
 | `/` / `Ctrl+F` in the results | Focus the search field |

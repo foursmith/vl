@@ -34,7 +34,7 @@ func TestExplorerOutlineNavigation(t *testing.T) {
 	if tab.markdown.outlineTop == 0 || m.sideTop != 0 || m.sidebarRowAt(l.start) != -1 {
 		t.Fatal("outline row interfered with the file tree")
 	}
-	m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	press(m, "o")
 	press(m, "j")
 	m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if line, _ := m.document().Position(); line != 3 || m.sidebar {

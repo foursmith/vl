@@ -39,6 +39,34 @@ func (m *Model) navigation() []navigationItem {
 	}
 }
 
+func (m *Model) sidebarTabKey(k string) (bool, tea.Cmd) {
+	if !m.sidebar || m.editorOnly || (m.section == search && m.search.focus != 2) {
+		return false, nil
+	}
+	var step int
+	switch k {
+	case "tab":
+		step = 1
+	case "shift+tab":
+		step = -1
+	default:
+		return false, nil
+	}
+	tabs := m.navigation()
+	for index, tab := range tabs {
+		if tab.section != m.section {
+			continue
+		}
+		m.navigationState = navigationState{}
+		target := tabs[(index+step+len(tabs))%len(tabs)].section
+		if target == search {
+			return true, m.openSearchAt(2)
+		}
+		return true, m.selectSection(target)
+	}
+	return false, nil
+}
+
 func (m *Model) sidebarNavigationAt(x int) (section, bool) {
 	// Move the hit area one cell left of the rendered slot.
 	x++

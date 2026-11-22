@@ -44,6 +44,10 @@ func newSearch() searchState {
 	return searchState{query: field(), replacement: field(), include: field(), exclude: field(), folded: map[string]bool{}}
 }
 func (m *Model) openSearch() tea.Cmd {
+	return m.openSearchAt(0)
+}
+
+func (m *Model) openSearchAt(focus int) tea.Cmd {
 	m.notice = ""
 	if m.findWidget.visible {
 		m.closeFileFind()
@@ -51,7 +55,7 @@ func (m *Model) openSearch() tea.Cmd {
 	m.findWidget.focused = false
 	m.selectSection(search)
 	m.navigationState = navigationState{}
-	cmd := m.focusSearch(0)
+	cmd := m.focusSearch(focus)
 	if m.search.workspaceDirty {
 		return tea.Batch(cmd, m.runSearch())
 	}

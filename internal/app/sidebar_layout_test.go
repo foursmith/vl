@@ -10,6 +10,54 @@ import (
 	"github.com/foursmith/vl/internal/config"
 )
 
+func TestSidebarTabKeysCycleViewsAndKeepLocalInputFocus(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	defer m.Close()
+	m.openFile("file0.go")
+	doc := m.document()
+	tabKey := tea.KeyPressMsg{Code: tea.KeyTab}
+	backTab := tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift}
+	m.Update(tabKey)
+	if m.section != explorer || m.sidebar {
+		t.Fatal("Tab changed the sidebar while the editor had focus")
+	}
+
+	m.focusSidebar()
+	for _, test := range []struct {
+		key   tea.KeyPressMsg
+		views []section
+	}{
+		{tabKey, []section{search, changes, history, pullRequests, explorer}},
+		{backTab, []section{pullRequests, history, changes, search, explorer}},
+	} {
+		for _, want := range test.views {
+			m.Update(test.key)
+			if m.section != want || !m.sidebar || m.document() != doc {
+				t.Fatalf("%s did not focus sidebar view %v", test.key, want)
+			}
+			if want == search && m.search.focus != 2 {
+				t.Fatal("cycling to Search did not focus the results")
+			}
+		}
+	}
+
+	m.openReplace()
+	m.focusSearch(0)
+	m.Update(tabKey)
+	if m.section != search || m.search.focus != 1 {
+		t.Fatal("Tab did not move from the Search query to Replace")
+	}
+	m.Update(backTab)
+	if m.section != search || m.search.focus != 0 {
+		t.Fatal("Shift+Tab did not return to the Search query")
+	}
+	press(m, "esc")
+	m.Update(tabKey)
+	if m.section != changes {
+		t.Fatal("Tab did not advance from Search results to Changes")
+	}
+}
+
 func TestSidebarDragBothSidesAndBounds(t *testing.T) {
 	for _, right := range []bool{false, true} {
 		m := tabWorkspace(t, 1)
@@ -141,11 +189,11 @@ func TestSidebarRightGeometryAndMouseTargets(t *testing.T) {
 	if m.document() != nil {
 		t.Fatal("right layout tab close missed")
 	}
-	press(m, "ctrl+l")
+	m.executeCommand(commandSidebar, "")
 	if m.sideShown() || m.mainWidth() != m.width {
 		t.Fatal("hidden sidebar still takes space")
 	}
-	press(m, "ctrl+l")
+	m.executeCommand(commandSidebar, "")
 	if !m.sideShown() || !m.sidebarRight || m.sideWidth() != 38 {
 		t.Fatal("toggle lost sidebar layout")
 	}
@@ -187,7 +235,7 @@ func TestSidebarLayoutPaletteAndDragCancellation(t *testing.T) {
 			t.Fatal("reset failed")
 		}
 	}
-	press(m, "ctrl+l")
+	m.executeCommand(commandSidebar, "")
 	m.Update(tea.MouseClickMsg{X: m.dividerX(), Y: 3, Button: tea.MouseLeft})
 	m.openPalette()
 	if m.resizingSidebar {

@@ -6,6 +6,7 @@ import (
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
+	gitservice "github.com/foursmith/vl/internal/git"
 )
 
 func TestDefaultWorkbenchShortcutActions(t *testing.T) {
@@ -36,7 +37,6 @@ func TestDefaultWorkbenchShortcutActions(t *testing.T) {
 		check   func(*Model, tea.Cmd) bool
 	}{
 		{commandQuit, false, []tea.KeyPressMsg{ctrl('q')}, isQuit},
-		{commandQuit, true, []tea.KeyPressMsg{ctrl('c')}, isQuit},
 		{commandCopy, false, []tea.KeyPressMsg{ctrl('c')}, func(m *Model, cmd tea.Cmd) bool {
 			return cmd != nil && m.modal == "" && m.document().SelectedText() != ""
 		}},
@@ -52,7 +52,18 @@ func TestDefaultWorkbenchShortcutActions(t *testing.T) {
 		{commandChanges, false, []tea.KeyPressMsg{ctrl('3')}, sidebarSection(changes)},
 		{commandHistory, false, []tea.KeyPressMsg{ctrl('4')}, sidebarSection(history)},
 		{commandPullRequests, false, []tea.KeyPressMsg{ctrl('5')}, sidebarSection(pullRequests)},
-		{commandSidebar, false, []tea.KeyPressMsg{ctrl('l')}, func(m *Model, _ tea.Cmd) bool { return !m.sidebarVisible }},
+		{commandSidebar, false, []tea.KeyPressMsg{keypress(tea.KeyF12)}, func(m *Model, _ tea.Cmd) bool {
+			if m.sidebarVisible {
+				return false
+			}
+			m.Update(ctrl('l'))
+			if m.sidebarVisible {
+				return false
+			}
+			m.editorOnly = true
+			m.Update(keypress(tea.KeyF12))
+			return !m.sidebarVisible
+		}},
 		{commandFocus, false, []tea.KeyPressMsg{keypress(tea.KeyF2)}, sidebarSection(explorer)},
 		{commandRefresh, false, []tea.KeyPressMsg{keypress(tea.KeyF5)}, refresh},
 		{commandRefresh, true, []tea.KeyPressMsg{keypress('r'), keypress('R'), {Code: 'r', Mod: tea.ModShift}}, refresh},
@@ -159,11 +170,31 @@ func TestWorkbenchKeymapOverridesShareDispatchAndHints(t *testing.T) {
 	}
 }
 
+func TestCommitShortcutRequiresChangesFocus(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	defer m.Close()
+	m.openFile("file0.go")
+	m.snapshot.Changes = []gitservice.Change{{Path: "file0.go", Index: 'M'}}
+	for _, view := range []section{explorer, search, history, pullRequests, changes} {
+		m.section, m.sidebar = view, view != changes
+		press(m, "c")
+		if m.modal == "commit" {
+			t.Fatalf("commit opened in section %v with sidebar focus %t", view, m.sidebar)
+		}
+	}
+	m.sidebar = true
+	press(m, "c")
+	if m.modal != "commit" {
+		t.Fatal("c did not open the commit dialog with Changes focused")
+	}
+}
+
 func TestWorkbenchShortcutUsesLastMatchingContext(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	defer m.Close()
 
-	if got := m.resolveWorkbenchShortcut("ctrl+c").command; got != commandQuit {
+	copyKey := tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl}
+	if got := m.resolveWorkbenchShortcut("ctrl+c").command; got != "" || m.key(copyKey) != nil {
 		t.Fatalf("Ctrl+C without a document resolved to %q", got)
 	}
 	m.openFile("file0.go")
@@ -176,11 +207,12 @@ func TestWorkbenchShortcutUsesLastMatchingContext(t *testing.T) {
 		}
 	}
 	m.sidebar = true
-	if got := m.resolveWorkbenchShortcut("ctrl+c").command; got != commandQuit {
+	m.document().Insert("unsaved")
+	if got := m.resolveWorkbenchShortcut("ctrl+c").command; got != "" || m.key(copyKey) != nil || hasSaveConfirmation(m) {
 		t.Fatalf("Ctrl+C in the sidebar resolved to %q", got)
 	}
 	if got := m.commandShortcutHint(commandQuit); got != "Ctrl+Q" {
-		t.Fatalf("Quit advertises its fallback key: %q", got)
+		t.Fatalf("Quit advertises %q", got)
 	}
 	if got := m.commandShortcutHint(commandRefresh); got != "r" {
 		t.Fatalf("Refresh in the sidebar advertises %q", got)
