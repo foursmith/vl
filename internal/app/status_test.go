@@ -538,15 +538,13 @@ func TestStatusRemoteActionsTargetChildRepository(t *testing.T) {
 	}
 	drain(t, m, m.refresh())
 	m.openFile("child space/README.md")
-	m.clickStatus(statusPart(t, m, "sync").x + 1)
-	if m.modal != "remotes" || len(m.palette) != 1 || m.palette[0].id != "origin" {
-		t.Fatal("child publish did not use child remotes", m.notice)
+	publish := m.clickStatus(statusPart(t, m, "sync").x + 1)
+	if publish == nil || m.modal != "" {
+		t.Fatal("child publish did not use its sole remote directly", m.notice)
 	}
-	publish := m.palette[0].run
-	press(m, "esc")
-	// Changing files after opening the picker cannot redirect its operation.
+	// Changing files after starting the operation cannot redirect it.
 	m.openFile("README.md")
-	drain(t, m, publish())
+	drain(t, m, publish)
 	state := m.snapshot.RepositoryStates["child space"]
 	if state.Upstream != "origin/child-topic" || !state.TrackingKnown || state.Ahead != 0 || state.Behind != 0 {
 		t.Fatalf("child publish did not refresh tracking: %+v", state)

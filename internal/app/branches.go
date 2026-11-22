@@ -129,28 +129,39 @@ func (m *Model) publishBranchInRepository(target string) tea.Cmd {
 		return nil
 	}
 	if len(state.Remotes) == 0 {
-		m.notice = m.tr("No remotes configured")
-		return nil
+		return m.openGitHubPublish(target, state.Branch)
+	}
+	branch := state.Branch
+	publish := func(remote string) tea.Cmd {
+		return m.publishInRepository(target, func(repo *gitservice.Repository) (string, error) {
+			return repo.Publish(m.ctx, remote, branch)
+		})
+	}
+	if len(state.Remotes) == 1 {
+		return publish(state.Remotes[0].Name)
 	}
 	m.palette = nil
-	branch := state.Branch
 	for _, remote := range state.Remotes {
 		m.palette = append(m.palette, action{id: remote.Name, label: remote.Name, key: m.tr("Publish Branch"), run: func() tea.Cmd {
-			if m.hasDirtyTabs() {
-				m.notice = m.tr("Save or close unsaved files first")
-				return nil
-			}
-			cmd := m.operation("Publish", func() (string, error) {
-				repo, err := m.repo.RepositoryAt(m.ctx, target)
-				if err != nil {
-					return "", err
-				}
-				return repo.Publish(m.ctx, remote.Name, branch)
-			})
-			return m.showRemoteProgress(cmd, target, "sync")
+			return publish(remote.Name)
 		}})
 	}
 	return m.prompt("remotes", m.tr("Select a remote to publish the branch"), "")
+}
+
+func (m *Model) publishInRepository(target string, publish func(*gitservice.Repository) (string, error)) tea.Cmd {
+	if m.hasDirtyTabs() {
+		m.notice = m.tr("Save or close unsaved files first")
+		return nil
+	}
+	cmd := m.operation("Publish", func() (string, error) {
+		repo, err := m.repo.RepositoryAt(m.ctx, target)
+		if err != nil {
+			return "", err
+		}
+		return publish(repo)
+	})
+	return m.showRemoteProgress(cmd, target, "sync")
 }
 
 func (m *Model) openGitHub() tea.Cmd {

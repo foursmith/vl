@@ -29,7 +29,19 @@ func folderWorkspace(t *testing.T) *Model {
 }
 
 func TestFolderBrowseSearchEditAndInitialize(t *testing.T) {
+	configDir := t.TempDir()
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	t.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(configDir, "gitconfig"))
+	t.Setenv("GIT_CONFIG_COUNT", "0")
+	branchConfig := filepath.Join(configDir, "branch.conf")
+	if err := os.WriteFile(branchConfig, []byte("[init]\n\tdefaultBranch = other-default\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
 	m := folderWorkspace(t)
+	key := "includeIf.gitdir:" + filepath.ToSlash(filepath.Join(m.repo.Root, ".git")) + ".path"
+	if _, err := m.repo.Run(m.ctx, "config", "--global", key, branchConfig); err != nil {
+		t.Fatal(err)
+	}
 	if !m.snapshot.NoRepository || len(m.treeEntries) != 1 || len(m.snapshot.Files) != 1 {
 		t.Fatalf("folder did not load: %+v, %+v", m.snapshot, m.treeEntries)
 	}
@@ -59,6 +71,9 @@ func TestFolderBrowseSearchEditAndInitialize(t *testing.T) {
 	if m.snapshot.NoRepository || len(m.snapshot.Changes) != 1 || len(m.snapshot.GitDirectories) == 0 {
 		t.Fatalf("initialization failed: %+v; %s", m.snapshot, m.notice)
 	}
+	if m.snapshot.Branch != "other-default" {
+		t.Fatalf("initial branch = %q, want configured branch other-default", m.snapshot.Branch)
+	}
 	if m.document() != doc || !doc.Dirty() || !strings.Contains(doc.Text, "edited") {
 		t.Fatal("initialization lost edits")
 	}
@@ -84,11 +99,17 @@ func TestFolderWatcherAndRecentOpen(t *testing.T) {
 }
 
 func TestFolderExternalInitializationAndMouseEntry(t *testing.T) {
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_COUNT", "0")
 	m := folderWorkspace(t)
 	drain(t, m, m.selectSection(history))
 	drain(t, m, m.clickSidebar(tea.MouseClickMsg{X: m.sideX() + 3, Y: headerHeight + 3, Button: tea.MouseLeft}))
 	if m.snapshot.NoRepository {
 		t.Fatal("mouse initialization failed")
+	}
+	if m.snapshot.Branch != "main" {
+		t.Fatalf("initial branch = %q, want main without init.defaultBranch", m.snapshot.Branch)
 	}
 	external := folderWorkspace(t)
 	if _, err := external.repo.Run(external.ctx, "init"); err != nil {

@@ -24,6 +24,31 @@ func (r *Repository) HasRepository() bool {
 	return !os.IsNotExist(err)
 }
 
+func (r *Repository) Initialize(ctx context.Context) (string, error) {
+	if r.HasRepository() {
+		return "", nil
+	}
+	output, err := r.Run(ctx, "init")
+	if err != nil {
+		return output, err
+	}
+	// Git can resolve gitdir-conditional config after the repository exists.
+	branch, err := r.Run(ctx, "config", "--get", "--default", "", "init.defaultBranch")
+	if err != nil || strings.TrimSuffix(branch, "\n") != "" {
+		return output, err
+	}
+	if _, err := r.Run(ctx, "rev-parse", "--verify", "--quiet", "HEAD"); err == nil {
+		return output, nil
+	} else {
+		var exit *exec.ExitError
+		if !errors.As(err, &exit) || exit.ExitCode() != 1 {
+			return output, err
+		}
+	}
+	_, err = r.Run(ctx, "branch", "--move", "main")
+	return output, err
+}
+
 type Change struct {
 	Path, Original  string
 	Repository      string // Owning repository path relative to the workspace root.

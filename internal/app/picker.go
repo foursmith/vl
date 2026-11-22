@@ -90,7 +90,7 @@ func (m *Model) clickPicker(msg tea.MouseClickMsg) tea.Cmd {
 
 func (m *Model) isPicker() bool {
 	switch m.modal {
-	case "searchOptions", "stashPicker", "stashLoading", "quick", "remotes", "refs", "recent", "themes", "languages", "statusBarStyles", "fileSyntax", "pullRequestFilter":
+	case "searchOptions", "stashPicker", "stashLoading", "quick", "remotes", "githubPublish", "refs", "recent", "themes", "languages", "statusBarStyles", "fileSyntax", "pullRequestFilter":
 		return true
 	default:
 		return false
@@ -120,8 +120,7 @@ func (m *Model) selectPickerChoice() tea.Cmd {
 		}
 		m.themeBeforePreview = nil
 	}
-	m.modal = ""
-	m.input.Blur()
+	m.dismissDialog()
 	return a.run()
 }
 

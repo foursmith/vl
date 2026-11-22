@@ -30,6 +30,9 @@ func (m *Model) confirmationDialog() bool {
 }
 
 func (m *Model) showDialog(kind, title string) {
+	if kind != "githubPublish" {
+		m.githubPublish = nil
+	}
 	m.leaderTarget = ""
 	m.resizingSidebar = false
 	m.modal, m.modalTitle = kind, title
@@ -46,6 +49,7 @@ func (m *Model) openConfirmation(title, detail string, cancel func() tea.Cmd, ac
 
 func (m *Model) dismissDialog() {
 	m.confirmationActions = nil
+	m.githubPublish = nil
 	m.modal = ""
 	m.input.Blur()
 }

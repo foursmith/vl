@@ -243,6 +243,7 @@ type Model struct {
 	sidebarCollapsed        map[string]bool
 	branchStart             string
 	branchRepository        string
+	githubPublish           *githubPublishPicker
 	commitRepository        string
 	stashRepository         string
 	stashOption             string
@@ -854,6 +855,8 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}
 	case stashPickerMsg:
 		return m, m.finishStashPicker(msg)
+	case githubPublishOwnerMsg:
+		m.finishGitHubPublishOwner(msg)
 	case operationMsg:
 		m.busy = false
 		m.operationProgress = ""

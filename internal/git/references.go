@@ -163,16 +163,23 @@ func GitHubRepositoryURL(raw string) (string, error) {
 		return "", fmt.Errorf("invalid GitHub repository path")
 	}
 	for _, part := range parts {
-		if part == "" || part == "." || part == ".." {
+		if !validGitHubPathPart(part) {
 			return "", fmt.Errorf("invalid GitHub repository path")
-		}
-		for _, r := range part {
-			if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '_' || r == '-' || r == '.') {
-				return "", fmt.Errorf("invalid GitHub repository path")
-			}
 		}
 	}
 	return "https://github.com/" + path, nil
+}
+
+func validGitHubPathPart(part string) bool {
+	if part == "" || part == "." || part == ".." {
+		return false
+	}
+	for _, r := range part {
+		if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '_' || r == '-' || r == '.') {
+			return false
+		}
+	}
+	return true
 }
 
 func (r *Repository) Switch(ctx context.Context, ref Ref) (string, error) {
@@ -245,9 +252,16 @@ func (r *Repository) Sync(ctx context.Context) (string, error) {
 }
 
 func (r *Repository) Publish(ctx context.Context, remote, branch string) (string, error) {
-	current, err := r.Run(ctx, "symbolic-ref", "--short", "-q", "HEAD")
-	if err != nil || strings.TrimSpace(current) != branch {
-		return "", fmt.Errorf("active branch changed; reopen the publish picker")
+	if err := r.checkPublishBranch(ctx, branch); err != nil {
+		return "", err
 	}
 	return r.Run(ctx, "push", "--set-upstream", "--", remote, "refs/heads/"+branch+":refs/heads/"+branch)
+}
+
+func (r *Repository) checkPublishBranch(ctx context.Context, branch string) error {
+	current, err := r.Run(ctx, "symbolic-ref", "--short", "-q", "HEAD")
+	if err != nil || branch == "" || strings.TrimSpace(current) != branch {
+		return fmt.Errorf("active branch changed; reopen the publish picker")
+	}
+	return nil
 }

@@ -143,7 +143,9 @@ func (m *Model) initializeRepository() tea.Cmd {
 	if m.repo.HasRepository() {
 		return m.refresh()
 	}
-	return m.startOperation("Initialize repository", func() (string, error) { return m.repo.Run(m.ctx, "init") })
+	return m.startOperation("Initialize repository", func() (string, error) {
+		return m.repo.Initialize(m.ctx)
+	})
 }
 
 func (m *Model) commandActions() []action {
@@ -187,6 +189,9 @@ func (m *Model) filteredActions() []action {
 }
 
 func (m *Model) filterActions() []action {
+	if m.modal == "githubPublish" {
+		return m.githubPublishActions()
+	}
 	query := m.input.Value()
 	if m.commandPicker() {
 		query = strings.TrimSpace(strings.TrimPrefix(query, ">"))

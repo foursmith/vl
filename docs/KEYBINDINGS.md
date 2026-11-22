@@ -257,5 +257,10 @@ In Changes, History, and Pull Requests, right-click a repository row or select
 it and press `F7` to switch branches. The Changes and History menus also offer
 remote actions such as Sync, Pull, Push, or Publish.
 
+Publish sets the upstream for the current branch. With one remote it pushes
+directly, and with multiple remotes it opens a picker. With no remotes, sign
+in with `gh auth login` to create a private or public GitHub repository from the
+publish picker.
+
 In confirmation dialogs, `h` / `l` switch buttons, `j` / `k` scroll the details,
 `Enter` activates the focused button, and `Esc` cancels.
