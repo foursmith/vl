@@ -48,7 +48,20 @@ func TestInsertRelativePathCompletion(t *testing.T) {
 	if m.document().Text != `"../assets/` || len(m.pathCompletion.matches) != 2 {
 		t.Fatal("directory completion did not continue to the next level")
 	}
-	sendKey(tea.KeyDown)
+	sendKey(tea.KeyPgDown)
+	if m.pathCompletion == nil || m.pathCompletion.selected != 1 {
+		t.Fatal("PageDown did not move within the suggestions")
+	}
+	sendKey(tea.KeyPgUp)
+	if m.pathCompletion == nil || m.pathCompletion.selected != 0 {
+		t.Fatal("PageUp did not move within the suggestions")
+	}
+	press(m, "ctrl+j")
+	press(m, "ctrl+k")
+	if m.pathCompletion == nil || m.pathCompletion.selected != 0 {
+		t.Fatal("Ctrl+K did not move to the previous suggestion")
+	}
+	press(m, "ctrl+j")
 	sendKey(tea.KeyTab)
 	press(m, `"`)
 	if want := `"../assets/文件 名.txt"`; m.document().Text != want {

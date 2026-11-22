@@ -132,9 +132,9 @@ func (m *Model) rotateWelcomeArt(key string) bool {
 		m.welcomeOrbit.rotate(-.16, 0)
 	case key == rightArrow:
 		m.welcomeOrbit.rotate(.16, 0)
-	case matchesShortcut(key, pickerKeys.Up):
+	case key == upArrow:
 		m.welcomeOrbit.rotate(0, .16)
-	case matchesShortcut(key, pickerKeys.Down):
+	case key == downArrow:
 		m.welcomeOrbit.rotate(0, -.16)
 	default:
 		return false

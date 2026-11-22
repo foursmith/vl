@@ -84,6 +84,9 @@ func (m *Model) focusFileFind(focus int) tea.Cmd {
 }
 func (m *Model) blurFileFind() {
 	m.findWidget.focused = false
+	if m.sidebar && m.section == search {
+		return
+	}
 	m.search.query.Blur()
 	m.search.replacement.Blur()
 }

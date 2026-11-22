@@ -40,12 +40,11 @@ func (n *navigationState) key(scope, k string) (string, int, bool) {
 		n.pending = k
 		return "", 0, true
 	case matchesShortcut(k, navigationKeys.Last):
-		explicit := n.count > 0
-		n.count = 0
-		if explicit {
-			return "first", count, true
+		if n.count > 0 {
+			k = "first"
+		} else {
+			k = "last"
 		}
-		return "last", 1, true
 	case matchesShortcut(k, navigationKeys.Down):
 		k = "down"
 	case matchesShortcut(k, navigationKeys.Up):
@@ -54,17 +53,11 @@ func (n *navigationState) key(scope, k string) (string, int, bool) {
 		k = "left"
 	case matchesShortcut(k, navigationKeys.Right):
 		k = "right"
-	case isHalfPageKey(k), k == "pgup", k == "pgdown":
-	case matchesShortcut(k, pickerKeys.First):
-		k = "first"
-	case matchesShortcut(k, pickerKeys.Last):
-		k = "last"
 	default:
-		n.count = 0
-		return k, 1, false
+		k = listNavigationKey(k)
 	}
 	n.count = 0
-	return k, count, true
+	return k, count, k != ""
 }
 
 func (m *Model) navigationKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {

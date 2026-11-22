@@ -11,6 +11,9 @@ sidebar lists, pickers, menus, and scrollable confirmation details. In
 Search, the keys navigate the results. In Find, they scroll the document
 while keeping focus on the field. In a zoomed image preview, they pan vertically.
 
+With a list focused, use `j` / `k` to move down / up, `gg` / `G` to jump to
+the first / last row, and `PageUp` / `PageDown` to move by a page.
+
 Keys are case-sensitive. `Ctrl+G` is a chord. `Space w` and `gg` are sequences.
 
 ## Adding a binding in code
@@ -28,6 +31,11 @@ ID when a command has more than one binding with different focus conditions.
 The keymap builder accepts ordered assignments, replacements, and removals by
 rule ID and preserves each rule's command and focus conditions. A rule with no
 default key still gives the user a target to bind.
+
+For a new list, use `listNavigationKey` when typing belongs to a text input,
+or `navigationState.key` when the list has focus and supports Vim sequences.
+Use `moveListSelection` for row and page movement, and keep component-specific
+behavior such as previews and non-selectable headings in the caller.
 
 ## Workbench
 
@@ -53,8 +61,11 @@ In confirmation dialogs, use `←`/`→` or `Tab` to select a button, `Enter` to
 Go to File filters by filename or path as you type. Prefix the input with `>` for
 commands, or use `:line[:column]` to jump within the current file. See the
 [Vim guide](VIM.md#save-and-quit-commands) for save and quit commands. In a picker,
-use `Up` / `Down` to select a result, `PageUp` / `PageDown` to page, and `Enter` to
-accept. `Esc` dismisses the picker.
+use `Down` / `Up` or `Ctrl+J` / `Ctrl+K` to select the next / previous
+result while typing. `PageUp` / `PageDown` move by a page, and `Home` / `End`
+jump to the first / last result. `Enter` accepts and `Esc` dismisses the picker.
+Path completion also supports arrow keys, `Ctrl+J` / `Ctrl+K`, and half- or
+full-page navigation. `Tab` inserts the selected path.
 
 `Ctrl+C` copies selected text when the text or diff editor has focus.
 
@@ -143,7 +154,7 @@ tracked changes only, or tracked changes while keeping staged changes in place.
 | --- | --- |
 | `Ctrl+F` / Normal mode `/` | Open Find in the editor |
 | Normal mode `n` | Find Next |
-| `↑` / `↓` in Find | Jump to the previous / next match |
+| `↑` / `↓` or `Ctrl+K` / `Ctrl+J` in Find | Jump to the previous / next match |
 | `Enter` in Find | Jump to the match and return focus to the editor |
 | `Tab` / `Shift+Tab` | Switch between Find and Replace, or return to the editor when Replace is collapsed |
 | `Enter` in Replace | Replace the current match |
@@ -166,6 +177,7 @@ Read-only diffs support Find.
 | `Tab` / `Shift+Tab` from a field | Move through the visible fields and into the results |
 | `Enter` in the search field | Run the search and focus the results |
 | `Esc` from a field | Focus the results |
+| `Ctrl+J` / `Ctrl+K` from a field | Select the next / previous result while keeping focus in the field |
 | `/` / `Ctrl+F` in the results | Focus the search field |
 | `j` / `k`, `gg` / `G`, `PageUp` / `PageDown` in the results | Move through matches and file groups |
 | `h` / `l` in the results | Select the parent file group / expand it or open the selected result |

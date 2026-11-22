@@ -4,7 +4,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/foursmith/vl/internal/fileicon"
@@ -114,27 +113,13 @@ func (m *Model) scrollPicker(msg tea.MouseWheelMsg) {
 }
 
 func (m *Model) pickerKey(msg tea.KeyPressMsg) bool {
-	index := m.pickerIndex
-	k := msg.String()
-	delta := pageDelta(k, m.pickerHeight())
-	switch {
-	case key.Matches(msg, pickerKeys.Up):
-		index--
-	case key.Matches(msg, pickerKeys.Down):
-		index++
-	case delta != 0:
-		index += delta
-		if isHalfPageKey(k) {
-			m.pickerTop += delta
-		}
-	case key.Matches(msg, pickerKeys.First):
-		index = 0
-	case key.Matches(msg, pickerKeys.Last):
-		index = len(m.filteredActions()) - 1
-	default:
+	action := listNavigationKey(msg.String())
+	if action == "" {
 		return false
 	}
 	rows := m.filteredActions()
+	index, scroll, _ := moveListSelection(action, m.pickerIndex, len(rows), m.pickerHeight(), 1)
+	m.pickerTop += scroll
 	// On upward movement, step past the heading in the same direction.
 	for index > 0 && index < min(len(rows), m.pickerIndex) && m.pickerHeading(rows[index]) {
 		index--

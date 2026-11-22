@@ -29,6 +29,14 @@ func TestWorkspaceSearchSecondTabAndNavigation(t *testing.T) {
 	if m.search.result.Count != 1 || len(m.searchRows()) != 2 {
 		t.Fatalf("unexpected result: %+v", m.search.result)
 	}
+	press(m, "ctrl+j")
+	if m.search.selected != 1 || !m.search.query.Focused() || m.search.focus != 0 || m.search.query.Value() != "package main" {
+		t.Fatal("Ctrl+J did not select the next result while keeping query focus")
+	}
+	press(m, "ctrl+k")
+	if m.search.selected != 0 || !m.search.query.Focused() {
+		t.Fatal("Ctrl+K did not select the previous result while keeping query focus")
+	}
 	press(m, "esc")
 	press(m, "j")
 	press(m, "enter")

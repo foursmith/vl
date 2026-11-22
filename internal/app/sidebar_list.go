@@ -42,27 +42,14 @@ func (l sidebarList) ensureSelected() {
 	*l.top = max(0, *l.top)
 }
 func (l sidebarList) move(action string, count int) bool {
-	switch action {
-	case "up":
-		*l.selected = max(0, *l.selected-count)
-	case "down":
-		*l.selected = min(l.count-1, max(-1, *l.selected)+count)
-	case "pgup", "pgdown", "ctrl+u", "ctrl+d":
-		delta := pageDelta(action, l.height) * count
-		*l.selected = min(l.count-1, max(0, max(-1, *l.selected)+delta))
-		if isHalfPageKey(action) {
-			*l.top += delta
-			l.clampScroll()
-		}
-	case "first":
-		*l.selected = min(l.count-1, count-1)
-	case "last":
-		*l.selected = l.count - 1
-	default:
+	index, scroll, moved := moveListSelection(action, *l.selected, l.count, l.height, count)
+	if !moved {
 		return false
 	}
-	if l.count == 0 {
-		*l.selected = -1
+	*l.selected = index
+	if scroll != 0 {
+		*l.top += scroll
+		l.clampScroll()
 	}
 	return true
 }

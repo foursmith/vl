@@ -57,20 +57,14 @@ func (m *Model) contextMenuInput(msg tea.Msg) (tea.Cmd, bool) {
 					m.moveContextMenu(-count)
 				case "down":
 					m.moveContextMenu(count)
-				case "first":
-					menu.selected = min(len(menu.actions)-1, count-1)
-					m.ensureContextMenu()
-				case "last":
-					menu.selected = len(menu.actions) - 1
-					m.ensureContextMenu()
-				case "pgup", "pgdown":
-					m.moveContextMenu(count * pageDelta(action, m.contextMenuLayout().count))
-				case "ctrl+u", "ctrl+d":
+				default:
 					height := m.contextMenuLayout().count
-					delta := count * pageDelta(action, height)
-					menu.selected = min(len(menu.actions)-1, max(0, menu.selected+delta))
-					menu.top = min(len(menu.actions)-height, max(0, menu.top+delta))
-					m.ensureContextMenu()
+					index, scroll, moved := moveListSelection(action, menu.selected, len(menu.actions), height, count)
+					if moved {
+						menu.selected = index
+						menu.top = min(len(menu.actions)-height, max(0, menu.top+scroll))
+						m.ensureContextMenu()
+					}
 				}
 				return nil, true
 			}

@@ -188,8 +188,9 @@ func (m *Model) selectedSearchRow() (searchRow, bool) {
 
 func (m *Model) searchKey(msg tea.KeyPressMsg) tea.Cmd {
 	s := &m.search
+	k := msg.String()
 	switch {
-	case m.matchWorkbenchCommand(msg.String(), commandFind):
+	case m.matchWorkbenchCommand(k, commandFind):
 		return m.focusSearch(0)
 	case key.Matches(msg, searchKeys.NextField, searchKeys.PreviousField):
 		order := []int{0}
@@ -215,7 +216,7 @@ func (m *Model) searchKey(msg tea.KeyPressMsg) tea.Cmd {
 		return m.focusSearch(order[(index+step+len(order))%len(order)])
 	case key.Matches(msg, dismissKey):
 		return m.focusSearch(2)
-	case isHalfPageKey(msg.String()) && s.focus != 2:
+	case pageDelta(k, 1) != 0 && s.focus != 2:
 		m.focusSearch(2)
 		_, cmd := m.sidebarNavigationKey(msg)
 		return cmd
@@ -230,6 +231,10 @@ func (m *Model) searchKey(msg tea.KeyPressMsg) tea.Cmd {
 		return m.runSearch()
 	case key.Matches(msg, pickerKeys.Down, pickerKeys.Up):
 		if s.focus != 2 {
+			if msg.Mod.Contains(tea.ModCtrl) {
+				_, cmd := m.sidebarNavigationKey(msg)
+				return cmd
+			}
 			return m.focusSearch(2)
 		}
 	}
@@ -239,7 +244,7 @@ func (m *Model) searchKey(msg tea.KeyPressMsg) tea.Cmd {
 	if key.Matches(msg, searchKeys.FocusQuery) {
 		return m.focusSearch(0)
 	}
-	if m.matchWorkbenchCommand(msg.String(), commandContextMenu) {
+	if m.matchWorkbenchCommand(k, commandContextMenu) {
 		return m.openSidebarContextMenu()
 	}
 	_, cmd := m.sidebarNavigationKey(msg)

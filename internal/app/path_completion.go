@@ -149,27 +149,20 @@ func (m *Model) validPathCompletion() bool {
 
 func (m *Model) pathCompletionKey(k string) (bool, tea.Cmd) {
 	c := m.pathCompletion
-	if c == nil || len(c.matches) == 0 || (!matchesShortcut(k, pickerKeys.Up) &&
-		!matchesShortcut(k, pickerKeys.Down) && !matchesShortcut(k, completionAccept) && !isHalfPageKey(k)) {
+	if c == nil || len(c.matches) == 0 {
+		return false, nil
+	}
+	action := listNavigationKey(k)
+	accept := matchesShortcut(k, completionAccept)
+	// Home and End still move the cursor in the editor.
+	if !accept && (action == "" || action == "first" || action == "last") {
 		return false, nil
 	}
 	cursor := m.editorCursor()
 	if !m.validPathCompletion() || cursor == nil || m.width < 30 || m.height < 8 {
 		return false, nil
 	}
-	switch {
-	case isHalfPageKey(k):
-		_, height := m.pathCompletionRows(cursor.Y, len(c.matches))
-		if height <= 0 {
-			return false, nil
-		}
-		c.selected = min(len(c.matches)-1, max(0, c.selected+pageDelta(k, height)))
-
-	case matchesShortcut(k, pickerKeys.Up):
-		c.selected = max(0, c.selected-1)
-	case matchesShortcut(k, pickerKeys.Down):
-		c.selected = min(len(c.matches)-1, c.selected+1)
-	case matchesShortcut(k, completionAccept):
+	if accept {
 		suffix := c.matches[c.selected][len(c.prefix):]
 		c.doc.BeginEditGroup()
 		c.doc.Insert(suffix)
@@ -178,8 +171,12 @@ func (m *Model) pathCompletionKey(k string) (bool, tea.Cmd) {
 			return true, m.refreshPathCompletion()
 		}
 		m.pathCompletion = nil
+		return true, nil
 	}
-	return true, nil
+	_, height := m.pathCompletionRows(cursor.Y, len(c.matches))
+	index, _, moved := moveListSelection(action, c.selected, len(c.matches), height, 1)
+	c.selected = index
+	return moved, nil
 }
 
 func (m *Model) pathCompletionOverlay(base []string, cursor *tea.Cursor) []string {

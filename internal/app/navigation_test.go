@@ -251,6 +251,14 @@ func TestMenuVimCountsAndEdges(t *testing.T) {
 	if m.contextMenu.selected != 3 {
 		t.Fatal("menu G")
 	}
+	m.Update(tea.KeyPressMsg{Code: tea.KeyPgUp})
+	if m.contextMenu.selected != 0 {
+		t.Fatal("menu PageUp should reach the first item")
+	}
+	m.Update(tea.KeyPressMsg{Code: tea.KeyPgDown})
+	if m.contextMenu.selected != 3 {
+		t.Fatal("menu PageDown should reach the last item")
+	}
 	press(m, "h")
 	if m.contextMenu != nil {
 		t.Fatal("menu h")

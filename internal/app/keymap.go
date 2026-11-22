@@ -21,6 +21,8 @@ const (
 	sidebarRefreshRuleID = "git.refresh.sidebar"
 	leftArrow            = "left"
 	rightArrow           = "right"
+	upArrow              = "up"
+	downArrow            = "down"
 )
 
 var dismissKey = binding("Esc", "Dismiss", "esc")
@@ -89,8 +91,8 @@ var sidebarKeys = struct {
 }
 
 var pickerKeys = struct{ Up, Down, First, Last, Accept key.Binding }{
-	Up:     binding("↑", "Previous", "up"),
-	Down:   binding("↓", "Next", "down"),
+	Up:     binding("↑ / Ctrl+K", "Previous", upArrow, "ctrl+k"),
+	Down:   binding("↓ / Ctrl+J", "Next", downArrow, "ctrl+j"),
 	First:  binding("Home", "First", "home"),
 	Last:   binding("End", "Last", "end"),
 	Accept: binding("Enter", "Select", "enter"),
@@ -129,8 +131,8 @@ var navigationKeys = struct {
 }{
 	Left:  binding("←", "Left", leftArrow, navigationLeftLetter),
 	Right: binding("→", "Right", rightArrow, navigationRightLetter),
-	Up:    binding("↑", "Up", "up", "k"),
-	Down:  binding("↓", "Down", "down", "j"),
+	Up:    binding("↑", "Up", upArrow, "k"),
+	Down:  binding("↓", "Down", downArrow, "j"),
 	Last:  binding("G", "Last", "G"),
 }
 

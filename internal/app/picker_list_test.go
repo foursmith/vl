@@ -76,6 +76,28 @@ func TestPickerListSearchTypingAndPaste(t *testing.T) {
 	}
 }
 
+func TestQuickOpenControlNavigationKeepsFilterFocused(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	defer m.Close()
+	m.Update(tea.WindowSizeMsg{Width: 80, Height: 12})
+	for i := range 20 {
+		m.snapshot.Files = append(m.snapshot.Files, fmt.Sprintf("jkggG%d.go", i))
+	}
+	m.openQuickFiles()
+	for _, char := range "jkggG" {
+		press(m, string(char))
+	}
+	for _, step := range []struct {
+		key  string
+		want int
+	}{{"ctrl+j", 1}, {"ctrl+k", 0}, {"ctrl+d", 2}, {"ctrl+u", 0}, {"pgdown", 5}, {"pgup", 0}} {
+		press(m, step.key)
+		if m.pickerIndex != step.want || m.input.Value() != "jkggG" || !m.input.Focused() || m.input.Position() != len("jkggG") {
+			t.Fatalf("%s selected %d (want %d) with input %q", step.key, m.pickerIndex, step.want, m.input.Value())
+		}
+	}
+}
+
 func TestPickerListModesFilterAndExecuteVisibleAction(t *testing.T) {
 	for _, mode := range []string{"quick", "refs", "remotes", "recent"} {
 		t.Run(mode, func(t *testing.T) {

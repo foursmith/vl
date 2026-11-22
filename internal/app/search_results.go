@@ -45,10 +45,11 @@ func (m *Model) searchResultRow(index, w int, r searchRow) string {
 	if index == hovered {
 		bg = m.colors.Hover
 	}
-	selected := index == s.selected && s.focus == 2
+	selected := index == s.selected
 	if selected {
-		bg = m.colors.SidebarSelection(m.sidebar)
-		if m.sidebar {
+		focused := m.sidebar && s.focus == 2
+		bg = m.colors.SidebarSelection(focused)
+		if focused {
 			if m.colors.SelectionForeground != "" {
 				fg = m.colors.SelectionForeground
 			}
