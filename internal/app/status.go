@@ -103,6 +103,109 @@ func (m *Model) gitStatusSegments() []statusSegment {
 	}
 }
 
+func (m *Model) statusHints() []string {
+	if m.notice != "" || m.modal != "" || m.contextMenu != nil || m.fileFindFocused() || m.leaderActive() || m.flashValid() {
+		return nil
+	}
+	if m.sidebar {
+		entry := m.current()
+		if m.section == changes && entry != nil && !m.busy {
+			return m.changeStatusHints(entry)
+		}
+		if m.section == explorer && !m.outlineHasFocus() && m.activeTab >= 0 && m.tabs[m.activeTab].preview {
+			var hints []string
+			if entry != nil && entry.file != "" {
+				path := entry.file
+				if !filepath.IsAbs(path) {
+					path = filepath.Join(m.repo.Root, path)
+				}
+				if m.tabs[m.activeTab].path() == path {
+					hints = append(hints, sidebarKeys.Open.Help().Key+" "+m.tr("Keep Preview"))
+				}
+			}
+			if key := m.commandShortcutHint(commandFocus); key != "" {
+				hints = append(hints, key+" "+m.tr("Focus Editor"))
+			}
+			return hints
+		}
+		return nil
+	}
+	if !m.busy && !m.editing() && m.diffOpen && m.diffChange != nil &&
+		m.activeTab >= 0 && !m.tabs[m.activeTab].vim.CommandPending() {
+		var stage, discard []string
+		for _, action := range m.reviewActions() {
+			if action.key == "" || action.disabled != "" {
+				continue
+			}
+			hint := action.key + " " + action.label
+			if strings.HasPrefix(action.id, "diff.discard") {
+				discard = append(discard, hint)
+			} else {
+				stage = append(stage, hint)
+			}
+		}
+		return append(stage, discard...)
+	}
+	return nil
+}
+
+func (m *Model) changeStatusHints(entry *item) []string {
+	stage, unstage, discard := "Stage File", "Unstage File", "Discard File"
+	switch {
+	case entry.repoHeader:
+		stage, unstage = "Stage Repository", "Unstage Repository"
+	case entry.folder != "":
+		stage, unstage, discard = "Stage Folder", "Unstage Folder", "Discard Folder"
+	case entry.header:
+		stage, unstage, discard = "Stage Group", "Unstage Group", "Discard Group"
+	case entry.change == nil:
+		return nil
+	}
+	if entry.staged {
+		stage = unstage
+	}
+	scope := "Stage Repository"
+	if m.stageScopeUnstages(entry) {
+		scope = "Unstage Repository"
+	}
+	stageKey, scopeKey := gitKeys.Stage.Help().Key, gitKeys.StageScope.Help().Key
+	var hints []string
+	if stage == scope {
+		hints = append(hints, stageKey+"/"+scopeKey+" "+m.tr(stage))
+	} else {
+		if entry.change == nil || m.stageFileReason(*entry.change, entry.staged) == "" {
+			hints = append(hints, stageKey+" "+m.tr(stage))
+		}
+		hints = append(hints, scopeKey+" "+m.tr(scope))
+	}
+	if !entry.staged {
+		if !entry.repoHeader && (entry.change == nil || m.discardFileReason(*entry.change) == "") {
+			if entry.change != nil && entry.change.Untracked() {
+				discard = "Delete Untracked File"
+			}
+			hints = append(hints, gitKeys.Discard.Help().Key+" "+m.tr(discard))
+		}
+		hints = append(hints, gitKeys.DiscardScope.Help().Key+" "+m.tr("Discard Repository Changes"))
+	}
+	return hints
+}
+
+// Fit complete action hints in order before dropping the lower-priority ones.
+func fitStatusHints(hints []string, width int) string {
+	if len(hints) == 0 {
+		return ""
+	}
+	text := hints[0]
+	for _, hint := range hints[1:] {
+		next := text + " · " + hint
+		if ansi.StringWidth(next) > width {
+			break
+		}
+		text = next
+	}
+	return text
+}
+
 func (m *Model) statusLayout() []statusSegment {
 	left := []statusSegment{{id: "init", text: m.tr("Initialize Repository")}}
 	if m.editorOnly {
@@ -151,6 +254,12 @@ func (m *Model) statusLayout() []statusSegment {
 		result = append(result, segment)
 		x += segment.width
 	}
+	hints := m.statusHints()
+	rightLimit := m.width - x - 1
+	if len(hints) > 0 {
+		hintWidth := min(ansi.StringWidth(hints[0])+2, max(0, m.width-x))
+		rightLimit = min(rightLimit, m.width-x-hintWidth)
+	}
 	var candidates []statusSegment
 	if d := m.editorDocument(); d != nil {
 		line, col := d.Position()
@@ -173,7 +282,7 @@ func (m *Model) statusLayout() []statusSegment {
 	rightWidth := 0
 	for _, segment := range candidates {
 		segment.width = ansi.StringWidth(segment.text) + 2
-		if x+rightWidth+segment.width+1 <= m.width {
+		if rightWidth+segment.width <= rightLimit {
 			right = append(right, segment)
 			rightWidth += segment.width
 		}
@@ -185,34 +294,8 @@ func (m *Model) statusLayout() []statusSegment {
 		nextX += right[i].width
 	}
 	notice := m.notice
-	if notice == "" && m.modal == "" && m.contextMenu == nil {
-		switch {
-		case m.sidebar && m.section == changes && m.current() != nil:
-			notice = m.tr("%s/%s: stage or unstage · %s/%s: discard", gitKeys.Stage.Help().Key, gitKeys.StageScope.Help().Key, gitKeys.Discard.Help().Key, gitKeys.DiscardScope.Help().Key)
-		case !m.sidebar && m.diffOpen && m.diffChange != nil:
-			file, hunk := m.tr("Stage File"), m.tr("Stage Hunk")
-			if m.diffStaged {
-				file, hunk = m.tr("Unstage File"), m.tr("Unstage Hunk")
-			}
-			notice = gitKeys.StageScope.Help().Key + ": " + file
-			if m.partialStageReason(m.diffStaged) == "" {
-				start, end := m.diffSelection.bounds()
-				if len(m.selectedDiffChanges()) > 0 {
-					hunk = m.tr("Stage Selected Ranges")
-					if m.diffStaged {
-						hunk = m.tr("Unstage Selected Ranges")
-					}
-				} else if m.diffHunk < 0 || m.diffSelection.active && start != end {
-					hunk = ""
-				}
-				if hunk != "" {
-					notice = gitKeys.Stage.Help().Key + ": " + hunk + " · " + notice
-				}
-			}
-			if !m.diffStaged {
-				notice += " · " + m.tr("%s/%s: discard", gitKeys.Discard.Help().Key, gitKeys.DiscardScope.Help().Key)
-			}
-		}
+	if notice == "" {
+		notice = fitStatusHints(hints, rightX-x-2)
 	}
 	if m.sidebar && m.section == search && notice == "" {
 		notice = m.tr("%s: fields/results", searchKeys.NextField.Help().Key)

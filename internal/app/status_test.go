@@ -63,6 +63,69 @@ func TestRevisionHoverAndFocusUseStatusNoticeArea(t *testing.T) {
 	}
 }
 
+func TestStatusHintsFollowPreviewFocusAndFitNarrowWidth(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	t.Cleanup(m.Close)
+	m.items = []item{{file: "file0.go", label: "file0.go"}}
+	m.selected, m.sidebar = 0, true
+	m.openDocument("file0.go", true)
+	m.items[0].file = m.document().Path
+	m.Update(tea.WindowSizeMsg{Width: 180, Height: 24})
+	if got := statusPart(t, m, "notice").text; got != "Enter Keep Preview · F2 Focus Editor" {
+		t.Fatalf("preview hints = %q", got)
+	}
+	m.Update(tea.WindowSizeMsg{Width: 60, Height: 18})
+	if got := statusPart(t, m, "notice").text; got != "Enter Keep Preview" {
+		t.Fatalf("narrow preview hint = %q", got)
+	}
+	m.Update(tea.KeyPressMsg{Code: tea.KeyF2})
+	if m.tabs[m.activeTab].preview || strings.Contains(plain(m.statusLine()), "Keep Preview") {
+		t.Fatal("preview hint remained after the editor took focus")
+	}
+}
+
+func TestStatusHintsFollowGitScopeAndSelection(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	t.Cleanup(m.Close)
+	m.Update(tea.WindowSizeMsg{Width: 180, Height: 24})
+	change := gitservice.Change{Path: "file.go", Worktree: 'M', Index: 'M'}
+	m.section, m.sidebar, m.selected = changes, true, 0
+	m.snapshot.Changes = []gitservice.Change{change}
+	for _, tt := range []struct {
+		entry item
+		want  string
+	}{
+		{item{change: &change}, "s Stage File · S Stage Repository · d Discard File · D Discard Repository Changes"},
+		{item{folder: "dir"}, "s Stage Folder · S Stage Repository · d Discard Folder · D Discard Repository Changes"},
+		{item{change: &change, staged: true}, "s Unstage File · S Unstage Repository"},
+		{item{repoHeader: true}, "s/S Stage Repository · D Discard Repository Changes"},
+	} {
+		m.items = []item{tt.entry}
+		if got := statusPart(t, m, "notice").text; got != tt.want {
+			t.Errorf("changes hint = %q, want %q", got, tt.want)
+		}
+	}
+
+	m.diffPath, m.diffChange = change.Path, &change
+	m.patch = diff.Parse("@@ -1 +1 @@\n-old\n+new\n")
+	showDiffFixture(m)
+	if got := statusPart(t, m, "notice").text; got != "s Stage Hunk · S Stage File · d Discard Hunk · D Discard File" {
+		t.Fatalf("diff hint = %q", got)
+	}
+	m.diffSelection = diffSelection{active: true, right: m.diffLayout.split, anchor: textPoint{0, 0}, cursor: textPoint{0, 3}}
+	if got := statusPart(t, m, "notice").text; !strings.HasPrefix(got, "s Stage Selected Ranges · S Stage File") {
+		t.Fatalf("selection hint = %q", got)
+	}
+	m.diffStaged = true
+	if got := statusPart(t, m, "notice").text; strings.Contains(got, "Discard") || !strings.Contains(got, "S Unstage File") {
+		t.Fatalf("index diff hint = %q", got)
+	}
+	m.notice = "Git result"
+	if got := statusPart(t, m, "notice").text; got != m.notice {
+		t.Fatalf("operation notice = %q", got)
+	}
+}
+
 func TestStatusBarStylePickerPersistsAndRestores(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	t.Cleanup(m.Close)
