@@ -1190,8 +1190,6 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 			m.zoomImage(factor, m.mainX()+m.mainWidth()/2, m.contentRow()+m.contentHeight()/2)
 		case matchesShortcut(k, imageKeys.Fit):
 			m.resetImageZoom()
-		case matchesShortcut(k, imageKeys.Keep):
-			return m.keepTab()
 		}
 		return nil
 	}

@@ -75,6 +75,27 @@ func TestImageTabsPreviewReadOnlyAndLayout(t *testing.T) {
 	}
 }
 
+func TestClickImageTabKeepsPreview(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	defer m.Close()
+	m.kittySupported = true
+	writePreviewPNG(t, filepath.Join(m.repo.Root, "picture.png"), 9, 5)
+	m.Update(tea.WindowSizeMsg{Width: 120, Height: 35})
+	m.openPreviewFile("picture.png")
+	m.sidebar = true
+
+	slot := m.tabLayout()[0]
+	m.Update(tea.MouseClickMsg{X: m.mainX() + slot.x + 1, Y: tabRow, Button: tea.MouseLeft})
+	if m.sidebar || m.tabs[0].preview {
+		t.Fatal("click did not focus and keep the image tab")
+	}
+
+	m.openPreviewFile("file0.go")
+	if len(m.tabs) != 2 || m.tabs[0].image == nil {
+		t.Fatal("opening another preview replaced the kept image tab")
+	}
+}
+
 func TestImageReloadOwnershipAndQuickPosition(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	m.kittySupported, m.kittyProbeDone = true, true

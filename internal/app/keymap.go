@@ -181,10 +181,9 @@ var leaderKeys = struct {
 }
 
 var imageKeys = struct {
-	ZoomIn, ZoomOut, Fit, Keep key.Binding
+	ZoomIn, ZoomOut, Fit key.Binding
 }{
 	ZoomIn:  binding("+", "Zoom in", "+", "="),
 	ZoomOut: binding("-", "Zoom out", "-"),
 	Fit:     binding("0", "Fit to Window", "0"),
-	Keep:    binding("Enter", "Keep editor", "enter"),
 }

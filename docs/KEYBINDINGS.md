@@ -218,13 +218,14 @@ reused.
 
 ## Image preview
 
+Click the image or its tab to keep the preview open.
+
 | Shortcut | Action |
 | --- | --- |
 | `+` / `=` / `-` | Zoom in / out around the viewport center |
 | Mouse wheel | Zoom around the pointer |
 | `h j k l` / arrow keys / drag | Pan. The keys take a count. |
 | `0` | Fit to window |
-| `Enter` | Keep the preview tab open |
 | `Space 1` … `Space 9` | Switch tabs |
 
 ## Menus and dialogs
