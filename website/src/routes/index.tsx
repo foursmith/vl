@@ -1,7 +1,12 @@
 import { createFileRoute } from "@tanstack/solid-router"
 import { createSignal } from "solid-js"
-import screenshots from "../../../assets/workbench.webp?url"
 import { AnsiTerminal } from "../ansi-logo"
+import browseDark from "../assets/browse-dark.webp?url"
+import browseLight from "../assets/browse-light.webp?url"
+import diffDark from "../assets/diff-dark.webp?url"
+import diffLight from "../assets/diff-light.webp?url"
+import historyDark from "../assets/history-dark.webp?url"
+import historyLight from "../assets/history-light.webp?url"
 import { docs, repository, siteUrl } from "../docs-paths"
 import { SiteHeader } from "../site-header"
 
@@ -17,7 +22,7 @@ const workflows = [
       { keys: ["Enter"], action: "Keep the preview tab open" },
       { keys: ["Ctrl+2"], action: "Search across files" },
     ],
-    imageRow: 0,
+    images: { Dark: browseDark, Light: browseLight },
     imageDescription: "vl displaying a Markdown README with an inline image, the Explorer file tree, and Outline",
     href: `${shortcuts}#workbench`,
     link: "Workbench shortcuts",
@@ -31,7 +36,7 @@ const workflows = [
       { keys: ["V"], action: "Start a line selection" },
       { keys: ["s"], action: "Stage or unstage a hunk or selection" },
     ],
-    imageRow: 1,
+    images: { Dark: diffDark, Light: diffLight },
     imageDescription: "vl displaying staged changes to a Go file in a side-by-side diff",
     href: `${shortcuts}#diff-editor`,
     link: "Diff shortcuts",
@@ -44,7 +49,7 @@ const workflows = [
       { keys: ["j", "k"], action: "Move through commits and files" },
       { keys: ["Enter"], action: "Expand a commit or open a file diff" },
     ],
-    imageRow: 2,
+    images: { Dark: historyDark, Light: historyLight },
     imageDescription: "vl displaying a Git commit with a side-by-side diff and the changed files in the sidebar",
     href: `${shortcuts}#sidebar`,
     link: "Sidebar shortcuts",
@@ -109,14 +114,14 @@ function WorkbenchSection() {
         </div>
       </div>
 
-      <figure class="relative aspect-[1200/831] overflow-hidden">
+      <figure>
         <img
-          src={screenshots}
-          width="2400"
-          height="2493"
-          class={`absolute h-auto w-[200%] max-w-none ${theme() === "Dark" ? "left-0" : "-left-full"}`}
-          style={{ top: `${-100 * workflow().imageRow}%` }}
+          src={workflow().images[theme()]}
+          width="1200"
+          height="831"
+          class="h-auto w-full"
           alt={workflow().imageDescription}
+          loading="lazy"
           decoding="async"
         />
       </figure>
