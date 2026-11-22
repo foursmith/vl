@@ -61,49 +61,19 @@ func (entry item) isSidebarFile() bool {
 	return entry.file != "" || entry.change != nil || entry.historyChange != nil || entry.pullRequestFile != nil
 }
 
-type sidebarActivation uint8
-
-const (
-	noSidebarActivation sidebarActivation = iota
-	toggleFolder
-	loadMoreCommits
-	loadMorePRs
-	toggleCommit
-	togglePR
-	openFileRow
-)
-
-func (m *Model) sidebarActivation(entry item) sidebarActivation {
+func (m *Model) activateSidebarEntry(entry item, preview bool) tea.Cmd {
 	switch {
 	case entry.header || entry.folder != "":
-		return toggleFolder
-	case entry.historyPage != nil:
-		return loadMoreCommits
-	case m.section == pullRequests && entry.key == pullRequestMoreKey:
-		return loadMorePRs
-	case entry.commit != nil:
-		return toggleCommit
-	case entry.isPullRequest():
-		return togglePR
-	case entry.isSidebarFile():
-		return openFileRow
-	}
-	return noSidebarActivation
-}
-
-func (m *Model) activateSidebarEntry(entry item, preview bool) tea.Cmd {
-	switch m.sidebarActivation(entry) {
-	case toggleFolder:
 		return m.toggleSidebarFolder(entry)
-	case loadMoreCommits:
+	case entry.historyPage != nil:
 		return m.loadHistoryPage(entry.historyPage)
-	case loadMorePRs:
+	case m.section == pullRequests && entry.key == pullRequestMoreKey:
 		return m.loadMorePullRequests()
-	case toggleCommit:
+	case entry.commit != nil:
 		return m.toggleHistoryCommit(entry)
-	case togglePR:
+	case entry.isPullRequest():
 		return m.togglePullRequest(entry)
-	case openFileRow:
+	case entry.isSidebarFile():
 		return m.openSidebarEntry(entry, preview)
 	}
 	return nil

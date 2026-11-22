@@ -56,8 +56,8 @@ func TestContextMenuSplitsCompactFolders(t *testing.T) {
 			assertSplit()
 			m.Update(tea.KeyPressMsg{Code: tea.KeyF7})
 			for _, a := range m.contextMenu.actions {
-				if a.label == "Split Folders" {
-					t.Fatal("split action offered for an ordinary folder")
+				if a.label == "Split Folders" || a.label == "Open / Expand" {
+					t.Fatalf("%q offered for an ordinary folder", a.label)
 				}
 			}
 			press(m, "esc")
@@ -244,6 +244,14 @@ func TestContextMenuChangeActionsAndStaleTargets(t *testing.T) {
 	drain(t, m, m.selectSection(changes))
 	_, y := hoverAction(t, m, "cmd/main.go", "stage")
 	m.Update(tea.MouseClickMsg{X: m.sideX() + 4, Y: y, Button: tea.MouseRight})
+	if m.contextMenu == nil {
+		t.Fatal("missing change row context menu")
+	}
+	for _, a := range m.contextMenu.actions {
+		if a.label == "Open Changes" {
+			t.Fatal("change row context menu repeats the default diff action")
+		}
+	}
 	drain(t, m, chooseContextAction(t, m, "Stage Changes"))
 	if m.current() == nil || !m.current().staged || m.current().change.Path != "cmd/main.go" {
 		t.Fatal("stage targeted wrong row")

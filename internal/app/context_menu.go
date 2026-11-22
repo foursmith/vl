@@ -217,12 +217,8 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 				return nil
 			}
 		}
-		if entry != nil {
-			if entry.repoHeader && (section == changes || section == history || section == pullRequests) {
-				add(m.tr("Switch Branch…"), "", bind(func() tea.Cmd { return m.openBranchPicker(entry.repository, "") }))
-			} else if label := m.sidebarOpenLabel(*entry); label != "" {
-				add(label, sidebarKeys.Open.Help().Key, bind(m.openSelected))
-			}
+		if entry != nil && entry.repoHeader && (section == changes || section == history || section == pullRequests) {
+			add(m.tr("Switch Branch…"), "", bind(func() tea.Cmd { return m.openBranchPicker(entry.repository, "") }))
 		}
 		if m.section == explorer {
 			if entry != nil {
@@ -344,23 +340,6 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 		m.contextMenu = &contextMenu{x: x, y: y, actions: actions}
 	}
 	return nil
-}
-
-func (m *Model) sidebarOpenLabel(entry item) string {
-	switch m.sidebarActivation(entry) {
-	case toggleFolder, toggleCommit, togglePR:
-		return m.tr("Open / Expand")
-	case loadMoreCommits:
-		return m.tr("Load more commits…")
-	case loadMorePRs:
-		return m.tr("Load more pull requests…")
-	case openFileRow:
-		if entry.change != nil {
-			return m.tr("Open Changes")
-		}
-		return m.tr("Open")
-	}
-	return ""
 }
 
 func (m *Model) tabContextActions(x int) []action {

@@ -18,7 +18,6 @@ func TestHistoryPageRetryUsesSharedSidebarActivation(t *testing.T) {
 			m.historyPages[""] = page
 			m.section, m.sidebar, m.selected = history, true, 0
 			m.items = []item{{key: "retry", historyPage: page}}
-
 			var cmd tea.Cmd
 			switch method {
 			case "click":
@@ -26,8 +25,10 @@ func TestHistoryPageRetryUsesSharedSidebarActivation(t *testing.T) {
 			case "enter":
 				cmd = press(m, "enter")
 			case "context menu":
-				m.openSidebarContextMenu()
-				cmd = chooseContextAction(t, m, "Load more commits…")
+				if cmd = press(m, "f7"); cmd != nil || m.contextMenu != nil || page.loading {
+					t.Fatal("F7 activated history pagination or opened a menu")
+				}
+				return
 			}
 			if cmd == nil || !page.loading || page.err != "" {
 				t.Fatal("history page retry did not start")
