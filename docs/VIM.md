@@ -1,5 +1,9 @@
 # Vim keys in vl
 
+<p align="center">
+  English · <a href="VIM.zh-CN.md">简体中文</a>
+</p>
+
 Text files open in **Normal mode**. Use `i` to enter Insert mode, `v` to enter
 Visual mode, and `Esc` or `Ctrl+[` to get back to Normal. The diff editor is
 read-only and shares the motions, selections, yanks, and jumps. See

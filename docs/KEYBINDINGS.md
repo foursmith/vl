@@ -1,5 +1,9 @@
 # Keyboard shortcuts
 
+<p align="center">
+  English · <a href="KEYBINDINGS.zh-CN.md">简体中文</a>
+</p>
+
 | Shortcut | Action |
 | --- | --- |
 | `Ctrl+G` | Go to File |

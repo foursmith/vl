@@ -10,7 +10,9 @@
      ░▒▒▒▒▒▒▓        ▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 ```
 
-[简体中文](README.zh-CN.md)
+<p align="center">
+  English · <a href="README.zh-CN.md">简体中文</a>
+</p>
 
 A **V**SCode-**l**ike terminal workbench with **V**im-**l**ike keybindings.
 Browse code, review diffs, and make quick edits.

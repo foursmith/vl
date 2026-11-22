@@ -10,7 +10,9 @@
      ░▒▒▒▒▒▒▓        ▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 ```
 
-[English](README.md)
+<p align="center">
+  <a href="README.md">English</a> · 简体中文
+</p>
 
 VS Code 风格的终端工作台，支持 Vim 键位。
 浏览代码、审查 diff，顺手改几行。
@@ -105,7 +107,7 @@ make build
 设置按文件保存，对 `vl preview` 也生效。选择**自动检测**时，vl 会根据文件名或可识别的 shebang 判断语言，例如
 `#!/bin/sh`、`#!/usr/bin/env node` 和 `#!/usr/bin/env python3`。选择**纯文本**即可关闭当前文件的语法高亮。
 
-工作台的操作见[键盘快捷键](docs/KEYBINDINGS.md)，编辑器的按键差异见 [vl 与 Vim 的区别](docs/VIM.md#where-vl-differs-from-vim)。
+工作台的操作见[键盘快捷键](docs/KEYBINDINGS.zh-CN.md)，编辑器的按键差异见 [vl 与 Vim 的区别](docs/VIM.zh-CN.md#vl-与-vim-的区别)。
 
 ### Yazi 集成
 
