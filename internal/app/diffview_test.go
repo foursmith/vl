@@ -45,6 +45,49 @@ func TestDiffWheelCentersLastRowInBothLayouts(t *testing.T) {
 	}
 }
 
+func TestDiffResizeReusesRowsAndReflowsWhenSplitChanges(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	t.Cleanup(m.Close)
+	m.width, m.height = 160, 20
+	m.split = true
+	showDiffFixture(m)
+	m.diffPath = "file.txt"
+	raw := "@@ -1 +1 @@\n-" + strings.Repeat("x", 160) + "\n+" + strings.Repeat("y", 160) + "\n"
+	m.patch = diff.Parse(raw)
+	m.renderDiff()
+	if !m.diffLayout.split {
+		t.Fatal("expected split diff at initial width")
+	}
+	rows, review := &m.diffRows[0], m.review
+	m.scrollHorizontal(1000)
+	left := m.diffLeft
+
+	m.width, m.height = 170, 25
+	m.renderDiff()
+	if &m.diffRows[0] != rows || m.review != review {
+		t.Fatal("resizing rebuilt width-independent diff rows")
+	}
+	if m.diffLeft >= left || m.viewport.Height() != m.contentHeight() {
+		t.Fatal("resizing did not update horizontal bounds or viewport height")
+	}
+
+	pair := &m.patchMetrics.pairs[0]
+	m.width = 60
+	m.renderDiff()
+	if m.diffLayout.split || &m.diffRows[0] == rows || &m.patchMetrics.pairs[0] != pair {
+		t.Fatal("crossing the split threshold must rebuild rows and retain patch analysis")
+	}
+
+	// Replacing the patch produces new line identities, even if the text matches.
+	m.patch = diff.Parse(raw)
+	m.diffLayout = diffLayoutKey{}
+	m.renderDiff()
+	if &m.patchMetrics.pairs[0] == pair || m.diffRows[0].Left == nil ||
+		m.diffEmphasis[m.diffRows[0].Left].end != 160 {
+		t.Fatal("replacing a patch retained emphasis keyed to the old lines")
+	}
+}
+
 func TestSharedDiffSyntaxKeepsSideAndHunkStatesSeparate(t *testing.T) {
 	patch := diff.Parse("--- a/file.go\n+++ b/file.go\n@@ -1,3 +1,3 @@\n-/*\n+// opening\n var n = 1\n-*/\n+// closing\n@@ -20 +20 @@\n-var later = 1\n+var later = 2\n")
 	colors := theme.Builtin("dark_modern")

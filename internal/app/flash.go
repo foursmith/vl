@@ -47,7 +47,7 @@ func (m *Model) cancelFlash() {
 		m.flash = nil
 		m.flashRevision++
 		m.hoverOnly = false
-		m.hoverRender = hoverRenderCache{}
+		m.renderFrame = frameCache{}
 	}
 }
 func (m *Model) flashValid() bool {

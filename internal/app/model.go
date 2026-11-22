@@ -243,7 +243,7 @@ type Model struct {
 	openURL                 func(context.Context, string) error
 	hoverX, hoverY          int
 	hoverOnly               bool
-	hoverRender             hoverRenderCache
+	renderFrame             frameCache
 	welcomeOrbit            welcomeOrbit
 	pickerFilter            pickerFilterCache
 	workspaceSeq            int
@@ -479,8 +479,12 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 	}
 	_, motion := msg.(tea.MouseMotionMsg)
 	m.hoverOnly = motion && !m.resizingSidebar && !m.welcomeOrbit.dragging && m.textDrag == nil && m.diffDrag == nil && m.imagePan == nil
+	_, wheel := msg.(tea.MouseWheelMsg)
+	var scrolled scrollRegion
 	if !m.hoverOnly {
-		m.hoverRender = hoverRenderCache{}
+		if !wheel {
+			m.renderFrame = frameCache{}
+		}
 		m.pickerFilter = pickerFilterCache{}
 	}
 	defer func() {
@@ -496,7 +500,9 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		if cmd := m.flushRetiredImages(); cmd != nil {
 			next = tea.Batch(next, cmd)
 		}
-		m.keepEditedTabs()
+		if m.keepEditedTabs() {
+			scrolled = 0
+		}
 		if beforeDocument != nil && m.search.seq == beforeSearchSeq {
 			after := m.document()
 			changed := beforeDocument.Text != beforeText || after != nil && after.Path == beforeDocument.Path && after.Text != beforeText
@@ -555,7 +561,9 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		// Maintenance can change visible state even during a mouse message.
 		if next != nil {
 			m.hoverOnly = false
-			m.hoverRender = hoverRenderCache{}
+			m.renderFrame = frameCache{}
+		} else if wheel {
+			m.renderFrame.afterScroll(scrolled)
 		}
 	}()
 	if cmd, handled := m.contextMenuInput(msg); handled {
@@ -900,6 +908,15 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}
 		return m, m.click(msg)
 	case tea.MouseWheelMsg:
+		// These text and sidebar scroll paths only move their own viewport.
+		// Dismissing transient UI or preparing another frame's work can affect
+		// more regions and requires a full refresh.
+		editing := m.editing()
+		textDiff := !editing && m.diffOpen && m.images == nil
+		localScroll := (editing || textDiff) && !m.mainShowsSidebar() && m.modal == "" &&
+			m.contextMenu == nil && m.pathCompletion == nil && m.flash == nil
+		// An inline image can update the editor layout during maintenance.
+		stableText := localScroll && (!editing || m.tabs[m.activeTab].markdownImages == nil)
 		m.pathCompletion = nil
 		m.cancelFlash()
 		if m.modal != "" {
@@ -923,7 +940,18 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 				if msg.Button == tea.MouseWheelLeft || msg.Button == tea.MouseWheelUp {
 					delta = -delta
 				}
-				m.scrollHorizontal(delta)
+				changed := m.scrollHorizontal(delta)
+				if localScroll {
+					scrolled = scrollEditor
+					if textDiff {
+						scrolled = scrollDiff
+					}
+					if stableText && !changed {
+						scrolled = scrollUnchanged
+					}
+				}
+			} else if stableText {
+				scrolled = scrollUnchanged
 			}
 			return m, nil
 		}
@@ -935,25 +963,46 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			if msg.Button == tea.MouseWheelUp {
 				delta = -3
 			}
+			if stableText {
+				scrolled = scrollUnchanged
+			}
 			l := m.sidebarList()
 			if header, outline := m.outlineLayout(); msg.Y >= header {
 				l = outline
 			}
 			if l.count > 0 && msg.Y >= l.start && msg.Y < l.start+l.height {
+				top := *l.top
 				*l.top += delta
 				l.clampScroll()
+				if stableText && *l.top != top {
+					scrolled = scrollSidebar
+				}
 			}
-		} else if m.editing() && m.activeTab >= 0 {
+		} else if editing {
 			delta := 3
 			if msg.Button == tea.MouseWheelUp {
 				delta = -3
 			}
 			t := &m.tabs[m.activeTab]
-			t.setEditorDisplayTop(t.editorDisplayTop() + delta)
+			top := t.editorDisplayTop()
+			t.setEditorDisplayTop(top + delta)
 			m.clampEditorScroll(t)
+			if localScroll {
+				scrolled = scrollEditor
+				if stableText && t.editorDisplayTop() == top {
+					scrolled = scrollUnchanged
+				}
+			}
 		} else {
+			top := m.viewport.YOffset()
 			var cmd tea.Cmd
 			m.viewport, cmd = m.viewport.Update(msg)
+			if localScroll {
+				scrolled = scrollDiff
+				if m.viewport.YOffset() == top {
+					scrolled = scrollUnchanged
+				}
+			}
 			return m, cmd
 		}
 	case tea.KeyPressMsg:

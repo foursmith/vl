@@ -51,10 +51,27 @@ func (m *Model) sidebarNavigationAt(x int) (section, bool) {
 }
 
 func (m *Model) sidebarLines() []string {
+	return m.renderSidebar(nil)
+}
+
+type sidebarRowCache struct {
+	previous, current map[int]string
+}
+
+func (c *sidebarRowCache) begin() {
+	c.previous, c.current = c.current, c.previous
+	if c.current == nil {
+		c.current = make(map[int]string)
+	} else {
+		clear(c.current)
+	}
+}
+
+func (m *Model) renderSidebar(cache *sidebarRowCache) []string {
 	if !m.sideShown() {
 		return nil
 	}
-	lines := m.sidebarLinesWidth(m.sidebarContentWidth())
+	lines := m.renderSidebarWidth(m.sidebarContentWidth(), cache)
 	gutter := row("", sidebarLeftPadding, m.colors.SideForeground, m.colors.Panel)
 	for y := range lines {
 		lines[y] = gutter + lines[y]
@@ -70,6 +87,10 @@ func (m *Model) hoveredSidebarRow() int {
 }
 
 func (m *Model) sidebarLinesWidth(w int) []string {
+	return m.renderSidebarWidth(w, nil)
+}
+
+func (m *Model) renderSidebarWidth(w int, cache *sidebarRowCache) []string {
 	if w == 0 {
 		return nil
 	}
@@ -140,38 +161,61 @@ func (m *Model) sidebarLinesWidth(w int) []string {
 	hovered := m.hoveredSidebarRow()
 	sticky := m.sidebarStickyRows()
 	treeFocused := m.sidebar && !(treeEnd < h && m.outlineFocused)
+	if cache != nil {
+		cache.begin()
+	}
+	var blank string
 	for y := len(lines); y < treeEnd; y++ {
 		i := m.sideTop + y - headerHeight
 		if offset := y - headerHeight; offset < len(sticky) {
 			i = sticky[offset]
 		}
-		text := ""
-		fg, bg := m.colors.SideForeground, m.colors.Panel
-		if i < len(m.items) {
-			entry := m.items[i]
-			if i == hovered {
-				bg = m.colors.Hover
+		if i >= len(m.items) {
+			if blank == "" {
+				blank = row("", w, theme.Readable(m.colors.SideForeground, m.colors.Panel), m.colors.Panel)
 			}
-			if i == m.selected {
-				bg = m.colors.SidebarSelection(treeFocused)
-			}
-			state := treeRowState{selected: i == m.selected, hovered: i == hovered}
-			switch {
-			case entry.repoHeader:
-				text, fg = m.repositoryRow(entry, w, bg)
-			case m.section == explorer || m.section == changes:
-				text, fg = m.treeRow(entry, w, bg, state)
-				if m.section == changes && i == hovered {
-					text = m.changeActionRow(entry, text, w, fg, bg, state, m.changeRowActions(entry, w))
-				}
-			default:
-				text, fg = m.historyRow(entry, w, bg)
-			}
-			if i == m.selected && m.monochrome && treeFocused {
-				text = ">" + ansi.Cut(text, 1, w)
+			lines = append(lines, blank)
+			continue
+		}
+		entry := m.items[i]
+		// Repository headers always draw action buttons. Their style can
+		// follow the pointer even when a different row is hovered.
+		reuse := cache != nil && i != hovered && !entry.repoHeader
+		if reuse {
+			if rendered, ok := cache.previous[i]; ok {
+				cache.current[i] = rendered
+				lines = append(lines, rendered)
+				continue
 			}
 		}
-		lines = append(lines, row(text, w, theme.Readable(fg, bg), bg))
+		text := ""
+		fg, bg := m.colors.SideForeground, m.colors.Panel
+		if i == hovered {
+			bg = m.colors.Hover
+		}
+		if i == m.selected {
+			bg = m.colors.SidebarSelection(treeFocused)
+		}
+		state := treeRowState{selected: i == m.selected, hovered: i == hovered}
+		switch {
+		case entry.repoHeader:
+			text, fg = m.repositoryRow(entry, w, bg)
+		case m.section == explorer || m.section == changes:
+			text, fg = m.treeRow(entry, w, bg, state)
+			if m.section == changes && i == hovered {
+				text = m.changeActionRow(entry, text, w, fg, bg, state, m.changeRowActions(entry, w))
+			}
+		default:
+			text, fg = m.historyRow(entry, w, bg)
+		}
+		if i == m.selected && m.monochrome && treeFocused {
+			text = ">" + ansi.Cut(text, 1, w)
+		}
+		rendered := row(text, w, theme.Readable(fg, bg), bg)
+		if reuse {
+			cache.current[i] = rendered
+		}
+		lines = append(lines, rendered)
 	}
 	return m.appendOutline(lines, w, treeEnd, outline)[:h]
 }

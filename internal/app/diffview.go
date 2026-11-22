@@ -35,6 +35,7 @@ type diffState struct {
 	diffLeft         int
 	diffWidth        int
 	diffLayout       diffLayoutKey
+	patchMetrics     diffPatchMetrics
 	diffSelection    diffSelection
 	diffLoading      bool
 	diffStale        bool
@@ -85,6 +86,7 @@ func (d *diffState) clearSyntax() {
 func (d *diffState) clearContent() {
 	d.clearSyntax()
 	d.diffEmphasis = nil
+	d.patchMetrics = diffPatchMetrics{}
 	d.patch = diff.Patch{}
 	d.contextSource, d.contextFolds = nil, nil
 	d.images = nil
@@ -281,7 +283,38 @@ type diffSyntaxMsg struct {
 
 type diffRange struct{ start, end int }
 
-// Cache intraline emphasis with the patch layout, never during scrolling.
+type diffPatchMetrics struct {
+	first          *diff.Line
+	pairs          []diff.Pair
+	width, largest int
+}
+
+// The patch owns the lines referenced by pairs and emphasis. Window width
+// and expanded context affect the viewport but leave these results intact.
+func (d *diffState) measurePatch() diffPatchMetrics {
+	if len(d.patch.Lines) == 0 {
+		d.patchMetrics = diffPatchMetrics{}
+		d.diffEmphasis = nil
+		return d.patchMetrics
+	}
+	first := &d.patch.Lines[0]
+	if d.patchMetrics.first == first {
+		return d.patchMetrics
+	}
+	metrics := diffPatchMetrics{first: first, largest: 1}
+	for _, line := range d.patch.Lines {
+		metrics.largest = max(metrics.largest, line.Old, line.New)
+		if line.Kind == diff.Added || line.Kind == diff.Deleted || line.Kind == diff.Context {
+			metrics.width = max(metrics.width, ansi.StringWidth(expandTabs(line.Text[1:])))
+		}
+	}
+	metrics.pairs = d.patch.Pairs()
+	d.diffEmphasis = diffEmphasis(metrics.pairs)
+	d.patchMetrics = metrics
+	return metrics
+}
+
+// Compute intraline emphasis once per patch.
 func diffEmphasis(pairs []diff.Pair) map[*diff.Line]diffRange {
 	ranges := make(map[*diff.Line]diffRange)
 	for _, pair := range pairs {

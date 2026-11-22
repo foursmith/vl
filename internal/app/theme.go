@@ -80,7 +80,7 @@ func (m *Model) applyTheme(selected *theme.Theme) tea.Cmd {
 	m.colors = selected.Palette()
 	m.styleInput()
 	m.hoverOnly = false
-	m.hoverRender = hoverRenderCache{}
+	m.renderFrame = frameCache{}
 	m.pickerFilter = pickerFilterCache{}
 	for i := range m.tabs {
 		t := &m.tabs[i]

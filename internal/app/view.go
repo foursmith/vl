@@ -116,7 +116,7 @@ func (m *Model) resize() {
 		unchangedPosition = t.positionBaseline != nil && t.positionBaseline.Equal(documentPosition(*t))
 	}
 	m.hoverOnly = false
-	m.hoverRender = hoverRenderCache{}
+	m.renderFrame = frameCache{}
 	m.pickerFilter = pickerFilterCache{}
 	m.resizeInput()
 	m.syncPicker()
@@ -132,12 +132,48 @@ func (m *Model) resize() {
 	m.ensureTabVisible()
 }
 
-// Reuse the previous frame only across passive mouse motion. All other messages
-// invalidate it, including asynchronous file, Git and syntax updates.
-type hoverRenderCache struct {
-	main []string
-	view tea.View
-	key  hoverRenderKey
+type scrollRegion uint8
+
+const (
+	scrollEditor scrollRegion = iota + 1
+	scrollDiff
+	scrollSidebar
+	scrollUnchanged
+)
+
+// Other messages discard the cache. Passive mouse motion and local wheel
+// scrolling can keep regions whose inputs did not change.
+type frameCache struct {
+	content       []string
+	sidebar       []string
+	sidebarRows   sidebarRowCache
+	sidebarCaret  *tea.Cursor
+	tabBar        string
+	toolbar       string
+	status        string
+	sidebarPoint  tea.Position
+	view          tea.View
+	key           hoverRenderKey
+	reuseOnScroll bool
+}
+
+func (f *frameCache) afterScroll(region scrollRegion) {
+	switch region {
+	case scrollEditor:
+		f.content = nil
+	case scrollDiff:
+		f.content, f.status = nil, ""
+	case scrollSidebar:
+		f.sidebar, f.sidebarCaret, f.status = nil, nil, ""
+	case scrollUnchanged:
+		f.reuseOnScroll = true
+		return
+	default:
+		*f = frameCache{}
+		return
+	}
+	f.view = tea.View{}
+	f.reuseOnScroll = true
 }
 
 type hoverRenderKey struct {
@@ -177,60 +213,42 @@ func (m *Model) View() tea.View {
 	if m.hoverY == m.height-1 {
 		key.statusX = m.hoverX + 1
 	}
-	if m.hoverOnly && m.hoverRender.main != nil && m.hoverRender.key == key {
-		return m.hoverRender.view
+	frame := &m.renderFrame
+	if (m.hoverOnly || frame.reuseOnScroll) && frame.view.Content != "" && frame.key == key {
+		return frame.view
 	}
-	var lines []string
-	if !m.hoverOnly {
+	if !m.hoverOnly && !frame.reuseOnScroll {
+		*frame = frameCache{}
+	}
+	sidebarPoint := tea.Position{X: -1, Y: -1}
+	if m.sidebarAt(m.hoverX) {
+		sidebarPoint = tea.Position{X: m.hoverX, Y: m.hoverY}
+	}
+	if m.sideShown() && (frame.sidebar == nil || frame.sidebarPoint != sidebarPoint) {
 		m.inputCaret = nil
+		frame.sidebar = m.renderSidebar(&frame.sidebarRows)
+		frame.sidebarCaret = m.inputCaret
+		frame.sidebarPoint = sidebarPoint
 	}
-	side := m.sidebarLines()
-	showSidebar := m.sideShown()
-	var divider, tabDivider string
-	if showSidebar {
-		glyph, color := " ", ""
-		if m.colors.Accent != "" && (m.resizingSidebar || key.divider) {
-			glyph, color = "│", m.colors.Accent
+	m.inputCaret = frame.sidebarCaret
+	if !m.mainShowsSidebar() {
+		if frame.content == nil {
+			frame.content = m.contentLines()
 		}
-		divider = row(glyph, 1, color, m.colors.Background)
-		tabDivider = row(glyph, 1, color, m.colors.Panel)
-	}
-	main := m.hoverRender.main
-	// In narrow terminals the main surface itself contains the sidebar.
-	if !m.hoverOnly || main == nil || m.mainShowsSidebar() {
-		main = m.mainLines()
-	} else if key.tab != m.hoverRender.key.tab {
-		main[tabRow] = m.tabBar()
-	}
-	find := m.fileFindLines()
-	findOffset := m.fileFindX() - m.mainX()
-	for y := 0; y < m.bodyHeight(); y++ {
-		line := main[y]
-		if key.diffButtons.visible {
-			glyph := "+"
-			if m.diffStaged {
-				glyph = "−"
+		if !m.editorOnly {
+			if frame.tabBar == "" || frame.key.tab != key.tab {
+				frame.tabBar = m.tabBar()
 			}
-			line = m.drawDiffButton(line, y, key.diffButtons.discard, "→")
-			line = m.drawDiffButton(line, y, key.diffButtons.stage, glyph)
-		}
-		if index := y - m.contentRow(); index >= 0 && index < len(find) {
-			line = row(ansi.Cut(line, 0, findOffset), findOffset, m.colors.Foreground, m.colors.Background) + find[index]
-		}
-		if showSidebar {
-			separator := divider
-			if y == tabRow {
-				separator = tabDivider
-			}
-			if m.sidebarRight {
-				line += separator + side[y]
-			} else {
-				line = side[y] + separator + line
+			if frame.toolbar == "" {
+				frame.toolbar = m.contentToolbar()
 			}
 		}
-		lines = append(lines, line)
 	}
-	lines = append(lines, m.statusLine())
+	lines := m.composeBody(frame, key)
+	if frame.status == "" || frame.key.hint != key.hint || frame.key.statusX != key.statusX {
+		frame.status = m.statusLine()
+	}
+	lines = append(lines, frame.status)
 	cursor := m.editorCursor()
 	if m.pathCompletion != nil {
 		lines = m.pathCompletionOverlay(lines, cursor)
@@ -251,8 +269,64 @@ func (m *Model) View() tea.View {
 	if m.inputCaret != nil && m.contextMenu == nil {
 		v.Cursor = m.inputCaret
 	}
-	m.hoverRender = hoverRenderCache{main: main, view: v, key: key}
+	frame.view, frame.key = v, key
 	return v
+}
+
+func (m *Model) composeBody(frame *frameCache, key hoverRenderKey) []string {
+	if m.mainShowsSidebar() {
+		return m.sidebarLinesWidth(m.mainWidth())
+	}
+	showSidebar := m.sideShown()
+	var divider, tabDivider string
+	if showSidebar {
+		glyph, color := " ", ""
+		if m.colors.Accent != "" && (m.resizingSidebar || key.divider) {
+			glyph, color = "│", m.colors.Accent
+		}
+		divider = row(glyph, 1, color, m.colors.Background)
+		tabDivider = row(glyph, 1, color, m.colors.Panel)
+	}
+	find := m.fileFindLines()
+	findOffset := m.fileFindX() - m.mainX()
+	contentRow := m.contentRow()
+	lines := make([]string, m.bodyHeight(), m.bodyHeight()+1)
+	for y := range lines {
+		index := y - contentRow
+		var line string
+		switch {
+		case index >= 0:
+			line = frame.content[index]
+		case y == tabRow:
+			line = frame.tabBar
+		default:
+			line = frame.toolbar
+		}
+		if key.diffButtons.visible {
+			glyph := "+"
+			if m.diffStaged {
+				glyph = "−"
+			}
+			line = m.drawDiffButton(line, y, key.diffButtons.discard, "→")
+			line = m.drawDiffButton(line, y, key.diffButtons.stage, glyph)
+		}
+		if index >= 0 && index < len(find) {
+			line = row(ansi.Cut(line, 0, findOffset), findOffset, m.colors.Foreground, m.colors.Background) + find[index]
+		}
+		if showSidebar {
+			separator := divider
+			if y == tabRow {
+				separator = tabDivider
+			}
+			if m.sidebarRight {
+				line += separator + frame.sidebar[y]
+			} else {
+				line = frame.sidebar[y] + separator + line
+			}
+		}
+		lines[y] = line
+	}
+	return lines
 }
 
 func (m *Model) editorCursor() *tea.Cursor {
@@ -283,21 +357,23 @@ func (m *Model) editorCursor() *tea.Cursor {
 }
 
 func (m *Model) mainLines() []string {
-	w, h := m.mainWidth(), m.bodyHeight()
 	if m.mainShowsSidebar() {
-		return m.sidebarLinesWidth(w)
+		return m.sidebarLinesWidth(m.mainWidth())
 	}
-	var lines []string
-	if !m.editorOnly {
-		lines = append(lines, m.tabBar())
-		lines = append(lines, m.contentToolbar())
+	content := m.contentLines()
+	if m.editorOnly {
+		return content
+	}
+	return append([]string{m.tabBar(), m.contentToolbar()}, content...)
+}
+
+func (m *Model) contentLines() []string {
+	if m.editing() {
+		return m.editorLines()
 	}
 	var content []string
-	editing := m.editing()
 	if m.currentImage() != nil {
 		content = m.imageLines()
-	} else if editing {
-		content = m.editorLines()
 	} else if m.patch.Raw != "" {
 		content = m.diffView()
 	} else if m.welcomeVisible() {
@@ -316,23 +392,20 @@ func (m *Model) mainLines() []string {
 			content[middle] = theme.Style(m.colors.Foreground, m.colors.Background).Render("  " + message)
 		}
 	}
-	for i := 0; i < h-m.contentRow(); i++ {
+	w := m.mainWidth()
+	lines := make([]string, m.contentHeight())
+	for i := range lines {
 		text := ""
 		if i < len(content) {
 			text = content[i]
 		}
-		if editing {
-			lines = append(lines, text)
-		} else {
-			lines = append(lines, row(text, w, m.colors.Foreground, m.colors.Background))
-		}
+		lines[i] = row(text, w, m.colors.Foreground, m.colors.Background)
 	}
-	return lines[:h]
+	return lines
 }
 
 type diffLayoutKey struct {
 	raw, path string
-	width     int
 	split     bool
 }
 
@@ -348,8 +421,9 @@ func (m *Model) renderDiff() {
 		m.viewport.SetContent("")
 		return
 	}
-	key := diffLayoutKey{m.patch.Raw, m.diffPath, w, m.splitDiff()}
+	key := diffLayoutKey{m.patch.Raw, m.diffPath, m.splitDiff()}
 	if m.diffRows != nil && m.diffLayout == key {
+		m.clampDiffHorizontal()
 		if heightChanged {
 			m.setDiffScrollRows()
 		}
@@ -358,16 +432,9 @@ func (m *Model) renderDiff() {
 	m.diffLayout = key
 	m.diffSelection = diffSelection{}
 	m.diffDrag = nil
-	largest := 1
-	m.diffWidth = 0
-	for _, line := range m.patch.Lines {
-		largest = max(largest, line.Old, line.New)
-		if line.Kind == diff.Added || line.Kind == diff.Deleted || line.Kind == diff.Context {
-			m.diffWidth = max(m.diffWidth, ansi.StringWidth(expandTabs(line.Text[1:])))
-		}
-	}
-	pairs := m.patch.Pairs()
-	m.diffEmphasis = diffEmphasis(pairs)
+	metrics := m.measurePatch()
+	largest := metrics.largest
+	m.diffWidth = metrics.width
 	m.diffRows = make([]diff.Pair, 0, len(m.patch.Lines))
 	m.diffRowHunks = make([]int, 0, len(m.patch.Lines))
 	hidden := func(line *diff.Line) bool {
@@ -417,7 +484,7 @@ func (m *Model) renderDiff() {
 		}
 	}
 	if key.split {
-		for _, pair := range pairs {
+		for _, pair := range metrics.pairs {
 			appendPatchRow(pair)
 		}
 	} else {

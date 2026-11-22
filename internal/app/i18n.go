@@ -23,7 +23,7 @@ func (m *Model) SetDisplayLanguage(value string) {
 	loading := m.notice == m.tr("Loading repository…")
 	m.displayLanguage = language
 	m.hoverOnly = false
-	m.hoverRender = hoverRenderCache{}
+	m.renderFrame = frameCache{}
 	m.pickerFilter = pickerFilterCache{}
 	m.contextMenu = nil
 	m.notice = ""

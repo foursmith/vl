@@ -14,12 +14,15 @@ import (
 	"github.com/foursmith/vl/internal/theme"
 )
 
-func (m *Model) keepEditedTabs() {
+func (m *Model) keepEditedTabs() bool {
+	changed := false
 	for i := range m.tabs {
-		if m.tabs[i].dirty() {
+		if m.tabs[i].preview && m.tabs[i].dirty() {
 			m.tabs[i].preview = false
+			changed = true
 		}
 	}
+	return changed
 }
 
 func (m *Model) openFile(path string) tea.Cmd {

@@ -3,6 +3,8 @@ package app
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -33,8 +35,9 @@ func assertFreshHoverFrame(t *testing.T, m *Model) {
 	got := m.View()
 	fresh := *m
 	fresh.hoverOnly = false
-	if want := fresh.View(); got.Content != want.Content {
-		t.Fatal("cached hover frame differs from a full render")
+	fresh.renderFrame = frameCache{}
+	if want := fresh.View(); got.Content != want.Content || !reflect.DeepEqual(got.Cursor, want.Cursor) {
+		t.Fatal("cached frame differs from a full render")
 	}
 }
 
@@ -123,7 +126,7 @@ func TestHoverActionFramesMatchFullRender(t *testing.T) {
 	}
 	// A non-mouse result must discard the entire cache before the next hover.
 	m.Update(operationMsg{title: "Test"})
-	if m.hoverRender.main != nil {
+	if m.renderFrame.content != nil {
 		t.Fatal("operation result retained hover cache")
 	}
 	assertFreshHoverFrame(t, m)
@@ -144,6 +147,107 @@ func TestHoverAfterEditorUpdatesMatchesFullRender(t *testing.T) {
 		m.Update(msg)
 		assertFreshHoverFrame(t, m)
 	}
+}
+
+func TestWheelReusesUnchangedRenderRegions(t *testing.T) {
+	for _, right := range []bool{false, true} {
+		t.Run(fmt.Sprintf("sidebarRight%v", right), func(t *testing.T) {
+			m := tabWorkspace(t, 1)
+			t.Cleanup(m.cancel)
+			m.SetSidebarLayout(38, right)
+			m.Update(tea.WindowSizeMsg{Width: 120, Height: 18})
+			m.openFile("file0.go")
+			m.sidebar = false
+			d := m.document()
+			d.Edit(strings.Repeat(strings.Repeat("long line ", 30)+"\n", 80))
+			for i := 0; i < 100; i++ {
+				name := fmt.Sprintf("file%03d.go", i)
+				m.items = append(m.items, item{file: name, label: name, key: name})
+			}
+			// Fix the highlight state so unrelated work is not scheduled by Update.
+			m.tabs[m.activeTab].highlightText = d.Text
+			m.View()
+
+			sidebar := &m.renderFrame.sidebar[0]
+			status := m.renderFrame.status
+			for _, button := range []tea.MouseButton{tea.MouseWheelDown, tea.MouseWheelRight} {
+				m.Update(tea.MouseWheelMsg{X: m.mainX() + 8, Y: 5, Button: button})
+				f := &m.renderFrame
+				if f.content != nil || len(f.sidebar) == 0 || &f.sidebar[0] != sidebar ||
+					f.tabBar == "" || f.toolbar == "" || f.status != status {
+					t.Fatal("editor wheel did not preserve the sidebar and chrome")
+				}
+				assertFreshHoverFrame(t, m)
+			}
+
+			content := &m.renderFrame.content[0]
+			m.Update(tea.MouseWheelMsg{X: m.sideX() + 2, Y: 5, Button: tea.MouseWheelDown})
+			if f := &m.renderFrame; len(f.content) == 0 || &f.content[0] != content ||
+				f.sidebar != nil || f.status != "" || m.sideTop == 0 {
+				t.Fatal("sidebar wheel did not preserve the editor or invalidate the sidebar and status")
+			}
+			assertFreshHoverFrame(t, m)
+
+			m.Update(tea.WindowSizeMsg{Width: 60, Height: 16})
+			assertFreshHoverFrame(t, m)
+		})
+	}
+}
+
+func TestWheelAtBoundaryReusesWholeFrame(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	t.Cleanup(m.cancel)
+	m.SetSidebarLayout(38, false)
+	m.Update(tea.WindowSizeMsg{Width: 120, Height: 18})
+	m.openFile("file0.go")
+	m.sidebar = false
+	d := m.document()
+	d.Edit(strings.Repeat("line\n", 80))
+	m.tabs[m.activeTab].highlightText = d.Text
+	m.items = []item{{file: "file0.go", label: "file0.go", key: "file0.go"}}
+
+	initial := m.View()
+	if initial.Cursor == nil {
+		t.Fatal("expected a visible editor cursor")
+	}
+	up := tea.MouseWheelMsg{X: m.mainX() + 8, Y: 5, Button: tea.MouseWheelUp}
+	for _, msg := range []tea.Msg{
+		up,
+		tea.MouseWheelMsg{X: up.X, Y: up.Y, Button: tea.MouseWheelLeft},
+		tea.MouseWheelMsg{X: m.sideX() + 2, Y: headerHeight, Button: tea.MouseWheelUp},
+	} {
+		m.Update(msg)
+		if got := m.View(); got.Cursor != initial.Cursor || got.Content != initial.Content {
+			t.Fatal("wheel at a scroll boundary rebuilt the frame")
+		}
+		assertFreshHoverFrame(t, m)
+	}
+
+	// Bubble Tea may receive a wheel after another event that has already
+	// invalidated the last frame.
+	m.Update(tea.MouseMotionMsg{X: m.sideX() + 2, Y: headerHeight})
+	m.Update(up)
+	if got := m.View(); got.Content == initial.Content {
+		t.Fatal("wheel reused the frame before hover moved")
+	}
+	assertFreshHoverFrame(t, m)
+
+	down := up
+	down.Button = tea.MouseWheelDown
+	m.Update(down)
+	m.Update(up)
+	m.Update(up)
+	if m.renderFrame.view.Content != "" {
+		t.Fatal("wheel restored a frame invalidated by earlier scrolls")
+	}
+	assertFreshHoverFrame(t, m)
+
+	m.Update(layoutSavedMsg{err: fmt.Errorf("boundary test")})
+	m.Update(up)
+	if got := m.View(); !strings.Contains(plain(got.Content), "boundary test") {
+		t.Fatal("wheel hid the result of an asynchronous update")
+	}
+	assertFreshHoverFrame(t, m)
 }
 
 func BenchmarkHoverFrame(b *testing.B) {
