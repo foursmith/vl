@@ -135,7 +135,7 @@ func (m *Model) clickContentToolbar(x int) tea.Cmd {
 		button := m.diffModeButton()
 		if x >= button.x && x < button.x+button.width {
 			if m.mainWidth() < 68 {
-				m.notice = m.tr("The editor needs at least 68 columns for side-by-side diff")
+				m.showStatusFeedback(m.tr("The editor needs at least 68 columns for side-by-side diff"))
 				return nil
 			}
 			m.split = !m.split

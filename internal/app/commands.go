@@ -359,7 +359,9 @@ func (m *Model) startOperationResult(title string, run func() operationMsg) tea.
 		return nil
 	}
 	m.busy = true
-	m.notice = m.tr(title) + "…"
+	m.notice = ""
+	m.statusFeedback = nil
+	m.operationProgress = m.tr(title) + "…"
 	m.refreshSeq++
 	if m.refreshCancel != nil {
 		m.refreshCancel()

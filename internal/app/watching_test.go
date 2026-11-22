@@ -48,7 +48,7 @@ func TestExternalReloadKeepsEditsMadeWhileReadWasPending(t *testing.T) {
 		t.Fatal(err)
 	}
 	drain(t, m, cmd)
-	if m.document() != original || !strings.Contains(original.Text, "unsaved") || !strings.Contains(m.notice, "unsaved") {
+	if m.document() != original || !strings.Contains(original.Text, "unsaved") || !strings.Contains(m.statusNotice(), "unsaved") {
 		t.Fatal("external reload overwrote pending local edits")
 	}
 	if err := original.Save(); err == nil {
@@ -56,7 +56,7 @@ func TestExternalReloadKeepsEditsMadeWhileReadWasPending(t *testing.T) {
 	}
 }
 func TestReloadRejectsStaleReadsAndKeepsDeletedBuffer(t *testing.T) {
-	m := tabWorkspace(t, 1)
+	m := tabWorkspace(t, 2)
 	defer m.Close()
 	m.openFile("file0.go")
 	path := m.document().Path
@@ -78,12 +78,23 @@ func TestReloadRejectsStaleReadsAndKeepsDeletedBuffer(t *testing.T) {
 	if m.document() != current || current.Text != "newest\n" {
 		t.Fatal("external deletion closed/lost buffer")
 	}
+	if !strings.Contains(m.statusNotice(), "File unavailable on disk") {
+		t.Fatal("missing warning on the affected tab")
+	}
+	m.openFile("file1.go")
+	if m.statusNotice() != "" {
+		t.Fatal("disk warning leaked to an unrelated tab")
+	}
+	m.activateTab(0)
 	if err := os.WriteFile(filepath.Clean(path), []byte("recreated\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
 	drain(t, m, m.reloadWatchedFiles([]string{path}))
 	if m.document().Text != "recreated\n" {
 		t.Fatal("recreated file was not reloaded")
+	}
+	if m.statusNotice() != "" {
+		t.Fatal("disk warning remained after the file recovered")
 	}
 }
 

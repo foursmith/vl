@@ -72,7 +72,7 @@ func shortOID(oid string) string { return oid[:min(7, len(oid))] }
 
 func (m *Model) checkout(repoPath string, ref gitservice.Ref, detach bool) tea.Cmd {
 	if ref.Current && !detach {
-		m.notice = m.tr("Already on branch %s", ref.Name)
+		m.showStatusFeedback(m.tr("Already on branch %s", ref.Name))
 		return nil
 	}
 	if m.hasDirtyTabsForCheckout(repoPath) {

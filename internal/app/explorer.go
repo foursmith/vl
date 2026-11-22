@@ -295,7 +295,7 @@ func (m *Model) yankEntry() tea.Cmd {
 		return nil
 	}
 	m.explorerYankRoot, m.explorerYankPath = m.repo.Root, path
-	m.notice = m.tr("Copied %s", path)
+	m.showStatusFeedback(m.tr("Copied %s", path))
 	return nil
 }
 

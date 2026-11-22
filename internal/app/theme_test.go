@@ -436,7 +436,7 @@ func TestThemePickerImportsIntoHighContrastGroups(t *testing.T) {
 		t.Fatal("started another import while the first was running")
 	}
 	drain(t, m, cmd)
-	if m.themeImporting || m.modal != "themes" || m.committedTheme() != original || m.colorTheme != original || !strings.HasPrefix(m.notice, "Imported ") {
+	if m.themeImporting || m.modal != "themes" || m.committedTheme() != original || m.colorTheme != original || !strings.HasPrefix(m.statusNotice(), "Imported ") {
 		t.Fatalf("import did not refresh the open picker while keeping the theme: %s", m.notice)
 	}
 

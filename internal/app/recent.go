@@ -62,7 +62,7 @@ func (m *Model) finishOpenRepository(msg repositoryOpenedMsg) tea.Cmd {
 		return nil
 	}
 	if msg.repo.Root == m.repo.Root {
-		m.notice = m.tr("Already in this repository")
+		m.showStatusFeedback(m.tr("Already in this repository"))
 		return nil
 	}
 	if m.hasDirtyTabs() {

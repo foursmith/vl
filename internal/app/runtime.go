@@ -1,6 +1,8 @@
 package app
 
 import (
+	"time"
+
 	tea "charm.land/bubbletea/v2"
 	gitservice "github.com/foursmith/vl/internal/git"
 )
@@ -67,6 +69,7 @@ func workspaceCommand(generation uint64, cmd tea.Cmd) tea.Cmd {
 
 func (r *Runtime) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	old := r.current
+	previousFeedback := old.statusFeedback
 	_, cmd := old.Update(msg)
 	if next := old.nextRepository; next != nil && r.switchWorkspace != nil {
 		updated := r.switchWorkspace(old, next)
@@ -87,5 +90,11 @@ func (r *Runtime) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Retire the old images before the new workspace can upload any.
 		return r, tea.Sequence(tea.Raw(cleanup), r.Init())
 	}
-	return r, workspaceCommand(r.generation, tea.Batch(cmd, r.current.prepareImageUploads()))
+	var expireFeedback tea.Cmd
+	if feedback := old.statusFeedback; feedback != nil && feedback != previousFeedback {
+		expireFeedback = delayedMessage(old.ctx, 3*time.Second, func(time.Time) tea.Msg {
+			return statusFeedbackExpiredMsg{feedback: feedback}
+		})
+	}
+	return r, workspaceCommand(r.generation, tea.Batch(cmd, r.current.prepareImageUploads(), expireFeedback))
 }

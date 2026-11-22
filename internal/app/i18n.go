@@ -27,6 +27,7 @@ func (m *Model) SetDisplayLanguage(value string) {
 	m.pickerFilter = pickerFilterCache{}
 	m.contextMenu = nil
 	m.notice = ""
+	m.statusFeedback = nil
 	m.rebuildItems()
 	if loading {
 		m.notice = m.tr("Loading repository…")
@@ -46,7 +47,7 @@ func (m *Model) openLanguagePicker() tea.Cmd {
 		}
 		m.palette = append(m.palette, action{id: string(language), label: choice.name, key: key, run: func() tea.Cmd {
 			m.SetDisplayLanguage(string(language))
-			m.notice = m.tr("Display language changed")
+			m.showStatusFeedback(m.tr("Display language changed"))
 			return m.savePreferences()
 		}})
 	}

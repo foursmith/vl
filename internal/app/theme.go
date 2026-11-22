@@ -171,7 +171,7 @@ func (m *Model) finishThemeImport(msg themesImportedMsg) tea.Cmd {
 	m.refreshThemeChoices()
 	switch {
 	case msg.err == nil:
-		m.notice = m.tr("Imported %d VS Code color themes", msg.count)
+		m.showStatusFeedback(m.tr("Imported %d VS Code color themes", msg.count))
 	case msg.count > 0:
 		m.notice = m.tr("Imported %d VS Code color themes with errors: %s", msg.count, m.tr(msg.err.Error()))
 	default:

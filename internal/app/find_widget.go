@@ -135,12 +135,15 @@ func (m *Model) navigateFileFind(direction int) {
 	}
 	cache := m.fileFindCache()
 	matches := cache.ranges
-	if cache.err != "" {
-		m.notice = cache.err
-		return
-	}
-	if len(matches) == 0 {
-		m.notice = searchText("No match")
+	if cache.err != "" || len(matches) == 0 {
+		// The Find box already shows the error or match count while open.
+		if m.fileFindHeight() == 0 && m.notice == "" {
+			text := cache.err
+			if text == "" {
+				text = searchText("No match")
+			}
+			m.showStatusFeedback(text)
+		}
 		return
 	}
 	index := m.fileFindIndex()
@@ -493,6 +496,6 @@ func (m *Model) replaceFileFind(all bool) tea.Cmd {
 	m.findWidget.anchor = d.Cursor
 	m.navigateFileFind(0)
 	m.keepEditedTabs()
-	m.notice = searchText("Replaced %d matches in this file", len(hits))
+	m.showStatusFeedback(searchText("Replaced %d matches in this file", len(hits)))
 	return m.refreshWorkspaceSearch()
 }

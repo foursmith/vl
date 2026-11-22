@@ -205,7 +205,7 @@ func TestFailedAndCurrentFolderKeepRepository(t *testing.T) {
 		t.Fatal("failed switch changed repository or stayed pending")
 	}
 	drain(t, m, m.openRepository(old.Root))
-	if m.nextRepository != nil || !strings.Contains(m.notice, "Already in this repository") {
+	if m.nextRepository != nil || !strings.Contains(m.statusNotice(), "Already in this repository") {
 		t.Fatal("current repository restarted")
 	}
 }

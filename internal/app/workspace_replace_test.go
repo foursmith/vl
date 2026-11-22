@@ -57,7 +57,7 @@ func TestWorkspaceReplaceSavesAffectedFiles(t *testing.T) {
 	m.openReplace()
 	m.search.replacement.SetValue("新")
 	drain(t, m, m.replaceSearch(true))
-	if len(m.tabs) != 3 || m.document() != dirty || !strings.Contains(m.notice, "6 matches; saved 3 files") {
+	if len(m.tabs) != 3 || m.document() != dirty || !strings.Contains(m.statusNotice(), "6 matches; saved 3 files") {
 		t.Fatal("unexpected tabs or replacement notice", m.notice)
 	}
 	assertReplacementFile(t, m, "file0.go", "新 猫 新 新\n")
@@ -119,7 +119,7 @@ func TestWorkspaceReplacePreservesExternalEdits(t *testing.T) {
 	drain(t, m, m.replaceSearch(true))
 	assertReplacementFile(t, m, "file0.go", "external\n")
 	assertReplacementFile(t, m, "file1.go", "猫 new new\n")
-	if d.Text != "pending old\n" || !d.Dirty() || !strings.Contains(m.notice, "file changed on disk") {
+	if d.Text != "pending old\n" || !d.Dirty() || !strings.Contains(m.statusNotice(), "file changed on disk") {
 		t.Fatal("external change did not block replacement in the affected buffer", d.Text, m.notice)
 	}
 }

@@ -126,6 +126,62 @@ func TestStatusHintsFollowGitScopeAndSelection(t *testing.T) {
 	}
 }
 
+func TestGitCompletionNoticeExpiryRestoresHints(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	t.Cleanup(m.Close)
+	m.Update(tea.WindowSizeMsg{Width: 180, Height: 24})
+	change := gitservice.Change{Path: "file.go", Worktree: 'M'}
+	m.section, m.sidebar, m.selected = changes, true, 0
+	m.items = []item{{change: &change}}
+
+	m.Update(operationMsg{title: "Unstage Changes"})
+	first := m.statusFeedback
+	if got := statusPart(t, m, "notice").text; got != "Unstage Changes completed" {
+		t.Fatalf("first notice = %q", got)
+	}
+	m.Update(operationMsg{title: "Unstage Changes"})
+	second := m.statusFeedback
+	m.Update(statusFeedbackExpiredMsg{feedback: first})
+	if got := m.statusNotice(); got != "Unstage Changes completed" {
+		t.Fatalf("old timer cleared the newer notice: %q", got)
+	}
+	m.Update(statusFeedbackExpiredMsg{feedback: second})
+	if got := statusPart(t, m, "notice").text; !strings.HasPrefix(got, "s Stage File") {
+		t.Fatalf("expiry did not restore the Changes shortcut hints: %q", got)
+	}
+
+	m.Update(operationMsg{title: "Stage"})
+	third := m.statusFeedback
+	m.Update(operationMsg{title: "Stage", err: errors.New("Git failed")})
+	m.Update(statusFeedbackExpiredMsg{feedback: third})
+	if got := m.statusNotice(); got != "Git failed" {
+		t.Fatalf("expiry altered the failure notice: %q", got)
+	}
+}
+
+func TestStatusNoticeTakesPriorityOverHistoryTitleAndHover(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	t.Cleanup(m.Close)
+	m.Update(tea.WindowSizeMsg{Width: 180, Height: 24})
+	m.section, m.sidebar, m.selected = history, true, 0
+	m.items = []item{{commit: &gitservice.Commit{ID: "test", Subject: "Revision title"}}}
+	m.Update(tea.MouseMotionMsg{X: m.sideX() + 3, Y: headerHeight})
+	m.Update(operationMsg{title: "Fetch", err: errors.New("Git failed")})
+	if got := statusPart(t, m, "notice").text; got != "Git failed" {
+		t.Fatalf("history or hover hid error: %q", got)
+	}
+
+	m.showStatusFeedback("Saved file")
+	feedback := m.statusFeedback
+	if got := statusPart(t, m, "notice").text; got != "Saved file" {
+		t.Fatalf("history or hover hid feedback: %q", got)
+	}
+	m.Update(statusFeedbackExpiredMsg{feedback: feedback})
+	if got := statusPart(t, m, "notice").text; got != "Revision title" {
+		t.Fatalf("expiry did not restore history title: %q", got)
+	}
+}
+
 func TestStatusBarStylePickerPersistsAndRestores(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	t.Cleanup(m.Close)
@@ -510,8 +566,8 @@ func TestStatusRemoteActionsTargetChildRepository(t *testing.T) {
 			t.Fatalf("%s button did not start an operation", title)
 		}
 		drain(t, m, cmd)
-		if m.notice != title+" completed" {
-			t.Fatalf("%s button result: %s", title, m.notice)
+		if got := m.statusNotice(); got != title+" completed" {
+			t.Fatalf("%s button result: %s", title, got)
 		}
 	}
 	segment := statusPart(t, m, "sync")

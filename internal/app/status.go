@@ -103,8 +103,29 @@ func (m *Model) gitStatusSegments() []statusSegment {
 	}
 }
 
+func (m *Model) showStatusFeedback(text string) {
+	m.notice = ""
+	m.statusFeedback = &statusFeedback{text: text}
+}
+
+func (m *Model) statusNotice() string {
+	if m.notice != "" {
+		return m.notice
+	}
+	if m.activeTab >= 0 && m.activeTab < len(m.tabs) && m.tabs[m.activeTab].diskNotice != "" {
+		return m.tabs[m.activeTab].diskNotice
+	}
+	if m.operationProgress != "" {
+		return m.operationProgress
+	}
+	if m.statusFeedback != nil {
+		return m.statusFeedback.text
+	}
+	return ""
+}
+
 func (m *Model) statusHints() []string {
-	if m.notice != "" || m.modal != "" || m.contextMenu != nil || m.fileFindFocused() || m.leaderActive() || m.flashValid() {
+	if m.modal != "" || m.contextMenu != nil || m.fileFindFocused() || m.leaderActive() || m.flashValid() {
 		return nil
 	}
 	if m.sidebar {
@@ -254,11 +275,20 @@ func (m *Model) statusLayout() []statusSegment {
 		result = append(result, segment)
 		x += segment.width
 	}
-	hints := m.statusHints()
+	notice := m.statusNotice()
+	var hints []string
+	if notice == "" {
+		hints = m.statusHints()
+	}
 	rightLimit := m.width - x - 1
-	if len(hints) > 0 {
-		hintWidth := min(ansi.StringWidth(hints[0])+2, max(0, m.width-x))
-		rightLimit = min(rightLimit, m.width-x-hintWidth)
+	hintWidth := 0
+	if notice != "" {
+		hintWidth = min(24, ansi.StringWidth(safe(notice))+2)
+	} else if len(hints) > 0 {
+		hintWidth = ansi.StringWidth(hints[0]) + 2
+	}
+	if hintWidth > 0 {
+		rightLimit = min(rightLimit, max(0, m.width-x-hintWidth))
 	}
 	var candidates []statusSegment
 	if d := m.editorDocument(); d != nil {
@@ -293,29 +323,28 @@ func (m *Model) statusLayout() []statusSegment {
 		right[i].x = nextX
 		nextX += right[i].width
 	}
-	notice := m.notice
 	if notice == "" {
 		notice = fitStatusHints(hints, rightX-x-2)
-	}
-	if m.sidebar && m.section == search && notice == "" {
-		notice = m.tr("%s: fields/results", searchKeys.NextField.Help().Key)
-		if m.search.replace && m.search.focus == 1 {
-			notice = m.tr("%s: replace", sidebarKeys.Open.Help().Key)
+		if m.sidebar && m.section == search && notice == "" {
+			notice = m.tr("%s: fields/results", searchKeys.NextField.Help().Key)
+			if m.search.replace && m.search.focus == 1 {
+				notice = m.tr("%s: replace", sidebarKeys.Open.Help().Key)
+			}
 		}
-	}
-	if m.sidebar && m.sidebarVisible && m.modal == "" && m.contextMenu == nil && (m.section == history || m.section == pullRequests) {
-		if title := m.current().revisionTitle(); title != "" {
-			notice = title
+		if m.sidebar && m.sidebarVisible && m.modal == "" && m.contextMenu == nil && (m.section == history || m.section == pullRequests) {
+			if title := m.current().revisionTitle(); title != "" {
+				notice = title
+			}
 		}
-	}
-	if hint := m.hoverHint(); hint != "" {
-		notice = hint
-	}
-	if len(right) > 0 && m.hoveredStatusLanguage(right[len(right)-1]) {
-		notice = m.tr("Change Syntax Highlighting")
-	}
-	if m.flashValid() {
-		notice = m.tr("Type to search · label to jump · Tab next · Esc cancel")
+		if hint := m.hoverHint(); hint != "" {
+			notice = hint
+		}
+		if len(right) > 0 && m.hoveredStatusLanguage(right[len(right)-1]) {
+			notice = m.tr("Change Syntax Highlighting")
+		}
+		if m.flashValid() {
+			notice = m.tr("Type to search · label to jump · Tab next · Esc cancel")
+		}
 	}
 	if gap := rightX - x; gap > 10 && notice != "" {
 		text := ansi.Truncate(safe(notice), gap-2, "…")

@@ -153,10 +153,7 @@ func (m *Model) finishReload(msg fileReloadMsg) {
 		if msg.err != nil {
 			t.reloadWhenClean = false
 			notice := m.tr("File unavailable on disk: %s: %s", filepath.Base(t.doc.Path), m.tr(msg.err.Error()))
-			if t.diskNotice != notice {
-				t.diskNotice = notice
-				m.notice = notice
-			}
+			t.diskNotice = notice
 			return
 		}
 		if t.doc.SameDisk(msg.fresh) {
@@ -167,10 +164,7 @@ func (m *Model) finishReload(msg fileReloadMsg) {
 		if t.doc.Dirty() {
 			t.reloadWhenClean = true
 			notice := m.tr("File changed on disk; keeping unsaved changes: %s", filepath.Base(t.doc.Path))
-			if t.diskNotice != notice {
-				t.diskNotice = notice
-				m.notice = notice
-			}
+			t.diskNotice = notice
 			return
 		}
 		line, col := t.doc.Position()

@@ -110,7 +110,6 @@ func (m *Model) replaceSearch(all bool) tea.Cmd {
 				path = e.doc.Path
 			}
 			lastError = searchText("Could not replace in %s: %s", path, err.Error())
-			m.notice = lastError
 			failedFiles++
 			continue
 		}
@@ -124,9 +123,11 @@ func (m *Model) replaceSearch(all bool) tea.Cmd {
 			m.clampEditorScroll(t)
 		}
 	}
-	m.notice = searchText("Replaced %d matches; saved %d files", count, savedFiles)
+	summary := searchText("Replaced %d matches; saved %d files", count, savedFiles)
 	if failedFiles > 0 {
-		m.notice += searchText("; %d files failed (%s)", failedFiles, lastError)
+		m.notice = summary + searchText("; %d files failed (%s)", failedFiles, lastError)
+	} else {
+		m.showStatusFeedback(summary)
 	}
 	if savedFiles > 0 {
 		return tea.Batch(m.refresh(), m.runSearch())

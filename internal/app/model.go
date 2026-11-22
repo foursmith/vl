@@ -111,6 +111,10 @@ type operationMsg struct {
 	err        error
 	indexDiffs []*diffState
 }
+type statusFeedback struct{ text string }
+
+type statusFeedbackExpiredMsg struct{ feedback *statusFeedback }
+
 type tickMsg time.Time
 type clipboardMsg struct {
 	text string
@@ -182,6 +186,7 @@ type Model struct {
 	refreshCancel           context.CancelFunc
 	loading, busy           bool
 	remoteProgress          *remoteProgress
+	operationProgress       string
 	*diffState              // Bound to the active diff tab; documents use emptyDiff.
 	emptyDiff               *diffState
 	split                   bool
@@ -207,6 +212,7 @@ type Model struct {
 	languagePath            string
 	languageInfo            highlight.LanguageInfo
 	notice                  string
+	statusFeedback          *statusFeedback
 	contextMenu             *contextMenu
 	modal, modalTitle       string
 	input                   textinput.Model
@@ -558,6 +564,9 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		if m.flash != nil && !m.flashValid() {
 			m.cancelFlash()
 		}
+		if m.notice != "" {
+			m.statusFeedback = nil
+		}
 		// Maintenance can change visible state even during a mouse message.
 		if next != nil {
 			m.hoverOnly = false
@@ -755,7 +764,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		if msg.err != nil {
 			m.notice = m.tr("Failed to open browser: %s", m.tr(msg.err.Error()))
 		} else {
-			m.notice = m.tr("Opened %s", msg.target)
+			m.showStatusFeedback(m.tr("Opened %s", msg.target))
 		}
 	case treeMsg:
 		if msg.seq != m.treeSeq {
@@ -837,8 +846,13 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			progress.frame++
 			return m, progress.tick(120 * time.Millisecond)
 		}
+	case statusFeedbackExpiredMsg:
+		if msg.feedback == m.statusFeedback {
+			m.statusFeedback = nil
+		}
 	case operationMsg:
 		m.busy = false
+		m.operationProgress = ""
 		if progress := m.remoteProgress; progress != nil {
 			progress.cancel()
 			m.remoteProgress = nil
@@ -846,7 +860,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		if msg.err != nil {
 			m.notice = m.tr(msg.err.Error())
 		} else {
-			m.notice = m.tr("%s completed", m.tr(msg.title))
+			m.showStatusFeedback(m.tr("%s completed", m.tr(msg.title)))
 		}
 		for _, d := range msg.indexDiffs {
 			if d.diffOpen {
@@ -1249,7 +1263,7 @@ func (m *Model) saveEditor(closeAfter bool) tea.Cmd {
 		m.notice = m.tr(err.Error())
 		return nil
 	}
-	m.notice = m.tr("Saved %s", filepath.Base(d.Path))
+	m.showStatusFeedback(m.tr("Saved %s", filepath.Base(d.Path)))
 	refresh := m.refreshRepository()
 	if closeAfter {
 		return tea.Batch(refresh, m.closeTab())
@@ -1260,6 +1274,13 @@ func (m *Model) saveEditor(closeAfter bool) tea.Cmd {
 func (m *Model) saveDocument(d *editor.Document) error {
 	if err := d.Save(); err != nil {
 		return err
+	}
+	for i := range m.tabs {
+		if t := &m.tabs[i]; t.doc == d {
+			t.reloadSeq++
+			t.diskNotice, t.reloadWhenClean = "", false
+			break
+		}
 	}
 	m.invalidateWorktreeDiffs(d.Path)
 	return nil
@@ -1274,8 +1295,11 @@ func (m *Model) reloadCleanTabs() {
 			fresh, err := imagepreview.Open(m.ctx, t.image.Path)
 			if err != nil {
 				m.notice = m.tr(err.Error())
-			} else if !fresh.SameContent(t.image.Image) {
-				t.image.replacePixels(fresh)
+			} else {
+				t.diskNotice = ""
+				if !fresh.SameContent(t.image.Image) {
+					t.image.replacePixels(fresh)
+				}
 			}
 		}
 		if t.doc != nil && !t.doc.Dirty() {
@@ -1288,6 +1312,7 @@ func (m *Model) reloadCleanTabs() {
 			line, col := t.doc.Position()
 			d.SetPosition(line, col)
 			t.doc = d
+			t.diskNotice, t.reloadWhenClean = "", false
 		}
 		if wasActive {
 			newActive = len(kept)
