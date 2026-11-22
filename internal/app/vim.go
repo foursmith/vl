@@ -10,6 +10,9 @@ func (m *Model) vimKey(k string) (bool, tea.Cmd) {
 	v := &m.tabs[m.activeTab].vim
 	d := m.editorDocument()
 	if d.ReadOnly && !v.CommandPending() && !v.VisualMode {
+		if k == "enter" {
+			return m.toggleNearestDiffFold()
+		}
 		if k == "[" {
 			m.nextHunk(-1)
 			return true, nil

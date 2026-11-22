@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -159,34 +158,4 @@ func (m *Model) clickContentToolbar(x int) tea.Cmd {
 		dir = "./" + dir
 	}
 	return m.openQuickPicker(dir + "/")
-}
-
-func hunkLabel(header string) string {
-	fields := strings.Fields(header)
-	if len(fields) < 4 {
-		return safe(header)
-	}
-	rangeText := func(value string) string {
-		parts := strings.Split(strings.TrimLeft(value, "+-"), ",")
-		start, err := strconv.Atoi(parts[0])
-		if err != nil {
-			return value
-		}
-		count := 1
-		if len(parts) > 1 {
-			count, _ = strconv.Atoi(parts[1])
-		}
-		if count == 0 {
-			return "∅"
-		}
-		if count == 1 {
-			return strconv.Itoa(start)
-		}
-		return fmt.Sprintf("%d–%d", start, start+count-1)
-	}
-	label := rangeText(fields[1]) + " → " + rangeText(fields[2])
-	if len(fields) > 4 {
-		label += "  " + safe(strings.Join(fields[4:], " "))
-	}
-	return label
 }

@@ -37,6 +37,7 @@ const (
 	symbolIgnoreRules
 	symbolPullRequest
 	symbolFilter
+	symbolFold
 )
 
 var uiSymbols = [...]struct{ plain, nerd string }{
@@ -73,6 +74,7 @@ var uiSymbols = [...]struct{ plain, nerd string }{
 	symbolIgnoreRules:   {"Ignore rules", "\ueadd"},
 	symbolPullRequest:   {"PR", "\uea64"},
 	symbolFilter:        {"F", "\ueaf1"},
+	symbolFold:          {"x", "\ueaf5"},
 }
 
 func (m *Model) symbol(name uiSymbol) string {

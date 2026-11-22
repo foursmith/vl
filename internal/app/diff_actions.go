@@ -39,9 +39,6 @@ func (m *Model) hoveredDiffButtons() diffButtons {
 	}
 	limit := min(top+m.contentHeight(), len(m.diffRowHunks))
 	start := i
-	if line := m.diffRows[start].Left; line != nil && line.Kind == diff.HunkHeader {
-		start++
-	}
 	end, firstEdit, lastEdit := start, -1, -1
 	for end < limit && m.diffRowHunks[end] == hunk {
 		pair := m.diffRows[end]

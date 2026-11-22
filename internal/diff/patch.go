@@ -15,6 +15,7 @@ const (
 	Deleted
 	Header
 	HunkHeader
+	Fold
 )
 
 type Line struct {
@@ -24,9 +25,10 @@ type Line struct {
 	Hunk     int
 }
 type Hunk struct {
-	header     string
-	start, end int
-	newStart   int
+	header             string
+	start, end         int
+	oldStart, newStart int
+	oldCount, newCount int
 }
 type Patch struct {
 	Raw                  string
@@ -91,7 +93,11 @@ func Parse(raw string) Patch {
 			old, _ = strconv.Atoi(match[1])
 			newLine, _ = strconv.Atoi(match[3])
 			hunk = len(p.Hunks)
-			p.Hunks = append(p.Hunks, Hunk{header: header, start: len(p.Lines), end: len(p.Lines) + 1, newStart: newLine})
+			p.Hunks = append(p.Hunks, Hunk{
+				header: header, start: len(p.Lines), end: len(p.Lines) + 1,
+				oldStart: old, newStart: newLine,
+				oldCount: hunkCount(match[2]), newCount: hunkCount(match[4]),
+			})
 			line.Kind, line.Hunk = HunkHeader, hunk
 		} else if hunk >= 0 && len(text) > 0 && strings.ContainsRune(" +-\\", rune(text[0])) {
 			line.Hunk = hunk
@@ -119,6 +125,14 @@ func Parse(raw string) Patch {
 		p.Lines = append(p.Lines, line)
 	}
 	return p
+}
+
+func hunkCount(count string) int {
+	if count == "" {
+		return 1
+	}
+	n, _ := strconv.Atoi(count)
+	return n
 }
 
 type Pair struct {

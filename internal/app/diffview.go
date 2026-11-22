@@ -50,6 +50,8 @@ type diffState struct {
 	viewport         viewport.Model
 	read             func(context.Context) (string, error)
 	images           *diffImages
+	contextSource    []string
+	contextFolds     []diffFold
 }
 
 func newDiffState() *diffState {
@@ -84,6 +86,7 @@ func (d *diffState) clearContent() {
 	d.clearSyntax()
 	d.diffEmphasis = nil
 	d.patch = diff.Patch{}
+	d.contextSource, d.contextFolds = nil, nil
 	d.images = nil
 	d.diffRows, d.diffRowHunks = nil, nil
 	d.diffLayout = diffLayoutKey{}
@@ -196,12 +199,17 @@ func (m *Model) loadVersionedDiff(d *diffState, reset bool, read func(context.Co
 	}
 	seq := d.diffSeq
 	imageRead := m.diffImageReader(d)
+	workspace, repository := m.repo, d.diffRepository
+	readContext := d.diffPath != "" && d.diffPR.Number == 0
+	previousRaw := d.patch.Raw
 	return func() tea.Msg {
 		defer cancel()
 		raw, version, err := read(ctx)
 		msg := diffMsg{target: d, seq: seq, raw: raw, prVersion: version, err: err}
 		if err == nil && raw != "" && imageRead != nil {
 			msg.images = imageRead(ctx)
+		} else if err == nil && readContext && raw != previousRaw {
+			msg.oldSource = readDiffContext(ctx, workspace, repository, raw)
 		}
 		return msg
 	}
@@ -247,6 +255,7 @@ func (m *Model) finishDiff(msg diffMsg) tea.Cmd {
 	m.setDiffImages(d, msg.images)
 	if msg.raw != d.patch.Raw {
 		d.patch = diff.Parse(msg.raw)
+		d.initContextFolds(msg.oldSource)
 		d.diffLayout = diffLayoutKey{}
 		if len(d.patch.Hunks) > 0 {
 			d.diffHunk = min(max(0, d.diffHunk), len(d.patch.Hunks)-1)
@@ -317,8 +326,30 @@ func (m *Model) highlightDiff() tea.Cmd {
 		}
 	}
 	colors := m.colorTheme
+	contextLines := m.contextSource
+	var expanded [][]diff.Line
+	for _, fold := range m.contextFolds {
+		if fold.lines != nil {
+			expanded = append(expanded, fold.lines)
+		}
+	}
 	return func() tea.Msg {
-		return diffSyntaxMsg{target: target, seq: seq, raw: patch.Raw, ctx: ctx, spans: diffSpans(ctx, patch, path, colors, language)}
+		spans := diffSpans(ctx, patch, path, colors, language)
+		if len(expanded) > 0 && spans != nil && ctx.Err() == nil {
+			if language.ID == "" {
+				language = highlight.Language(path)
+			}
+			source := strings.Join(contextLines, "\n")
+			contextSpans := new(highlight.Session).Lines(ctx, language, source, colors)
+			for _, lines := range expanded {
+				for i := range lines {
+					if line := &lines[i]; line.Old <= len(contextSpans) {
+						spans[line] = contextSpans[line.Old-1]
+					}
+				}
+			}
+		}
+		return diffSyntaxMsg{target: target, seq: seq, raw: patch.Raw, ctx: ctx, spans: spans}
 	}
 }
 
@@ -421,12 +452,13 @@ func (m *Model) diffView() []string {
 	w := m.mainWidth()
 	_, left := m.diffPane(false)
 	_, right := m.diffPane(true)
+	separator := row(" │ ", diffSeparatorWidth, m.colors.Border, m.colors.Background)
 	for i := m.viewport.YOffset(); i < min(len(m.diffRows), m.viewport.YOffset()+m.contentHeight()); i++ {
 		pair := m.diffRows[i]
-		if !m.diffLayout.split || pair.Left != nil && (pair.Left.Kind == diff.Header || pair.Left.Kind == diff.HunkHeader) {
+		if !m.diffLayout.split || pair.Left != nil && (pair.Left.Kind == diff.Header || pair.Left.Kind == diff.Fold) {
 			lines = append(lines, m.diffRow(pair.Left, w, false, m.diffSelectedRange(i, false)))
 		} else {
-			lines = append(lines, m.diffRow(pair.Left, left, false, m.diffSelectedRange(i, false))+row(" │ ", diffSeparatorWidth, m.colors.Border, m.colors.Background)+m.diffRow(pair.Right, right, true, m.diffSelectedRange(i, true)))
+			lines = append(lines, m.diffRow(pair.Left, left, false, m.diffSelectedRange(i, false))+separator+m.diffRow(pair.Right, right, true, m.diffSelectedRange(i, true)))
 		}
 	}
 	return lines
@@ -446,14 +478,13 @@ func (m *Model) diffRow(line *diff.Line, width int, right bool, selected diffRan
 		if m.diffPath != "" && strings.HasPrefix(line.Text, "Binary files ") {
 			text = m.tr("  Binary file changed")
 		}
-	case diff.HunkHeader:
-		fg, bg = m.colors.Muted, m.colors.Panel
-		marker := " "
-		if line.Hunk == m.diffHunk {
-			marker = m.symbol(symbolRight)
-			fg = m.colors.Foreground
+	case diff.Fold:
+		count := m.contextFolds[line.Hunk].Count
+		label := "%d hidden lines"
+		if count == 1 {
+			label = "%d hidden line"
 		}
-		text = " " + marker + " " + hunkLabel(line.Text)
+		return row(" "+m.symbol(symbolRight)+" "+m.tr(label, count), width, m.colors.Muted, m.colors.Panel)
 	case diff.Added:
 		bg = m.colors.AddedBackground
 	case diff.Deleted:
@@ -473,6 +504,14 @@ func (m *Model) diffRow(line *diff.Line, width int, right bool, selected diffRan
 		marker = "−"
 	}
 	label := fmt.Sprintf("%*d%s ", gutter-2, number, marker)
+	gutterColor := theme.Readable(m.colors.LineNumber, m.colors.Background)
+	var gutterText string
+	if gutter == m.diffGutter && m.expandedDiffFoldStart(line) != nil {
+		gutterText = row(m.symbol(symbolFold), 1, m.colors.Foreground, m.colors.Background) +
+			row(label[1:], gutter-1, gutterColor, m.colors.Background)
+	} else {
+		gutterText = row(label, gutter, gutterColor, m.colors.Background)
+	}
 	code := line.Text[1:]
 	emphasis, border := "", ""
 	if line.Kind == diff.Added {
@@ -488,7 +527,7 @@ func (m *Model) diffRow(line *diff.Line, width int, right bool, selected diffRan
 			overlay.flash = m.flash
 		}
 	}
-	return row(label, gutter, theme.Readable(m.colors.LineNumber, m.colors.Background), m.colors.Background) + diffCode(m.colors, code, m.diffSyntax[line], width-gutter, m.diffLeft, bg, emphasis, m.diffEmphasis[line], selected, overlay)
+	return gutterText + diffCode(m.colors, code, m.diffSyntax[line], width-gutter, m.diffLeft, bg, emphasis, m.diffEmphasis[line], selected, overlay)
 }
 
 type diffCodeOverlay struct {

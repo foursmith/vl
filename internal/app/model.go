@@ -104,6 +104,7 @@ type diffMsg struct {
 	prVersion string
 	err       error
 	images    *diffImages
+	oldSource string
 }
 type operationMsg struct {
 	title      string

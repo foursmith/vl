@@ -359,17 +359,13 @@ func (m *Model) renderDiff() {
 	m.diffSelection = diffSelection{}
 	m.diffDrag = nil
 	largest := 1
-	for _, line := range m.patch.Lines {
-		largest = max(largest, line.Old, line.New)
-	}
-	m.diffGutter = max(4, len(fmt.Sprint(largest))) + 2
 	m.diffWidth = 0
 	for _, line := range m.patch.Lines {
+		largest = max(largest, line.Old, line.New)
 		if line.Kind == diff.Added || line.Kind == diff.Deleted || line.Kind == diff.Context {
 			m.diffWidth = max(m.diffWidth, ansi.StringWidth(expandTabs(line.Text[1:])))
 		}
 	}
-	m.clampDiffHorizontal()
 	pairs := m.patch.Pairs()
 	m.diffEmphasis = diffEmphasis(pairs)
 	m.diffRows = make([]diff.Pair, 0, len(m.patch.Lines))
@@ -380,9 +376,6 @@ func (m *Model) renderDiff() {
 		}
 		if m.diffPR.Number != 0 && len(m.patch.Hunks) == 0 {
 			return strings.HasPrefix(line.Text, "diff --git ")
-		}
-		if line.Kind == diff.HunkHeader && len(m.patch.Hunks) == 1 && (m.patch.NewFile || m.patch.DeletedFile) {
-			return true
 		}
 		if line.Kind != diff.Header {
 			return false
@@ -398,20 +391,50 @@ func (m *Model) renderDiff() {
 		m.diffRows = append(m.diffRows, pair)
 		m.diffRowHunks = append(m.diffRowHunks, pair.Hunk)
 	}
+	appendFold := func(index int) {
+		if index >= len(m.contextFolds) || m.contextFolds[index].Count == 0 {
+			return
+		}
+		fold := &m.contextFolds[index]
+		fold.start = len(m.diffRows)
+		if fold.lines == nil {
+			appendRow(diff.Pair{Left: &diff.Line{Kind: diff.Fold, Hunk: index}, Hunk: -1})
+			return
+		}
+		for i := range fold.lines {
+			line := &fold.lines[i]
+			m.diffWidth = max(m.diffWidth, ansi.StringWidth(expandTabs(line.Text[1:])))
+			appendRow(diff.Pair{Left: line, Right: line, Hunk: -1})
+		}
+	}
+	appendPatchRow := func(pair diff.Pair) {
+		if pair.Left != nil && pair.Left.Kind == diff.HunkHeader {
+			appendFold(pair.Hunk)
+			return
+		}
+		if !hidden(pair.Left) {
+			appendRow(pair)
+		}
+	}
 	if key.split {
 		for _, pair := range pairs {
-			if !hidden(pair.Left) {
-				appendRow(pair)
-			}
+			appendPatchRow(pair)
 		}
 	} else {
 		for i := range m.patch.Lines {
 			line := &m.patch.Lines[i]
-			if !hidden(line) {
-				appendRow(diff.Pair{Left: line, Hunk: line.Hunk})
-			}
+			appendPatchRow(diff.Pair{Left: line, Hunk: line.Hunk})
 		}
 	}
+	foldWidth := 0
+	if tail := len(m.contextFolds) - 1; tail >= 0 {
+		fold := m.contextFolds[tail]
+		appendFold(tail)
+		largest = max(largest, fold.Old+fold.Count-1, fold.New+fold.Count-1)
+		foldWidth = 1
+	}
+	m.diffGutter = max(4, len(fmt.Sprint(largest))+foldWidth) + 2
+	m.clampDiffHorizontal()
 	m.setDiffScrollRows()
 	m.rebuildReview()
 }
@@ -812,6 +835,9 @@ func (m *Model) click(msg tea.MouseClickMsg) tea.Cmd {
 		return nil
 	}
 	if cmd, handled := m.clickDiffButton(msg); handled {
+		return cmd
+	}
+	if cmd, handled := m.clickDiffFold(msg); handled {
 		return cmd
 	}
 	m.focusEditor()

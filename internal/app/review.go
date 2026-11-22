@@ -160,7 +160,7 @@ func (m *Model) ensureTextCursor() {
 		m.diffLeft = visual - width + 1
 	}
 	m.clampDiffHorizontal()
-	if row < len(m.diffRowHunks) {
+	if row < len(m.diffRowHunks) && m.diffRowHunks[row] >= 0 {
 		m.diffHunk = m.diffRowHunks[row]
 	}
 	m.syncReviewSelection()
@@ -190,7 +190,11 @@ func (d *diffState) reviewHunkStartLine() int {
 	}
 	row, _ := d.review.Position()
 	paintedRow := d.reviewRows[min(row, len(d.reviewRows)-1)]
-	return d.patch.HunkStartLine(d.diffRowHunks[paintedRow])
+	hunk := d.diffRowHunks[paintedRow]
+	if hunk < 0 {
+		hunk = d.diffHunk
+	}
+	return d.patch.HunkStartLine(hunk)
 }
 
 func (m *Model) reviewToRow(row int) {

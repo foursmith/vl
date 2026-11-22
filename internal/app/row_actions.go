@@ -208,6 +208,11 @@ func (m *Model) hoverHint() string {
 	if hint := m.diffButtonHint(m.hoveredDiffButtons()); hint != "" {
 		return hint
 	}
+	if m.modal == "" && m.contextMenu == nil && !m.sidebarAt(m.hoverX) && !m.fileFindAt(m.hoverX, m.hoverY) {
+		if fold := m.diffFoldAt(m.hoverX, m.hoverY); fold != nil {
+			return m.diffFoldHint(fold)
+		}
+	}
 	if m.modal == "" && m.hoverY >= 0 && m.hoverY < headerHeight && m.sidebarAt(m.hoverX) {
 		if target, ok := m.sidebarNavigationAt(m.hoverX - m.sideX()); ok && target == pullRequests {
 			return m.tr("Pull Requests") + " · " + m.commandShortcutHint(commandPullRequests)
