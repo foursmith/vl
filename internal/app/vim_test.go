@@ -1,7 +1,6 @@
 package app
 
 import (
-	"runtime"
 	"strings"
 	"testing"
 
@@ -12,14 +11,13 @@ import (
 func TestVimSystemClipboardShortcuts(t *testing.T) {
 	m := flashModel(t, "one two")
 	d := m.document()
-	mod := tea.ModCtrl
-	if runtime.GOOS == "darwin" {
-		mod = tea.ModSuper
-	}
-
 	press(m, "v")
 	press(m, "e")
-	_, cut := m.Update(tea.KeyPressMsg{Code: 'x', Mod: mod})
+	_, cut := m.Update(tea.KeyPressMsg{Code: 'x', Mod: tea.ModSuper})
+	if cut != nil {
+		t.Fatal("Super+X requested the system clipboard")
+	}
+	_, cut = m.Update(tea.KeyPressMsg{Code: 'x', Mod: tea.ModCtrl})
 	if cut == nil || d.SelectedText() != "one" || d.Text != "one two" {
 		t.Fatal("cut did not retain the selection while writing to the clipboard")
 	}
@@ -28,7 +26,11 @@ func TestVimSystemClipboardShortcuts(t *testing.T) {
 		t.Fatal("cut did not remove the selection and exit Visual mode")
 	}
 
-	_, paste := m.Update(tea.KeyPressMsg{Code: 'v', Mod: mod})
+	_, paste := m.Update(tea.KeyPressMsg{Code: 'v', Mod: tea.ModSuper})
+	if paste != nil {
+		t.Fatal("Super+V requested the system clipboard")
+	}
+	_, paste = m.Update(tea.KeyPressMsg{Code: 'v', Mod: tea.ModCtrl})
 	if paste == nil {
 		t.Fatal("paste did not request the system clipboard")
 	}
@@ -45,29 +47,29 @@ func TestVimSystemClipboardShortcuts(t *testing.T) {
 }
 
 func TestVimUndoRedoShortcuts(t *testing.T) {
-	ctrl := tea.ModCtrl
-	keys := [][2]tea.KeyPressMsg{
-		{{Code: 'z', Mod: ctrl}, {Code: 'z', Mod: ctrl | tea.ModShift}},
-	}
-	if runtime.GOOS == "darwin" {
-		keys = append(keys, [2]tea.KeyPressMsg{
-			{Code: 'z', Mod: tea.ModSuper}, {Code: 'Z', Mod: tea.ModSuper | tea.ModShift},
-		})
-	}
-	for _, pair := range keys {
-		undo, redo := pair[0], pair[1]
+	undo := tea.KeyPressMsg{Code: 'z', Mod: tea.ModCtrl}
+	for _, code := range []rune{'z', 'Z'} {
+		redo := tea.KeyPressMsg{Code: code, Mod: tea.ModCtrl | tea.ModShift}
 		t.Run(redo.String(), func(t *testing.T) {
 			m := flashModel(t, "one")
 			d := m.document()
 			press(m, "i")
 			press(m, "X")
+			m.Update(tea.KeyPressMsg{Code: 'z', Mod: tea.ModSuper})
+			if d.Text != "Xone" {
+				t.Fatalf("Super+Z changed the text to %q", d.Text)
+			}
 			m.Update(undo)
 			if d.Text != "one" || !m.tabs[0].vim.InsertMode {
 				t.Fatalf("undo in Insert mode produced %q", d.Text)
 			}
-			m.Update(tea.KeyPressMsg{Code: 'y', Mod: ctrl})
+			m.Update(tea.KeyPressMsg{Code: 'y', Mod: tea.ModCtrl})
 			if d.Text != "one" {
 				t.Fatalf("Ctrl+Y unexpectedly redid the edit: %q", d.Text)
+			}
+			m.Update(tea.KeyPressMsg{Code: code, Mod: tea.ModSuper | tea.ModShift})
+			if d.Text != "one" {
+				t.Fatalf("Super+Shift+Z changed the text to %q", d.Text)
 			}
 			m.Update(redo)
 			if d.Text != "Xone" || !m.tabs[0].vim.InsertMode {

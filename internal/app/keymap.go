@@ -1,9 +1,7 @@
 package app
 
 import (
-	"runtime"
 	"slices"
-	"strings"
 
 	"charm.land/bubbles/v2/key"
 )
@@ -25,24 +23,7 @@ const (
 	rightArrow           = "right"
 )
 
-func platformShortcut(letter, description string) key.Binding {
-	ctrl := "ctrl+" + letter
-	upper := strings.ToUpper(letter)
-	if runtime.GOOS == "darwin" {
-		return binding("⌘"+upper, description, "super+"+letter, ctrl)
-	}
-	return binding("Ctrl+"+upper, description, ctrl)
-}
-
-func redoShortcut() key.Binding {
-	if runtime.GOOS == "darwin" {
-		return binding("⌘⇧Z", "Redo", "shift+super+z", "shift+super+Z", "ctrl+shift+z", "ctrl+shift+Z")
-	}
-	return binding("Ctrl+Shift+Z", "Redo", "ctrl+shift+z", "ctrl+shift+Z")
-}
-
 var dismissKey = binding("Esc", "Dismiss", "esc")
-var sidebarRefreshKey = binding("r", "Refresh", "r", "R", "shift+r")
 
 // Declare defaults in precedence order. The last matching rule wins, so
 // context-specific rules can share a key with a workbench fallback.
@@ -51,7 +32,7 @@ var workbenchKeybindings = []workbenchShortcut{
 	{id: "app.quit.copyFallback", binding: binding("Ctrl+C", "Quit", "ctrl+c"), command: commandQuit, hideHint: true, when: func(m *Model) bool {
 		return !m.contentCopyFocused()
 	}},
-	{binding: platformShortcut("c", "Copy"), command: commandCopy, when: (*Model).contentCopyFocused},
+	{binding: binding("Ctrl+C", "Copy", "ctrl+c"), command: commandCopy, when: (*Model).contentCopyFocused},
 	{binding: binding("Ctrl+G", "Go to File", "ctrl+g"), context: fromSearch, command: commandFiles},
 	{binding: binding("Ctrl+R", "Open Recent Workspace", "ctrl+r"), context: workspaceOnly | fromSidebarSearch, command: commandRecent},
 	{binding: binding("Ctrl+P", "Commands", "ctrl+p"), context: fromSearch, command: commandPalette},
@@ -63,11 +44,11 @@ var workbenchKeybindings = []workbenchShortcut{
 	{binding: binding("Ctrl+L", "Toggle sidebar", "ctrl+l"), context: workspaceOnly | fromSearch, command: commandSidebar},
 	{binding: binding("F2", "Switch focus", "f2"), context: workspaceOnly | fromSearch, command: commandFocus},
 	{binding: binding("F5", "Refresh", "f5"), context: fromFileFind | blurFileFind, command: commandRefresh},
-	{id: sidebarRefreshRuleID, binding: sidebarRefreshKey, command: commandRefresh, when: func(m *Model) bool {
+	{id: sidebarRefreshRuleID, binding: binding("r", "Refresh", "r", "R", "shift+r"), command: commandRefresh, when: func(m *Model) bool {
 		return m.sidebar && m.section != search
 	}},
 	{context: workspaceOnly, command: commandDiffLayout},
-	{binding: platformShortcut("s", "Save"), context: fromSidebarSearch | fromFileFind, command: commandSave},
+	{binding: binding("Ctrl+S", "Save", "ctrl+s"), context: fromSidebarSearch | fromFileFind, command: commandSave},
 	{binding: binding("Ctrl+W", "Close Editor", "ctrl+w"), context: fromSidebarSearch, command: commandClose},
 	{binding: binding("Ctrl+Shift+W", "Close Other Editors", "ctrl+shift+w", "ctrl+shift+W"), context: beforeInput, command: commandCloseOthers},
 	{command: commandCloseAll},
@@ -79,11 +60,11 @@ var workbenchKeybindings = []workbenchShortcut{
 var editorKeys = struct {
 	Cut, Paste, SelectAll, Undo, Redo key.Binding
 }{
-	Cut:       platformShortcut("x", "Cut"),
-	Paste:     platformShortcut("v", "Paste"),
+	Cut:       binding("Ctrl+X", "Cut", "ctrl+x"),
+	Paste:     binding("Ctrl+V", "Paste", "ctrl+v"),
 	SelectAll: binding("Ctrl+A", "Select All", "ctrl+a"),
-	Undo:      platformShortcut("z", "Undo"),
-	Redo:      redoShortcut(),
+	Undo:      binding("Ctrl+Z", "Undo", "ctrl+z"),
+	Redo:      binding("Ctrl+Shift+Z", "Redo", "ctrl+shift+z", "ctrl+shift+Z"),
 }
 
 var searchKeys = struct {

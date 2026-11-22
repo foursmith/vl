@@ -2,7 +2,6 @@ package app
 
 import (
 	"os"
-	"runtime"
 	"testing"
 
 	"charm.land/bubbles/v2/key"
@@ -30,12 +29,6 @@ func TestDefaultWorkbenchShortcutActions(t *testing.T) {
 		drain(t, m, cmd)
 		return len(m.snapshot.Changes) == 2
 	}
-	copyKeys := []tea.KeyPressMsg{ctrl('c')}
-	saveKeys := []tea.KeyPressMsg{ctrl('s')}
-	if runtime.GOOS == "darwin" {
-		copyKeys = append(copyKeys, tea.KeyPressMsg{Code: 'c', Mod: tea.ModSuper})
-		saveKeys = append(saveKeys, tea.KeyPressMsg{Code: 's', Mod: tea.ModSuper})
-	}
 	cases := []struct {
 		command commandID
 		sidebar bool
@@ -44,7 +37,7 @@ func TestDefaultWorkbenchShortcutActions(t *testing.T) {
 	}{
 		{commandQuit, false, []tea.KeyPressMsg{ctrl('q')}, isQuit},
 		{commandQuit, true, []tea.KeyPressMsg{ctrl('c')}, isQuit},
-		{commandCopy, false, copyKeys, func(m *Model, cmd tea.Cmd) bool {
+		{commandCopy, false, []tea.KeyPressMsg{ctrl('c')}, func(m *Model, cmd tea.Cmd) bool {
 			return cmd != nil && m.modal == "" && m.document().SelectedText() != ""
 		}},
 		{commandFiles, false, []tea.KeyPressMsg{ctrl('g')}, func(m *Model, _ tea.Cmd) bool {
@@ -63,7 +56,7 @@ func TestDefaultWorkbenchShortcutActions(t *testing.T) {
 		{commandFocus, false, []tea.KeyPressMsg{keypress(tea.KeyF2)}, sidebarSection(explorer)},
 		{commandRefresh, false, []tea.KeyPressMsg{keypress(tea.KeyF5)}, refresh},
 		{commandRefresh, true, []tea.KeyPressMsg{keypress('r'), keypress('R'), {Code: 'r', Mod: tea.ModShift}}, refresh},
-		{commandSave, false, saveKeys, func(m *Model, _ tea.Cmd) bool {
+		{commandSave, false, []tea.KeyPressMsg{ctrl('s')}, func(m *Model, _ tea.Cmd) bool {
 			data, err := os.ReadFile(m.document().Path)
 			return err == nil && !m.document().Dirty() && string(data) == m.document().Text
 		}},
@@ -176,6 +169,11 @@ func TestWorkbenchShortcutUsesLastMatchingContext(t *testing.T) {
 	m.openFile("file0.go")
 	if got := m.resolveWorkbenchShortcut("ctrl+c").command; got != commandCopy {
 		t.Fatalf("Ctrl+C in the editor resolved to %q", got)
+	}
+	for _, name := range []string{"super+c", "super+s"} {
+		if got := m.resolveWorkbenchShortcut(name).command; got != "" {
+			t.Errorf("%s in the editor resolved to %q", name, got)
+		}
 	}
 	m.sidebar = true
 	if got := m.resolveWorkbenchShortcut("ctrl+c").command; got != commandQuit {
