@@ -1,14 +1,11 @@
 import { createFileRoute } from "@tanstack/solid-router"
 import { createSignal } from "solid-js"
-import screenshots from "../../../assets/screenshots.webp?url"
+import screenshots from "../../../assets/workbench.webp?url"
 import { AnsiTerminal } from "../ansi-logo"
 import { docs, repository, siteUrl } from "../docs-paths"
 import { SiteHeader } from "../site-header"
 
 const shortcuts = docs.shortcuts.path
-const vimGuide = docs.vim.path
-
-const editorScreenshot = "vl displaying a syntax-highlighted Go file with open tabs, breadcrumbs, and the Explorer file tree"
 
 const workflows = [
   {
@@ -20,39 +17,37 @@ const workflows = [
       { keys: ["Enter"], action: "Keep the preview tab open" },
       { keys: ["Ctrl+2"], action: "Search across files" },
     ],
-    image: "editor",
-    imageDescription: editorScreenshot,
+    imageRow: 0,
+    imageDescription: "vl displaying a Markdown README with an inline image, the Explorer file tree, and Outline",
     href: `${shortcuts}#workbench`,
     link: "Workbench shortcuts",
   },
   {
     label: "Review diffs",
-    description: "Switch between side-by-side and inline diffs. Browse commit history and GitHub pull requests from the sidebar.",
+    description: "Review staged and unstaged changes in side-by-side or inline diffs. Stage or unstage individual hunks or selected lines.",
     keys: [
       { keys: ["Ctrl+3"], action: "Open Changes" },
       { keys: ["[", "]"], action: "Jump between hunks" },
       { keys: ["V"], action: "Start a line selection" },
       { keys: ["s"], action: "Stage or unstage a hunk or selection" },
     ],
-    image: "diff",
-    imageDescription: "vl displaying a Git commit with a side-by-side diff and the changed files in the sidebar",
+    imageRow: 1,
+    imageDescription: "vl displaying staged changes to a Go file in a side-by-side diff",
     href: `${shortcuts}#diff-editor`,
     link: "Diff shortcuts",
   },
   {
-    label: "Make quick edits",
-    description: "Text files open in Normal mode with Vim motions and text objects.",
+    label: "Commit history",
+    description: "Browse commits in History, expand a commit to see its changed files, and open a file to inspect its diff.",
     keys: [
-      { keys: ["f"], action: "Jump to a labeled match with Flash" },
-      { keys: ['ci"'], action: "Change text inside quotes" },
-      { keys: ['ysiw"'], action: "Put double quotes around the current word" },
-      { keys: ["."], action: "Repeat the last edit" },
-      { keys: ["Space w"], action: "Save from Normal mode" },
+      { keys: ["Ctrl+4"], action: "Open History" },
+      { keys: ["j", "k"], action: "Move through commits and files" },
+      { keys: ["Enter"], action: "Expand a commit or open a file diff" },
     ],
-    image: "editor",
-    imageDescription: editorScreenshot,
-    href: vimGuide,
-    link: "Vim key guide",
+    imageRow: 2,
+    imageDescription: "vl displaying a Git commit with a side-by-side diff and the changed files in the sidebar",
+    href: `${shortcuts}#sidebar`,
+    link: "Sidebar shortcuts",
   },
 ] as const
 
@@ -114,12 +109,13 @@ function WorkbenchSection() {
         </div>
       </div>
 
-      <figure class="relative aspect-[1600/919] overflow-hidden">
+      <figure class="relative aspect-[1200/831] overflow-hidden">
         <img
           src={screenshots}
-          width="3200"
-          height="1838"
-          class={`absolute h-auto w-[200%] max-w-none ${workflow().image === "diff" ? "top-0" : "-top-full"} ${theme() === "Dark" ? "left-0" : "-left-full"}`}
+          width="2400"
+          height="2493"
+          class={`absolute h-auto w-[200%] max-w-none ${theme() === "Dark" ? "left-0" : "-left-full"}`}
+          style={{ top: `${-100 * workflow().imageRow}%` }}
           alt={workflow().imageDescription}
           decoding="async"
         />

@@ -13,7 +13,7 @@
 A **V**SCode-**l**ike terminal workbench with **V**im-**l**ike keybindings.
 Browse code, review diffs, and make quick edits.
 
-![](./assets/screenshots.webp)
+![](./assets/workbench.webp)
 
 Agents write all my code now. I still review their diffs before they commit.
 VS Code with the Vim extension has been my go-to for years, so I built vl around

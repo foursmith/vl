@@ -147,7 +147,7 @@ func TestImageTabPixelBudgetReloadsEvictedTab(t *testing.T) {
 	m := tabWorkspace(t, 0)
 	t.Cleanup(m.Close)
 	m.kittySupported = true
-	source, err := os.ReadFile(filepath.Join("..", "..", "assets", "screenshots.webp"))
+	source, err := os.ReadFile(filepath.Join("..", "..", "assets", "workbench.webp"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +160,7 @@ func TestImageTabPixelBudgetReloadsEvictedTab(t *testing.T) {
 		imageUploadOutput(t, m)
 	}
 	first := m.tabs[0].image
-	if len(m.tabs) != 3 || first.DecodedBytes() != 0 || first.Bounds().Dx() != 3200 || first.id != 0 {
+	if len(m.tabs) != 3 || first.DecodedBytes() != 0 || first.Bounds().Dx() != 2400 || first.id != 0 {
 		t.Fatal("least recently used image did not release its pixels and placement")
 	}
 	if m.tabs[1].image.DecodedBytes() == 0 || m.tabs[2].image.DecodedBytes() == 0 {

@@ -62,7 +62,7 @@ func TestFormatsAndTransparency(t *testing.T) {
 }
 
 func TestAlphaWebPUsesPackedPixels(t *testing.T) {
-	path := filepath.Join("..", "..", "assets", "screenshots.webp")
+	path := filepath.Join("..", "..", "assets", "workbench.webp")
 	f, err := os.Open(path)
 	if err != nil {
 		t.Fatal(err)
