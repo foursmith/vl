@@ -611,7 +611,13 @@ func TestStatusRemoteActionsTargetChildRepository(t *testing.T) {
 		}
 		t.Fatalf("missing History %s action", title)
 	}
-	clickHistoryAction("pull", "Pull")
+	m.selected = m.sidebarRowWithKey(historyRepositoryKey("child space"))
+	if m.selected < 0 {
+		t.Fatal("missing child repository in History")
+	}
+	m.ensureSidebar()
+	m.Update(tea.MouseClickMsg{X: m.sideX() + 3, Y: m.sidebarSelectionY(), Button: tea.MouseRight})
+	runRemoteAction(chooseContextAction(t, m, "Pull"), "Pull")
 	if state = m.snapshot.RepositoryStates["child space"]; state.Behind != 0 || m.snapshot.Head != parentHead {
 		t.Fatal("pull failed or modified parent", m.notice)
 	}

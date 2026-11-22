@@ -356,17 +356,6 @@ func (m *Model) editorCursor() *tea.Cursor {
 	return &tea.Cursor{Position: tea.Position{X: m.mainX() + x, Y: m.contentRow() + y}, Shape: shape, Blink: blink, Color: lipgloss.Color(m.colors.Foreground)}
 }
 
-func (m *Model) mainLines() []string {
-	if m.mainShowsSidebar() {
-		return m.sidebarLinesWidth(m.mainWidth())
-	}
-	content := m.contentLines()
-	if m.editorOnly {
-		return content
-	}
-	return append([]string{m.tabBar(), m.contentToolbar()}, content...)
-}
-
 func (m *Model) contentLines() []string {
 	if m.editing() {
 		return m.editorLines()

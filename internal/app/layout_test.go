@@ -11,6 +11,21 @@ import (
 	gitservice "github.com/foursmith/vl/internal/git"
 )
 
+func (m *Model) sidebarLines() []string {
+	return m.renderSidebar(nil)
+}
+
+func (m *Model) mainLines() []string {
+	if m.mainShowsSidebar() {
+		return m.sidebarLinesWidth(m.mainWidth())
+	}
+	content := m.contentLines()
+	if m.editorOnly {
+		return content
+	}
+	return append([]string{m.tabBar(), m.contentToolbar()}, content...)
+}
+
 func TestNavigationShowsChangesAndOpenPullRequestCounts(t *testing.T) {
 	m := tabWorkspace(t, 0)
 	t.Cleanup(m.Close)

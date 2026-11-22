@@ -176,10 +176,6 @@ func (m *Model) closeAllTabs() tea.Cmd {
 	return m.requestCloseTabs(append([]tab(nil), m.tabs...))
 }
 
-func (m *Model) closeOtherTabs() tea.Cmd {
-	return m.closeOtherTabsExcept(m.activeTab)
-}
-
 func (m *Model) closeOtherTabsExcept(index int) tea.Cmd {
 	var close []tab
 	for i, t := range m.tabs {

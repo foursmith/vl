@@ -218,7 +218,9 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 			}
 		}
 		if entry != nil {
-			if label := m.sidebarOpenLabel(*entry); label != "" {
+			if entry.repoHeader && (section == changes || section == history || section == pullRequests) {
+				add(m.tr("Switch Branch…"), "", bind(func() tea.Cmd { return m.openBranchPicker(entry.repository, "") }))
+			} else if label := m.sidebarOpenLabel(*entry); label != "" {
 				add(label, sidebarKeys.Open.Help().Key, bind(m.openSelected))
 			}
 		}
@@ -258,6 +260,14 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 					key:      gitKeys.DiscardScope.Help().Key,
 					disabled: m.discardScopeReason(entry),
 					run:      bind(func() tea.Cmd { return m.runScopeAction(*entry, "discard") }),
+				})
+			}
+		} else if m.section == history && entry != nil && entry.repoHeader {
+			for _, a := range m.repositoryRowActions(*entry) {
+				actions = append(actions, action{
+					label:    a.label,
+					disabled: a.disabled,
+					run:      bind(func() tea.Cmd { return m.runRepositoryRemoteAction(entry.repository, a.id) }),
 				})
 			}
 		} else if m.section == search && entry != nil {

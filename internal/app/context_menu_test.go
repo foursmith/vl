@@ -202,6 +202,43 @@ func TestContextMenuTargetsClickedTabAndConfirmsDirtyClose(t *testing.T) {
 	}
 }
 
+func TestRepositoryContextMenuOpensBranchPicker(t *testing.T) {
+	m, _ := childWorkspace(t)
+	for _, tt := range []struct {
+		name       string
+		section    section
+		key        string
+		repository string
+	}{
+		{"Changes", changes, repositoryKey("child space"), "child space"},
+		{"History", history, historyRepositoryKey("child space"), "child space"},
+		{"Pull Requests", pullRequests, pullRequestRepositoryKey, ""},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			drain(t, m, m.selectSection(tt.section))
+			m.selected = m.sidebarRowWithKey(tt.key)
+			if m.selected < 0 {
+				t.Fatal("missing repository row")
+			}
+			m.ensureSidebar()
+			m.Update(tea.MouseClickMsg{X: m.sideX() + 3, Y: m.sidebarSelectionY(), Button: tea.MouseRight})
+			if m.contextMenu == nil || m.contextMenu.actions[0].label != "Switch Branch…" {
+				t.Fatal("repository context menu does not start with Switch Branch")
+			}
+			for _, a := range m.contextMenu.actions {
+				if a.label == "Open / Expand" {
+					t.Fatal("repository context menu includes Open / Expand")
+				}
+			}
+			drain(t, m, chooseContextAction(t, m, "Switch Branch…"))
+			if m.modal != "refs" || m.branchRepository != tt.repository {
+				t.Fatal("context menu did not open the selected repository branch picker")
+			}
+			press(m, "esc")
+		})
+	}
+}
+
 func TestContextMenuChangeActionsAndStaleTargets(t *testing.T) {
 	m := explorerWorkspace(t)
 	drain(t, m, m.selectSection(changes))

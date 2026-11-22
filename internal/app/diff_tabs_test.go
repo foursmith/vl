@@ -123,7 +123,7 @@ func TestDiffRefreshUsesTabSourceAndPreservesActiveDocument(t *testing.T) {
 			t.Fatalf("refresh lost tab %d identity or scroll", i)
 		}
 	}
-	m.closeOtherTabs()
+	m.executeCommand(commandCloseOthers, "")
 	if len(m.tabs) != 1 || m.document() != doc {
 		t.Fatal("close others did not close all inactive diff tabs")
 	}
@@ -135,7 +135,7 @@ func TestMixedTabsRetainDirtyCloseGuard(t *testing.T) {
 	press(m, "x")
 	doc := m.document()
 	drain(t, m, m.requestDiff(diffTarget{path: "file0.go"}, func(context.Context) (string, error) { return diffTabText("review"), nil }))
-	m.closeOtherTabs()
+	m.executeCommand(commandCloseOthers, "")
 	if !hasSaveConfirmation(m) || len(m.tabs) != 2 {
 		t.Fatal("close others bypassed a dirty document")
 	}

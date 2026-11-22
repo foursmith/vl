@@ -78,10 +78,6 @@ func (m *Model) sidebarNavigationAt(x int) (section, bool) {
 	return 0, false
 }
 
-func (m *Model) sidebarLines() []string {
-	return m.renderSidebar(nil)
-}
-
 type sidebarRowCache struct {
 	previous, current map[int]string
 }

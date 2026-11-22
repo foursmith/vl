@@ -253,5 +253,9 @@ reused.
 | `l` / `Enter` / `Space` | Run the selected action |
 | `h` / `Esc` / `F7` | Close the context menu |
 
+In Changes, History, and Pull Requests, right-click a repository row or select
+it and press `F7` to switch branches. The History menu also offers remote actions
+such as Sync, Pull, Push, or Publish.
+
 In confirmation dialogs, `h` / `l` switch buttons, `j` / `k` scroll the details,
 `Enter` activates the focused button, and `Esc` cancels.

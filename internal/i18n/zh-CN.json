@@ -311,6 +311,7 @@
   "Stash": "储藏",
   "Stash pop": "弹出储藏",
   "Switch branch": "切换分支",
+  "Switch Branch…": "切换分支…",
   "Create branch": "创建分支",
   "Initialize repository": "初始化仓库",
   "%s completed": "%s已完成",
