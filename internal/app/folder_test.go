@@ -52,7 +52,7 @@ func TestFolderBrowseSearchEditAndInitialize(t *testing.T) {
 			t.Fatalf("Git action enabled: %s", a.id)
 		}
 	}
-	if cmd := m.gitOperation("Fetch", "fetch"); cmd != nil {
+	if cmd := m.gitOperationInRepository("", "Fetch", "fetch"); cmd != nil {
 		t.Fatal("Git operation allowed before initialization")
 	}
 	drain(t, m, press(m, "enter"))

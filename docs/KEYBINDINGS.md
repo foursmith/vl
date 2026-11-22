@@ -130,6 +130,13 @@ it. From within Outline, press `Left` to collapse it and `Right` to reopen it.
 The row buttons, context menu, and Command Palette use the same scope.
 Repository-wide actions include collapsed files and act on one Git index.
 
+Open **Manage Stashes…** from the Changes context menu or the Command Palette
+to inspect stashes in the selected repository. Select a stash to list its files,
+then select a file to view its diff. Use **Stash Actions…** in the file list to
+apply, pop, or drop the stash. Apply and Pop can also restore the staged state.
+Use **New Stash…** to choose what to save, including staged changes only,
+tracked changes only, or tracked changes while keeping staged changes in place.
+
 ## Find and Replace
 
 | Shortcut | Action |

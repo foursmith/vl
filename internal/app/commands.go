@@ -95,10 +95,9 @@ func (m *Model) actions() []action {
 		{"git.sync", m.tr("Git: Sync"), "", "", m.syncRepository},
 		{"git.publish", m.tr("Git: Publish Branch"), "", "", m.publishBranch},
 		{"github.open", m.tr("GitHub: Open Repository"), "", githubReason, m.openGitHub},
-		{"git.stash", m.tr("Git: Stash (Include Untracked)"), stashKey, "", func() tea.Cmd { return m.stash(remoteTarget) }},
-		{"git.stashPop", m.tr("Git: Pop Latest Stash"), "", "", func() tea.Cmd {
-			return m.ask(m.tr("Apply and remove the latest stash?"), m.tr("Confirm"), func() tea.Cmd { return m.gitOperation("Stash pop", "stash", "pop") })
-		}},
+		{"git.stash", m.tr("Git: Stash (Include Untracked)"), stashKey, "", func() tea.Cmd { return m.stash(target) }},
+		{"git.stashList", m.tr("Git: Manage Stashes…") + suffix, "", "", func() tea.Cmd { return m.openStashes(target) }},
+		{"git.stashModes", m.tr("Git: New Stash…") + suffix, "", "", func() tea.Cmd { return m.openStashModes(target) }},
 		{"file.open", m.tr("File: Open Selected File"), sidebarKeys.Edit.Help().Key, openReason, m.editSelected},
 		{"file.keepOpen", m.tr("View: Keep Editor"), "", tabReason, m.keepTab},
 		m.commandAction(commandCloseOthers, "View: Close Other Editors", "", ""),
@@ -324,7 +323,10 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 				return m.createBranch(value)
 			}
 		case "stash":
-			args := []string{"stash", "push", "--include-untracked"}
+			args := []string{"stash", "push"}
+			if m.stashOption != "" {
+				args = append(args, m.stashOption)
+			}
 			if value != "" {
 				args = append(args, "-m", value)
 			}
@@ -394,12 +396,8 @@ func (m *Model) startOperationResult(title string, run func() operationMsg) tea.
 	}
 }
 
-func (m *Model) gitOperation(title string, args ...string) tea.Cmd {
-	return m.gitOperationInRepository("", title, args...)
-}
-
 func (m *Model) gitOperationInRepository(target, title string, args ...string) tea.Cmd {
-	if (title == "Pull" || title == "Stash" || title == "Stash pop") &&
+	if (title == "Pull" || title == "Stash") &&
 		(target == "" && m.hasDirtyTabs() || target != "" && m.hasDirtyTabsInRepository(target)) {
 		m.notice = m.tr("Save or close edited files before this operation")
 		return nil
@@ -423,11 +421,6 @@ func (m *Model) pull(target string) tea.Cmd {
 
 func (m *Model) push(target string) tea.Cmd {
 	return m.showRemoteProgress(m.gitOperationInRepository(target, "Push", "push"), target, "push")
-}
-
-func (m *Model) stash(target string) tea.Cmd {
-	m.stashRepository = target
-	return m.prompt("stash", m.tr("Stash changes"), "")
 }
 
 func (m *Model) refreshView() tea.Cmd {

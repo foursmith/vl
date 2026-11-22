@@ -245,6 +245,8 @@ type Model struct {
 	branchRepository        string
 	commitRepository        string
 	stashRepository         string
+	stashOption             string
+	stashPickerSeq          int
 	commitDrafts            map[string]string
 	openURL                 func(context.Context, string) error
 	hoverX, hoverY          int
@@ -850,6 +852,8 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		if msg.feedback == m.statusFeedback {
 			m.statusFeedback = nil
 		}
+	case stashPickerMsg:
+		return m, m.finishStashPicker(msg)
 	case operationMsg:
 		m.busy = false
 		m.operationProgress = ""
@@ -870,7 +874,8 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		if msg.title == "Commit" && msg.err == nil {
 			delete(m.commitDrafts, m.commitRepository)
 		}
-		if msg.title == "Switch branch" || msg.title == "Create branch" || msg.title == "Pull" || msg.title == "Sync" || msg.title == "Stash" || msg.title == "Stash pop" || msg.title == "Discard" {
+		switch msg.title {
+		case "Switch branch", "Create branch", "Pull", "Sync", "Stash", "Stash pop", "Stash apply", "Discard":
 			m.reloadCleanTabs()
 		}
 		return m, m.refresh()

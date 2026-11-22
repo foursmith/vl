@@ -279,6 +279,11 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 			}
 			actions = append(actions, m.commandAction(commandRefresh, "Refresh", "", ""))
 		}
+		if m.section == changes && !m.snapshot.NoRepository {
+			target := m.selectedRepository()
+			add(m.tr("New Stash…"), "", func() tea.Cmd { return m.openStashModes(target) })
+			add(m.tr("Manage Stashes…"), "", func() tea.Cmd { return m.openStashes(target) })
+		}
 		if entry != nil {
 			if m.selectedEntryPath() != "" {
 				label := m.tr("Delete…")
