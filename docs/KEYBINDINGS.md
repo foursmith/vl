@@ -1,9 +1,17 @@
 # Keyboard shortcuts
 
-Use `Ctrl+G` to jump to a file, `Ctrl+P` to run a command, and `F2` to move
-focus between the sidebar and the editor. Files open in Normal mode. See the
-[Vim guide](VIM.md#where-vl-differs-from-vim) for the bindings that behave
-differently in vl.
+| Shortcut | Action |
+| --- | --- |
+| `Ctrl+G` | Go to File |
+| `Ctrl+P` | Open the Command Palette |
+| `Ctrl+F` | Find in the current file |
+| `F2` | Switch focus between the sidebar and the editor |
+| `Ctrl+S` | Save the current file |
+| `Ctrl+W` | Close the current editor, with a prompt for unsaved changes |
+| `Esc` | Cancel the current mode, menu, or input |
+
+Files open in Normal mode. The [Vim guide](VIM.md) covers motions and
+[save and quit compatibility shortcuts](VIM.md#save-and-quit-commands).
 
 Use `Ctrl+U` / `Ctrl+D` to scroll up / down by half the height of the active
 view. This works in text and diff editors (including Insert and Visual),
@@ -14,28 +22,8 @@ while keeping focus on the field. In a zoomed image preview, they pan vertically
 With a list focused, use `j` / `k` to move down / up, `gg` / `G` to jump to
 the first / last row, and `PageUp` / `PageDown` to move by a page.
 
-Keys are case-sensitive. `Ctrl+G` is a chord. `Space w` and `gg` are sequences.
-
-## Adding a binding in code
-
-Edit `workbenchKeybindings` in [keymap.go](../internal/app/keymap.go) to bind an
-existing workbench command. Each rule declares the command ID, its display
-label, the accepted key names, and any focus conditions. Add an alternative key
-to the same rule, or add a rule for the same command if it needs a different
-focus condition. The command palette and menus read their hints from this table.
-Define new operations in [workbench_commands.go](../internal/app/workbench_commands.go).
-
-The workbench compiles its default rules into a keymap shared by dispatch and
-shortcut hints. Rule IDs default to their command IDs. Give a rule an explicit
-ID when a command has more than one binding with different focus conditions.
-The keymap builder accepts ordered assignments, replacements, and removals by
-rule ID and preserves each rule's command and focus conditions. A rule with no
-default key still gives the user a target to bind.
-
-For a new list, use `listNavigationKey` when typing belongs to a text input,
-or `navigationState.key` when the list has focus and supports Vim sequences.
-Use `moveListSelection` for row and page movement, and keep component-specific
-behavior such as previews and non-selectable headings in the caller.
+Keys are case-sensitive. Press `Ctrl+G` together and type sequences such as `gg`
+one key at a time.
 
 ## Workbench
 
@@ -43,14 +31,9 @@ In confirmation dialogs, use `←`/`→` or `Tab` to select a button, `Enter` to
 
 | Shortcut | Action |
 | --- | --- |
-| `Ctrl+G` | Go to File |
-| `Ctrl+P` | Show Command Palette |
 | `Ctrl+R` | Open Recent Workspace. Prompts if there are unsaved changes. |
 | `Ctrl+1` / `Ctrl+2` / `Ctrl+3` / `Ctrl+4` / `Ctrl+5` | Focus Explorer / Search / Changes / History / Pull Requests |
 | `F12` | Toggle Sidebar |
-| `F2` | Focus the sidebar or the editor |
-| `Ctrl+S` | Save |
-| `Ctrl+W` | Close Editor. Prompts if the file has unsaved changes. |
 | `Ctrl+Shift+W` | Close the other tabs. Prompts for unsaved changes. |
 | `Space 1` … `Space 9` | Switch to a tab by number from a focused editor outside Insert mode |
 | `Space ←` / `Space →` | Switch to the adjacent tab from a focused editor outside Insert mode |
@@ -215,7 +198,7 @@ Find, and Flash bindings as in a text tab.
 | `Shift+D` | Discard all unstaged changes to this file, with confirmation |
 | `F7` / right-click | Open diff actions, including staging, unstaging, and discarding unstaged hunks or selected changes |
 | `Ctrl+C` | Copy selected source text to the system clipboard |
-| `Space 1` … `Space 9` / `Space q` | Switch tabs / close the tab |
+| `Space 1` … `Space 9` | Switch tabs |
 
 Switch layouts from the diff toolbar or use **Toggle Inline View** in the
 Command Palette or diff context menu. In a side-by-side diff, keyboard navigation uses the right pane. You can
@@ -242,7 +225,7 @@ reused.
 | `h j k l` / arrow keys / drag | Pan. The keys take a count. |
 | `0` | Fit to window |
 | `Enter` | Keep the preview tab open |
-| `Space 1` … `Space 9` / `Space q` | Switch tabs / close the tab |
+| `Space 1` … `Space 9` | Switch tabs |
 
 ## Menus and dialogs
 
@@ -264,3 +247,24 @@ publish picker.
 
 In confirmation dialogs, `h` / `l` switch buttons, `j` / `k` scroll the details,
 `Enter` activates the focused button, and `Esc` cancels.
+
+## Adding a binding in code
+
+Edit `workbenchKeybindings` in [keymap.go](../internal/app/keymap.go) to bind an
+existing workbench command. Each rule declares the command ID, its display
+label, the accepted key names, and any focus conditions. Add an alternative key
+to the same rule, or add a rule for the same command if it needs a different
+focus condition. The command palette and menus read their hints from this table.
+Define new operations in [workbench_commands.go](../internal/app/workbench_commands.go).
+
+The workbench compiles its default rules into a keymap shared by dispatch and
+shortcut hints. Rule IDs default to their command IDs. Give a rule an explicit
+ID when a command has more than one binding with different focus conditions.
+The keymap builder accepts ordered assignments, replacements, and removals by
+rule ID and preserves each rule's command and focus conditions. A rule with no
+default key still gives the user a target to bind.
+
+For a new list, use `listNavigationKey` when typing belongs to a text input,
+or `navigationState.key` when the list has focus and supports Vim sequences.
+Use `moveListSelection` for row and page movement, and keep component-specific
+behavior such as previews and non-selectable headings in the caller.

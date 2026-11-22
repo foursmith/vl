@@ -28,7 +28,6 @@ const (
 	commandCloseOthers  commandID = "file.closeOthers"
 	commandCloseAll     commandID = "file.closeAll"
 	commandFind         commandID = "edit.find"
-	commandFocusSidebar commandID = "view.focusSidebar"
 	commandContextMenu  commandID = "workbench.contextMenu"
 	commandPreviousTab  commandID = "view.previousEditor"
 	commandNextTab      commandID = "view.nextEditor"
@@ -62,7 +61,7 @@ func (m *Model) executeCommand(id commandID, tabKey string) tea.Cmd {
 	case commandSidebar:
 		return m.toggleSidebar()
 	case commandFocus:
-		return m.toggleEditorFocus()
+		m.toggleEditorFocus()
 	case commandRefresh:
 		return m.refreshView()
 	case commandDiffLayout:
@@ -84,10 +83,6 @@ func (m *Model) executeCommand(id commandID, tabKey string) tea.Cmd {
 		return m.closeAllTabs()
 	case commandFind:
 		return m.openFileFind()
-	case commandFocusSidebar:
-		if !m.editorOnly {
-			return m.focusSidebar()
-		}
 	case commandContextMenu:
 		return m.openFocusedContextMenu()
 	case commandPreviousTab:

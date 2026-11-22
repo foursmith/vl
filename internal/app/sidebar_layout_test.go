@@ -22,7 +22,7 @@ func TestSidebarTabKeysCycleViewsAndKeepLocalInputFocus(t *testing.T) {
 		t.Fatal("Tab changed the sidebar while the editor had focus")
 	}
 
-	m.focusSidebar()
+	m.Update(tea.KeyPressMsg{Code: tea.KeyF2})
 	for _, test := range []struct {
 		key   tea.KeyPressMsg
 		views []section

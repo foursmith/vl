@@ -52,7 +52,6 @@ var workbenchKeybindings = []workbenchShortcut{
 	{binding: binding("Ctrl+Shift+W", "Close Other Editors", "ctrl+shift+w", "ctrl+shift+W"), context: beforeInput, command: commandCloseOthers},
 	{command: commandCloseAll},
 	{binding: binding("Ctrl+F", "Find", "ctrl+f"), command: commandFind},
-	{binding: dismissKey, command: commandFocusSidebar},
 	{binding: binding("F7", "Context menu", "f7"), command: commandContextMenu},
 }
 

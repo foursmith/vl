@@ -14,7 +14,7 @@ read-only and shares the motions, selections, yanks, and jumps. See
 | `U` | Redo. `u` still undoes. | Restore the last changed line. Redo is `Ctrl+R`. |
 | `:` | Enter a save or quit command, or jump to a line or column. Try `:42` or `:42:8`. | Enter an Ex command |
 | `/`, `n` | Open the Find widget and jump to the next match. | Enter a search pattern and repeat the search. `N` goes in the opposite direction. |
-| `Space` | Leader in an editor tab. Try `Space w` to save. | Move right in Normal mode |
+| `Space` | Leader in an editor tab. Try `Space →` to switch to the next tab. | Move right in Normal mode |
 | `Ctrl+V` | Paste from the system clipboard in the text editor | Start Visual block in Normal mode |
 | `Ctrl+R` | Open Recent Workspace | Redo in Normal mode |
 | `Ctrl+F` / `Ctrl+W` | Find / Close Editor | Page forward / start a window command in Normal mode |
@@ -34,9 +34,9 @@ down. In Normal, Visual, and Insert modes, use `Ctrl+C`, `Ctrl+X`, and
 require a selection. Cut and paste require an editable text file. Explorer's
 `yy` and `p` have their own file clipboard.
 
-vl supports a subset of Vim. Use Visual characterwise or linewise selection.
-For saving and closing, use the Leader or workbench bindings below. Visual
-block, macros, named registers, Ex commands, and mark jumps are unsupported.
+vl supports a subset of Vim, including Visual characterwise and linewise
+selection and the save and quit commands below. Visual block, macros, named
+registers, other Ex commands, and mark jumps are unsupported.
 
 ## Motions and search
 
@@ -202,7 +202,9 @@ block boundaries still match.
 
 ## Save and quit commands
 
-In Normal mode, press `:`, type the rest of the command, and press `Enter`.
+Use `Ctrl+S` to save or `Ctrl+W` to close the current editor. If you are used
+to Vim, you can also enter these commands in Normal mode. Press `:`, type
+the rest of the command, and press `Enter`.
 
 | Command | Action |
 | --- | --- |
@@ -216,6 +218,17 @@ opened for a single file, closing the last editor exits vl. The save commands
 respect read-only files and check for changes on disk, including with `!`.
 To open a file named after one of these commands, prefix its name with `./`.
 
+The following Leader sequences are also available outside Insert mode.
+
+| Sequence | Action |
+| --- | --- |
+| `Space w` | Save |
+| `Space q` | Close the editor, with a prompt for unsaved changes |
+| `Space z` | Save and close |
+
+`Space q` also works from diff and image tabs. Save commands apply to
+editable text files.
+
 ## Leader and tabs
 
 `Space` is the Leader in editor tabs outside Insert mode. Press the keys in
@@ -225,10 +238,5 @@ sequence. `Esc` cancels a pending sequence.
 | --- | --- |
 | `Space 1` … `Space 9` | Go to a tab by its position from the left |
 | `Space ←` / `Space →` | Go to the adjacent tab on the left or right |
-| `Space w` / `Ctrl+S` | Save |
-| `Space q` / `Ctrl+W` | Close Editor |
-| `Ctrl+Shift+W` | Close the other tabs |
-| `Space z` | Save and close |
 
-Tab navigation and closing also work from diffs and image previews. Save
-commands apply to editable text files.
+Tab navigation also works from diffs and image previews.

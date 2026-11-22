@@ -74,7 +74,6 @@ func TestDefaultWorkbenchShortcutActions(t *testing.T) {
 		{commandClose, false, []tea.KeyPressMsg{ctrl('w')}, tabs(1)},
 		{commandCloseOthers, false, []tea.KeyPressMsg{ctrlShift('w'), ctrlShift('W')}, tabs(1)},
 		{commandFind, false, []tea.KeyPressMsg{ctrl('f')}, func(m *Model, _ tea.Cmd) bool { return m.fileFindFocused() }},
-		{commandFocusSidebar, false, []tea.KeyPressMsg{keypress(tea.KeyEscape)}, sidebarSection(explorer)},
 		{commandContextMenu, false, []tea.KeyPressMsg{keypress(tea.KeyF7)}, func(m *Model, _ tea.Cmd) bool {
 			return m.contextMenu != nil
 		}},
@@ -103,10 +102,6 @@ func TestDefaultWorkbenchShortcutActions(t *testing.T) {
 					m.document().Insert("saved")
 					// Save should reach the workbench while a Vim operator is pending.
 					press(m, "d")
-				case commandFocusSidebar:
-					// Text views let Vim handle Escape before workbench dispatch.
-					m.closeAllTabs()
-					m.sidebar = false
 				}
 				if got := m.resolveWorkbenchShortcut(name).command; got != test.command {
 					t.Fatalf("resolved to %q instead of %q", got, test.command)
@@ -124,6 +119,27 @@ func TestDefaultWorkbenchShortcutActions(t *testing.T) {
 				t.Errorf("default binding %q for %s has no action test", name, rule.ruleID())
 			}
 		}
+	}
+}
+
+func TestEscapeKeepsWorkbenchFocus(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	defer m.Close()
+
+	m.sidebar = false
+	m.sidebarVisible = false
+	m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	if m.sidebar || m.sidebarVisible {
+		t.Fatal("Escape opened the sidebar from the empty editor")
+	}
+
+	m.Update(tea.KeyPressMsg{Code: tea.KeyF2})
+	if !m.sidebar || !m.sidebarVisible {
+		t.Fatal("F2 did not open and focus the sidebar")
+	}
+	m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	if !m.sidebar || !m.sidebarVisible {
+		t.Fatal("Escape moved focus out of the sidebar")
 	}
 }
 

@@ -148,20 +148,15 @@ func (m *Model) contentCopyFocused() bool {
 	return !m.sidebar && (m.editing() || m.diffOpen)
 }
 
-func (m *Model) toggleEditorFocus() tea.Cmd {
+func (m *Model) toggleEditorFocus() {
 	if m.sidebar {
 		m.blurFileFind()
 		m.focusEditor()
-		return nil
+		return
 	}
-	return m.focusSidebar()
-}
-
-func (m *Model) focusSidebar() tea.Cmd {
 	m.sidebar = true
 	m.sidebarVisible = true
 	m.resize()
-	return nil
 }
 
 func (m *Model) openFocusedContextMenu() tea.Cmd {
