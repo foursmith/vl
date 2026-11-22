@@ -16,13 +16,17 @@ func TestWorkbenchFocusShortcutAndRemovedBindings(t *testing.T) {
 	m.openFile("file0.go")
 	m.openFile("file1.go")
 	for _, key := range []tea.KeyPressMsg{
-		{Code: 'g', Mod: tea.ModCtrl},
+		{Code: 'p', Mod: tea.ModCtrl | tea.ModShift},
+		{Code: 'h', Mod: tea.ModCtrl},
+		{Code: tea.KeyF1},
+		{Code: 'f', Mod: tea.ModCtrl | tea.ModShift},
+		{Code: tea.KeyF10, Mod: tea.ModShift},
 		{Code: tea.KeyLeft, Mod: tea.ModAlt},
 		{Code: tea.KeyRight, Mod: tea.ModAlt},
 		{Code: tea.KeyF6},
 	} {
 		m.Update(key)
-		if m.modal != "" || m.sidebar || m.activeTab != 1 {
+		if m.modal != "" || m.contextMenu != nil || m.sidebar || len(m.tabs) != 2 || m.activeTab != 1 {
 			t.Fatalf("%s changed the dialog, focus, or active tab", key.String())
 		}
 	}

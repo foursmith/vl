@@ -12,11 +12,11 @@ read-only and shares the motions, selections, yanks, and jumps. See
 | `H` / `L` | First nonblank / end of the current line. Think `^` / `$`. | Top / bottom of the window |
 | `f`, `df`, `cf`, `yf` | Flash jump, or an operator up to a labeled target in the viewport | `f{char}` finds a character on the current line |
 | `U` | Redo. `u` still undoes. | Restore the last changed line. Redo is `Ctrl+R`. |
-| `:` | Quick Open with the line prompt prefilled. Try `:42` or `:42:8`. | Enter an Ex command |
+| `:` | Enter a save or quit command, or jump to a line or column. Try `:42` or `:42:8`. | Enter an Ex command |
 | `/`, `n` | Open the Find widget and jump to the next match. | Enter a search pattern and repeat the search. `N` goes in the opposite direction. |
 | `Space` | Leader in an editor tab. Try `Space w` to save. | Move right in Normal mode |
 | `Ctrl+V` | Paste from the system clipboard in the text editor | Start Visual block in Normal mode |
-| `Ctrl+H` | Open Recent Workspace | Move left in Normal mode |
+| `Ctrl+R` | Open Recent Workspace | Redo in Normal mode |
 | `Ctrl+F` / `Ctrl+W` | Find / Close Editor | Page forward / start a window command in Normal mode |
 | `Tab` / `Shift+Tab` | Indent / outdent in Normal and Visual | `Tab` jumps forward in the jumplist in Normal mode |
 | Backtick | Move back to a word start and toggle case. In Visual, extend the selection with that motion and toggle its case. | Jump to a mark |
@@ -199,6 +199,22 @@ Folds follow brace-delimited blocks and Python indentation. Moving skips
 folded lines. A search or line jump opens the fold when its target is inside.
 Editing clears the fold state. Reopening a file restores saved folds whose
 block boundaries still match.
+
+## Save and quit commands
+
+In Normal mode, press `:`, type the rest of the command, and press `Enter`.
+
+| Command | Action |
+| --- | --- |
+| `:w` / `:w!` | Save the current file |
+| `:q` | Close the current editor if it has no unsaved changes |
+| `:q!` | Close the current editor and discard its unsaved changes |
+| `:wq` / `:wq!` | Save the current file and close its editor |
+
+In a workspace, closing the last editor returns to the workspace. When vl was
+opened for a single file, closing the last editor exits vl. The save commands
+respect read-only files and check for changes on disk, including with `!`.
+To open a file named after one of these commands, prefix its name with `./`.
 
 ## Leader and tabs
 

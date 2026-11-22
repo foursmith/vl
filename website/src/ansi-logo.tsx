@@ -20,9 +20,9 @@ const sidebarRows = [
 ]
 
 const homeShortcuts = [
-  { command: "Show All Commands", keys: "F1 / Ctrl+Shift+P" },
-  { command: "Go to File", keys: "Ctrl+P" },
-  { command: "Open Recent Workspace", keys: "Ctrl+H" },
+  { command: "Show All Commands", keys: "Ctrl+P" },
+  { command: "Go to File", keys: "Ctrl+G" },
+  { command: "Open Recent Workspace", keys: "Ctrl+R" },
   { command: "Quit", keys: "Ctrl+Q" },
 ]
 

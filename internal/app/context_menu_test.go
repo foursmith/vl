@@ -54,7 +54,7 @@ func TestContextMenuSplitsCompactFolders(t *testing.T) {
 				}
 			}
 			assertSplit()
-			press(m, "shift+f10")
+			m.Update(tea.KeyPressMsg{Code: tea.KeyF7})
 			for _, a := range m.contextMenu.actions {
 				if a.label == "Split Folders" {
 					t.Fatal("split action offered for an ordinary folder")
@@ -167,7 +167,7 @@ func TestContextMenuFitsAndScrolls(t *testing.T) {
 		}
 	}
 	press(m, "esc")
-	press(m, "shift+f10")
+	m.Update(tea.KeyPressMsg{Code: tea.KeyF7})
 	if m.contextMenu == nil {
 		t.Fatal("keyboard menu did not open")
 	}

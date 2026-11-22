@@ -20,18 +20,6 @@ var welcomeActions = []welcomeAction{
 	{"Quit", commandQuit},
 }
 
-func (m *Model) welcomeShortcut(id commandID) string {
-	hint := m.commandShortcutHint(id)
-	if id == commandPalette && hint != "" && hint != commandPaletteFunctionKey && m.hasWelcomePaletteAlias() {
-		return commandPaletteFunctionKey + " / " + hint
-	}
-	return hint
-}
-
-func (m *Model) hasWelcomePaletteAlias() bool {
-	return m.resolveWorkbenchShortcut(strings.ToLower(commandPaletteFunctionKey)).command == commandPalette
-}
-
 func (m *Model) welcomeVisible() bool {
 	return !m.editing() && m.currentImage() == nil && !m.diffOpen && !m.diffLoading && m.patch.Raw == ""
 }
@@ -46,7 +34,7 @@ func (m *Model) welcomeCellAspect() float64 {
 func (m *Model) welcomeLayout() (x, y, width, logoRows int) {
 	minimumWidth := 2
 	for _, a := range welcomeActions {
-		minimumWidth = max(minimumWidth, ansi.StringWidth(m.tr(a.label))+1+ansi.StringWidth(m.welcomeShortcut(a.command)))
+		minimumWidth = max(minimumWidth, ansi.StringWidth(m.tr(a.label))+1+ansi.StringWidth(m.commandShortcutHint(a.command)))
 	}
 	width = min(max(42, minimumWidth), max(1, m.mainWidth()-4))
 	width = min(max(width, minimumWidth), max(1, m.mainWidth()))
@@ -92,10 +80,7 @@ func (m *Model) welcomeLines() []string {
 		if actionRow >= len(lines) {
 			break
 		}
-		label, key := m.tr(a.label), m.welcomeShortcut(a.command)
-		if a.command == commandPalette && ansi.StringWidth(label)+1+ansi.StringWidth(key) > width && m.hasWelcomePaletteAlias() {
-			key = commandPaletteFunctionKey
-		}
+		label, key := m.tr(a.label), m.commandShortcutHint(a.command)
 		key = ansi.Truncate(key, width, "")
 		label = ansi.Truncate(label, max(0, width-ansi.StringWidth(key)-1), "…")
 		padding := width - ansi.StringWidth(label) - ansi.StringWidth(key)

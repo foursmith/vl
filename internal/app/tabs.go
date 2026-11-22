@@ -226,6 +226,10 @@ func (m *Model) advanceClose() tea.Cmd {
 		m.removeTab(d)
 		m.closeQueue = m.closeQueue[1:]
 	}
+	return m.finishClose()
+}
+
+func (m *Model) finishClose() tea.Cmd {
 	m.closeQueue = nil
 	m.dismissDialog()
 	if m.editorOnly && len(m.tabs) == 0 {

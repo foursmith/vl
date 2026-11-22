@@ -188,6 +188,9 @@ func (m *Model) filterActions() []action {
 	if m.commandPicker() {
 		query = strings.TrimSpace(strings.TrimPrefix(query, ">"))
 	} else if m.modal == "quick" {
+		if command := m.quickVimCommand(query); command.run != nil {
+			return []action{command}
+		}
 		query = strings.TrimPrefix(query, "./")
 		if strings.HasSuffix(query, "/") {
 			var rows []action

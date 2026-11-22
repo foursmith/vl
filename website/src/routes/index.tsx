@@ -15,10 +15,10 @@ const workflows = [
     label: "Browse code",
     description: "Explorer reuses a single preview tab as you browse. Use Outline to jump between Markdown headings.",
     keys: [
-      { keys: ["Ctrl+P"], action: "Find a file by name" },
+      { keys: ["Ctrl+G"], action: "Go to File" },
       { keys: ["j", "k"], action: "Preview files from the sidebar" },
       { keys: ["Enter"], action: "Keep the preview tab open" },
-      { keys: ["Ctrl+Shift+F"], action: "Search across files" },
+      { keys: ["Ctrl+2"], action: "Search across files" },
     ],
     image: "editor",
     imageDescription: editorScreenshot,

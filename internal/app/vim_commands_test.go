@@ -1,12 +1,91 @@
 package app
 
 import (
+	"context"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/foursmith/vl/internal/editor"
 )
+
+func typeVimCommand(m *Model, command string) {
+	press(m, ":")
+	for _, char := range command {
+		press(m, string(char))
+	}
+}
+
+func TestVimSaveAndQuitCommands(t *testing.T) {
+	for _, tc := range []struct {
+		command string
+		saves   bool
+		closes  bool
+		warns   bool
+	}{
+		{command: "w", saves: true},
+		{command: "w!", saves: true},
+		{command: "q", warns: true},
+		{command: "q!", closes: true},
+		{command: "wq", saves: true, closes: true},
+		{command: "wq!", saves: true, closes: true},
+	} {
+		t.Run(tc.command, func(t *testing.T) {
+			m := tabWorkspace(t, 2)
+			defer m.Close()
+			m.openFile("file0.go")
+			other := m.document()
+			other.Insert("// keep unsaved\n")
+			m.openFile("file1.go")
+			doc := m.document()
+			original := doc.Text
+			doc.Insert("// changed\n")
+
+			typeVimCommand(m, tc.command)
+			rows := m.filteredActions()
+			if len(rows) != 1 || rows[0].label == "" || !strings.Contains(plain(m.pickerRow(rows[0], 0, 70, -1)), rows[0].label) {
+				t.Fatal("picker did not display the command's action label")
+			}
+			drain(t, m, press(m, "enter"))
+			if m.modal != "" || (m.document() == other) != tc.closes || !other.Dirty() {
+				t.Fatal("command changed the wrong editor or left a dialog open")
+			}
+			if strings.Contains(m.notice, ":q!") != tc.warns {
+				t.Fatalf("unexpected notice %q", m.notice)
+			}
+			want := original
+			if tc.saves {
+				want = doc.Text
+			}
+			data, err := os.ReadFile(doc.Path)
+			if err != nil || string(data) != want {
+				t.Fatalf("disk = %q, want %q, error = %v", data, want, err)
+			}
+		})
+	}
+}
+
+func TestVimQuitCommandInStandaloneEditor(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "file.txt")
+	if err := os.WriteFile(path, []byte("original"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	m, err := NewEditor(context.Background(), path, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer m.Close()
+	typeVimCommand(m, "q")
+	cmd := press(m, "enter")
+	if cmd == nil || m.document() != nil {
+		t.Fatal("quit did not close the standalone editor")
+	}
+	if _, ok := cmd().(tea.QuitMsg); !ok {
+		t.Fatal("quit did not exit vl")
+	}
+}
 
 func TestVimMappedSaveAndClose(t *testing.T) {
 	for _, key := range []string{"w", "z", "q"} {
@@ -52,6 +131,11 @@ func TestVimMappedSaveCloseConflict(t *testing.T) {
 	drain(t, m, press(m, "z"))
 	if m.document() != d || !d.Dirty() {
 		t.Fatal("save conflict closed tab")
+	}
+	typeVimCommand(m, "wq!")
+	drain(t, m, press(m, "enter"))
+	if m.document() != d || !d.Dirty() {
+		t.Fatal(":wq! closed tab after a save conflict")
 	}
 	data, _ := os.ReadFile(d.Path)
 	if string(data) != "external" {

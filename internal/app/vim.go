@@ -2,9 +2,40 @@ package app
 
 import (
 	"sort"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 )
+
+func (m *Model) quickVimCommand(query string) action {
+	var label string
+	var run func() tea.Cmd
+	switch strings.TrimSpace(query) {
+	case ":w", ":w!":
+		label, run = "Save", m.save
+	case ":q":
+		label, run = "Close Editor", func() tea.Cmd { return m.vimQuit(false) }
+	case ":q!":
+		label, run = "Discard changes and close", func() tea.Cmd { return m.vimQuit(true) }
+	case ":wq", ":wq!":
+		label, run = "Save and close", func() tea.Cmd { return m.saveEditor(true) }
+	default:
+		return action{}
+	}
+	return action{label: m.tr(label), run: run}
+}
+
+func (m *Model) vimQuit(discard bool) tea.Cmd {
+	if m.activeTab < 0 || m.activeTab >= len(m.tabs) {
+		return m.quit()
+	}
+	if !discard && m.tabs[m.activeTab].dirty() {
+		m.notice = m.tr("Unsaved changes. Use :wq to save or :q! to discard.")
+		return nil
+	}
+	m.removeTabAt(m.activeTab)
+	return m.finishClose()
+}
 
 func (m *Model) vimKey(k string) (bool, tea.Cmd) {
 	v := &m.tabs[m.activeTab].vim

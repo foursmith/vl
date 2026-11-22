@@ -169,7 +169,7 @@ func TestFlashOnlyVisibleContentAndInvalidation(t *testing.T) {
 		t.Fatal("document mutation retained labels")
 	}
 	flashQuery(m, "target")
-	press(m, "ctrl+p")
+	press(m, "ctrl+g")
 	if m.flash != nil || m.modal != "quick" {
 		t.Fatal("shortcut did not leave Flash")
 	}

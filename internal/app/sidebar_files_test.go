@@ -78,7 +78,7 @@ func TestSearchContextMenuResolvesResultAndRejectsChangedTarget(t *testing.T) {
 	if _, err := os.Stat(path); err != nil {
 		t.Fatal("dismissal deleted the file")
 	}
-	press(m, "shift+f10")
+	m.Update(tea.KeyPressMsg{Code: tea.KeyF7})
 	if m.contextMenu == nil {
 		t.Fatal("keyboard menu unavailable in results")
 	}

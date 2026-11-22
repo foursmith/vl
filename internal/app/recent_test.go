@@ -33,9 +33,9 @@ func TestRecentWorkspacesPickerSearchAndOpen(t *testing.T) {
 	m := explorerWorkspace(t)
 	target := explorerWorkspace(t)
 	old := m.repo
-	press(m, "ctrl+h")
+	press(m, "ctrl+r")
 	if m.modal != "recent" || !m.isPicker() {
-		t.Fatal("Ctrl+H did not open recent workspace picker")
+		t.Fatal("Ctrl+R did not open recent workspace picker")
 	}
 	m.Update(workspacesMsg{seq: m.workspaceSeq, folders: []string{m.repo.Root, target.repo.Root}})
 	m.input.SetValue(target.repo.Root)
@@ -55,7 +55,7 @@ func TestRecentWorkspacesSearchNameAndPath(t *testing.T) {
 	m := explorerWorkspace(t)
 	defer m.Close()
 	m.workspaces = []string{"/Projects/Client/alpha", "/Projects/Personal/beta"}
-	press(m, "ctrl+h")
+	press(m, "ctrl+r")
 	for query, want := range map[string]string{
 		"alpha":                   "/Projects/Client/alpha",
 		"client":                  "/Projects/Client/alpha",
@@ -125,7 +125,7 @@ func TestRecentWorkspacePromptsForUnsavedFiles(t *testing.T) {
 				m.openFile(name)
 				m.document().Edit("// edited\n")
 			}
-			press(m, "ctrl+h")
+			press(m, "ctrl+r")
 			m.Update(workspacesMsg{seq: m.workspaceSeq, folders: []string{target.repo.Root}})
 			drain(t, m, press(m, "enter"))
 			if !hasSaveConfirmation(m) || m.nextRepository != nil {

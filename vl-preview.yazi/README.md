@@ -25,7 +25,7 @@ run = "vl-preview"
 ## Use a VS Code color theme
 
 1. Install the color theme in VS Code.
-2. In vl, open the Command Palette with `F1` and choose **Preferences: Color Theme**.
+2. In vl, open the Command Palette with `Ctrl+P` and choose **Preferences: Color Theme**.
 3. Choose **+ Import Themes from VS Code**, then select your theme and press `Enter` to save it.
 4. Move to a file in Yazi to render a fresh preview with the saved theme.
 

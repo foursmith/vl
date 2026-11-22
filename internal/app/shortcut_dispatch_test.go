@@ -47,14 +47,14 @@ func TestDefaultWorkbenchShortcutActions(t *testing.T) {
 		{commandCopy, false, copyKeys, func(m *Model, cmd tea.Cmd) bool {
 			return cmd != nil && m.modal == "" && m.document().SelectedText() != ""
 		}},
-		{commandFiles, false, []tea.KeyPressMsg{ctrl('p')}, func(m *Model, _ tea.Cmd) bool {
+		{commandFiles, false, []tea.KeyPressMsg{ctrl('g')}, func(m *Model, _ tea.Cmd) bool {
 			return m.modal == "quick" && !m.commandPicker()
 		}},
-		{commandRecent, false, []tea.KeyPressMsg{ctrl('h')}, func(m *Model, _ tea.Cmd) bool { return m.modal == "recent" }},
-		{commandPalette, false, []tea.KeyPressMsg{ctrlShift('p'), keypress(tea.KeyF1)}, func(m *Model, _ tea.Cmd) bool {
+		{commandRecent, false, []tea.KeyPressMsg{ctrl('r')}, func(m *Model, _ tea.Cmd) bool { return m.modal == "recent" }},
+		{commandPalette, false, []tea.KeyPressMsg{ctrl('p')}, func(m *Model, _ tea.Cmd) bool {
 			return m.commandPicker()
 		}},
-		{commandSearch, false, []tea.KeyPressMsg{ctrl('2'), ctrlShift('f')}, sidebarSection(search)},
+		{commandSearch, false, []tea.KeyPressMsg{ctrl('2')}, sidebarSection(search)},
 		{commandExplorer, false, []tea.KeyPressMsg{ctrl('1')}, sidebarSection(explorer)},
 		{commandChanges, false, []tea.KeyPressMsg{ctrl('3')}, sidebarSection(changes)},
 		{commandHistory, false, []tea.KeyPressMsg{ctrl('4')}, sidebarSection(history)},
@@ -71,7 +71,7 @@ func TestDefaultWorkbenchShortcutActions(t *testing.T) {
 		{commandCloseOthers, false, []tea.KeyPressMsg{ctrlShift('w'), ctrlShift('W')}, tabs(1)},
 		{commandFind, false, []tea.KeyPressMsg{ctrl('f')}, func(m *Model, _ tea.Cmd) bool { return m.fileFindFocused() }},
 		{commandFocusSidebar, false, []tea.KeyPressMsg{keypress(tea.KeyEscape)}, sidebarSection(explorer)},
-		{commandContextMenu, false, []tea.KeyPressMsg{{Code: tea.KeyF10, Mod: tea.ModShift}}, func(m *Model, _ tea.Cmd) bool {
+		{commandContextMenu, false, []tea.KeyPressMsg{keypress(tea.KeyF7)}, func(m *Model, _ tea.Cmd) bool {
 			return m.contextMenu != nil
 		}},
 	}
@@ -206,9 +206,9 @@ func TestWorkbenchShortcutsWithFocusedSearchInputs(t *testing.T) {
 	if !m.fileFindFocused() || m.search.query.Value() != "" || len(m.tabs) != 2 {
 		t.Fatal("file find must own Ctrl+W for deleting a word")
 	}
-	m.Update(tea.KeyPressMsg{Code: tea.KeyF1})
+	press(m, "ctrl+p")
 	if !m.commandPicker() || m.fileFindFocused() {
-		t.Fatal("F1 must leave file find and open the command palette")
+		t.Fatal("Ctrl+P must leave file find and open the command palette")
 	}
 	press(m, "esc")
 

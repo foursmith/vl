@@ -28,10 +28,7 @@ func TestWelcomeFitsTerminalAndSidebarLayouts(t *testing.T) {
 			}
 			content := ansi.Strip(strings.Join(m.mainLines(), "\n"))
 			for _, a := range welcomeActions {
-				key := m.welcomeShortcut(a.command)
-				if size.w == 30 && a.command == commandPalette {
-					key = "F1"
-				}
+				key := m.commandShortcutHint(a.command)
 				if !strings.Contains(content, a.label) || !strings.Contains(content, key) {
 					t.Fatalf("welcome shortcut missing in %dx%d: %s", size.w, size.h, a.label)
 				}

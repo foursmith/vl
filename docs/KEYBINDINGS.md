@@ -1,6 +1,6 @@
 # Keyboard shortcuts
 
-Use `Ctrl+P` to jump to a file, `Ctrl+Shift+P` to run a command, and `F2` to move
+Use `Ctrl+G` to jump to a file, `Ctrl+P` to run a command, and `F2` to move
 focus between the sidebar and the editor. Files open in Normal mode. See the
 [Vim guide](VIM.md#where-vl-differs-from-vim) for the bindings that behave
 differently in vl.
@@ -11,7 +11,7 @@ sidebar lists, pickers, menus, and scrollable confirmation details. In
 Search, the keys navigate the results. In Find, they scroll the document
 while keeping focus on the field. In a zoomed image preview, they pan vertically.
 
-Keys are case-sensitive. `Ctrl+P` is a chord. `Space w` and `gg` are sequences.
+Keys are case-sensitive. `Ctrl+G` is a chord. `Space w` and `gg` are sequences.
 
 ## Adding a binding in code
 
@@ -35,11 +35,10 @@ In confirmation dialogs, use `←`/`→` or `Tab` to select a button, `Enter` to
 
 | Shortcut | Action |
 | --- | --- |
-| `Ctrl+P` | Quick Open (Go to File) |
-| `Ctrl+Shift+P` / `F1` | Show Command Palette |
-| `Ctrl+H` | Open Recent Workspace. Prompts if there are unsaved changes. |
+| `Ctrl+G` | Go to File |
+| `Ctrl+P` | Show Command Palette |
+| `Ctrl+R` | Open Recent Workspace. Prompts if there are unsaved changes. |
 | `Ctrl+1` / `Ctrl+2` / `Ctrl+3` / `Ctrl+4` / `Ctrl+5` | Focus Explorer / Search / Changes / History / Pull Requests |
-| `Ctrl+Shift+F` | Find in Files |
 | `Ctrl+L` | Toggle Sidebar |
 | `F2` | Focus the sidebar or the editor |
 | `⌘S` (macOS) / `Ctrl+S` | Save |
@@ -48,17 +47,30 @@ In confirmation dialogs, use `←`/`→` or `Tab` to select a button, `Enter` to
 | `Space 1` … `Space 9` | Switch to a tab by number from a focused editor outside Insert mode |
 | `Space ←` / `Space →` | Switch to the adjacent tab from a focused editor outside Insert mode |
 | `F5` | Refresh the active view |
-| `Shift+F10` / right-click | Open the context menu |
+| `F7` / right-click | Open the context menu |
 | `Ctrl+Q` | Quit. Prompts if there are unsaved changes. |
 
-Quick Open searches files as you type. Prefix the input with `>` for commands
-or `:` to go to a line or column. In a picker, use `Up` / `Down` to select a
-result, `PageUp` / `PageDown` to page, and `Enter` to accept. `Esc` dismisses
-the picker.
+Go to File filters by filename or path as you type. Prefix the input with `>` for
+commands, or use `:line[:column]` to jump within the current file. See the
+[Vim guide](VIM.md#save-and-quit-commands) for save and quit commands. In a picker,
+use `Up` / `Down` to select a result, `PageUp` / `PageDown` to page, and `Enter` to
+accept. `Esc` dismisses the picker.
 
 `⌘C` (macOS) or `Ctrl+C` copies selected text when the text or diff editor has
 focus. In the main workbench outside those editors and text inputs, `Ctrl+C`
 can quit vl.
+
+### Terminal compatibility
+
+Some terminals use legacy input encoding for `Ctrl+1` through `Ctrl+5`. If
+these shortcuts are unavailable, use the sidebar icons or open the Command
+Palette with `Ctrl+P` and choose the view by name. For workspace search, choose
+**Search: Find in Files**.
+
+Windows Terminal can handle `Ctrl+V` itself. The editor accepts the text sent
+by the terminal as a bracketed paste. If the terminal has its own text
+selection, `Ctrl+C` may copy that selection. Use the editor's context menu to
+copy the selection inside vl.
 
 ## Sidebar
 
@@ -141,7 +153,7 @@ Read-only diffs support Find.
 
 | Shortcut | Action |
 | --- | --- |
-| `Ctrl+Shift+F` / `Ctrl+2` | Find in Files |
+| `Ctrl+2` | Find in Files |
 | `Tab` / `Shift+Tab` | Cycle through the visible fields and results |
 | `Enter` in the search field | Run the search and focus the results |
 | `Esc` from a field | Focus the results |
@@ -180,7 +192,7 @@ Find, and Flash bindings as in a text tab.
 | `Shift+S` | Stage or unstage the entire file |
 | `d` | Discard selected changes or the current hunk, with confirmation |
 | `Shift+D` | Discard all unstaged changes to this file, with confirmation |
-| `Shift+F10` / right-click | Open diff actions, including staging, unstaging, and discarding unstaged hunks or selected changes |
+| `F7` / right-click | Open diff actions, including staging, unstaging, and discarding unstaged hunks or selected changes |
 | `⌘C` (macOS) / `Ctrl+C` | Copy selected source text to the system clipboard |
 | `Space 1` … `Space 9` / `Space q` | Switch tabs / close the tab |
 
@@ -218,7 +230,7 @@ reused.
 | `k` / `j`, `Up` / `Down`, `Shift+Tab` / `Tab` | Select the previous / next menu item |
 | `Home` / `End` | Select the first / last menu item |
 | `l` / `Enter` / `Space` | Run the selected action |
-| `h` / `Esc` / `Shift+F10` | Close the context menu |
+| `h` / `Esc` / `F7` | Close the context menu |
 
 In confirmation dialogs, `h` / `l` switch buttons, `j` / `k` scroll the details,
 `Enter` activates the focused button, and `Esc` cancels.

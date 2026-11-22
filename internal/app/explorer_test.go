@@ -213,7 +213,7 @@ func TestExplorerDeleteFolderConfirmsAndProtectsDirtyDescendants(t *testing.T) {
 		t.Fatal("folder containing dirty file could be deleted")
 	}
 	m.document().Undo()
-	press(m, "shift+f10")
+	m.Update(tea.KeyPressMsg{Code: tea.KeyF7})
 	chooseContextAction(t, m, "Delete Folder…")
 	if m.modal != "confirm" || !strings.Contains(m.confirmationDetail, "all its contents") {
 		t.Fatal("folder deletion did not explain recursive removal")

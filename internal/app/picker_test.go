@@ -61,9 +61,12 @@ func TestFailedFileOpenDoesNotRevealPreviousDocument(t *testing.T) {
 func TestQuickPickerShortcutsAndFileSelection(t *testing.T) {
 	m := tabWorkspace(t, 2)
 	m.snapshot.Files = []string{"file0.go", "file1.go"}
-	press(m, "ctrl+p")
+	press(m, "ctrl+g")
 	if m.modal != "quick" || m.input.Prompt != "" {
-		t.Fatal("Ctrl+P must open file search")
+		t.Fatal("Ctrl+G must open file search")
+	}
+	if !strings.Contains(plain(m.View().Content), m.tr("Go to File (name or path, add :line or :line:column)")) {
+		t.Fatal("file picker must display its name and line/column syntax")
 	}
 	m.input.SetValue("file1")
 	if rows := m.filteredActions(); len(rows) != 1 || rows[0].id != "file1.go" {
@@ -79,9 +82,9 @@ func TestQuickPickerShortcutsAndFileSelection(t *testing.T) {
 	if m.modal != "" || m.document() == nil || !strings.HasSuffix(m.document().Path, "file1.go") {
 		t.Fatal("file result click did not open the filtered file")
 	}
-	m.Update(tea.KeyPressMsg{Code: 'p', Mod: tea.ModCtrl | tea.ModShift})
+	press(m, "ctrl+p")
 	if m.modal != "quick" || m.input.Prompt != "" || m.input.Value() != ">" || len(m.palette) != len(m.actions()) {
-		t.Fatal("Ctrl+Shift+P must open commands from editor focus")
+		t.Fatal("Ctrl+P must open commands from editor focus")
 	}
 }
 
@@ -184,12 +187,12 @@ func TestQuickPickerSwitchesWithEditableCommandPrefix(t *testing.T) {
 	if rows := m.filteredActions(); !m.commandPicker() || len(rows) != 1 || rows[0].id != "view.sidebar" {
 		t.Fatal("pasting > did not switch modes")
 	}
-	press(m, "ctrl+p")
+	press(m, "ctrl+g")
 	if m.commandPicker() || m.input.Value() != "" {
-		t.Fatal("Ctrl+P did not reset to file search")
+		t.Fatal("Ctrl+G did not reset to file search")
 	}
-	m.Update(tea.KeyPressMsg{Code: tea.KeyF1})
+	press(m, "ctrl+p")
 	if !m.commandPicker() || m.input.Value() != ">" {
-		t.Fatal("F1 did not reset to command search")
+		t.Fatal("Ctrl+P did not reset to command search")
 	}
 }

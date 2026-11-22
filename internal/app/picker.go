@@ -144,7 +144,7 @@ func (m *Model) syncQuickPicker() {
 	if m.modal != "quick" {
 		return
 	}
-	title := m.tr("Open File")
+	title := m.tr("Go to File")
 	if m.commandPicker() {
 		title = m.tr("Commands")
 	}
@@ -158,7 +158,7 @@ func (m *Model) syncQuickPicker() {
 		m.palette = m.commandActions()
 		return
 	}
-	m.input.Placeholder = m.tr("Search files by name (append : to go to line)")
+	m.input.Placeholder = m.tr("Go to File (name or path, add :line or :line:column)")
 	m.palette = make([]action, 0, len(m.snapshot.Files))
 	for _, path := range m.snapshot.Files {
 		m.palette = append(m.palette, action{id: path, label: path, run: func() tea.Cmd { return m.openFileInExplorer(path) }})

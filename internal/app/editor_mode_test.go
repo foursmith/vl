@@ -24,7 +24,7 @@ func TestEditorModeIsolatedAndFullWidth(t *testing.T) {
 	defer m.Close()
 	for _, width := range []int{120, 50, 30} {
 		m.Update(tea.WindowSizeMsg{Width: width, Height: 24})
-		for _, k := range []string{"esc", "ctrl+1", "ctrl+2", "ctrl+3", "ctrl+l", "ctrl+h"} {
+		for _, k := range []string{"esc", "ctrl+1", "ctrl+2", "ctrl+3", "ctrl+l", "ctrl+r"} {
 			press(m, k)
 		}
 		if m.sidebar || m.sidebarVisible || m.sideShown() || m.mainWidth() != width || m.modal != "" {

@@ -20,10 +20,9 @@ func matchesShortcut(name string, binding key.Binding) bool {
 // App-level bindings are grouped by the surface that owns the input.
 // Commands, menus and hints use the same binding for their display.
 const (
-	commandPaletteFunctionKey = "F1"
-	sidebarRefreshRuleID      = "git.refresh.sidebar"
-	leftArrow                 = "left"
-	rightArrow                = "right"
+	sidebarRefreshRuleID = "git.refresh.sidebar"
+	leftArrow            = "left"
+	rightArrow           = "right"
 )
 
 func platformShortcut(letter, description string) key.Binding {
@@ -53,10 +52,10 @@ var workbenchKeybindings = []workbenchShortcut{
 		return !m.contentCopyFocused()
 	}},
 	{binding: platformShortcut("c", "Copy"), command: commandCopy, when: (*Model).contentCopyFocused},
-	{binding: binding("Ctrl+P", "Go to File", "ctrl+p"), context: fromSearch, command: commandFiles},
-	{binding: binding("Ctrl+H", "Open Recent Workspace", "ctrl+h"), context: workspaceOnly | fromSidebarSearch, command: commandRecent},
-	{binding: binding("Ctrl+Shift+P", "Commands", "ctrl+shift+p", strings.ToLower(commandPaletteFunctionKey)), context: fromSearch, command: commandPalette},
-	{binding: binding("Ctrl+2", "Search", "ctrl+2", "ctrl+shift+f"), context: workspaceOnly | fromSearch, command: commandSearch},
+	{binding: binding("Ctrl+G", "Go to File", "ctrl+g"), context: fromSearch, command: commandFiles},
+	{binding: binding("Ctrl+R", "Open Recent Workspace", "ctrl+r"), context: workspaceOnly | fromSidebarSearch, command: commandRecent},
+	{binding: binding("Ctrl+P", "Commands", "ctrl+p"), context: fromSearch, command: commandPalette},
+	{binding: binding("Ctrl+2", "Search", "ctrl+2"), context: workspaceOnly | fromSearch, command: commandSearch},
 	{binding: binding("Ctrl+1", "Explorer", "ctrl+1"), context: workspaceOnly | fromSearch, command: commandExplorer},
 	{binding: binding("Ctrl+3", "Changes", "ctrl+3"), context: workspaceOnly | fromSearch, command: commandChanges},
 	{binding: binding("Ctrl+4", "History", "ctrl+4"), context: workspaceOnly | fromSearch, command: commandHistory},
@@ -74,7 +73,7 @@ var workbenchKeybindings = []workbenchShortcut{
 	{command: commandCloseAll},
 	{binding: binding("Ctrl+F", "Find", "ctrl+f"), command: commandFind},
 	{binding: dismissKey, command: commandFocusSidebar},
-	{binding: binding("Shift+F10", "Context menu", "shift+f10"), command: commandContextMenu},
+	{binding: binding("F7", "Context menu", "f7"), command: commandContextMenu},
 }
 
 var editorKeys = struct {

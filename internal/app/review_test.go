@@ -149,7 +149,7 @@ func TestSharedLeaderCancelsAcrossDialogsAndBlur(t *testing.T) {
 			t.Fatal("leader survived window blur")
 		}
 		press(m, " ")
-		press(m, "f1")
+		press(m, "ctrl+p")
 		if m.modal != "quick" || m.leaderTarget != "" {
 			t.Fatal("command palette did not cancel leader")
 		}
