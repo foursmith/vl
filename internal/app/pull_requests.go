@@ -467,9 +467,9 @@ func (m *Model) applyPullRequestDiff(msg pullRequestDiffMsg) tea.Cmd {
 	}
 	review.cancel = nil
 	inPullRequests := m.section == pullRequests
-	active := review == m.pullRequestReview && inPullRequests
 	if msg.err != nil {
-		if active {
+		if review == m.pullRequestReview && inPullRequests ||
+			!m.sidebar && m.diffOpen && m.diffPR.URL == review.pr.URL {
 			m.notice = m.tr("Could not load PR #%d diff: %s", review.pr.Number, pullRequestErrorText(msg.err))
 		}
 		return nil

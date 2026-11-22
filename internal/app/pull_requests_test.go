@@ -62,6 +62,10 @@ case "$*" in
   'pr diff --color never -- https://github.com/example/repo/pull/42')
     printf '%s\n' 'diff --git a/file0.go b/file0.go' '--- a/file0.go' '+++ b/file0.go' '@@ -1 +1 @@' '-package main' '+package draft' ;;
   'pr diff --color never -- https://github.com/example/repo/pull/41')
+    if [ "${VL_PR_PATCH_ERROR:-}" = 1 ]; then
+      printf '%s\n' 'diff unavailable' >&2
+      exit 1
+    fi
     printf '%s\n' 'diff --git a/src/pkg/file0.go b/src/pkg/file0.go' '--- a/src/pkg/file0.go' '+++ b/src/pkg/file0.go' '@@ -1 +1 @@' '-package main' '+package review' \
       'diff --git a/src/pkg/other file.txt b/src/pkg/other file.txt' 'new file mode 100644' '--- /dev/null' '+++ b/src/pkg/other file.txt' '@@ -0,0 +1 @@' "+$VL_PR_PATCH_LINE" ;;
   *) exit 1 ;;
@@ -141,6 +145,13 @@ esac
 	if doc := m.document(); doc == nil || filepath.Base(doc.Path) != "file0.go" {
 		t.Fatal("PR lookup replaced the active editor")
 	}
+	m.focusEditor()
+	listSeq, repoSeq := m.pullRequestsSeq, m.refreshSeq
+	drain(t, m, m.key(tea.KeyPressMsg{Code: tea.KeyF5}))
+	if m.pullRequestsSeq != listSeq || m.refreshSeq != repoSeq+1 {
+		t.Fatal("F5 in the text editor did not refresh the workspace independently of the visible PR list")
+	}
+	m.sidebar = true
 	drain(t, m, press(m, "j"))
 	if !m.sidebar || len(m.pullRequestReviews) != 0 || m.diffOpen {
 		t.Fatal("moving the selection opened or loaded a PR")
@@ -212,11 +223,20 @@ esac
 	if !strings.Contains(m.patch.Raw, "+updated text") || m.pullRequestTickDelay(pullRequestRefreshInterval) <= 0 {
 		t.Fatalf("automatic list refresh replaced the cached diff or failed to update its timer: %q", m.patch.Raw)
 	}
+	drain(t, m, m.selectSection(explorer))
+	m.focusEditor()
 	_, cmd = m.Update(tea.KeyPressMsg{Code: tea.KeyF5})
 	drain(t, m, cmd)
 	if !strings.Contains(m.patch.Raw, "+newer text") {
 		t.Fatalf("manual refresh did not update the cached diff: %q", m.patch.Raw)
 	}
+	t.Setenv("VL_PR_PATCH_ERROR", "1")
+	_, cmd = m.Update(tea.KeyPressMsg{Code: tea.KeyF5})
+	drain(t, m, cmd)
+	if !strings.Contains(m.notice, "diff unavailable") || !strings.Contains(m.patch.Raw, "+newer text") {
+		t.Fatalf("failed refresh did not report the error and preserve the displayed diff: %q, %q", m.notice, m.patch.Raw)
+	}
+	t.Setenv("VL_PR_PATCH_ERROR", "")
 	saved := m.Session()
 	if len(saved.Tabs) != 2 || saved.Tabs[0].Kind != "file" || saved.Active != 1 ||
 		saved.Tabs[1].Kind != "pr-diff" || saved.Tabs[1].PullRequest.Number != 41 {

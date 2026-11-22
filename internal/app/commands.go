@@ -29,7 +29,7 @@ func (m *Model) actions() []action {
 		stageTarget = m.diffRepository
 	}
 	stageSuffix := " · " + m.repositoryName(stageTarget)
-	var remoteTarget, stageAllKey, unstageAllKey, stashKey, fetchKey, pullKey, pushKey string
+	var remoteTarget, stageAllKey, unstageAllKey, commitKey, stashKey, fetchKey, pullKey, pushKey string
 	if m.section == changes {
 		remoteTarget = target
 		if m.sidebar {
@@ -38,9 +38,10 @@ func (m *Model) actions() []action {
 			} else {
 				stageAllKey = gitKeys.StageScope.Help().Key
 			}
+			commitKey = gitKeys.Commit.Help().Key
 			stashKey = gitKeys.Stash.Help().Key
+			fetchKey, pullKey, pushKey = gitKeys.Fetch.Help().Key, gitKeys.Pull.Help().Key, gitKeys.Push.Help().Key
 		}
-		fetchKey, pullKey, pushKey = gitKeys.Fetch.Help().Key, gitKeys.Pull.Help().Key, gitKeys.Push.Help().Key
 	}
 	tabReason := ""
 	if m.activeTab < 0 {
@@ -68,6 +69,9 @@ func (m *Model) actions() []action {
 		m.commandAction(commandHistory, "View: Commit History", "", ""),
 		m.commandAction(commandPullRequests, "View: Pull Requests", "", ""),
 		{"view.pullRequestFilter", m.tr("Filter Pull Requests"), "", "", func() tea.Cmd {
+			if m.sidebar && m.section == pullRequests {
+				return m.openPullRequestFilter()
+			}
 			return tea.Batch(m.selectSection(pullRequests), m.openPullRequestFilter())
 		}},
 		m.commandAction(commandDiffLayout, "Diff Editor: Toggle Inline View", "", ""),
@@ -78,7 +82,7 @@ func (m *Model) actions() []action {
 		m.commandAction(commandRefresh, "Git: Refresh", "", ""),
 		{"git.stageAll", m.tr("Git: Stage All Changes") + stageSuffix, stageAllKey, m.repositoryStageReason(stageTarget, false), func() tea.Cmd { return m.stageRepository(stageTarget, false) }},
 		{"git.unstageAll", m.tr("Git: Unstage All Changes") + stageSuffix, unstageAllKey, m.repositoryStageReason(stageTarget, true), func() tea.Cmd { return m.stageRepository(stageTarget, true) }},
-		{"git.commit", m.tr("Git: Commit Staged") + suffix, gitKeys.Commit.Help().Key, m.commitDisabled(target), func() tea.Cmd { return m.commitInRepository(target) }},
+		{"git.commit", m.tr("Git: Commit Staged") + suffix, commitKey, m.commitDisabled(target), func() tea.Cmd { return m.commitInRepository(target) }},
 		{"git.fetch", m.tr("Git: Fetch"), fetchKey, "", func() tea.Cmd { return m.fetch(remoteTarget) }},
 		{"git.pull", m.tr("Git: Pull (Fast Forward Only)"), pullKey, "", func() tea.Cmd { return m.pull(remoteTarget) }},
 		{"git.push", m.tr("Git: Push"), pushKey, "", func() tea.Cmd { return m.push(remoteTarget) }},
@@ -427,8 +431,13 @@ func (m *Model) stash(target string) tea.Cmd {
 }
 
 func (m *Model) refreshView() tea.Cmd {
-	if m.section == pullRequests && !m.snapshot.NoRepository {
-		return m.forceRefreshPullRequests()
+	if !m.snapshot.NoRepository {
+		if m.sidebar && m.section == pullRequests {
+			return m.forceRefreshPullRequests()
+		}
+		if !m.sidebar && m.diffOpen && m.diffPR.Number != 0 {
+			return m.fetchPullRequestDiff(m.pullRequestReviewFor(m.diffPR), true)
+		}
 	}
 	if !m.busy {
 		return m.refresh()

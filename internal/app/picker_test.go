@@ -111,6 +111,53 @@ func TestQuickPickerGeometryAndScrolledClick(t *testing.T) {
 	}
 }
 
+func TestCommandPaletteGitHintsRequireChangesFocus(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	defer m.Close()
+	m.openFile("file0.go")
+	hints := map[string]string{
+		"git.commit": gitKeys.Commit.Help().Key,
+		"git.stash":  gitKeys.Stash.Help().Key,
+		"git.fetch":  gitKeys.Fetch.Help().Key,
+		"git.pull":   gitKeys.Pull.Help().Key,
+		"git.push":   gitKeys.Push.Help().Key,
+	}
+	for _, view := range []struct {
+		section section
+		sidebar bool
+	}{{changes, true}, {changes, false}, {explorer, true}} {
+		m.section, m.sidebar = view.section, view.sidebar
+		for _, action := range m.commandActions() {
+			want, checked := hints[action.id]
+			if !checked {
+				continue
+			}
+			if m.section != changes || !m.sidebar {
+				want = ""
+			}
+			if action.key != want {
+				t.Errorf("%s advertises %q in section %v with sidebar focus %t, want %q", action.id, action.key, view.section, view.sidebar, want)
+			}
+		}
+	}
+}
+
+func TestCommandPalettePRFilterKeepsListPosition(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	defer m.Close()
+	m.section, m.sidebar, m.sideTop = pullRequests, true, 7
+	m.openPalette()
+	m.input.SetValue(">Filter Pull Requests")
+	press(m, "enter")
+	if m.modal != "pullRequestFilter" {
+		t.Fatal("command did not open the PR filter")
+	}
+	press(m, "esc")
+	if m.sideTop != 7 {
+		t.Fatalf("opening and cancelling the PR filter reset the list scroll to %d", m.sideTop)
+	}
+}
+
 func TestCommandPaletteAlphabeticalOrderAndLastUsed(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	defer m.Close()
