@@ -580,16 +580,34 @@ func TestStatusRemoteActionsTargetChildRepository(t *testing.T) {
 	if !state.TrackingKnown || state.Ahead != 0 || state.Behind != 0 || m.snapshot.Head != parentHead {
 		t.Fatal("push failed or modified parent", m.notice)
 	}
-	if _, err := child.Run(m.ctx, "reset", "--hard", "HEAD^"); err != nil {
-		t.Fatal(err)
-	}
-	drain(t, m, m.refresh())
-	if state = m.snapshot.RepositoryStates["child space"]; state.Behind != 1 {
-		t.Fatalf("expected child to be one behind: %+v", state)
-	}
 	m.openFile("README.md")
 	m.SetSidebarLayout(38, false)
-	drain(t, m, m.selectSection(history))
+	for _, tt := range []struct {
+		section section
+		key     string
+	}{
+		{changes, repositoryKey("child space")},
+		{history, historyRepositoryKey("child space")},
+	} {
+		if _, err := child.Run(m.ctx, "reset", "--hard", "HEAD^"); err != nil {
+			t.Fatal(err)
+		}
+		drain(t, m, m.refresh())
+		if state = m.snapshot.RepositoryStates["child space"]; state.Behind != 1 {
+			t.Fatalf("expected child to be one behind: %+v", state)
+		}
+		drain(t, m, m.selectSection(tt.section))
+		m.selected = m.sidebarRowWithKey(tt.key)
+		if m.selected < 0 {
+			t.Fatalf("missing repository row %q", tt.key)
+		}
+		m.ensureSidebar()
+		m.Update(tea.MouseClickMsg{X: m.sideX() + 3, Y: m.sidebarSelectionY(), Button: tea.MouseRight})
+		runRemoteAction(chooseContextAction(t, m, "Pull"), "Pull")
+		if state = m.snapshot.RepositoryStates["child space"]; state.Behind != 0 || m.snapshot.Head != parentHead {
+			t.Fatalf("pull from %q failed or modified parent: %s", tt.key, m.notice)
+		}
+	}
 	clickHistoryAction := func(id, title string) {
 		t.Helper()
 		for y := headerHeight; y < m.height-1; y++ {
@@ -610,16 +628,6 @@ func TestStatusRemoteActionsTargetChildRepository(t *testing.T) {
 			}
 		}
 		t.Fatalf("missing History %s action", title)
-	}
-	m.selected = m.sidebarRowWithKey(historyRepositoryKey("child space"))
-	if m.selected < 0 {
-		t.Fatal("missing child repository in History")
-	}
-	m.ensureSidebar()
-	m.Update(tea.MouseClickMsg{X: m.sideX() + 3, Y: m.sidebarSelectionY(), Button: tea.MouseRight})
-	runRemoteAction(chooseContextAction(t, m, "Pull"), "Pull")
-	if state = m.snapshot.RepositoryStates["child space"]; state.Behind != 0 || m.snapshot.Head != parentHead {
-		t.Fatal("pull failed or modified parent", m.notice)
 	}
 	if _, err := child.Run(m.ctx, "commit", "--allow-empty", "-m", "history push"); err != nil {
 		t.Fatal(err)
