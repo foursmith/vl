@@ -8,6 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
+	gitservice "github.com/foursmith/vl/internal/git"
 )
 
 func TestContextMenuSplitsCompactFolders(t *testing.T) {
@@ -204,6 +205,8 @@ func TestContextMenuTargetsClickedTabAndConfirmsDirtyClose(t *testing.T) {
 
 func TestRepositoryContextMenuOpensBranchPicker(t *testing.T) {
 	m, _ := childWorkspace(t)
+	// This test exercises the PR repository menu without fetching PRs.
+	m.snapshot.Remotes = []gitservice.Remote{{Name: "origin", URL: "https://github.com/example/repo.git"}}
 	for _, tt := range []struct {
 		name       string
 		section    section
@@ -215,7 +218,7 @@ func TestRepositoryContextMenuOpensBranchPicker(t *testing.T) {
 		{"Pull Requests", pullRequests, pullRequestRepositoryKey, ""},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			drain(t, m, m.selectSection(tt.section))
+			m.selectSection(tt.section)
 			m.selected = m.sidebarRowWithKey(tt.key)
 			if m.selected < 0 {
 				t.Fatal("missing repository row")

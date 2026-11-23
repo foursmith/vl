@@ -65,3 +65,16 @@ func TestOpenPreservesRepositoryRoot(t *testing.T) {
 		t.Fatalf("repository discovery: %+v, %v", r, err)
 	}
 }
+
+func TestOpenOrdinaryFolderWithoutGit(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	dir := t.TempDir()
+	r, err := Open(t.Context(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapshot, err := r.Snapshot(t.Context())
+	if err != nil || !snapshot.NoRepository {
+		t.Fatalf("Gitless folder status: %+v, %v", snapshot, err)
+	}
+}

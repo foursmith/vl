@@ -190,15 +190,24 @@ func startupPath(args []string) (string, error) {
 	return path, nil
 }
 
-// Return a writable session path only after loading succeeds, so a failed load
-// cannot replace an unreadable session with the new model's empty tabs.
+// Preserve unreadable sessions and sessions with Git diff tabs that cannot be
+// restored in the current process.
 func loadWorkspace(m *app.Model, repo *git.Repository) string {
 	path, err := config.SessionPath(repo.Root)
+	preserveSession := false
 	if err == nil {
 		var session config.Session
 		session, err = config.LoadSession(path)
 		if err == nil {
 			m.SetSession(session)
+			if !git.Available() {
+				for _, tab := range session.Tabs {
+					if tab.Kind == "diff" {
+						preserveSession = true
+						break
+					}
+				}
+			}
 		}
 	}
 	if err != nil {
@@ -207,7 +216,7 @@ func loadWorkspace(m *app.Model, repo *git.Repository) string {
 	if recentErr := config.RememberFolder(repo.Root); recentErr != nil {
 		fmt.Fprintln(os.Stderr, "Save recent folders:", recentErr)
 	}
-	if err != nil {
+	if err != nil || preserveSession {
 		return ""
 	}
 	return path

@@ -178,6 +178,7 @@ type Model struct {
 	textDrag                *editor.Document
 	diffDrag                *diffState
 	snapshot                gitservice.Snapshot
+	gitUnavailable          bool
 	stickyItems             []item
 	stickyTree              []codeScope
 	items                   []item
@@ -271,6 +272,7 @@ func newModel(ctx context.Context, repo *gitservice.Repository, nerd, editorOnly
 	dark, light := theme.Builtin("dark_modern"), theme.Builtin("light_modern")
 	m := &Model{displayLanguage: i18n.English, cellWidth: 8, cellHeight: 16, colors: dark.Palette(), colorTheme: dark, darkTheme: dark, lightTheme: light, ctx: ctx, cancel: cancel, repo: repo, width: 120, height: 36, nerd: nerd, editorOnly: editorOnly, sidebar: !editorOnly, sidebarVisible: !editorOnly, split: true, diffState: newDiffState(), input: input, activeTab: -1, notice: "Loading repository…"}
 	m.statusBarStyle = statusBarStandard
+	m.gitUnavailable = !editorOnly && !gitservice.Available()
 	m.snapshot.NoRepository = editorOnly || !repo.HasRepository()
 	if editorOnly {
 		m.notice = ""
@@ -348,7 +350,7 @@ func (m *Model) rebuildItems() {
 		previous = *current
 	}
 	m.items = nil
-	if m.snapshot.NoRepository && (m.section == changes || m.section == history || m.section == pullRequests) {
+	if m.repositoryEmptyState().title != "" {
 		m.selected = -1
 		m.sideTop = 0
 		return
@@ -831,7 +833,8 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		if m.section == explorer {
 			commands = append(commands, m.refreshTree())
 		}
-		commands = append(commands, m.refreshPullRequests(m.section == pullRequests && previous.NoRepository), m.restoreSession())
+		remoteAdded := (previous.NoRepository || previous.Branch != "") && len(previous.Remotes) == 0 && len(m.snapshot.Remotes) > 0
+		commands = append(commands, m.refreshPullRequests(m.section == pullRequests && remoteAdded), m.restoreSession())
 		if initial && len(m.tabs) == 0 && m.section == changes {
 			commands = append(commands, m.preview())
 		}

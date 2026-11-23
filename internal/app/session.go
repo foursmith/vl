@@ -82,7 +82,7 @@ func (m *Model) restoreSession() tea.Cmd {
 	previews := map[int]bool{}
 	prReaders := make(map[config.SessionPullRequest]func() (restoredPullRequest, error))
 	for i, saved := range session.Tabs {
-		if saved.Path == "" {
+		if saved.Path == "" || m.gitUnavailable && saved.Kind == "diff" {
 			continue
 		}
 		switch saved.Kind {

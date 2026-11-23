@@ -195,6 +195,11 @@ func (m *Model) renderRowActions(actions []rowAction, bg string) string {
 }
 
 func (m *Model) hoverHint() string {
+	if m.modal == "" && m.contextMenu == nil && m.sidebarAt(m.hoverX) {
+		if state := m.repositoryEmptyState(); m.repositoryEmptyButtonAt(state, m.hoverX-m.sideX(), m.hoverY) {
+			return m.tr(state.label) + " · Enter"
+		}
+	}
 	if m.modal == "" && m.fileFindAt(m.hoverX, m.hoverY) {
 		for _, c := range m.fileFindControls(m.fileFindWidth()) {
 			if m.hoverY == m.contentRow()+c.y && m.hoverX >= m.fileFindX()+c.x && m.hoverX < m.fileFindX()+c.x+c.width {

@@ -33,7 +33,9 @@ const pullRequestRefreshInterval = time.Minute
 const pullRequestCacheSize = 32
 
 func (m *Model) canRefreshPullRequestList() bool {
-	return !m.editorOnly && !m.snapshot.NoRepository && (m.section == pullRequests || m.snapshot.GitHubURL != "")
+	return !m.editorOnly && !m.snapshot.NoRepository && !m.hasRepositoryWithoutRemotes() &&
+		(!m.loading || m.snapshot.Branch != "") &&
+		(m.section == pullRequests || m.snapshot.GitHubURL != "")
 }
 
 func (m *Model) pullRequestTickDelay(delay time.Duration) time.Duration {
@@ -140,6 +142,11 @@ func (m *Model) applyCachedPullRequests(msg cachedPullRequestsMsg) tea.Cmd {
 	if msg.seq != m.pullRequestsSeq {
 		return nil
 	}
+	if m.hasRepositoryWithoutRemotes() {
+		m.pullRequestsCancel()
+		m.pullRequestsCancel = nil
+		return nil
+	}
 	m.openPullRequestCount = msg.list.OpenCount
 	m.pullRequests = msg.list.Requests
 	// Rebuild the loaded range with fresh cursors before requesting any additional pages.
@@ -154,6 +161,9 @@ func (m *Model) applyPullRequests(msg pullRequestsMsg) {
 		return
 	}
 	m.pullRequestsCancel = nil
+	if m.hasRepositoryWithoutRemotes() {
+		return
+	}
 	inPullRequests := m.section == pullRequests
 	topKey := ""
 	if inPullRequests && m.sideTop < len(m.items) {
@@ -526,8 +536,6 @@ func (m *Model) requestPullRequestDiff(entry item) tea.Cmd {
 func (m *Model) pullRequestSidebarMessage() []string {
 	shortcut := m.workbenchRuleHint(sidebarRefreshRuleID)
 	switch {
-	case m.snapshot.NoRepository:
-		return []string{m.tr("Not a Git repository")}
 	case m.pullRequestsCancel != nil && m.pullRequests == nil:
 		return []string{m.tr("Loading pull requests…")}
 	case errors.Is(m.pullRequestsError, exec.ErrNotFound):

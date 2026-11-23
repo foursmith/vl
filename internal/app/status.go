@@ -250,6 +250,8 @@ func (m *Model) statusLayout() []statusSegment {
 		left = []statusSegment{{id: "editor", text: label}}
 	} else if !m.snapshot.NoRepository {
 		left = m.gitStatusSegments()
+	} else if m.gitUnavailable {
+		left = nil
 	}
 	mode := ""
 	if m.editorDocument() != nil {

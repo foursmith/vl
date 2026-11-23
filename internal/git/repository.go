@@ -17,11 +17,16 @@ import (
 
 type Repository struct{ Root string }
 
+func Available() bool {
+	_, err := exec.LookPath("git")
+	return err == nil
+}
+
 // HasRepository checks the workspace itself, including initialization performed
-// outside vl after an ordinary folder was opened.
+// outside vl after an ordinary folder was opened, when Git is available.
 func (r *Repository) HasRepository() bool {
 	_, err := os.Lstat(filepath.Join(r.Root, ".git"))
-	return !os.IsNotExist(err)
+	return !os.IsNotExist(err) && Available()
 }
 
 func (r *Repository) Initialize(ctx context.Context) (string, error) {
@@ -106,6 +111,9 @@ func Open(ctx context.Context, path string) (*Repository, error) {
 	out, err := r.Run(ctx, "rev-parse", "--show-toplevel")
 	if err == nil {
 		r.Root = strings.TrimSuffix(strings.TrimSuffix(out, "\n"), "\r")
+		return r, nil
+	}
+	if errors.Is(err, exec.ErrNotFound) {
 		return r, nil
 	}
 	if strings.Contains(err.Error(), "fatal: not a git repository (or any") {

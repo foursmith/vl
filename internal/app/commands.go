@@ -123,12 +123,18 @@ func (m *Model) actions() []action {
 		}
 	}
 	if m.snapshot.NoRepository {
+		reason := m.tr("This folder is not a Git repository")
+		if m.gitUnavailable {
+			reason = m.tr("Git is not available")
+		}
 		for i := range actions {
 			if strings.HasPrefix(actions[i].id, "git.") || actions[i].id == "github.open" {
-				actions[i].disabled = m.tr("This folder is not a Git repository")
+				actions[i].disabled = reason
 			}
 		}
-		actions = append(actions, action{id: "git.init", label: m.tr("Git: Initialize Repository"), run: m.initializeRepository})
+		if !m.gitUnavailable {
+			actions = append(actions, action{id: "git.init", label: m.tr("Git: Initialize Repository"), run: m.initializeRepository})
+		}
 	}
 	if !m.sidebar && m.diffOpen {
 		actions = append(actions, m.reviewActions()...)
@@ -137,7 +143,7 @@ func (m *Model) actions() []action {
 }
 
 func (m *Model) initializeRepository() tea.Cmd {
-	if m.editorOnly || !m.snapshot.NoRepository {
+	if m.editorOnly || m.gitUnavailable || !m.snapshot.NoRepository {
 		return nil
 	}
 	if m.repo.HasRepository() {
@@ -624,8 +630,8 @@ func (m *Model) discardDiffLines(title string, selected func(*diff.Line) bool) t
 func (m *Model) commit() tea.Cmd { return m.commitInRepository(m.selectedRepository()) }
 
 func (m *Model) openSelected() tea.Cmd {
-	if m.snapshot.NoRepository && (m.section == changes || m.section == history) {
-		return m.initializeRepository()
+	if state := m.repositoryEmptyState(); state.action != nil {
+		return state.action()
 	}
 	entry := m.sidebarEntry()
 	if entry == nil {

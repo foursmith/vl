@@ -16,6 +16,54 @@ import (
 	gitservice "github.com/foursmith/vl/internal/git"
 )
 
+func TestPullRequestsInitializeAndPublishEmptyState(t *testing.T) {
+	m := folderWorkspace(t)
+	drain(t, m, press(m, "ctrl+5"))
+	sidebar := func() string { return plain(strings.Join(m.sidebarLines(), "\n")) }
+	if !strings.Contains(sidebar(), "Initialize Repository ↵") {
+		t.Fatal("PR tab did not offer initialization")
+	}
+	drain(t, m, press(m, "enter"))
+	if m.snapshot.NoRepository || m.canRefreshPullRequestList() ||
+		!strings.Contains(sidebar(), "Make an initial commit") ||
+		!strings.Contains(sidebar(), "Publish to GitHub ↵") {
+		t.Fatal("PR tab did not offer publishing after initialization")
+	}
+	drain(t, m, press(m, "enter"))
+	if m.modal != "" || m.notice != "Make an initial commit before publishing." {
+		t.Fatalf("publishing before the first commit did not explain the requirement: %q", m.notice)
+	}
+	if _, err := m.repo.Run(m.ctx, "-c", "user.name=Test", "-c", "user.email=test@example.com", "-c", "commit.gpgSign=false",
+		"commit", "--allow-empty", "-m", "Initial commit"); err != nil {
+		t.Fatal(err)
+	}
+	branch := m.snapshot.Branch
+	if _, err := m.repo.Run(m.ctx, "switch", "--detach"); err != nil {
+		t.Fatal(err)
+	}
+	drain(t, m, m.refresh())
+	drain(t, m, press(m, "enter"))
+	if m.modal != "" || m.notice != "Switch to a branch before publishing." ||
+		!strings.Contains(sidebar(), "Switch to a branch") {
+		t.Fatalf("publishing with a detached HEAD did not explain the requirement: %q", m.notice)
+	}
+	if _, err := m.repo.Run(m.ctx, "switch", branch); err != nil {
+		t.Fatal(err)
+	}
+	drain(t, m, m.refresh())
+	state := m.repositoryEmptyState()
+	button := m.repositoryEmptyLayout(state, m.sidebarContentWidth()).button
+	x := m.sideX() + button.x
+	m.hoverX, m.hoverY = x, button.y
+	if m.hoverHint() != "Publish to GitHub · Enter" {
+		t.Fatal("missing publish hover hint")
+	}
+	if cmd := m.clickSidebar(tea.MouseClickMsg{X: x, Y: button.y, Button: tea.MouseLeft}); cmd == nil ||
+		m.modal != "githubPublish" || m.githubPublish.target != "" || m.githubPublish.branch != m.snapshot.Branch {
+		t.Fatal("clicking Publish did not open the workspace's GitHub publish picker")
+	}
+}
+
 func TestPullRequestsTabUsesWorkspaceAndPreservesSelection(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("uses a shell executable as gh")

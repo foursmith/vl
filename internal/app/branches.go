@@ -122,10 +122,20 @@ func (m *Model) publishBranch() tea.Cmd {
 	return m.publishBranchInRepository(m.statusRepository())
 }
 
+func publishBranchBlocker(state gitservice.Snapshot) string {
+	if state.Detached {
+		return "Switch to a branch before publishing."
+	}
+	if state.Head == "" {
+		return "Make an initial commit before publishing."
+	}
+	return ""
+}
+
 func (m *Model) publishBranchInRepository(target string) tea.Cmd {
 	state := m.repositoryState(target)
-	if state.Detached || state.Head == "" {
-		m.notice = m.tr("Create a branch and make an initial commit first")
+	if blocker := publishBranchBlocker(state); blocker != "" {
+		m.notice = m.tr(blocker)
 		return nil
 	}
 	if len(state.Remotes) == 0 {

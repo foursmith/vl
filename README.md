@@ -92,7 +92,7 @@ Run `./bin/vl` from the checkout or copy it into a directory on your `PATH`.
 
 ### Setup
 
-- Workbench mode requires Git on your `PATH`. [Git](https://git-scm.com/)
+- Folder browsing, file search, and editing work without Git. Repository features require Git on your `PATH`. [Git](https://git-scm.com/)
 - For GitHub pull requests, install `gh` and run `gh auth login`. [GitHub CLI](https://cli.github.com/)
 - For remote images in Markdown, install `curl`.
 - For SVG previews, install `resvg` and put it on your `PATH`. [resvg](https://github.com/linebender/resvg)

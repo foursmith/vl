@@ -91,7 +91,7 @@ make build
 
 ### 环境准备
 
-- 工作台模式需要 Git，请确保能从 `PATH` 找到 `git`。[Git](https://git-scm.com/)
+- 浏览目录、搜索文件和编辑文件无需 Git。使用仓库功能时，请确保能从 `PATH` 找到 `git`。[Git](https://git-scm.com/)
 - 要使用 GitHub 的 Pull Request 功能，请安装 `gh` 并运行 `gh auth login`。[GitHub CLI](https://cli.github.com/)
 - 要显示 Markdown 里的远程图片，请安装 `curl`。
 - 要预览 SVG，请安装 `resvg` 并将它所在的目录加到 `PATH`。[resvg](https://github.com/linebender/resvg)

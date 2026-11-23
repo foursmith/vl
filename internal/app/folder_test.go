@@ -84,6 +84,50 @@ func TestFolderBrowseSearchEditAndInitialize(t *testing.T) {
 	}
 }
 
+func TestFolderWithGitMetadataBrowsesWithoutGit(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	root := t.TempDir()
+	if err := os.Mkdir(filepath.Join(root, ".git"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	for name, text := range map[string]string{
+		".gitignore":  "ignored.txt\n",
+		"hello.txt":   "needle\n",
+		"ignored.txt": "needle\n",
+		".git/config": "needle\n",
+	} {
+		if err := os.WriteFile(filepath.Join(root, name), []byte(text), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	repo, err := gitservice.Open(t.Context(), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := New(t.Context(), repo, false)
+	defer m.Close()
+	drain(t, m, m.refresh())
+	if !m.snapshot.NoRepository || !m.gitUnavailable {
+		t.Fatal("workspace did not fall back to folder mode")
+	}
+	m.openQuickFiles()
+	m.Update(tea.PasteMsg{Content: "hello"})
+	drain(t, m, press(m, "enter"))
+	if doc := m.document(); doc == nil || !strings.Contains(doc.Text, "needle") {
+		t.Fatal("file lookup did not open the file")
+	}
+	m.openSearch()
+	m.search.query.SetValue("needle")
+	drain(t, m, m.runSearch())
+	if result := m.search.result; result.Count != 1 || filepath.Base(result.Files[0].Path) != "hello.txt" {
+		t.Fatalf("search did not honor local ignore rules: %+v", result)
+	}
+	m.selectSection(changes)
+	if !strings.Contains(plain(strings.Join(m.sidebarLines(), "\n")), m.tr("Git is not available")) || m.initializeRepository() != nil {
+		t.Fatal("Git actions remained available")
+	}
+}
+
 func TestFolderWatcherAndRecentOpen(t *testing.T) {
 	m := folderWorkspace(t)
 	ready := m.startWatcher()().(watchReadyMsg)
@@ -104,7 +148,8 @@ func TestFolderExternalInitializationAndMouseEntry(t *testing.T) {
 	t.Setenv("GIT_CONFIG_COUNT", "0")
 	m := folderWorkspace(t)
 	drain(t, m, m.selectSection(history))
-	drain(t, m, m.clickSidebar(tea.MouseClickMsg{X: m.sideX() + 3, Y: headerHeight + 3, Button: tea.MouseLeft}))
+	button := m.repositoryEmptyLayout(m.repositoryEmptyState(), m.sidebarContentWidth()).button
+	drain(t, m, m.clickSidebar(tea.MouseClickMsg{X: m.sideX() + button.x, Y: button.y, Button: tea.MouseLeft}))
 	if m.snapshot.NoRepository {
 		t.Fatal("mouse initialization failed")
 	}
@@ -123,5 +168,18 @@ func TestFolderExternalInitializationAndMouseEntry(t *testing.T) {
 		if segment.id == "init" {
 			t.Fatal("stale initialization status")
 		}
+	}
+}
+
+func TestRepositoryEmptyStateFitsCompactSidebar(t *testing.T) {
+	m := folderWorkspace(t)
+	m.selectSection(changes)
+	m.Update(tea.WindowSizeMsg{Width: 80, Height: 8})
+	const width = 22
+	l := m.repositoryEmptyLayout(m.repositoryEmptyState(), width)
+	lines := m.sidebarLinesWidth(width)
+	if l.button.width < 1 || l.button.y >= len(lines) ||
+		!strings.Contains(plain(lines[l.button.y]), "↵") {
+		t.Fatal("initialization button was clipped in the compact sidebar")
 	}
 }

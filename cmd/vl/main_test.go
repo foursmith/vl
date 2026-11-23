@@ -10,6 +10,26 @@ import (
 	"github.com/foursmith/vl/internal/config"
 )
 
+func TestLoadWorkspacePreservesSavedGitDiffsWithoutGit(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	m, repo, editorOnly, err := startupModel(t.Context(), t.TempDir(), false)
+	if err != nil || editorOnly {
+		t.Fatalf("open folder without Git: %v", err)
+	}
+	defer m.Close()
+	path, err := config.SessionPath(repo.Root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := config.SaveSession(path, config.Session{Tabs: []config.SessionTab{{Kind: "diff", Path: "file.txt"}}}); err != nil {
+		t.Fatal(err)
+	}
+	if writable := loadWorkspace(m, repo); writable != "" {
+		t.Fatalf("saved Git diff would be overwritten at %q", writable)
+	}
+}
+
 func TestStartupPathUsesExplicitPathOrMostRecentWorkspace(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_STATE_HOME", "")

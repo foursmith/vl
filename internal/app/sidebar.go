@@ -165,14 +165,8 @@ func (m *Model) renderSidebarWidth(w int, cache *sidebarRowCache) []string {
 	if m.section == search {
 		return m.searchLines(lines, w)
 	}
-	if m.snapshot.NoRepository && (m.section == changes || m.section == history) {
-		for _, text := range []string{"", m.tr("Not a Git repository"), "", m.tr("[Initialize Repository]"), m.tr("Enter: Initialize")} {
-			lines = append(lines, row(text, w, m.colors.Muted, m.colors.Panel))
-		}
-		for len(lines) < h {
-			lines = append(lines, row("", w, m.colors.SideForeground, m.colors.Panel))
-		}
-		return lines[:h]
+	if state := m.repositoryEmptyState(); state.title != "" {
+		return m.renderRepositoryEmptyState(state, lines, w)
 	}
 	if m.section == pullRequests && len(m.items) == 0 {
 		for _, message := range m.pullRequestSidebarMessage() {
@@ -332,9 +326,9 @@ func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 		}
 		return nil
 	}
-	if m.snapshot.NoRepository && (m.section == changes || m.section == history) {
-		if y == headerHeight+3 && msg.X >= 0 && msg.X < ansi.StringWidth(m.tr("[Initialize Repository]")) {
-			return m.initializeRepository()
+	if state := m.repositoryEmptyState(); state.title != "" {
+		if m.repositoryEmptyButtonAt(state, msg.X, y) {
+			return state.action()
 		}
 		return nil
 	}
