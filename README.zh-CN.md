@@ -57,15 +57,13 @@ brew install foursmith/tap/vl
 go install github.com/foursmith/vl/cmd/vl@latest
 ```
 
-如果 Go 的可执行文件目录还没加到 `PATH`，记得加上。
-
 ### macOS 和 Linux
 
 ```sh
 curl -fsSL https://github.com/foursmith/vl/releases/latest/download/install.sh | sh
 ```
 
-会安装到 `~/.local/bin`。如果这个目录还没加到 `PATH`，记得加上。
+安装到 `~/.local/bin`。
 
 ### Windows (PowerShell)
 
@@ -73,7 +71,7 @@ curl -fsSL https://github.com/foursmith/vl/releases/latest/download/install.sh |
 Invoke-RestMethod -UseBasicParsing https://github.com/foursmith/vl/releases/latest/download/install.ps1 | Invoke-Expression
 ```
 
-会安装到 `%LOCALAPPDATA%\vl\bin`，并将该目录加到用户的 `PATH`。
+安装到 `%LOCALAPPDATA%\vl\bin`，并自动加入用户的 `PATH`。
 
 ### 从源码构建
 
@@ -85,33 +83,30 @@ cd vl
 make build
 ```
 
-可以在仓库目录下直接运行 `./bin/vl`，也可以把它复制到 `PATH` 里的任意目录。
+在仓库目录下运行 `./bin/vl`。
 
 ## 用法
 
-### 环境准备
+### 可选依赖
 
-- 浏览目录、搜索文件和编辑文件无需 Git。使用仓库功能时，请确保能从 `PATH` 找到 `git`。[Git](https://git-scm.com/)
-- 要使用 GitHub 的 Pull Request 功能，请安装 `gh` 并运行 `gh auth login`。[GitHub CLI](https://cli.github.com/)
-- 要显示 Markdown 里的远程图片，请安装 `curl`。
-- 要预览 SVG，请安装 `resvg` 并将它所在的目录加到 `PATH`。[resvg](https://github.com/linebender/resvg)
-- 要显示文件图标，请安装 Nerd Font，并在终端的字体设置里选用它。[Nerd Fonts](https://github.com/ryanoasis/nerd-fonts)
+- Git 仓库功能需要 Git。[Git](https://git-scm.com/)
+- 安装 ripgrep（`rg`）可加快工作区搜索。[ripgrep](https://github.com/BurntSushi/ripgrep)
+- GitHub 拉取请求需要 `gh`，安装后运行 `gh auth login`。[GitHub CLI](https://cli.github.com/)
+- Markdown 远程图片需要 `curl`。
+- SVG 预览需要 `resvg`。[resvg](https://github.com/linebender/resvg)
+- 文件图标需要在终端中选用 Nerd Font。[Nerd Fonts](https://github.com/ryanoasis/nerd-fonts)
 
 ### 运行模式
 
-- **工作台模式**。运行 `vl .`，浏览文件、搜索工作区、查看 Git 变更。
-- **编辑器模式**。运行 `vl path/to/file`，用支持 Vim 风格按键的编辑器打开单个文件。
-- **预览模式**。运行 `vl preview path/to/file`，在终端输出带语法高亮的代码。
+- `vl .` 打开工作台。`Ctrl+G` 按名称或路径找文件，`Ctrl+2` 搜索文件内容。
+- `vl path/to/file` 在编辑器中打开单个文件。
+- `vl preview path/to/file` 输出带语法高亮的代码。
 
-点击右下角状态栏里的语言，或者在命令面板中选择**更改语法高亮**，就能为当前文件指定高亮语言。
-设置按文件保存，对 `vl preview` 也生效。选择**自动检测**时，vl 会根据文件名或可识别的 shebang 判断语言，例如
-`#!/bin/sh`、`#!/usr/bin/env node` 和 `#!/usr/bin/env python3`。选择**纯文本**即可关闭当前文件的语法高亮。
+点击状态栏中的语言，或在命令面板选择**更改语法高亮**。设置按文件保存，也适用于 `vl preview`。**自动检测**根据文件名或 shebang 判断语言，**纯文本**关闭高亮。
 
-工作台的操作见[键盘快捷键](docs/KEYBINDINGS.zh-CN.md)，编辑器的按键差异见 [vl 与 Vim 的区别](docs/VIM.zh-CN.md#vl-与-vim-的区别)。
+工作台的操作见[键盘快捷键](docs/KEYBINDINGS.zh-CN.md)。
 
 ### Yazi 集成
-
-请确保能从 `PATH` 找到 `vl`。
 
 #### 预览代码
 
@@ -162,9 +157,8 @@ make check  # 运行 go vet 和启用竞态检测的测试
 
 ## 致谢
 
-- 感谢 [TTT](https://github.com/eugenioenko/ttt) 提供 [textmate-go](https://github.com/eugenioenko/textmate-go)，也为 vl 的实现提供了参考。
-- 感谢 [VS Code](https://github.com/microsoft/vscode)，vl 的整套界面都参考了它。
-- 感谢 [Vim](https://github.com/vim/vim)，vl 的按键设计参考了它。
+- 感谢 [TTT](https://github.com/eugenioenko/ttt) 和 [textmate-go](https://github.com/eugenioenko/textmate-go) 提供语法高亮支持和实现参考。
+- 工作台设计参考 [VS Code](https://github.com/microsoft/vscode)，键位参考 [Vim](https://github.com/vim/vim)。
 
 ## 许可证
 

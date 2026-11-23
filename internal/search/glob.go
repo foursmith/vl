@@ -9,8 +9,13 @@ import (
 
 // Search fields accept comma lists, except commas inside braces or classes.
 // Unanchored patterns match any workspace directory; ./ anchors at its root.
-func compileGlobs(value string) ([]*regexp.Regexp, error) {
-	var patterns []*regexp.Regexp
+type searchGlobs struct {
+	patterns     []*regexp.Regexp
+	ripgrepGlobs []string
+}
+
+func compileGlobs(value string) (searchGlobs, error) {
+	var globs searchGlobs
 	depth, class, start := 0, false, 0
 	add := func(raw string) error {
 		raw = strings.TrimSpace(raw)
@@ -22,7 +27,7 @@ func compileGlobs(value string) ([]*regexp.Regexp, error) {
 		if raw == "" {
 			return fmt.Errorf("empty file pattern")
 		}
-		body, err := globExpression(raw)
+		body, err := pathGlobExpression(raw, false)
 		if err != nil {
 			return err
 		}
@@ -30,11 +35,24 @@ func compileGlobs(value string) ([]*regexp.Regexp, error) {
 		if anchored {
 			prefix = "^"
 		}
-		re, err := regexp.Compile(prefix + body + "(?:/.*)?$")
+		re, err := regexp.Compile("(?s)" + prefix + body + "(?:/.*)?$")
 		if err != nil {
 			return fmt.Errorf("invalid file pattern %q: %w", raw, err)
 		}
-		patterns = append(patterns, re)
+		globs.patterns = append(globs.patterns, re)
+		// A leading globstar is already implied by an unanchored pattern.
+		// Leave patterns with ambiguous syntax to the local matcher.
+		root := "**/"
+		if anchored {
+			root = "/"
+		} else {
+			raw = strings.TrimPrefix(raw, "**/")
+		}
+		if !strings.ContainsAny(raw, "?[]\\\r\n") && !strings.Contains(raw, "**") &&
+			strings.Count(raw, "{") <= 1 && !strings.Contains(raw, "{,") &&
+			!strings.Contains(raw, ",}") && !strings.Contains(raw, ",,") && !strings.Contains(raw, "{}") {
+			globs.ripgrepGlobs = append(globs.ripgrepGlobs, root+raw)
+		}
 		return nil
 	}
 	for i, r := range value {
@@ -48,27 +66,23 @@ func compileGlobs(value string) ([]*regexp.Regexp, error) {
 		case !class && r == '}':
 			depth--
 			if depth < 0 {
-				return nil, fmt.Errorf("unmatched } in file pattern")
+				return searchGlobs{}, fmt.Errorf("unmatched } in file pattern")
 			}
 		case !class && depth == 0 && r == ',':
 			if err := add(value[start:i]); err != nil {
-				return nil, err
+				return searchGlobs{}, err
 			}
 			start = i + 1
 		}
 	}
 	if depth != 0 || class {
-		return nil, fmt.Errorf("unclosed brace or class in file pattern")
+		return searchGlobs{}, fmt.Errorf("unclosed brace or class in file pattern")
 	}
 	if err := add(value[start:]); err != nil {
-		return nil, err
+		return searchGlobs{}, err
 	}
-	return patterns, nil
+	return globs, nil
 }
-func globExpression(pattern string) (string, error) {
-	return pathGlobExpression(pattern, false)
-}
-
 func pathGlobExpression(pattern string, ignoreSyntax bool) (string, error) {
 	var b strings.Builder
 	depth := 0
@@ -168,8 +182,8 @@ func pathGlobExpression(pattern string, ignoreSyntax bool) (string, error) {
 	}
 	return b.String(), nil
 }
-func matchesGlobs(patterns []*regexp.Regexp, path string) bool {
-	for _, pattern := range patterns {
+func matchesGlobs(globs searchGlobs, path string) bool {
+	for _, pattern := range globs.patterns {
 		if pattern.MatchString(path) {
 			return true
 		}

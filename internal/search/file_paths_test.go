@@ -60,6 +60,69 @@ func TestListFilePathsReadsLocalIgnoreRules(t *testing.T) {
 	}
 }
 
+func TestWorkspaceLocalIgnorePrecedence(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := map[string]string{
+		".gitignore":        "plain.txt\nnested/allow.txt\n",
+		".ignore":           "nested/lower.txt\n!nested/allow.txt\n",
+		".rgignore":         "\uFEFFnested/locked*.txt\r\nnested/top.txt\n!nested/lower.txt\n",
+		"nested/.ignore":    "!locked*.txt\nlower.txt\n",
+		"nested/.rgignore":  "!top.txt\n",
+		"plain.txt":         "needle",
+		"nested/allow.txt":  "needle",
+		"nested/locked.txt": "needle",
+		"nested/lower.txt":  "needle",
+		"nested/top.txt":    "needle",
+	}
+	for name, text := range files {
+		file := filepath.Join(root, name)
+		if err := os.MkdirAll(filepath.Dir(file), 0755); err != nil {
+			t.Fatal(err)
+		}
+		writeSearchFile(t, file, text)
+	}
+	deleted := filepath.Join(root, "nested", "locked-deleted.txt")
+	buffers := map[string]string{deleted: "unsaved needle"}
+	for _, includeIgnored := range []bool{false, true} {
+		searchPaths := []string{"nested/allow.txt", "nested/lower.txt", "nested/top.txt"}
+		if includeIgnored {
+			searchPaths = append(searchPaths, "nested/locked.txt", "plain.txt")
+			slices.Sort(searchPaths)
+		}
+		paths, err := ListFilePaths(context.Background(), root, includeIgnored)
+		if err != nil {
+			t.Fatal(err)
+		}
+		paths = slices.DeleteFunc(paths, func(path string) bool { return filepath.Ext(path) != ".txt" })
+		if !slices.Equal(paths, searchPaths) {
+			t.Fatalf("includeIgnored=%t: paths %q, want %q", includeIgnored, paths, searchPaths)
+		}
+		if includeIgnored {
+			searchPaths = append(searchPaths, "nested/locked-deleted.txt")
+			slices.Sort(searchPaths)
+		}
+		result, err := collectResults(context.Background(), root, Options{Query: "needle", IncludeIgnored: includeIgnored}, buffers)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var matches []string
+		for _, file := range result.Files {
+			relative, err := filepath.Rel(root, file.Path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			matches = append(matches, filepath.ToSlash(relative))
+		}
+		if !slices.Equal(matches, searchPaths) {
+			t.Fatalf("includeIgnored=%t: matches %q, want %q", includeIgnored, matches, searchPaths)
+		}
+	}
+}
+
 func TestPathIgnoreRulesHandleEscapesAndWildcards(t *testing.T) {
 	for _, test := range []struct{ rule, match, miss string }{
 		{`trailing\ `, "trailing ", "trailing"},
@@ -69,8 +132,9 @@ func TestPathIgnoreRulesHandleEscapesAndWildcards(t *testing.T) {
 		{`\!literal`, "!literal", "literal"},
 	} {
 		rule, ok := compilePathIgnoreRule("", test.rule)
-		if !ok || !ignoredFilePath([]pathIgnoreRule{rule}, test.match, filepath.Base(test.match), false) ||
-			ignoredFilePath([]pathIgnoreRule{rule}, test.miss, filepath.Base(test.miss), false) {
+		rules := pathIgnoreRules{{rule}}
+		if !ok || !rules.ignored(test.match, filepath.Base(test.match), false) ||
+			rules.ignored(test.miss, filepath.Base(test.miss), false) {
 			t.Errorf("rule %q did not match %q and exclude %q", test.rule, test.match, test.miss)
 		}
 	}

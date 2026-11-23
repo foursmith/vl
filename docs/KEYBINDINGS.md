@@ -45,16 +45,16 @@ In confirmation dialogs, use `←`/`→` or `Tab` to select a button, `Enter` to
 | `F7` / right-click | Open the context menu |
 | `Ctrl+Q` | Quit. Prompts if there are unsaved changes. |
 
-Go to File filters by filename or path as you type. It scans the workspace
-directory and applies local `.gitignore` and `.ignore` rules. Press `F4` or click
-the ignore rules icon beside the input to toggle them. Prefix the input with `>` for
-commands, or use `:line[:column]` to jump within the current file. See the
-[Vim guide](VIM.md#save-and-quit-commands) for save and quit commands. In a picker,
-use `Down` / `Up` or `Ctrl+J` / `Ctrl+K` to select the next / previous
+Go to File filters by filename or path and works without Git. Type
+`src/main.go:42:8` to open a file at line 42, column 8, or `:42` to jump within
+the current file. Press `F4` or click the ignore icon beside the input to show
+ignored files. Prefix the input with `>` to find commands.
+
+In a picker, use `Down` / `Up` or `Ctrl+J` / `Ctrl+K` to select the next / previous
 result while typing. `PageUp` / `PageDown` move by a page, and `Home` / `End`
 jump to the first / last result. `Enter` accepts and `Esc` dismisses the picker.
 Path completion also supports arrow keys, `Ctrl+J` / `Ctrl+K`, and half- or
-full-page navigation. `Tab` inserts the selected path.
+full-page navigation. `Tab` inserts the selected path. See the [Vim guide](VIM.md#save-and-quit-commands) for save and quit commands.
 
 `Ctrl+C` copies selected text when the text or diff editor has focus.
 
@@ -174,17 +174,23 @@ Read-only diffs support Find.
 | `dd` / `Delete` in the results | Remove a match or file group from the results. This leaves the file alone. |
 | `Enter` in Replace | Replace the selected match, or all retained matches in the selected file group |
 
-Search runs as you type and includes unsaved edits. Selecting a result previews
-it. Opening it focuses the editor at the match and highlights the other matches
-in that file. Use `n` to keep jumping. Use the chevron to toggle the
-Replace field and the Replace All button to replace all retained results. The
-search details button shows the include and exclude fields.
+Search updates as you type and includes unsaved edits. Open a result to jump to
+its match, then press `n` to continue in that file. Ripgrep (`rg` on `PATH`) is
+optional. Only Changed Files requires a Git repository.
 
-Include and exclude fields take comma-separated globs such as
-`*.go, **/*.{ts,tsx}`. Use `./` to anchor a pattern at the workspace root.
-Excludes win over includes. You can combine the open-file and changed-file
-filters with globs and ignore rules. A result you remove with `dd` is skipped
-during replacement.
+Open **Search Details** to narrow the search to open tabs or changed files, or
+to set include and exclude filters. Separate globs with commas, as in
+`*.go, **/*.{ts,tsx}`. Use `./src` to scope a filter to the root-level `src`
+directory. Excludes take precedence over includes.
+
+Search and Go to File honor `.rgignore`, `.ignore`, and `.gitignore` within the
+workspace, in that order of precedence. To search ignored directories, turn off
+**Respect ignore rules** beside the exclude field. An explicit include can also
+override an ignore rule. To enter an ignored directory this way, include the
+directory itself, for example `./dist`.
+
+Open the Replace field with the chevron. **Replace All** applies to the results
+still in the list, so use `dd` or `Delete` to skip specific matches or files.
 
 **Replace in Files saves to disk immediately**, including any edits already in
 the affected open buffers. Open files keep an undo step for the replacement.

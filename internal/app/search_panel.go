@@ -80,7 +80,7 @@ func (m *Model) searchPanelControls(w int) []searchPanelControl {
 			changed = m.symbol(symbolDiff)
 		}
 		add(l.include, []string{"changed", "open"}, []string{changed, m.symbol(symbolOpenTabs)}, []string{"Only Changed Files", "Only Open Tabs"})
-		add(l.exclude, []string{"ignore"}, []string{m.symbol(symbolIgnoreRules)}, []string{"Respect .gitignore and .ignore"})
+		add(l.exclude, []string{"ignore"}, []string{m.symbol(symbolIgnoreRules)}, []string{"Respect ignore rules"})
 	}
 	return slices.DeleteFunc(controls, func(c searchPanelControl) bool { return c.y >= m.bodyHeight() })
 }

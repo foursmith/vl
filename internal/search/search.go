@@ -6,8 +6,9 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -31,6 +32,7 @@ type Match struct {
 type File struct {
 	Path, Text string
 	Matches    []Match
+	preview    *filePreview
 }
 type Result struct {
 	Files      []File
@@ -94,24 +96,8 @@ func (m *Matcher) Find(text, replacement string) []Match {
 	return result
 }
 
-// Run collects all matches in path order.
-func Run(ctx context.Context, root string, o Options, buffers map[string]string) (Result, error) {
-	var result Result
-	matcher, err := o.Compile()
-	if err != nil {
-		return result, err
-	}
-	unreadable, err := matcher.Scan(ctx, root, buffers, func(file File) {
-		result.Count += len(file.Matches)
-		result.Files = append(result.Files, file)
-	})
-	result.Unreadable = unreadable
-	sort.Slice(result.Files, func(i, j int) bool { return result.Files[i].Path < result.Files[j].Path })
-	return result, err
-}
-
-// Scan reports complete file results as they are found. Open editor snapshots
-// take precedence over disk.
+// Scan streams results from open buffers and disk. Simple disk matches can
+// carry only the matching lines until the document is opened.
 func (m *Matcher) Scan(ctx context.Context, root string, buffers map[string]string, found func(File)) (int, error) {
 	o := m.options
 	unreadable := 0
@@ -136,11 +122,11 @@ func (m *Matcher) Scan(ctx context.Context, root string, buffers map[string]stri
 	if err != nil {
 		return unreadable, fmt.Errorf("resolve search workspace: %w", err)
 	}
-	pending := make(map[string]string, len(buffers))
+	openBuffers := make(map[string]string, len(buffers))
 	for file, text := range buffers {
 		rel, err := filepath.Rel(root, file)
 		if err == nil && filepath.IsLocal(rel) && rel != "." && !metadataPath(rel) {
-			pending[filepath.ToSlash(rel)] = text
+			openBuffers[filepath.ToSlash(rel)] = text
 		}
 	}
 	var changed map[string]bool
@@ -151,71 +137,157 @@ func (m *Matcher) Scan(ctx context.Context, root string, buffers map[string]stri
 		}
 	}
 	var scratch bytes.Buffer
-	scan := func(relative, text string, open bool) error {
+	inScope := func(relative string) bool {
+		return (len(includes.patterns) == 0 || matchesGlobs(includes, relative)) && !matchesGlobs(excludes, relative)
+	}
+	emit := func(file, text string) {
+		if matches := m.Find(text, ""); len(matches) != 0 {
+			found(File{Path: file, Text: text, Matches: matches})
+		}
+	}
+	scanDisk := func(relative string, prefilter bool) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if len(includes) > 0 && !matchesGlobs(includes, relative) || matchesGlobs(excludes, relative) {
+		file := filepath.Join(root, relative)
+		data, err := readRegularFile(file, &scratch)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				unreadable++
+			}
 			return nil
 		}
-		file := filepath.Join(root, relative)
-		if o.ChangedOnly && !changed[file] {
-			if !open {
-				return nil
-			}
-			data, err := readRegularFile(file, &scratch)
-			if err == nil && data != nil && normalizeText(data) == text {
-				return nil
-			}
+		if data == nil || (prefilter && m.rawLiteral && !m.expression.Match(data)) ||
+			!utf8.Valid(data) || bytes.IndexByte(data, 0) >= 0 {
+			return nil
 		}
-		if !open {
-			data, err := readRegularFile(file, &scratch)
-			if err != nil {
-				if !os.IsNotExist(err) {
-					unreadable++
-				}
-				return nil
-			}
-			if data == nil || (m.rawLiteral && !m.expression.Match(data)) ||
-				!utf8.Valid(data) || bytes.IndexByte(data, 0) >= 0 {
-				return nil
-			}
-			text = normalizeText(data)
-		}
-		if matches := m.Find(text, ""); len(matches) != 0 {
-			found(File{file, text, matches})
-		}
+		emit(file, normalizeText(data))
 		return nil
 	}
-	if !o.OnlyOpen {
-		err = walkFilePaths(ctx, root, o.IncludeIgnored, func(relative string, regular bool) error {
-			text, open := pending[relative]
-			if open {
-				delete(pending, relative)
-			}
-			if regular || open {
-				return scan(relative, text, open)
-			}
-			return nil
-		})
+	var includePath func(string) bool
+	if len(includes.patterns) != 0 {
+		includePath = func(relative string) bool { return matchesGlobs(includes, relative) }
+	}
+	ignores := ignoreFiles{root: root, cache: map[string]directoryIgnores{}, include: includePath}
+	ignoredPath := func(relative string) (bool, error) {
+		if o.IncludeIgnored {
+			return false, nil
+		}
+		return ignores.ignored(relative)
+	}
+	for relative, text := range openBuffers {
+		if !inScope(relative) {
+			continue
+		}
+		ignored, err := ignoredPath(relative)
 		if err != nil {
 			return unreadable, err
 		}
+		if ignored {
+			continue
+		}
+		if err := ctx.Err(); err != nil {
+			return unreadable, err
+		}
+		file := filepath.Join(root, relative)
+		if o.ChangedOnly && !changed[relative] {
+			data, err := readRegularFile(file, &scratch)
+			if err == nil && data != nil && normalizeText(data) == text {
+				continue
+			}
+		}
+		emit(file, text)
 	}
-	ignores := ignoreFiles{root: root, cache: map[string]directoryIgnores{}}
-	for relative, text := range pending {
-		if !o.IncludeIgnored {
-			ignored, err := ignores.ignored(relative)
+	if o.OnlyOpen {
+		return unreadable, ctx.Err()
+	}
+	if o.ChangedOnly {
+		paths := make([]string, 0, len(changed))
+		for relative := range changed {
+			paths = append(paths, relative)
+		}
+		slices.Sort(paths)
+		for _, relative := range paths {
+			if _, open := openBuffers[relative]; open || !inScope(relative) {
+				continue
+			}
+			ignored, err := ignoredPath(relative)
 			if err != nil {
 				return unreadable, err
 			}
 			if ignored {
 				continue
 			}
+			if err := scanDisk(relative, true); err != nil {
+				return unreadable, err
+			}
 		}
-		if err := scan(relative, text, true); err != nil {
-			return unreadable, err
+		return unreadable, ctx.Err()
+	}
+	var verified map[string]struct{}
+	// An untranslated include could have matches the other globs miss.
+	if len(includes.ripgrepGlobs) == len(includes.patterns) {
+		if executable, err := exec.LookPath("rg"); err == nil {
+			var globs []string
+			for _, pattern := range includes.ripgrepGlobs {
+				globs = append(globs, pattern, pattern+"/**")
+			}
+			for _, pattern := range excludes.ripgrepGlobs {
+				globs = append(globs, "!"+pattern)
+			}
+			scanCandidate := func(relative string) error {
+				return scanDisk(relative, false)
+			}
+			diskInScope := func(relative string) bool {
+				_, open := openBuffers[relative]
+				return !open && !metadataPath(relative) && inScope(relative)
+			}
+			if rg := newRipgrepSearch(ctx, root, executable, m.expression.String()); rg != nil {
+				if m.canUseRipgrepPositions() {
+					verified, err = rg.scanJSONWorkspace(o.IncludeIgnored, diskInScope, globs, func(relative string, lines []ripgrepLine) error {
+						if err := ctx.Err(); err != nil {
+							return err
+						}
+						path := filepath.Join(root, relative)
+						info, err := os.Lstat(path)
+						if err != nil {
+							if !os.IsNotExist(err) {
+								unreadable++
+							}
+							return nil
+						}
+						if !info.Mode().IsRegular() {
+							return nil
+						}
+						if file, ok := newFilePreview(path, info, lines); ok {
+							found(file)
+							return nil
+						}
+						return scanCandidate(relative)
+					})
+				} else {
+					verified, err = rg.scanWorkspace(o.IncludeIgnored, diskInScope, globs, scanCandidate)
+				}
+				if err == nil || ctx.Err() != nil {
+					return unreadable, ctx.Err()
+				}
+			}
 		}
+	}
+	err = walkFilePaths(ctx, root, o.IncludeIgnored, includePath, func(relative string, regular bool) error {
+		if !regular || !inScope(relative) {
+			return nil
+		}
+		if _, open := openBuffers[relative]; open {
+			return nil
+		}
+		if _, scanned := verified[relative]; scanned {
+			return nil
+		}
+		return scanDisk(relative, true)
+	})
+	if err != nil {
+		return unreadable, err
 	}
 	return unreadable, ctx.Err()
 }
@@ -237,7 +309,10 @@ func changedSearchFiles(ctx context.Context, root string) (map[string]bool, erro
 			return nil, err
 		}
 		for _, entry := range entries {
-			changed[filepath.Join(owner.Root, entry.Path)] = true
+			relative, err := filepath.Rel(root, filepath.Join(owner.Root, entry.Path))
+			if err == nil && filepath.IsLocal(relative) && relative != "." && !metadataPath(relative) {
+				changed[filepath.ToSlash(relative)] = true
+			}
 		}
 	}
 	return changed, nil

@@ -17,27 +17,31 @@ type pathIgnoreRule struct {
 }
 
 // ListFilePaths discovers local files for Go to File. Its ignore scope is the
-// workspace directory and the .gitignore and .ignore files below it.
+// workspace directory and the .gitignore, .ignore and .rgignore files below it.
 func ListFilePaths(ctx context.Context, root string, includeIgnored bool) ([]string, error) {
 	var paths []string
-	err := walkFilePaths(ctx, root, includeIgnored, func(path string, _ bool) error {
+	err := walkFilePaths(ctx, root, includeIgnored, nil, func(path string, _ bool) error {
 		paths = append(paths, path)
 		return nil
 	})
 	return paths, err
 }
 
-var localIgnoreNames = [...]string{".gitignore", ".ignore"}
+// Like ripgrep, prefer .rgignore over .ignore over .gitignore, even
+// when the higher-priority rule is in a parent directory.
+var localIgnoreNames = [...]string{".gitignore", ".ignore", ".rgignore"}
+
+type pathIgnoreRules [len(localIgnoreNames)][]pathIgnoreRule
 
 // walkFilePaths visits paths in directory order. The second argument reports
 // whether the entry is a regular file, so content searches can skip symlinks.
-func walkFilePaths(ctx context.Context, root string, includeIgnored bool, found func(string, bool) error) error {
+func walkFilePaths(ctx context.Context, root string, includeIgnored bool, include func(string) bool, found func(string, bool) error) error {
 	var ignoreFiles []string
 	if !includeIgnored {
 		ignoreFiles = localIgnoreNames[:]
 	}
-	var visit func(string, []pathIgnoreRule) error
-	visit = func(dir string, inherited []pathIgnoreRule) error {
+	var visit func(string, pathIgnoreRules) error
+	visit = func(dir string, rules pathIgnoreRules) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -49,15 +53,14 @@ func walkFilePaths(ctx context.Context, root string, includeIgnored bool, found 
 		if prefix != "" {
 			prefix += "/"
 		}
-		rules := inherited
-		for _, name := range ignoreFiles {
+		for kind, name := range ignoreFiles {
 			index, found := slices.BinarySearchFunc(entries, name, func(entry os.DirEntry, name string) int {
 				return strings.Compare(entry.Name(), name)
 			})
 			if !found || !entries[index].Type().IsRegular() {
 				continue
 			}
-			rules, err = appendPathIgnoreRules(filepath.Join(root, dir, name), prefix, rules)
+			err = rules.load(kind, filepath.Join(root, dir, name), prefix)
 			if err != nil {
 				return err
 			}
@@ -68,11 +71,12 @@ func walkFilePaths(ctx context.Context, root string, includeIgnored bool, found 
 			}
 			name := entry.Name()
 			path := prefix + name
-			if strings.EqualFold(name, ".git") || ignoredFilePath(rules, path, name, entry.IsDir()) {
+			if strings.EqualFold(name, ".git") ||
+				rules.ignored(path, name, entry.IsDir()) && (include == nil || !include(path)) {
 				continue
 			}
 			if entry.IsDir() {
-				if err := visit(path, rules[:len(rules):len(rules)]); err != nil {
+				if err := visit(path, rules); err != nil {
 					return err
 				}
 			} else if regular := entry.Type().IsRegular(); regular || entry.Type()&os.ModeSymlink != 0 {
@@ -83,23 +87,26 @@ func walkFilePaths(ctx context.Context, root string, includeIgnored bool, found 
 		}
 		return nil
 	}
-	return visit("", nil)
+	return visit("", pathIgnoreRules{})
 }
 
-func appendPathIgnoreRules(path, prefix string, rules []pathIgnoreRule) ([]pathIgnoreRule, error) {
+func (rules *pathIgnoreRules) load(kind int, path, prefix string) error {
 	data, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
-		return rules, nil
+		return nil
 	}
 	if err != nil {
-		return nil, err
+		return err
 	}
-	for raw := range strings.SplitSeq(string(data), "\n") {
+	inherited := rules[kind]
+	group := inherited[:len(inherited):len(inherited)]
+	for raw := range strings.SplitSeq(strings.TrimPrefix(string(data), "\uFEFF"), "\n") {
 		if rule, ok := compilePathIgnoreRule(prefix, raw); ok {
-			rules = append(rules, rule)
+			group = append(group, rule)
 		}
 	}
-	return rules, nil
+	rules[kind] = group
+	return nil
 }
 
 func compilePathIgnoreRule(base, raw string) (pathIgnoreRule, bool) {
@@ -142,11 +149,20 @@ func compilePathIgnoreRule(base, raw string) (pathIgnoreRule, bool) {
 	return rule, err == nil
 }
 
-func ignoredFilePath(rules []pathIgnoreRule, path, name string, directory bool) bool {
-	// Last matching rule wins. The walk prunes excluded directories before
-	// looking at their children, so a negation cannot reopen an excluded parent.
+func (rules pathIgnoreRules) ignored(path, name string, directory bool) bool {
+	for kind := len(rules) - 1; kind >= 0; kind-- {
+		if rule := lastMatchingIgnoreRule(rules[kind], path, name, directory); rule != nil {
+			return !rule.keep
+		}
+	}
+	return false
+}
+
+// Within one ignore file type, closer directories and later lines win.
+// The walker prunes an excluded directory before inspecting its children.
+func lastMatchingIgnoreRule(rules []pathIgnoreRule, path, name string, directory bool) *pathIgnoreRule {
 	for i := len(rules) - 1; i >= 0; i-- {
-		rule := rules[i]
+		rule := &rules[i]
 		if rule.directory && !directory {
 			continue
 		}
@@ -157,15 +173,15 @@ func ignoredFilePath(rules []pathIgnoreRule, path, name string, directory bool) 
 		switch {
 		case rule.literal != "":
 			if value == rule.literal {
-				return !rule.keep
+				return rule
 			}
 		case rule.suffix != "":
 			if strings.HasSuffix(value, rule.suffix) {
-				return !rule.keep
+				return rule
 			}
 		case rule.pattern.MatchString(value):
-			return !rule.keep
+			return rule
 		}
 	}
-	return false
+	return nil
 }

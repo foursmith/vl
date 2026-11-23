@@ -198,29 +198,14 @@ func (m *Model) applySearchResults(msg searchMsg) tea.Cmd {
 	if s.rows != nil {
 		s.appendRows(start)
 	}
-	if msg.next != nil {
-		m.clampSearch()
-		return msg.next
-	}
-	s.loading = false
-	if msg.err != nil {
-		s.err = msg.err.Error()
-	}
-	var selectedKey string
-	if s.focus == 2 {
-		if row, ok := m.selectedSearchRow(); ok {
-			selectedKey = m.searchEntry(row).key
-		}
-	}
-	m.sortSearchFiles()
-	if selectedKey != "" {
-		if index := m.searchRowWithKey(selectedKey); index >= 0 {
-			s.selected = index
-			m.searchList().ensureSelected()
+	if msg.next == nil {
+		s.loading = false
+		if msg.err != nil {
+			s.err = msg.err.Error()
 		}
 	}
 	m.clampSearch()
-	return nil
+	return msg.next
 }
 func (m *Model) searchRows() []searchRow {
 	s := &m.search
@@ -391,7 +376,8 @@ func (m *Model) loadSearchResult() (tea.Cmd, bool) {
 		if d == nil {
 			return nil, false
 		}
-		if d.Text != f.Text {
+		matches, current := f.ResolveMatches(d.Text)
+		if !current {
 			m.notice = searchText("Search result changed; search again")
 			m.sidebar = true
 			return m.runSearch(), false
@@ -402,11 +388,11 @@ func (m *Model) loadSearchResult() (tea.Cmd, bool) {
 		m.findWidget.workspaceMatch = true
 		m.adoptSearchState()
 		m.findHidden = false
-		hit := f.Matches[r.match]
+		hit := matches[r.match]
 		t := &m.tabs[m.activeTab]
 		t.vim.Reset(d)
-		t.vim.JumpTo(d, utf8.RuneCountInString(f.Text[:hit.Start]))
-		d.SelectRange(utf8.RuneCountInString(f.Text[:hit.End]), d.Cursor)
+		t.vim.JumpTo(d, utf8.RuneCountInString(d.Text[:hit.Start]))
+		d.SelectRange(utf8.RuneCountInString(d.Text[:hit.End]), d.Cursor)
 		m.centerTextCursor()
 		return nil, true
 	}

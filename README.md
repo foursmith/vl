@@ -58,15 +58,13 @@ Requires Go 1.27.3 or newer.
 go install github.com/foursmith/vl/cmd/vl@latest
 ```
 
-Add Go's bin directory to your `PATH` if needed.
-
 ### macOS and Linux
 
 ```sh
 curl -fsSL https://github.com/foursmith/vl/releases/latest/download/install.sh | sh
 ```
 
-Installs to `~/.local/bin`. Add that directory to your `PATH` if needed.
+Installs to `~/.local/bin`.
 
 ### Windows (PowerShell)
 
@@ -78,7 +76,7 @@ Installs to `%LOCALAPPDATA%\vl\bin` and adds it to your user `PATH`.
 
 ### Build from source
 
-Build from source with Go 1.27.3 or newer.
+Requires Go 1.27.3 or newer.
 
 ```sh
 git clone https://github.com/foursmith/vl.git
@@ -86,38 +84,33 @@ cd vl
 make build
 ```
 
-Run `./bin/vl` from the checkout or copy it into a directory on your `PATH`.
+Run `./bin/vl` from the checkout.
 
 ## Usage
 
-### Setup
+### Optional dependencies
 
-- Folder browsing, file search, and editing work without Git. Repository features require Git on your `PATH`. [Git](https://git-scm.com/)
+- For repository features, install Git. [Git](https://git-scm.com/)
+- For faster workspace search, install ripgrep (`rg`). [ripgrep](https://github.com/BurntSushi/ripgrep)
 - For GitHub pull requests, install `gh` and run `gh auth login`. [GitHub CLI](https://cli.github.com/)
 - For remote images in Markdown, install `curl`.
-- For SVG previews, install `resvg` and put it on your `PATH`. [resvg](https://github.com/linebender/resvg)
-- For file icons, install a Nerd Font and select it in your terminal's font settings. [Nerd Fonts](https://github.com/ryanoasis/nerd-fonts)
+- For SVG previews, install `resvg`. [resvg](https://github.com/linebender/resvg)
+- For file icons, use a Nerd Font in your terminal. [Nerd Fonts](https://github.com/ryanoasis/nerd-fonts)
 
 ### Modes
 
-- **Workbench mode.** Run `vl .` to browse files, search the workspace, and review Git changes.
-- **Editor mode.** Run `vl path/to/file` to open a single file in the Vim-like editor.
-- **Preview mode.** Run `vl preview path/to/file` to print syntax-highlighted code in your terminal.
+- `vl .` opens the workbench. Use `Ctrl+G` to find a file and `Ctrl+2` to search across files.
+- `vl path/to/file` opens a single file in the editor.
+- `vl preview path/to/file` prints syntax-highlighted code.
 
-Click the language in the bottom-right status bar or choose **Change Syntax
-Highlighting** from the command palette to set a file's syntax. The choice is
-saved per file and applies to `vl preview` as well. Choose **Auto Detect** to
-detect syntax from the filename or a recognized shebang, such as
-`#!/bin/sh`, `#!/usr/bin/env node`, or
-`#!/usr/bin/env python3`. Choose **Plain Text** to disable syntax highlighting
-for that file.
+Click the language in the status bar or choose **Change Syntax Highlighting**
+from the command palette. The choice is saved per file and also applies to
+`vl preview`. **Auto Detect** uses the filename or shebang. **Plain Text**
+disables highlighting.
 
-See [Keyboard shortcuts](docs/KEYBINDINGS.md) for the workbench and
-[Where vl differs from Vim](docs/VIM.md#where-vl-differs-from-vim) for editor keys.
+See the [Keyboard shortcuts](docs/KEYBINDINGS.md).
 
 ### Yazi integration
-
-Make sure `vl` is on your `PATH`.
 
 #### Preview code
 
@@ -168,9 +161,8 @@ make check  # go vet + race-enabled tests
 
 ## Acknowledgments
 
-- Thanks to [TTT](https://github.com/eugenioenko/ttt) for [textmate-go](https://github.com/eugenioenko/textmate-go) and for inspiring vl’s implementation.
-- Thanks to [VS Code](https://github.com/microsoft/vscode), which vl’s entire interface is modeled after.
-- Thanks to [Vim](https://github.com/vim/vim), which vl’s keybindings are modeled after.
+- [TTT](https://github.com/eugenioenko/ttt) and [textmate-go](https://github.com/eugenioenko/textmate-go) for syntax highlighting and implementation inspiration.
+- [VS Code](https://github.com/microsoft/vscode) for the workbench design and [Vim](https://github.com/vim/vim) for the keybindings.
 
 ## License
 

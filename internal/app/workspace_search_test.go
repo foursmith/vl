@@ -167,16 +167,64 @@ func TestWorkspaceSearchReportsSelectableResultsBeforeCompletion(t *testing.T) {
 	}
 	m.focusSearch(2)
 	row, ok := m.selectedSearchRow()
-	if !ok || filepath.Base(m.searchEntry(row).file) != "a.txt" {
+	if !ok {
 		t.Fatal("the early result was not selectable")
+	}
+	// Ripgrep can report either file first. Completion must keep the other one.
+	first := filepath.Base(m.searchEntry(row).file)
+	var later string
+	switch first {
+	case "a.txt":
+		later = "b.txt"
+	case "b.txt":
+		later = "a.txt"
+	default:
+		t.Fatalf("unexpected early result %q", first)
 	}
 	if cmd := m.replaceSearch(true); cmd != nil {
 		t.Fatal("replace all was available during the scan")
 	}
 	m.dismissSearchResult(0)
 	drain(t, m, next)
-	if m.search.loading || m.search.result.Count != 1 || filepath.Base(m.search.result.Files[0].Path) != "b.txt" {
+	if m.search.loading || m.search.result.Count != 1 || filepath.Base(m.search.result.Files[0].Path) != later {
 		t.Fatal("completion lost a later file or restored a dismissed result")
+	}
+}
+
+func TestWorkspaceSearchCompletionKeepsDisplayedOrder(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	defer m.Close()
+	m.openSearch()
+	m.focusSearch(2)
+	m.search.loading = true
+	paths := []string{"z.txt", "b.txt", "a.txt"}
+	for index, path := range paths {
+		var next tea.Cmd
+		if index < len(paths)-1 {
+			next = func() tea.Msg { return nil }
+		}
+		m.applySearchResults(searchMsg{
+			seq:  m.search.seq,
+			next: next,
+			result: searchservice.Result{Count: 1, Files: []searchservice.File{{
+				Path: filepath.Join(m.repo.Root, path), Text: "needle", Matches: []searchservice.Match{{End: 6, Line: 1}},
+			}}},
+		})
+		if index == 1 {
+			m.search.selected = 2
+		}
+	}
+	if m.search.loading || m.search.result.Count != len(paths) {
+		t.Fatalf("unexpected completion: %+v", m.search.result)
+	}
+	for i, file := range m.search.result.Files {
+		if filepath.Base(file.Path) != paths[i] {
+			t.Fatalf("result %d moved to %q, want %q", i, file.Path, paths[i])
+		}
+	}
+	row, ok := m.selectedSearchRow()
+	if !ok || m.search.selected != 2 || filepath.Base(m.searchEntry(row).file) != "b.txt" {
+		t.Fatal("completion moved the selection")
 	}
 }
 

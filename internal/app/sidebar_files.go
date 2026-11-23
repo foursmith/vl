@@ -26,7 +26,7 @@ func (m *Model) searchEntry(row searchRow) item {
 		return item{key: "file:" + file.Path, file: file.Path}
 	}
 	hit := file.Matches[row.match]
-	key := fmt.Sprintf("match:%d:%d:%s", hit.Start, hit.End, file.Path)
+	key := fmt.Sprintf("match:%d:%d:%d:%s", hit.Line, hit.Start, hit.End, file.Path)
 	return item{key: key, file: file.Path}
 }
 

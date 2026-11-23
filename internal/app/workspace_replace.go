@@ -66,12 +66,12 @@ func (m *Model) replaceSearch(all bool) tea.Cmd {
 				return nil
 			}
 		}
-		if d.Text != f.Text {
+		targets, current := f.ResolveMatches(d.Text)
+		if !current {
 			m.notice = searchText("Search result changed; search again before replacing")
 			return m.runSearch()
 		}
-		matches := matcher.Find(f.Text, replacement)
-		targets := f.Matches
+		matches := matcher.Find(d.Text, replacement)
 		if selectedMatch >= 0 {
 			targets = targets[selectedMatch : selectedMatch+1]
 		}
@@ -86,7 +86,7 @@ func (m *Model) replaceSearch(all bool) tea.Cmd {
 		if next != len(targets) {
 			return m.runSearch()
 		}
-		nextText := searchservice.ReplaceText(f.Text, retained)
+		nextText := searchservice.ReplaceText(d.Text, retained)
 		if nextText == d.Text {
 			continue
 		}

@@ -6,9 +6,44 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
+
+// Collect and resolve results so comparisons are independent of stream order
+// and cover the same preview path as the application.
+func collectResults(ctx context.Context, root string, options Options, buffers map[string]string) (Result, error) {
+	var result Result
+	matcher, err := options.Compile()
+	if err != nil {
+		return result, err
+	}
+	result.Unreadable, err = matcher.Scan(ctx, root, buffers, func(file File) {
+		result.Count += len(file.Matches)
+		result.Files = append(result.Files, file)
+	})
+	if err != nil {
+		return result, err
+	}
+	for i, file := range result.Files {
+		if file.preview == nil {
+			continue
+		}
+		data, err := os.ReadFile(file.Path)
+		if err != nil {
+			return result, err
+		}
+		text := normalizeText(data)
+		matches, ok := file.ResolveMatches(text)
+		if !ok {
+			return result, fmt.Errorf("could not resolve preview for %s", file.Path)
+		}
+		result.Files[i] = File{Path: file.Path, Text: text, Matches: matches}
+	}
+	slices.SortFunc(result.Files, func(a, b File) int { return strings.Compare(a.Path, b.Path) })
+	return result, nil
+}
 
 func TestFindOptionsUnicodeAndReplacement(t *testing.T) {
 	tests := []struct {
@@ -68,17 +103,17 @@ func TestWorkspaceIgnoresBinarySymlinksAndUsesBuffers(t *testing.T) {
 	outside := filepath.Join(t.TempDir(), "outside")
 	os.WriteFile(outside, []byte("needle"), 0644)
 	os.Symlink(outside, filepath.Join(root, "link"))
-	result, err := Run(context.Background(), root, Options{Query: "needle"}, map[string]string{filepath.Join(root, "text"): "buffer needle", filepath.Join(root, "ignored"): "open needle"})
+	result, err := collectResults(context.Background(), root, Options{Query: "needle"}, map[string]string{filepath.Join(root, "text"): "buffer needle", filepath.Join(root, "ignored"): "open needle"})
 	if err != nil || result.Count != 3 || len(result.Files) != 2 {
 		t.Fatalf("%+v %v", result, err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, err := Run(ctx, root, Options{Query: "needle"}, nil); err == nil {
+	if _, err := collectResults(ctx, root, Options{Query: "needle"}, nil); err == nil {
 		t.Fatal("cancel ignored")
 	}
 	os.WriteFile(filepath.Join(root, "many"), []byte(strings.Repeat("needle\n", 2501)), 0644)
-	result, err = Run(context.Background(), root, Options{Query: "needle"}, nil)
+	result, err = collectResults(context.Background(), root, Options{Query: "needle"}, nil)
 	if err != nil || result.Unreadable > 0 || result.Count != 2501 {
 		t.Fatalf("full results: %+v %v", result, err)
 	}
@@ -133,7 +168,7 @@ func TestWorkspaceSearchesNestedRepositoriesAndTheirIgnoreRules(t *testing.T) {
 	}
 	searchGit(t, child, "init", "--separate-git-dir="+filepath.Join(t.TempDir(), "module.git"))
 	for _, include := range []bool{false, true} {
-		result, err := Run(context.Background(), root, Options{Query: "needle", IncludeIgnored: include}, nil)
+		result, err := collectResults(context.Background(), root, Options{Query: "needle", IncludeIgnored: include}, nil)
 		expected := 8
 		if include {
 			expected = 12
@@ -147,7 +182,7 @@ func TestWorkspaceSearchesNestedRepositoriesAndTheirIgnoreRules(t *testing.T) {
 			}
 		}
 	}
-	got, err := Run(context.Background(), root, Options{Query: "needle", ChangedOnly: true}, nil)
+	got, err := collectResults(context.Background(), root, Options{Query: "needle", ChangedOnly: true}, nil)
 	if err != nil || got.Count != 6 {
 		t.Fatalf("changed-only search across nested worktrees: got %d matches, want 6: %v", got.Count, err)
 	}
@@ -177,7 +212,7 @@ func TestWorkspaceSearchesGitlinkAsFolderWithoutUsableMetadata(t *testing.T) {
 			if includeIgnored {
 				want = 2
 			}
-			got, err := Run(context.Background(), root, Options{Query: "needle", IncludeIgnored: includeIgnored}, nil)
+			got, err := collectResults(context.Background(), root, Options{Query: "needle", IncludeIgnored: includeIgnored}, nil)
 			if err != nil || got.Count != want {
 				t.Fatalf("broken marker=%v, include ignored=%v: got %d matches, want %d: %v", brokenMarker, includeIgnored, got.Count, want, err)
 			}
@@ -196,7 +231,7 @@ func TestWorkspaceDoesNotStopAtFormerByteOrFileSizeLimits(t *testing.T) {
 	}
 	// Larger than the editor limit, with mixed line endings; still valid searchable text.
 	writeSearchFile(t, filepath.Join(root, "z.txt"), padding+"\r\nneedle\nneedle")
-	result, err := Run(context.Background(), root, Options{Query: "needle"}, nil)
+	result, err := collectResults(context.Background(), root, Options{Query: "needle"}, nil)
 	if err != nil || result.Count != 2 || result.Unreadable > 0 {
 		t.Fatalf("late matches lost: count=%d unreadable=%d err=%v", result.Count, result.Unreadable, err)
 	}
@@ -209,7 +244,7 @@ func TestWorkspaceIncludesDeletedOpenBuffersWithoutSearchingMetadata(t *testing.
 	root, _ = filepath.EvalSymlinks(root)
 	initSearchRepository(t, root)
 	writeSearchFile(t, filepath.Join(root, ".gitignore"), "ignored/\n!ignored/deleted.txt\n")
-	result, err := Run(context.Background(), root, Options{Query: "needle"}, map[string]string{
+	result, err := collectResults(context.Background(), root, Options{Query: "needle"}, map[string]string{
 		filepath.Join(root, "deleted.txt"):            "unsaved needle",
 		filepath.Join(root, ".git", "config"):         "needle",
 		filepath.Join(root, "ignored", "deleted.txt"): "unsaved needle",
@@ -234,7 +269,7 @@ func TestScanMatchesNormalizedTextAndRetainsIndependentSnapshots(t *testing.T) {
 	writeSearchFile(t, filepath.Join(root, "a.txt"), "\ufeffK\r\nnext")
 	writeSearchFile(t, filepath.Join(root, "b.txt"), "k\r\nlast")
 	for _, query := range []string{"k", "k\n"} {
-		got, err := Run(context.Background(), root, Options{Query: query}, nil)
+		got, err := collectResults(context.Background(), root, Options{Query: query}, nil)
 		if err != nil || got.Count != 2 || len(got.Files) != 2 {
 			t.Fatalf("query %q: %+v, %v", query, got, err)
 		}
@@ -263,13 +298,13 @@ func TestSearchOrdinaryFolder(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "binary"), []byte("needle\x00"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	result, err := Run(context.Background(), root, Options{Query: "needle"}, nil)
+	result, err := collectResults(context.Background(), root, Options{Query: "needle"}, nil)
 	if err != nil || result.Count != 2 {
 		t.Fatalf("folder search: %+v, %v", result, err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, err := Run(ctx, root, Options{Query: "needle"}, nil); err == nil {
+	if _, err := collectResults(ctx, root, Options{Query: "needle"}, nil); err == nil {
 		t.Fatal("cancelled search succeeded")
 	}
 }

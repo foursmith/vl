@@ -7,15 +7,16 @@ import (
 )
 
 type directoryIgnores struct {
-	rules   []pathIgnoreRule
+	rules   pathIgnoreRules
 	ignored bool
 }
 
 // Cache the same inherited rules as the directory walk for open buffers that
 // were not visited on disk, including buffers whose files were deleted.
 type ignoreFiles struct {
-	root  string
-	cache map[string]directoryIgnores
+	root    string
+	cache   map[string]directoryIgnores
+	include func(string) bool
 }
 
 func (f *ignoreFiles) rules(dir string) (directoryIgnores, error) {
@@ -29,15 +30,15 @@ func (f *ignoreFiles) rules(dir string) (directoryIgnores, error) {
 		if err != nil {
 			return directoryIgnores{}, err
 		}
-		if parent.ignored || ignoredFilePath(parent.rules, dir, path.Base(dir), true) {
+		if parent.ignored || parent.rules.ignored(dir, path.Base(dir), true) && !f.explicitlyIncluded(dir) {
 			scope.ignored = true
 			f.cache[dir] = scope
 			return scope, nil
 		}
-		scope.rules = parent.rules[:len(parent.rules):len(parent.rules)]
+		scope.rules = parent.rules
 		prefix = dir + "/"
 	}
-	for _, name := range localIgnoreNames {
+	for kind, name := range localIgnoreNames {
 		filename := filepath.Join(f.root, dir, name)
 		info, err := os.Lstat(filename)
 		if os.IsNotExist(err) {
@@ -47,8 +48,7 @@ func (f *ignoreFiles) rules(dir string) (directoryIgnores, error) {
 			return directoryIgnores{}, err
 		}
 		if info.Mode().IsRegular() {
-			scope.rules, err = appendPathIgnoreRules(filename, prefix, scope.rules)
-			if err != nil {
+			if err := scope.rules.load(kind, filename, prefix); err != nil {
 				return directoryIgnores{}, err
 			}
 		}
@@ -62,5 +62,9 @@ func (f *ignoreFiles) ignored(relative string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return scope.ignored || ignoredFilePath(scope.rules, relative, path.Base(relative), false), nil
+	return scope.ignored || scope.rules.ignored(relative, path.Base(relative), false) && !f.explicitlyIncluded(relative), nil
+}
+
+func (f *ignoreFiles) explicitlyIncluded(relative string) bool {
+	return f.include != nil && f.include(relative)
 }

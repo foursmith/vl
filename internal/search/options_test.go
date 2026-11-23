@@ -76,12 +76,12 @@ func TestSearchIncludeExcludeOpenAndChanged(t *testing.T) {
 		{Options{Query: "needle", OnlyOpen: true, ChangedOnly: true, Exclude: "clean.go"}, 1},
 		{Options{Query: "needle", OnlyOpen: true, Include: "*.ts"}, 0},
 	} {
-		got, err := Run(context.Background(), root, tc.o, buffers)
+		got, err := collectResults(context.Background(), root, tc.o, buffers)
 		if err != nil || got.Count != tc.want {
 			t.Fatalf("%+v: count=%d want=%d err=%v", tc.o, got.Count, tc.want, err)
 		}
 	}
-	if _, err := Run(context.Background(), root, Options{Query: "needle", Include: "[bad"}, nil); err == nil {
+	if _, err := collectResults(context.Background(), root, Options{Query: "needle", Include: "[bad"}, nil); err == nil {
 		t.Fatal("invalid include was accepted")
 	}
 }
@@ -114,7 +114,7 @@ func TestSearchIgnoreFilesWithoutVSCodeSettings(t *testing.T) {
 					buffers[filepath.Join(root, name)] = "needle"
 				}
 			}
-			got, err := Run(context.Background(), root, o, buffers)
+			got, err := collectResults(context.Background(), root, o, buffers)
 			want := 6
 			if o.OnlyOpen {
 				want = 2

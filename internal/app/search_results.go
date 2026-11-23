@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"slices"
-	"sort"
 	"strings"
 	"unicode/utf8"
 
@@ -13,18 +12,6 @@ import (
 	searchservice "github.com/foursmith/vl/internal/search"
 	"github.com/foursmith/vl/internal/theme"
 )
-
-// Keep files in a directory together, ahead of its descendants.
-func (m *Model) sortSearchFiles() {
-	m.search.rows = nil
-	sort.SliceStable(m.search.result.Files, func(i, j int) bool {
-		a, b := m.search.result.Files[i].Path, m.search.result.Files[j].Path
-		if ad, bd := filepath.Dir(a), filepath.Dir(b); ad != bd {
-			return ad < bd
-		}
-		return strings.ToLower(filepath.Base(a)) < strings.ToLower(filepath.Base(b))
-	})
-}
 
 func (m *Model) searchRowAction(index int) bool {
 	return index == m.hoveredSidebarRow() || (m.search.focus == 2 && index == m.search.selected)
@@ -102,21 +89,18 @@ func (m *Model) searchSnippet(f searchservice.File, index, width int, fg, bg str
 		return ""
 	}
 	hit := f.Matches[index]
-	start := strings.LastIndexByte(f.Text[:hit.Start], '\n') + 1
-	end := strings.IndexByte(f.Text[hit.Start:], '\n')
-	if end < 0 {
-		end = len(f.Text)
-	} else {
-		end += hit.Start
-	}
-	trim := start
-	for trim < hit.Start && (f.Text[trim] == ' ' || f.Text[trim] == '\t') {
+	text, offset := f.PreviewLine(index)
+	end := len(text)
+	hit.Start -= offset
+	hit.End -= offset
+	trim := 0
+	for trim < hit.Start && (text[trim] == ' ' || text[trim] == '\t') {
 		trim++
 	}
 	left := hit.Start
 	cells := 0
 	for left > trim {
-		r, size := utf8.DecodeLastRuneInString(f.Text[trim:left])
+		r, size := utf8.DecodeLastRuneInString(text[trim:left])
 		n := ansi.StringWidth(safe(string(r)))
 		if cells+n > width/3 {
 			break
@@ -131,7 +115,7 @@ func (m *Model) searchSnippet(f searchservice.File, index, width int, fg, bg str
 	right := left
 	cells = ansi.StringWidth(prefix)
 	for right < end && cells < width {
-		r, size := utf8.DecodeRuneInString(f.Text[right:end])
+		r, size := utf8.DecodeRuneInString(text[right:end])
 		cells += ansi.StringWidth(safe(string(r)))
 		right += size
 	}
@@ -142,6 +126,8 @@ func (m *Model) searchSnippet(f searchservice.File, index, width int, fg, bg str
 	pos := left
 	for j := index; j < len(f.Matches) && f.Matches[j].Line == hit.Line; j++ {
 		match := f.Matches[j]
+		match.Start -= offset
+		match.End -= offset
 		a, z := max(left, match.Start), min(right, match.End)
 		if match.Start >= right {
 			break
@@ -149,11 +135,11 @@ func (m *Model) searchSnippet(f searchservice.File, index, width int, fg, bg str
 		if z < a {
 			continue
 		}
-		b.WriteString(plain.Render(safe(f.Text[pos:a])))
-		b.WriteString(hitStyle.Render(safe(f.Text[a:z])))
+		b.WriteString(plain.Render(safe(text[pos:a])))
+		b.WriteString(hitStyle.Render(safe(text[a:z])))
 		pos = z
 	}
-	b.WriteString(plain.Render(safe(f.Text[pos:right])))
+	b.WriteString(plain.Render(safe(text[pos:right])))
 	suffix := ""
 	if right < end {
 		suffix = "…"
