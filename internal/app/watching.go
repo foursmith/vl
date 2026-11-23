@@ -79,7 +79,7 @@ func (m *Model) syncWatch() {
 }
 func (m *Model) handleWatch(batch watcher.Batch) tea.Cmd {
 	if batch.Err != nil {
-		m.watchDirty = true
+		m.watchDirty, m.watchFilesDirty = true, true
 		m.invalidateDiffs()
 		m.notice = m.tr("File watcher: %s", batch.Err.Error())
 	}
@@ -95,6 +95,7 @@ func (m *Model) handleWatch(batch watcher.Batch) tea.Cmd {
 			continue
 		}
 		if !metadata {
+			m.watchFilesDirty = true
 			m.invalidateWorktreeDiffs(path)
 		} else if filepath.Base(path) == "index" {
 			m.invalidateIndexDiffs(filepath.Dir(path))

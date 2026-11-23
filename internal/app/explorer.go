@@ -18,6 +18,12 @@ type treeMsg struct {
 	err     error
 }
 
+type treeIgnoredMsg struct {
+	seq     int
+	ignored map[string]bool
+	err     error
+}
+
 const explorerRootKey = "."
 
 func (m *Model) openFileInExplorer(path string) tea.Cmd {
@@ -112,18 +118,21 @@ func (m *Model) refreshTree() tea.Cmd {
 	uncompressed := maps.Clone(m.uncompressed)
 	return func() tea.Msg {
 		entries, err := files.ReadTree(m.ctx, m.repo.Root, expanded, uncompressed)
-		if err != nil {
-			return treeMsg{seq: seq, err: err}
-		}
-		paths := make([]string, len(entries))
-		for i, entry := range entries {
-			paths[i] = entry.Path
-		}
-		ignored, err := m.repo.Ignored(m.ctx, paths)
-		for i := range entries {
-			entries[i].Ignored = ignored[entries[i].Path]
-		}
 		return treeMsg{seq: seq, entries: entries, err: err}
+	}
+}
+
+func (m *Model) refreshTreeIgnored(seq int) tea.Cmd {
+	if len(m.treeEntries) == 0 {
+		return nil
+	}
+	paths := make([]string, len(m.treeEntries))
+	for i, entry := range m.treeEntries {
+		paths[i] = entry.Path
+	}
+	return func() tea.Msg {
+		ignored, err := m.repo.Ignored(m.ctx, paths)
+		return treeIgnoredMsg{seq, ignored, err}
 	}
 }
 

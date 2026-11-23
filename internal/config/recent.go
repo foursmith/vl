@@ -43,6 +43,9 @@ func rememberFolder(path, folder string) error {
 			seen[previous] = true
 		}
 	}
+	if slices.Equal(recent, folders) {
+		return nil
+	}
 	return saveJSON(path, recent)
 }
 

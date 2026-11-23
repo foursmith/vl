@@ -13,6 +13,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/colorprofile"
+	"github.com/charmbracelet/x/term"
 	"github.com/foursmith/vl/internal/app"
 	"github.com/foursmith/vl/internal/config"
 	"github.com/foursmith/vl/internal/editor"
@@ -234,6 +235,12 @@ func saveWorkspace(m *app.Model, sessionPath string) {
 }
 
 func runProgram(ctx context.Context, m *app.Model, switchWorkspace func(*app.Model, *git.Repository) *app.Model) (*app.Model, error) {
+	// Use the same bounds as Bubble Tea's WindowSizeMsg validation.
+	const maxDimension, maxCells = 4096, 1 << 20
+	if width, height, err := term.GetSize(os.Stdout.Fd()); err == nil &&
+		width > 0 && height > 0 && width <= maxDimension && height <= maxDimension && width*height <= maxCells {
+		m.SetTerminalSize(width, height)
+	}
 	runtime := app.NewRuntime(m, switchWorkspace)
 	defer func() {
 		current := runtime.Current()

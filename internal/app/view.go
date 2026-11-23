@@ -109,6 +109,18 @@ func (m *Model) contentRow() int {
 func (m *Model) bodyHeight() int    { return max(1, m.height-1) }
 func (m *Model) contentHeight() int { return max(1, m.bodyHeight()-m.contentRow()) }
 
+// SetTerminalSize lets the first frame use the actual terminal dimensions.
+func (m *Model) SetTerminalSize(width, height int) {
+	m.imagePan = nil
+	m.resizingSidebar = false
+	width, height = max(1, width), max(1, height)
+	if m.width == width && m.height == height {
+		return
+	}
+	m.width, m.height = width, height
+	m.resize()
+}
+
 func (m *Model) resize() {
 	unchangedPosition := false
 	if m.document() != nil {

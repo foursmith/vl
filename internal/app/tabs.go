@@ -31,10 +31,20 @@ func (m *Model) openFile(path string) tea.Cmd {
 }
 
 func (m *Model) openDocument(path string, preview bool) bool {
-	show := m.selectTab
-	if !preview {
-		show = m.activateTab
+	index := m.openFileTab(path, preview)
+	if index < 0 {
+		return false
 	}
+	if preview {
+		m.selectTab(index)
+	} else {
+		m.activateTab(index)
+	}
+	return true
+}
+
+// openFileTab prepares the file or image without changing the active tab.
+func (m *Model) openFileTab(path string, preview bool) int {
 	abs := path
 	if !filepath.IsAbs(abs) {
 		abs = filepath.Join(m.repo.Root, path)
@@ -45,26 +55,23 @@ func (m *Model) openDocument(path string, preview bool) bool {
 	}
 	for i := range m.tabs {
 		if m.tabs[i].diff == nil && m.tabs[i].path() == abs {
-			show(i)
-			return true
+			return i
 		}
 	}
 	if imagepreview.Supported(abs) {
 		im, err := imagepreview.Open(m.ctx, abs)
 		if err != nil {
 			m.notice = m.tr(err.Error())
-			return false
+			return -1
 		}
-		show(m.insertTab(tab{image: newImageState(im, m.allocateImageID()), preview: preview}))
-		return true
+		return m.insertTab(tab{image: newImageState(im, m.allocateImageID()), preview: preview})
 	}
 	d, err := editor.Open(abs)
 	if err != nil {
 		m.notice = m.tr(err.Error())
-		return false
+		return -1
 	}
-	show(m.insertTab(tab{doc: d, preview: preview}))
-	return true
+	return m.insertTab(tab{doc: d, preview: preview})
 }
 
 func (m *Model) insertTab(next tab) int {

@@ -4,6 +4,7 @@ import (
 	"math"
 	"strings"
 
+	"charm.land/lipgloss/v2"
 	"github.com/foursmith/vl/internal/theme"
 )
 
@@ -95,16 +96,39 @@ func (o *welcomeOrbit) rotate(dx, dy float64) {
 // change the welcome art after the first frame.
 const welcomeCellAspect = .5
 
+type welcomeArtKey struct {
+	width, height   int
+	yaw, pitch      float64
+	ink, background string
+}
+
+type welcomeArtCache struct {
+	key   welcomeArtKey
+	lines []string
+}
+
 func (m *Model) renderWelcomeArt(width, height int) []string {
+	ink := m.colors.Accent
+	if ink == "" {
+		ink = m.colors.Foreground
+	}
+	key := welcomeArtKey{width, height, m.welcomeOrbit.yaw, m.welcomeOrbit.pitch, ink, m.colors.Background}
+	if m.welcomeArt.lines == nil || m.welcomeArt.key != key {
+		m.welcomeArt = welcomeArtCache{key: key, lines: rasterWelcomeArt(key)}
+	}
+	return m.welcomeArt.lines
+}
+
+func rasterWelcomeArt(key welcomeArtKey) []string {
+	width, height, ratio := key.width, key.height, welcomeCellAspect
 	ramp := [...]string{"░", "░", "░", "▒", "▒", "▓", "▓", "▓", "█"}
-	ratio := welcomeCellAspect
 	const samplesPerEdge = 4
 	const samplesPerCell = samplesPerEdge * samplesPerEdge
 	sampleWidth, sampleHeight := width*samplesPerEdge, height*samplesPerEdge
 	// Leave room for the depth of the letters even when they turn edge-on.
 	scale := samplesPerEdge * min(float64(width-2)/3.56, float64(height-1)/(2.32*ratio))
-	sy, cy := math.Sincos(m.welcomeOrbit.yaw)
-	sp, cp := math.Sincos(m.welcomeOrbit.pitch + welcomeDefaultPitch)
+	sy, cy := math.Sincos(key.yaw)
+	sp, cp := math.Sincos(key.pitch + welcomeDefaultPitch)
 	project := func(p welcomePoint) welcomePoint {
 		x, z := cy*p.x+sy*p.z, -sy*p.x+cy*p.z
 		y := cp*p.y - sp*z
@@ -117,14 +141,10 @@ func (m *Model) renderWelcomeArt(width, height int) []string {
 		rasterWelcomeTriangle(sampleWidth, sampleHeight, ratio, scale, a, b, c, depth, shades, len(ramp))
 	}
 
-	ink := m.colors.Accent
-	if ink == "" {
-		ink = m.colors.Foreground
-	}
-	var tones [len(ramp)]string
+	var tones [len(ramp)]lipgloss.Style
 	for i := range tones {
 		opacity := .56 + .44*float64(i)/float64(len(tones)-1)
-		tones[i] = theme.Composite(theme.WithOpacity(ink, opacity), m.colors.Background)
+		tones[i] = theme.Style(theme.WithOpacity(key.ink, opacity), key.background)
 	}
 	lines := make([]string, height)
 	type cell struct{ tone, glyph int }
@@ -159,7 +179,7 @@ func (m *Model) renderWelcomeArt(width, height int) []string {
 			if c.glyph == 0 {
 				line.WriteString(strings.Repeat(" ", end-start))
 			} else {
-				line.WriteString(theme.Style(tones[c.tone-1], m.colors.Background).Render(strings.Repeat(ramp[c.glyph-1], end-start)))
+				line.WriteString(tones[c.tone-1].Render(strings.Repeat(ramp[c.glyph-1], end-start)))
 			}
 			start = end
 		}

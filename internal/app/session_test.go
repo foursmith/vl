@@ -11,10 +11,49 @@ import (
 	"strings"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/foursmith/vl/internal/config"
 	"github.com/foursmith/vl/internal/diff"
 	gitservice "github.com/foursmith/vl/internal/git"
 )
+
+func TestStartupRestoresMixedTabsBeforeSnapshot(t *testing.T) {
+	m := explorerWorkspace(t)
+	defer m.Close()
+	path := filepath.Join(m.repo.Root, "cmd", "main.go")
+	readme := filepath.Join(m.repo.Root, "README.md")
+	m.SetSession(config.Session{Active: 1, Tabs: []config.SessionTab{
+		{Kind: "file", Path: readme, Preview: true},
+		{Kind: "file", Path: path},
+		{Kind: "diff", Path: "cmd/main.go"},
+	}})
+	commands := m.Init()().(tea.BatchMsg)
+	msg, ok := commands[len(commands)-1]().(restoreSessionMsg)
+	if !ok {
+		t.Fatal("startup did not schedule independent file restoration")
+	}
+	m.Update(msg)
+	if doc := m.document(); doc == nil || doc.Path != path || !m.loading || m.pendingSession != nil {
+		t.Fatal("saved file was not restored while the snapshot was loading")
+	}
+
+	if len(m.tabs) != 3 || m.activeTab != 1 || m.tabs[0].path() != readme ||
+		!m.tabs[0].preview || m.tabs[0].positionBaseline == nil {
+		t.Fatal("restoration did not preserve the background file tab and saved selection")
+	}
+	if m.tabs[2].diff == nil || !m.tabs[2].diff.waitingForSnapshot || m.tabs[2].diff.read != nil {
+		t.Fatal("worktree diff did not reserve its tab while waiting for Git")
+	}
+	snapshot, err := m.repo.Snapshot(m.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, cmd := m.Update(snapshotMsg{seq: m.refreshSeq, snapshot: snapshot})
+	drain(t, m, cmd)
+	if len(m.tabs) != 3 || m.activeTab != 1 || m.tabs[2].diff.waitingForSnapshot || m.tabs[2].diff.patch.Raw == "" {
+		t.Fatal("worktree diff did not load from the snapshot and preserve tab order")
+	}
+}
 
 func TestSessionRestoresSidebarTab(t *testing.T) {
 	m := tabWorkspace(t, 0)

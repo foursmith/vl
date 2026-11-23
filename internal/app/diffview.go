@@ -53,6 +53,8 @@ type diffState struct {
 	images           *diffImages
 	contextSource    []string
 	contextFolds     []diffFold
+
+	waitingForSnapshot bool
 }
 
 func newDiffState() *diffState {

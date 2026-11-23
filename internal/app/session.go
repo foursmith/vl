@@ -25,6 +25,8 @@ type restoredPullRequest struct {
 	patches map[string]string
 }
 
+type restoreSessionMsg struct{}
+
 // SetSession selects the sidebar before discovery and defers editor tab restoration.
 func (m *Model) SetSession(session config.Session) {
 	if m.editorOnly {
@@ -85,10 +87,16 @@ func (m *Model) restoreSession() tea.Cmd {
 		if saved.Path == "" || m.gitUnavailable && saved.Kind == "diff" {
 			continue
 		}
+		var index int
 		switch saved.Kind {
 		case "file":
-			if !m.openDocument(saved.Path, false) {
+			index = m.openFileTab(saved.Path, false)
+			if index < 0 {
 				continue
+			}
+			if m.tabs[index].image != nil {
+				// Apply the image memory budget throughout restoration.
+				m.selectTab(index)
 			}
 		case "diff":
 			// Deleted files still have valid diffs; only the owning repository must exist.
@@ -96,19 +104,23 @@ func (m *Model) restoreSession() tea.Cmd {
 				continue
 			}
 			c := gitservice.Change{Path: saved.Path, Repository: saved.Repository, Original: saved.Original, Index: ' ', Worktree: ' '}
-			for _, current := range m.snapshot.Changes {
-				if current.Path == c.Path && current.Repository == c.Repository && saved.Commit == "" {
-					c = current
-					break
+			target := diffTarget{path: c.Path, repository: c.Repository, commit: saved.Commit, staged: saved.Staged}
+			if saved.Commit != "" {
+				target.change = &c
+				commands = append(commands, m.requestDiff(target, func(ctx context.Context) (string, error) {
+					return m.repo.CommitFileDiff(ctx, saved.Commit, c)
+				}))
+			} else {
+				d := m.openDiffTab(target)
+				d.diffOriginal = saved.Original
+				if m.loading {
+					// Reserve the tab's place without guessing the current Git status.
+					d.waitingForSnapshot, d.diffLoading = true, true
+				} else {
+					commands = append(commands, m.loadRestoredWorktreeDiff(d))
 				}
 			}
-			target := diffTarget{path: c.Path, repository: c.Repository, commit: saved.Commit, staged: saved.Staged, change: &c}
-			commands = append(commands, m.requestDiff(target, func(ctx context.Context) (string, error) {
-				if saved.Commit != "" {
-					return m.repo.CommitFileDiff(ctx, saved.Commit, c)
-				}
-				return m.repo.Diff(ctx, c, saved.Staged)
-			}))
+			index = m.activeTab
 		case "pr-diff":
 			if saved.PullRequest == nil || saved.PullRequest.Number <= 0 || saved.PullRequest.URL == "" {
 				continue
@@ -140,12 +152,13 @@ func (m *Model) restoreSession() tea.Cmd {
 				data, err := read()
 				return strings.Clone(data.patches[saved.Path]), data.version, err
 			}))
+			index = m.activeTab
 		default:
 			continue
 		}
-		previews[m.activeTab] = saved.Preview
+		previews[index] = saved.Preview
 		if i <= session.Active {
-			active = m.activeTab
+			active = index
 		}
 	}
 	// Apply preview flags after insertion, so restoration cannot replace a tab.
@@ -161,8 +174,29 @@ func (m *Model) restoreSession() tea.Cmd {
 			m.activateTab(index)
 		}
 	}
+	for i := range m.tabs {
+		t := &m.tabs[i]
+		if t.positionBaseline == nil {
+			t.capturePosition()
+		}
+	}
 	if m.section == search {
 		commands = append(commands, m.focusSearch(m.search.focus))
 	}
 	return tea.Batch(commands...)
+}
+
+func (m *Model) loadRestoredWorktreeDiff(d *diffState) tea.Cmd {
+	change := gitservice.Change{Path: d.diffPath, Repository: d.diffRepository, Original: d.diffOriginal, Index: ' ', Worktree: ' '}
+	for _, current := range m.snapshot.Changes {
+		if current.Path == change.Path && current.Repository == change.Repository {
+			change = current
+			break
+		}
+	}
+	d.diffChange, d.diffOriginal = &change, change.Original
+	d.waitingForSnapshot = false
+	repo, staged := m.repo, d.diffStaged
+	d.read = func(ctx context.Context) (string, error) { return repo.Diff(ctx, change, staged) }
+	return m.loadDiff(d, true)
 }

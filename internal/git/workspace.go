@@ -158,14 +158,18 @@ func (r *Repository) readChanges(ctx context.Context) (workspaceChanges, error) 
 		return state, err
 	}
 	links := map[string]string{}
-	for _, record := range strings.Split(raw, "\x00") {
-		meta, path, ok := strings.Cut(record, "\t")
-		fields := strings.Fields(meta)
-		if !ok || len(fields) != 3 || fields[0] != "160000" {
+	for record := range strings.SplitSeq(raw, "\x00") {
+		meta, ok := strings.CutPrefix(record, "160000 ")
+		if !ok {
 			continue
 		}
-		if _, seen := links[path]; !seen || fields[2] == "0" {
-			links[path] = fields[1]
+		meta, path, ok := strings.Cut(meta, "\t")
+		fields := strings.Fields(meta)
+		if !ok || len(fields) != 2 {
+			continue
+		}
+		if _, seen := links[path]; !seen || fields[1] == "0" {
+			links[path] = fields[0]
 		}
 	}
 	var children []Change

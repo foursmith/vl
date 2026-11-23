@@ -327,6 +327,51 @@ func TestRepeatedRefreshCancelsObsoleteSnapshot(t *testing.T) {
 	}
 }
 
+func TestExplorerAndPickerWhileSnapshotLoads(t *testing.T) {
+	m := explorerWorkspace(t)
+	defer m.Close()
+	m.treeEntries = nil
+	m.snapshot = gitservice.Snapshot{}
+	m.rebuildItems()
+	commands := m.refresh()().(tea.BatchMsg)
+	tree := commands[2]().(treeMsg)
+	if tree.err != nil {
+		t.Fatal(tree.err)
+	}
+	_, decorate := m.Update(tree)
+	if len(m.treeEntries) == 0 || !m.loading || m.snapshot.Branch != "" {
+		t.Fatal("Explorer did not load independently of Git")
+	}
+	if m.items[1].ignored {
+		t.Fatal("initial tree already waited for ignored decorations")
+	}
+	drain(t, m, decorate)
+	if !m.items[1].ignored {
+		t.Fatal("ignored directory decoration was not applied")
+	}
+
+	m.openQuickFiles()
+	path := "cmd/main.go"
+	m.input.SetValue(path)
+	m.syncPicker()
+	if !strings.Contains(plain(m.View().Content), m.tr("Loading…")) {
+		t.Fatal("file picker did not indicate its pending file list")
+	}
+	files := commands[1]().(workspaceFilesMsg)
+	if files.err != nil {
+		t.Fatal(files.err)
+	}
+	m.Update(files)
+	rows := m.filteredActions()
+	if m.input.Value() != path || len(rows) != 1 || rows[0].id != path || !m.loading || m.fileListLoading {
+		t.Fatal("file list did not update the picker while Git status was still pending")
+	}
+	drain(t, m, commands[0])
+	if m.loading || len(m.snapshot.Files) == 0 || len(m.treeEntries) == 0 {
+		t.Fatal("Git status did not finish independently of the published file list")
+	}
+}
+
 func TestStatusBeforeWorkspaceFilesKeepsPickerLoading(t *testing.T) {
 	m := explorerWorkspace(t)
 	defer m.Close()

@@ -167,6 +167,7 @@ type Model struct {
 	cancel                  context.CancelFunc
 	watcher                 *watcher.Watcher
 	watchDirty              bool
+	watchFilesDirty         bool
 	autoFetch               autoFetchState
 	terminalBlurred         bool
 	repo                    *gitservice.Repository
@@ -264,6 +265,7 @@ type Model struct {
 	hoverOnly               bool
 	renderFrame             frameCache
 	welcomeOrbit            welcomeOrbit
+	welcomeArt              welcomeArtCache
 	pickerFilter            pickerFilterCache
 	quickFilesFilter        quickFilesFilter
 	workspaceSeq            int
@@ -319,6 +321,9 @@ func (m *Model) Init() tea.Cmd {
 	if !m.editorOnly {
 		m.autoFetch.next = time.Now()
 		commands = append(commands, m.refresh())
+		if m.pendingSession != nil && len(m.pendingSession.Tabs) > 0 {
+			commands = append(commands, func() tea.Msg { return restoreSessionMsg{} })
+		}
 	}
 	return tea.Batch(commands...)
 }
@@ -336,10 +341,10 @@ func (m *Model) tick() tea.Cmd {
 
 func (m *Model) refresh() tea.Cmd {
 	m.invalidateDiffs()
-	return m.refreshRepository()
+	return m.refreshRepository(true)
 }
 
-func (m *Model) refreshRepository() tea.Cmd {
+func (m *Model) refreshRepository(includeFiles bool) tea.Cmd {
 	if m.editorOnly {
 		return nil
 	}
@@ -354,10 +359,18 @@ func (m *Model) refreshRepository() tea.Cmd {
 	repo := m.repo
 	commands := []tea.Cmd{
 		func() tea.Msg {
+			defer cancel()
 			snapshot, err := repo.StatusSnapshot(ctx)
 			return snapshotMsg{seq, snapshot, err}
 		},
-		m.refreshWorkspaceFiles(),
+	}
+	if includeFiles {
+		commands = append(commands, m.refreshWorkspaceFiles())
+	}
+	if m.section == explorer {
+		// Explorer reads the visible directories. The snapshot supplies Git
+		// decorations separately when the full worktree scan finishes.
+		commands = append(commands, m.refreshTree())
 	}
 	return tea.Batch(commands...)
 }
@@ -557,14 +570,9 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 				next = tea.Batch(next, cmd)
 			}
 		}
-		if m.watchDirty && !m.loading && !m.fileListLoading && !m.busy {
-			m.watchDirty = false
-			cmd := m.refreshRepository()
-			if next == nil {
-				next = cmd
-			} else {
-				next = tea.Batch(next, cmd)
-			}
+		if m.watchDirty && !m.loading && !m.busy && (!m.watchFilesDirty || !m.fileListLoading) {
+			next = tea.Batch(next, m.refreshRepository(m.watchFilesDirty))
+			m.watchDirty, m.watchFilesDirty = false, false
 		}
 		if cmd := m.refreshActiveDiff(); cmd != nil {
 			next = tea.Batch(next, cmd)
@@ -789,6 +797,8 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		} else {
 			m.showStatusFeedback(m.tr("Opened %s", msg.target))
 		}
+	case restoreSessionMsg:
+		return m, m.restoreSession()
 	case treeMsg:
 		if msg.seq != m.treeSeq {
 			return m, nil
@@ -798,7 +808,17 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			m.notice = m.tr(msg.err.Error())
 			return m, nil
 		}
+		// Keep existing decorations visible until this read's Git reply arrives.
+		ignored := make(map[string]bool)
+		for _, entry := range m.treeEntries {
+			if entry.Ignored {
+				ignored[entry.Path] = true
+			}
+		}
 		m.treeEntries = msg.entries
+		for i := range m.treeEntries {
+			m.treeEntries[i].Ignored = ignored[m.treeEntries[i].Path]
+		}
 		m.syncWatch()
 		if m.section == explorer {
 			m.rebuildItems()
@@ -813,11 +833,27 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			}
 		}
 		m.revealFile = ""
+		return m, m.refreshTreeIgnored(msg.seq)
+	case treeIgnoredMsg:
+		if msg.seq != m.treeSeq {
+			return m, nil
+		}
+		if msg.err != nil {
+			m.notice = m.tr(msg.err.Error())
+			return m, nil
+		}
+		changed := false
+		for i := range m.treeEntries {
+			entry := &m.treeEntries[i]
+			ignored := msg.ignored[entry.Path]
+			changed = changed || entry.Ignored != ignored
+			entry.Ignored = ignored
+		}
+		if changed && m.section == explorer {
+			m.rebuildItems()
+		}
 	case tea.WindowSizeMsg:
-		m.imagePan = nil
-		m.resizingSidebar = false
-		m.width, m.height = max(1, msg.Width), max(1, msg.Height)
-		m.resize()
+		m.SetTerminalSize(msg.Width, msg.Height)
 		return m, tea.Raw(ansi.WindowOp(16))
 	case autoFetchFinishedMsg:
 		m.finishAutoFetch(msg)
@@ -849,6 +885,11 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}
 		m.loading = false
 		if msg.err != nil {
+			for _, tab := range m.tabs {
+				if d := tab.diff; d != nil && d.waitingForSnapshot {
+					d.diffLoading = false
+				}
+			}
 			m.notice = m.tr(msg.err.Error())
 			return m, nil
 		}
@@ -864,12 +905,13 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		if initial {
 			m.notice = ""
 		}
-		var commands []tea.Cmd
-		if m.section == explorer {
-			commands = append(commands, m.refreshTree())
-		}
 		remoteAdded := (previous.NoRepository || previous.Branch != "") && len(previous.Remotes) == 0 && len(m.snapshot.Remotes) > 0
-		commands = append(commands, m.refreshPullRequests(m.section == pullRequests && remoteAdded), m.restoreSession())
+		commands := []tea.Cmd{m.refreshPullRequests(m.section == pullRequests && remoteAdded), m.restoreSession()}
+		for _, tab := range m.tabs {
+			if d := tab.diff; d != nil && d.waitingForSnapshot {
+				commands = append(commands, m.loadRestoredWorktreeDiff(d))
+			}
+		}
 		if initial && len(m.tabs) == 0 && m.section == changes {
 			commands = append(commands, m.preview())
 		}
@@ -1308,7 +1350,7 @@ func (m *Model) saveEditor(closeAfter bool) tea.Cmd {
 		return nil
 	}
 	m.showStatusFeedback(m.tr("Saved %s", filepath.Base(d.Path)))
-	refresh := m.refreshRepository()
+	refresh := m.refreshRepository(true)
 	if closeAfter {
 		return tea.Batch(refresh, m.closeTab())
 	}

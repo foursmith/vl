@@ -141,6 +141,7 @@ func TestUndoToCleanAppliesDeferredExternalChange(t *testing.T) {
 
 func TestMetadataLockDoesNotRefreshWorkspace(t *testing.T) {
 	m := tabWorkspace(t, 0)
+	defer m.Close()
 	metadata := filepath.Join(m.repo.Root, ".git")
 	m.snapshot.GitDirectories = []string{metadata}
 	m.handleWatch(watcher.Batch{Paths: []string{filepath.Join(metadata, "index.lock")}})
@@ -150,5 +151,10 @@ func TestMetadataLockDoesNotRefreshWorkspace(t *testing.T) {
 	m.handleWatch(watcher.Batch{Paths: []string{filepath.Join(metadata, "index")}})
 	if !m.watchDirty {
 		t.Fatal("Git index update did not schedule a refresh")
+	}
+	m.fileListLoading = true
+	m.Update(nil)
+	if !m.loading || m.refreshSeq != 1 || m.fileListSeq != 0 {
+		t.Fatal("Git metadata refresh did not run independently of file discovery")
 	}
 }
