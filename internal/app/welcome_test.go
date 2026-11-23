@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -69,6 +70,25 @@ func TestWelcomeClicksUseRenderedCoordinates(t *testing.T) {
 					t.Fatal("quit link did not quit")
 				}
 			}
+		}
+	}
+}
+
+func TestWelcomeArtStaysStillWhenTerminalReportsCellSize(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	defer m.Close()
+	m.Update(tea.WindowSizeMsg{Width: 150, Height: 48})
+	before := m.View().Content
+	if !strings.Contains(before, m.tr("Drag to rotate")) {
+		t.Fatal("test layout did not show the 3D logo")
+	}
+	for _, size := range []uv.CellSizeEvent{{Width: 8, Height: 20}, {Width: 12, Height: 20}} {
+		m.Update(size)
+		if m.cellWidth != size.Width || m.cellHeight != size.Height {
+			t.Fatal("pixel dimensions were not recorded")
+		}
+		if m.View().Content != before {
+			t.Fatal("pixel-size report changed the welcome frame")
 		}
 	}
 }

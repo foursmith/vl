@@ -91,9 +91,13 @@ func (o *welcomeOrbit) rotate(dx, dy float64) {
 	o.pitch = min(1.45-welcomeDefaultPitch, max(-1.45-welcomeDefaultPitch, o.pitch+dy))
 }
 
+// Use a fixed character-cell aspect so a terminal pixel-size reply cannot
+// change the welcome art after the first frame.
+const welcomeCellAspect = .5
+
 func (m *Model) renderWelcomeArt(width, height int) []string {
 	ramp := [...]string{"░", "░", "░", "▒", "▒", "▓", "▓", "▓", "█"}
-	ratio := m.welcomeCellAspect()
+	ratio := welcomeCellAspect
 	const samplesPerEdge = 4
 	const samplesPerCell = samplesPerEdge * samplesPerEdge
 	sampleWidth, sampleHeight := width*samplesPerEdge, height*samplesPerEdge

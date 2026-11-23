@@ -26,10 +26,6 @@ func (m *Model) welcomeVisible() bool {
 
 func (m *Model) welcomeArtWidth() int { return min(94, max(1, m.mainWidth()-4)) }
 
-func (m *Model) welcomeCellAspect() float64 {
-	return min(.85, max(.3, float64(m.cellWidth)/float64(max(1, m.cellHeight))))
-}
-
 // Rendering and clicks share the same centered block, including compact mode.
 func (m *Model) welcomeLayout() (x, y, width, logoRows int) {
 	minimumWidth := 2
@@ -39,7 +35,7 @@ func (m *Model) welcomeLayout() (x, y, width, logoRows int) {
 	width = min(max(42, minimumWidth), max(1, m.mainWidth()-4))
 	width = min(max(width, minimumWidth), max(1, m.mainWidth()))
 	artWidth := m.welcomeArtWidth()
-	artRows := min(29, m.contentHeight()-len(welcomeActions)-4, int(float64(artWidth)*m.welcomeCellAspect()*.72))
+	artRows := min(29, m.contentHeight()-len(welcomeActions)-4, int(float64(artWidth)*welcomeCellAspect*.72))
 	logoRows = 1
 	if artWidth >= 28 && artRows >= 7 {
 		logoRows = artRows
@@ -115,7 +111,7 @@ func (m *Model) dragWelcomeArt(x, y int) {
 		o.dragging = false
 		return
 	}
-	o.rotate(float64(x-o.x)*.065, float64(o.y-y)*.065/m.welcomeCellAspect())
+	o.rotate(float64(x-o.x)*.065, float64(o.y-y)*.065/welcomeCellAspect)
 	o.x, o.y = x, y
 }
 
