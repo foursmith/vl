@@ -1,11 +1,8 @@
-import { onCleanup } from "solid-js"
+import { locales, type Locale } from "./locales"
 
-export function createCodeCopyHandler() {
+export function createCodeCopyHandler(locale: Locale) {
+  const labels = locales[locale]
   const resets = new Map<HTMLButtonElement, ReturnType<typeof setTimeout>>()
-
-  onCleanup(() => {
-    for (const reset of resets.values()) clearTimeout(reset)
-  })
 
   return async function copyCode(event: MouseEvent) {
     if (!(event.target instanceof Element)) return
@@ -24,7 +21,7 @@ export function createCodeCopyHandler() {
     }
     if (!button.isConnected) return
 
-    const feedback = state === "copied" ? "Copied" : "Select the text to copy it manually."
+    const feedback = state === "copied" ? labels.copied : labels.copyFailed
     button.dataset.copyState = state
     button.title = feedback
     status.textContent = feedback

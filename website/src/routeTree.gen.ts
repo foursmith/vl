@@ -15,6 +15,12 @@ import { Route as DocsIndexRouteImport } from './routes/docs.index'
 import { Route as DocsInstallRouteImport } from './routes/docs.install'
 import { Route as DocsShortcutsRouteImport } from './routes/docs.shortcuts'
 import { Route as DocsVimRouteImport } from './routes/docs.vim'
+import { Route as ZhCNIndexRouteImport } from './routes/zh-CN.index'
+import { Route as ZhCNDocsRouteImport } from './routes/zh-CN.docs'
+import { Route as ZhCNDocsIndexRouteImport } from './routes/zh-CN.docs.index'
+import { Route as ZhCNDocsInstallRouteImport } from './routes/zh-CN.docs.install'
+import { Route as ZhCNDocsShortcutsRouteImport } from './routes/zh-CN.docs.shortcuts'
+import { Route as ZhCNDocsVimRouteImport } from './routes/zh-CN.docs.vim'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,6 +52,36 @@ const DocsVimRoute = DocsVimRouteImport.update({
   path: '/vim',
   getParentRoute: () => DocsRoute,
 } as any)
+const ZhCNIndexRoute = ZhCNIndexRouteImport.update({
+  id: '/zh-CN/',
+  path: '/zh-CN/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ZhCNDocsRoute = ZhCNDocsRouteImport.update({
+  id: '/zh-CN/docs',
+  path: '/zh-CN/docs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ZhCNDocsIndexRoute = ZhCNDocsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ZhCNDocsRoute,
+} as any)
+const ZhCNDocsInstallRoute = ZhCNDocsInstallRouteImport.update({
+  id: '/install',
+  path: '/install',
+  getParentRoute: () => ZhCNDocsRoute,
+} as any)
+const ZhCNDocsShortcutsRoute = ZhCNDocsShortcutsRouteImport.update({
+  id: '/shortcuts',
+  path: '/shortcuts',
+  getParentRoute: () => ZhCNDocsRoute,
+} as any)
+const ZhCNDocsVimRoute = ZhCNDocsVimRouteImport.update({
+  id: '/vim',
+  path: '/vim',
+  getParentRoute: () => ZhCNDocsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -53,7 +89,13 @@ export interface FileRoutesByFullPath {
   '/docs/install': typeof DocsInstallRoute
   '/docs/shortcuts': typeof DocsShortcutsRoute
   '/docs/vim': typeof DocsVimRoute
+  '/zh-CN/docs': typeof ZhCNDocsRouteWithChildren
   '/docs/': typeof DocsIndexRoute
+  '/zh-CN/': typeof ZhCNIndexRoute
+  '/zh-CN/docs/install': typeof ZhCNDocsInstallRoute
+  '/zh-CN/docs/shortcuts': typeof ZhCNDocsShortcutsRoute
+  '/zh-CN/docs/vim': typeof ZhCNDocsVimRoute
+  '/zh-CN/docs/': typeof ZhCNDocsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -61,6 +103,11 @@ export interface FileRoutesByTo {
   '/docs/shortcuts': typeof DocsShortcutsRoute
   '/docs/vim': typeof DocsVimRoute
   '/docs': typeof DocsIndexRoute
+  '/zh-CN': typeof ZhCNIndexRoute
+  '/zh-CN/docs/install': typeof ZhCNDocsInstallRoute
+  '/zh-CN/docs/shortcuts': typeof ZhCNDocsShortcutsRoute
+  '/zh-CN/docs/vim': typeof ZhCNDocsVimRoute
+  '/zh-CN/docs': typeof ZhCNDocsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -69,14 +116,41 @@ export interface FileRoutesById {
   '/docs/install': typeof DocsInstallRoute
   '/docs/shortcuts': typeof DocsShortcutsRoute
   '/docs/vim': typeof DocsVimRoute
+  '/zh-CN/docs': typeof ZhCNDocsRouteWithChildren
   '/docs/': typeof DocsIndexRoute
+  '/zh-CN/': typeof ZhCNIndexRoute
+  '/zh-CN/docs/install': typeof ZhCNDocsInstallRoute
+  '/zh-CN/docs/shortcuts': typeof ZhCNDocsShortcutsRoute
+  '/zh-CN/docs/vim': typeof ZhCNDocsVimRoute
+  '/zh-CN/docs/': typeof ZhCNDocsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/docs' | '/docs/install' | '/docs/shortcuts' | '/docs/vim' | '/docs/'
+    | '/'
+    | '/docs'
+    | '/docs/install'
+    | '/docs/shortcuts'
+    | '/docs/vim'
+    | '/zh-CN/docs'
+    | '/docs/'
+    | '/zh-CN/'
+    | '/zh-CN/docs/install'
+    | '/zh-CN/docs/shortcuts'
+    | '/zh-CN/docs/vim'
+    | '/zh-CN/docs/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/docs/install' | '/docs/shortcuts' | '/docs/vim' | '/docs'
+  to:
+    | '/'
+    | '/docs/install'
+    | '/docs/shortcuts'
+    | '/docs/vim'
+    | '/docs'
+    | '/zh-CN'
+    | '/zh-CN/docs/install'
+    | '/zh-CN/docs/shortcuts'
+    | '/zh-CN/docs/vim'
+    | '/zh-CN/docs'
   id:
     | '__root__'
     | '/'
@@ -84,12 +158,20 @@ export interface FileRouteTypes {
     | '/docs/install'
     | '/docs/shortcuts'
     | '/docs/vim'
+    | '/zh-CN/docs'
     | '/docs/'
+    | '/zh-CN/'
+    | '/zh-CN/docs/install'
+    | '/zh-CN/docs/shortcuts'
+    | '/zh-CN/docs/vim'
+    | '/zh-CN/docs/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DocsRoute: typeof DocsRouteWithChildren
+  ZhCNDocsRoute: typeof ZhCNDocsRouteWithChildren
+  ZhCNIndexRoute: typeof ZhCNIndexRoute
 }
 
 declare module '@tanstack/solid-router' {
@@ -136,6 +218,48 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof DocsVimRouteImport
       parentRoute: typeof DocsRoute
     }
+    '/zh-CN/': {
+      id: '/zh-CN/'
+      path: '/zh-CN'
+      fullPath: '/zh-CN/'
+      preLoaderRoute: typeof ZhCNIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/zh-CN/docs': {
+      id: '/zh-CN/docs'
+      path: '/zh-CN/docs'
+      fullPath: '/zh-CN/docs'
+      preLoaderRoute: typeof ZhCNDocsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/zh-CN/docs/': {
+      id: '/zh-CN/docs/'
+      path: '/'
+      fullPath: '/zh-CN/docs/'
+      preLoaderRoute: typeof ZhCNDocsIndexRouteImport
+      parentRoute: typeof ZhCNDocsRoute
+    }
+    '/zh-CN/docs/install': {
+      id: '/zh-CN/docs/install'
+      path: '/install'
+      fullPath: '/zh-CN/docs/install'
+      preLoaderRoute: typeof ZhCNDocsInstallRouteImport
+      parentRoute: typeof ZhCNDocsRoute
+    }
+    '/zh-CN/docs/shortcuts': {
+      id: '/zh-CN/docs/shortcuts'
+      path: '/shortcuts'
+      fullPath: '/zh-CN/docs/shortcuts'
+      preLoaderRoute: typeof ZhCNDocsShortcutsRouteImport
+      parentRoute: typeof ZhCNDocsRoute
+    }
+    '/zh-CN/docs/vim': {
+      id: '/zh-CN/docs/vim'
+      path: '/vim'
+      fullPath: '/zh-CN/docs/vim'
+      preLoaderRoute: typeof ZhCNDocsVimRouteImport
+      parentRoute: typeof ZhCNDocsRoute
+    }
   }
 }
 
@@ -155,9 +279,29 @@ const DocsRouteChildren: DocsRouteChildren = {
 
 const DocsRouteWithChildren = DocsRoute._addFileChildren(DocsRouteChildren)
 
+interface ZhCNDocsRouteChildren {
+  ZhCNDocsInstallRoute: typeof ZhCNDocsInstallRoute
+  ZhCNDocsShortcutsRoute: typeof ZhCNDocsShortcutsRoute
+  ZhCNDocsVimRoute: typeof ZhCNDocsVimRoute
+  ZhCNDocsIndexRoute: typeof ZhCNDocsIndexRoute
+}
+
+const ZhCNDocsRouteChildren: ZhCNDocsRouteChildren = {
+  ZhCNDocsInstallRoute: ZhCNDocsInstallRoute,
+  ZhCNDocsShortcutsRoute: ZhCNDocsShortcutsRoute,
+  ZhCNDocsVimRoute: ZhCNDocsVimRoute,
+  ZhCNDocsIndexRoute: ZhCNDocsIndexRoute,
+}
+
+const ZhCNDocsRouteWithChildren = ZhCNDocsRoute._addFileChildren(
+  ZhCNDocsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DocsRoute: DocsRouteWithChildren,
+  ZhCNDocsRoute: ZhCNDocsRouteWithChildren,
+  ZhCNIndexRoute: ZhCNIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

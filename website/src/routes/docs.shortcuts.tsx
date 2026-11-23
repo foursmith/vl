@@ -4,6 +4,6 @@ import { DocPage, docHead } from "../doc-page"
 import { docs } from "../docs-paths"
 
 export const Route = createFileRoute("/docs/shortcuts")({
-  head: () => docHead(docs.shortcuts),
-  component: () => <DocPage content={content} />,
+  head: () => docHead(docs["en"].shortcuts, "en"),
+  component: () => <DocPage content={content} locale="en" />,
 })

@@ -153,3 +153,16 @@ export function projectWordmark(yaw: number, pitch: number) {
   }
   return frame
 }
+
+export function paintRow(cells: number[]): string {
+  const stops: string[] = []
+  for (let start = 0; start < cells.length;) {
+    const opacity = cells[start]
+    let end = start + 1
+    while (end < cells.length && cells[end] === opacity) end++
+    const color = opacity ? `color-mix(in srgb, var(--color-accent) ${opacity}%, transparent)` : "transparent"
+    stops.push(`${color} ${start * 100 / cells.length}% ${end * 100 / cells.length}%`)
+    start = end
+  }
+  return stops.length === 1 ? "none" : `linear-gradient(to right, ${stops.join(", ")})`
+}

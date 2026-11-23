@@ -10,7 +10,10 @@ export default defineConfig({
     tailwindcss(),
     renderMarkdownDocs(),
     tanstackStart({
-      pages: ["/", ...Object.values(docs).map(({ path }) => path)].map((path) => ({ path })),
+      client: { entry: "client.ts" },
+      router: { codeSplittingOptions: { defaultBehavior: [] } },
+      server: { build: { inlineCss: true } },
+      pages: ["/", "/zh-CN/", ...Object.values(docs).flatMap((pages) => Object.values(pages).map(({ path }) => path))].map((path) => ({ path })),
       prerender: {
         enabled: true,
         autoStaticPathsDiscovery: false,

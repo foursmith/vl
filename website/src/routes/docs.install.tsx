@@ -4,6 +4,6 @@ import { DocPage, docHead } from "../doc-page"
 import { docs } from "../docs-paths"
 
 export const Route = createFileRoute("/docs/install")({
-  head: () => docHead(docs.install),
-  component: () => <DocPage content={content} />,
+  head: () => docHead(docs["en"].install, "en"),
+  component: () => <DocPage content={content} locale="en" />,
 })
