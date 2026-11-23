@@ -212,11 +212,11 @@ func ParseStatus(raw string) ([]Change, error) {
 func (r *Repository) Snapshot(ctx context.Context) (Snapshot, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	var listing WorkspaceFiles
+	var paths []string
 	var filesErr error
 	var tasks sync.WaitGroup
 	tasks.Go(func() {
-		listing, filesErr = r.ListWorkspaceFiles(ctx, false)
+		paths, filesErr = r.listWorkspaceFiles(ctx)
 		if filesErr != nil {
 			cancel()
 		}
@@ -226,7 +226,7 @@ func (r *Repository) Snapshot(ctx context.Context) (Snapshot, error) {
 		cancel()
 	}
 	tasks.Wait()
-	snapshot.Files = listing.Paths
+	snapshot.Files = paths
 	return snapshot, errors.Join(err, filesErr)
 }
 

@@ -611,16 +611,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 	}
 	switch msg := msg.(type) {
 	case searchMsg:
-		if msg.seq == m.search.seq {
-			m.search.loading = false
-			m.search.result = msg.result
-			m.sortSearchFiles()
-			if msg.err != nil {
-				m.search.err = msg.err.Error()
-			}
-			m.clampSearch()
-		}
-		return m, nil
+		return m, m.applySearchResults(msg)
 
 	case layoutSavedMsg:
 		if msg.err != nil {

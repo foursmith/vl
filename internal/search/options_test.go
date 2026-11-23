@@ -104,6 +104,9 @@ func TestSearchIgnoreFilesWithoutVSCodeSettings(t *testing.T) {
 		for _, name := range []string{"git.txt", "ignore.txt", "settings.txt", "keep.tmp", "drop.tmp", "normal.txt", "app.js", "app.ts", "other.js"} {
 			writeSearchFile(t, filepath.Join(root, name), "needle")
 		}
+		if git {
+			searchGit(t, root, "add", "-f", "git.txt", "ignore.txt")
+		}
 		for _, o := range []Options{{Query: "needle"}, {Query: "needle", OnlyOpen: true}, {Query: "needle", IncludeIgnored: true, Exclude: "normal.txt"}} {
 			buffers := map[string]string{}
 			if o.OnlyOpen {

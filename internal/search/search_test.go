@@ -147,6 +147,10 @@ func TestWorkspaceSearchesNestedRepositoriesAndTheirIgnoreRules(t *testing.T) {
 			}
 		}
 	}
+	got, err := Run(context.Background(), root, Options{Query: "needle", ChangedOnly: true}, nil)
+	if err != nil || got.Count != 6 {
+		t.Fatalf("changed-only search across nested worktrees: got %d matches, want 6: %v", got.Count, err)
+	}
 }
 
 func TestWorkspaceSearchesGitlinkAsFolderWithoutUsableMetadata(t *testing.T) {
@@ -204,7 +208,12 @@ func TestWorkspaceIncludesDeletedOpenBuffersWithoutSearchingMetadata(t *testing.
 	root := t.TempDir()
 	root, _ = filepath.EvalSymlinks(root)
 	initSearchRepository(t, root)
-	result, err := Run(context.Background(), root, Options{Query: "needle"}, map[string]string{filepath.Join(root, "deleted.txt"): "unsaved needle", filepath.Join(root, ".git", "config"): "needle"})
+	writeSearchFile(t, filepath.Join(root, ".gitignore"), "ignored/\n!ignored/deleted.txt\n")
+	result, err := Run(context.Background(), root, Options{Query: "needle"}, map[string]string{
+		filepath.Join(root, "deleted.txt"):            "unsaved needle",
+		filepath.Join(root, ".git", "config"):         "needle",
+		filepath.Join(root, "ignored", "deleted.txt"): "unsaved needle",
+	})
 	if err != nil || result.Count != 1 || filepath.Base(result.Files[0].Path) != "deleted.txt" {
 		t.Fatalf("open buffer search: %+v %v", result, err)
 	}
@@ -217,6 +226,21 @@ func TestFindAllMatchesAndMultilineAnchors(t *testing.T) {
 	matches = findMatches(t, Options{Query: "^needle$", Regex: true}, "before\nneedle\nafter\nneedle", "")
 	if len(matches) != 2 || matches[1].Line != 4 {
 		t.Fatalf("line anchors: %+v", matches)
+	}
+}
+
+func TestScanMatchesNormalizedTextAndRetainsIndependentSnapshots(t *testing.T) {
+	root := t.TempDir()
+	writeSearchFile(t, filepath.Join(root, "a.txt"), "\ufeffK\r\nnext")
+	writeSearchFile(t, filepath.Join(root, "b.txt"), "k\r\nlast")
+	for _, query := range []string{"k", "k\n"} {
+		got, err := Run(context.Background(), root, Options{Query: query}, nil)
+		if err != nil || got.Count != 2 || len(got.Files) != 2 {
+			t.Fatalf("query %q: %+v, %v", query, got, err)
+		}
+		if got.Files[0].Text != "K\nnext" || got.Files[1].Text != "k\nlast" {
+			t.Fatalf("query %q lost a normalized text snapshot", query)
+		}
 	}
 }
 

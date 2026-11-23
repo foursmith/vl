@@ -16,6 +16,7 @@ import (
 
 // Keep files in a directory together, ahead of its descendants.
 func (m *Model) sortSearchFiles() {
+	m.search.rows = nil
 	sort.SliceStable(m.search.result.Files, func(i, j int) bool {
 		a, b := m.search.result.Files[i].Path, m.search.result.Files[j].Path
 		if ad, bd := filepath.Dir(a), filepath.Dir(b); ad != bd {
@@ -183,5 +184,6 @@ func (m *Model) dismissSearchResult(index int) {
 			s.result.Files = slices.Delete(s.result.Files, r.file, r.file+1)
 		}
 	}
+	s.rows = nil
 	m.clampSearch()
 }

@@ -124,14 +124,7 @@ func (m *Model) selectSidebarRow(index int) *item {
 
 func (m *Model) sidebarRowWithKey(key string) int {
 	if m.section == search {
-		if !m.search.loading {
-			for index, row := range m.searchRows() {
-				if m.searchEntry(row).key == key {
-					return index
-				}
-			}
-		}
-		return -1
+		return m.searchRowWithKey(key)
 	}
 	for index, entry := range m.items {
 		if entry.key == key {

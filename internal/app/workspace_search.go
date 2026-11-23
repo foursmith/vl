@@ -19,6 +19,7 @@ type searchState struct {
 	details            bool
 	options            searchservice.Options
 	result             searchservice.Result
+	rows               []searchRow
 	seq                int
 	cancel             context.CancelFunc
 	loading            bool
@@ -32,6 +33,7 @@ type searchMsg struct {
 	seq    int
 	result searchservice.Result
 	err    error
+	next   tea.Cmd
 }
 type searchRow struct{ file, match int }
 
@@ -116,6 +118,7 @@ func (m *Model) scheduleSearch(delay time.Duration) tea.Cmd {
 	s.options.Include = s.include.Value()
 	s.options.Exclude = s.exclude.Value()
 	s.result = searchservice.Result{}
+	s.rows = nil
 	s.err = ""
 	s.top = 0
 	s.selected = 0
@@ -123,14 +126,15 @@ func (m *Model) scheduleSearch(delay time.Duration) tea.Cmd {
 	if !s.loading {
 		return nil
 	}
-	if _, err := s.options.Compile(); err != nil {
+	matcher, err := s.options.Compile()
+	if err != nil {
 		s.err = err.Error()
 		s.loading = false
 		return nil
 	}
 	ctx, cancel := context.WithCancel(m.ctx)
 	s.cancel = cancel
-	seq, root, options := s.seq, m.repo.Root, s.options
+	seq, root := s.seq, m.repo.Root
 	buffers := map[string]string{}
 	for _, t := range m.tabs {
 		if t.doc != nil {
@@ -138,7 +142,6 @@ func (m *Model) scheduleSearch(delay time.Duration) tea.Cmd {
 		}
 	}
 	return func() tea.Msg {
-		defer cancel()
 		if delay > 0 {
 			timer := time.NewTimer(delay)
 			defer timer.Stop()
@@ -148,23 +151,114 @@ func (m *Model) scheduleSearch(delay time.Duration) tea.Cmd {
 			case <-timer.C:
 			}
 		}
-		result, err := searchservice.Run(ctx, root, options, buffers)
-		return searchMsg{seq, result, err}
+		results := make(chan searchMsg)
+		receive := func() tea.Msg {
+			select {
+			case <-ctx.Done():
+				return nil
+			case msg := <-results:
+				return msg
+			}
+		}
+		go func() {
+			defer cancel()
+			var batch searchservice.Result
+			var last time.Time
+			publish := func(next tea.Cmd, err error) {
+				select {
+				case <-ctx.Done():
+				case results <- searchMsg{seq: seq, result: batch, err: err, next: next}:
+				}
+				batch = searchservice.Result{}
+				last = time.Now()
+			}
+			unreadable, err := matcher.Scan(ctx, root, buffers, func(file searchservice.File) {
+				batch.Count += len(file.Matches)
+				batch.Files = append(batch.Files, file)
+				if time.Since(last) >= 120*time.Millisecond {
+					publish(receive, nil)
+				}
+			})
+			batch.Unreadable = unreadable
+			publish(nil, err)
+		}()
+		return receive()
 	}
 }
+
+func (m *Model) applySearchResults(msg searchMsg) tea.Cmd {
+	s := &m.search
+	if s.seq != msg.seq {
+		return nil
+	}
+	start := len(s.result.Files)
+	s.result.Files = append(s.result.Files, msg.result.Files...)
+	s.result.Count += msg.result.Count
+	s.result.Unreadable += msg.result.Unreadable
+	if s.rows != nil {
+		s.appendRows(start)
+	}
+	if msg.next != nil {
+		m.clampSearch()
+		return msg.next
+	}
+	s.loading = false
+	if msg.err != nil {
+		s.err = msg.err.Error()
+	}
+	var selectedKey string
+	if s.focus == 2 {
+		if row, ok := m.selectedSearchRow(); ok {
+			selectedKey = m.searchEntry(row).key
+		}
+	}
+	m.sortSearchFiles()
+	if selectedKey != "" {
+		if index := m.searchRowWithKey(selectedKey); index >= 0 {
+			s.selected = index
+			m.searchList().ensureSelected()
+		}
+	}
+	m.clampSearch()
+	return nil
+}
 func (m *Model) searchRows() []searchRow {
-	var rows []searchRow
-	for i, f := range m.search.result.Files {
-		rows = append(rows, searchRow{i, -1})
-		if !m.search.folded[f.Path] {
+	s := &m.search
+	if len(s.result.Files) == 0 {
+		return nil
+	}
+	if s.rows == nil {
+		s.appendRows(0)
+	}
+	return s.rows
+}
+
+func (m *Model) searchRowWithKey(key string) int {
+	for index, row := range m.searchRows() {
+		if m.searchEntry(row).key == key {
+			return index
+		}
+	}
+	return -1
+}
+
+func (s *searchState) appendRows(start int) {
+	for i := start; i < len(s.result.Files); i++ {
+		f := s.result.Files[i]
+		s.rows = append(s.rows, searchRow{i, -1})
+		if !s.folded[f.Path] {
 			for j := range f.Matches {
 				if j == 0 || f.Matches[j].Line != f.Matches[j-1].Line {
-					rows = append(rows, searchRow{i, j})
+					s.rows = append(s.rows, searchRow{i, j})
 				}
 			}
 		}
 	}
-	return rows
+}
+
+func (s *searchState) setFolded(path string, folded bool) {
+	s.folded[path] = folded
+	s.rows = nil
 }
 func (m *Model) searchResultY() int { return m.searchPanelLayout().results }
 func (m *Model) clampSearch() {
@@ -177,11 +271,9 @@ func (m *Model) clampSearchList(list sidebarList) {
 }
 
 func (m *Model) selectedSearchRow() (searchRow, bool) {
-	if !m.search.loading {
-		rows := m.searchRows()
-		if index := m.search.selected; index >= 0 && index < len(rows) {
-			return rows[index], true
-		}
+	rows := m.searchRows()
+	if index := m.search.selected; index >= 0 && index < len(rows) {
+		return rows[index], true
 	}
 	return searchRow{}, false
 }
@@ -260,7 +352,7 @@ func (m *Model) openSearchRight() tea.Cmd {
 	if !m.search.folded[path] {
 		return m.openSelected()
 	}
-	m.search.folded[path] = false
+	m.search.setFolded(path, false)
 	m.ensureSidebar()
 	return nil
 }

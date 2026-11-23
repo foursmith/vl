@@ -41,6 +41,7 @@ type Result struct {
 type Matcher struct {
 	options    Options
 	expression *regexp.Regexp
+	rawLiteral bool
 }
 
 func (o Options) Compile() (*Matcher, error) {
@@ -57,7 +58,9 @@ func (o Options) Compile() (*Matcher, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Matcher{options: o, expression: expression}, nil
+	// Removing a BOM and normalizing CRLF cannot create a new occurrence of
+	// a literal without line feeds, so misses can skip text decoding.
+	return &Matcher{options: o, expression: expression, rawLiteral: !o.Regex && !strings.Contains(o.Query, "\n")}, nil
 }
 func word(r rune) bool { return unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_' }
 func (m *Matcher) Find(text, replacement string) []Match {
@@ -69,10 +72,12 @@ func (m *Matcher) Find(text, replacement string) []Match {
 	line, scanned := 1, 0
 	for _, loc := range m.expression.FindAllStringSubmatchIndex(text, -1) {
 		a, b := loc[0], loc[1]
-		before, _ := utf8.DecodeLastRuneInString(text[:a])
-		after, _ := utf8.DecodeRuneInString(text[b:])
-		if m.options.Word && ((a > 0 && word(before)) || (b < len(text) && word(after))) {
-			continue
+		if m.options.Word {
+			before, _ := utf8.DecodeLastRuneInString(text[:a])
+			after, _ := utf8.DecodeRuneInString(text[b:])
+			if word(before) || word(after) {
+				continue
+			}
 		}
 		segment := text[scanned:a]
 		line += strings.Count(segment, "\n")
@@ -89,178 +94,158 @@ func (m *Matcher) Find(text, replacement string) []Match {
 	return result
 }
 
-// Run reads only regular workspace files. Open editor snapshots take precedence over disk.
+// Run collects all matches in path order.
 func Run(ctx context.Context, root string, o Options, buffers map[string]string) (Result, error) {
 	var result Result
 	matcher, err := o.Compile()
 	if err != nil {
 		return result, err
 	}
+	unreadable, err := matcher.Scan(ctx, root, buffers, func(file File) {
+		result.Count += len(file.Matches)
+		result.Files = append(result.Files, file)
+	})
+	result.Unreadable = unreadable
+	sort.Slice(result.Files, func(i, j int) bool { return result.Files[i].Path < result.Files[j].Path })
+	return result, err
+}
+
+// Scan reports complete file results as they are found. Open editor snapshots
+// take precedence over disk.
+func (m *Matcher) Scan(ctx context.Context, root string, buffers map[string]string, found func(File)) (int, error) {
+	o := m.options
+	unreadable := 0
 	includes, err := compileGlobs(o.Include)
 	if err != nil {
-		return result, fmt.Errorf("include: %w", err)
+		return unreadable, fmt.Errorf("include: %w", err)
 	}
 	excludes, err := compileGlobs(o.Exclude)
 	if err != nil {
-		return result, fmt.Errorf("exclude: %w", err)
+		return unreadable, fmt.Errorf("exclude: %w", err)
 	}
 	if o.Query == "" {
-		return result, nil
+		return unreadable, nil
 	}
 	if err := ctx.Err(); err != nil {
-		return result, err
+		return unreadable, err
 	}
 	root, err = filepath.Abs(root)
 	if err == nil {
 		root, err = filepath.EvalSymlinks(root)
 	}
 	if err != nil {
-		return result, fmt.Errorf("resolve search workspace: %w", err)
+		return unreadable, fmt.Errorf("resolve search workspace: %w", err)
 	}
-	paths := map[string]bool{}
-	repo := &gitservice.Repository{Root: root}
-	fileIgnores := ignoreFiles{
-		root:    root,
-		folders: map[string]bool{".": !repo.HasRepository()},
-		cache:   map[string]directoryIgnores{},
+	pending := make(map[string]string, len(buffers))
+	for file, text := range buffers {
+		rel, err := filepath.Rel(root, file)
+		if err == nil && filepath.IsLocal(rel) && rel != "." && !metadataPath(rel) {
+			pending[filepath.ToSlash(rel)] = text
+		}
 	}
 	var changed map[string]bool
 	if o.ChangedOnly {
-		changed = map[string]bool{}
-	}
-	if !o.OnlyOpen || o.ChangedOnly {
-		listing, err := repo.ListWorkspaceFiles(ctx, o.IncludeIgnored)
+		changed, err = changedSearchFiles(ctx, root)
 		if err != nil {
-			return result, err
-		}
-		for _, dir := range listing.OrdinaryFolders {
-			fileIgnores.folders[dir] = true
-		}
-		if !o.OnlyOpen {
-			for _, path := range listing.Paths {
-				paths[filepath.Join(root, path)] = true
-			}
-		}
-		for _, owner := range listing.Repositories {
-			if !o.ChangedOnly {
-				break
-			}
-			raw, err := owner.Run(ctx, "status", "--porcelain=v1", "-z", "--untracked-files=all")
-			if err != nil {
-				return result, err
-			}
-			entries, err := gitservice.ParseStatus(raw)
-			if err != nil {
-				return result, err
-			}
-			for _, entry := range entries {
-				changed[filepath.Join(owner.Root, entry.Path)] = true
-			}
+			return unreadable, err
 		}
 	}
-	// Buffers override disk contents without bypassing the selected ignore scope.
-	extra := map[string]string{}
-	for p := range buffers {
-		rel, e := filepath.Rel(root, p)
-		if e == nil && filepath.IsLocal(rel) && !metadataPath(rel) && !paths[p] {
-			extra[filepath.ToSlash(rel)] = p
-		}
-	}
-	ignored := map[string]bool{}
-	if !o.IncludeIgnored && len(extra) > 0 {
-		relative := make([]string, 0, len(extra))
-		for rel := range extra {
-			relative = append(relative, rel)
-		}
-		var err error
-		ignored, err = repo.Ignored(ctx, relative)
-		if err != nil {
-			return result, fmt.Errorf("check search buffer ignore rules: %w", err)
-		}
-	}
-	for rel, p := range extra {
-		if !ignored[rel] {
-			paths[p] = true
-		}
-	}
-	ordered := make([]string, 0, len(paths))
-	for p := range paths {
-		ordered = append(ordered, p)
-	}
-	sort.Strings(ordered)
-	for _, path := range ordered {
+	var scratch bytes.Buffer
+	scan := func(relative, text string, open bool) error {
 		if err := ctx.Err(); err != nil {
-			return result, err
+			return err
 		}
-		relative, _ := filepath.Rel(root, path)
-		relative = filepath.ToSlash(relative)
-		if !o.IncludeIgnored {
-			ignored, err := fileIgnores.ignored(relative)
+		if len(includes) > 0 && !matchesGlobs(includes, relative) || matchesGlobs(excludes, relative) {
+			return nil
+		}
+		file := filepath.Join(root, relative)
+		if o.ChangedOnly && !changed[file] {
+			if !open {
+				return nil
+			}
+			data, err := readRegularFile(file, &scratch)
+			if err == nil && data != nil && normalizeText(data) == text {
+				return nil
+			}
+		}
+		if !open {
+			data, err := readRegularFile(file, &scratch)
 			if err != nil {
-				return result, err
+				if !os.IsNotExist(err) {
+					unreadable++
+				}
+				return nil
+			}
+			if data == nil || (m.rawLiteral && !m.expression.Match(data)) ||
+				!utf8.Valid(data) || bytes.IndexByte(data, 0) >= 0 {
+				return nil
+			}
+			text = normalizeText(data)
+		}
+		if matches := m.Find(text, ""); len(matches) != 0 {
+			found(File{file, text, matches})
+		}
+		return nil
+	}
+	if !o.OnlyOpen {
+		err = walkFilePaths(ctx, root, o.IncludeIgnored, func(relative string, regular bool) error {
+			text, open := pending[relative]
+			if open {
+				delete(pending, relative)
+			}
+			if regular || open {
+				return scan(relative, text, open)
+			}
+			return nil
+		})
+		if err != nil {
+			return unreadable, err
+		}
+	}
+	ignores := ignoreFiles{root: root, cache: map[string]directoryIgnores{}}
+	for relative, text := range pending {
+		if !o.IncludeIgnored {
+			ignored, err := ignores.ignored(relative)
+			if err != nil {
+				return unreadable, err
 			}
 			if ignored {
 				continue
 			}
 		}
-		if len(includes) > 0 && !matchesGlobs(includes, relative) || matchesGlobs(excludes, relative) {
-			continue
+		if err := scan(relative, text, true); err != nil {
+			return unreadable, err
 		}
-		if o.ChangedOnly && !changed[path] {
-			text, open := buffers[path]
-			if !open {
-				continue
-			}
-			data, e := os.ReadFile(path)
-			normalized := strings.TrimPrefix(strings.ReplaceAll(string(data), "\r\n", "\n"), "\xef\xbb\xbf")
-			if e == nil && normalized == text {
-				continue
-			}
-		}
-		text, ok := buffers[path]
-		if !ok {
-			real, e := filepath.EvalSymlinks(path)
-			if os.IsNotExist(e) {
-				continue
-			}
-			if e != nil {
-				result.Unreadable++
-				continue
-			}
-			if real != filepath.Clean(path) {
-				continue
-			}
-			info, e := os.Lstat(path)
-			if e != nil {
-				result.Unreadable++
-				continue
-			}
-			if !info.Mode().IsRegular() {
-				continue
-			}
-			data, e := os.ReadFile(path)
-			if e != nil {
-				result.Unreadable++
-				continue
-			}
-			if !utf8.Valid(data) || bytes.IndexByte(data, 0) >= 0 {
-				continue
-			}
-			text = strings.TrimPrefix(strings.ReplaceAll(string(data), "\r\n", "\n"), "\xef\xbb\xbf")
-		}
-		matches := matcher.Find(text, "")
-		if len(matches) == 0 {
-			continue
-		}
-		result.Files = append(result.Files, File{path, text, matches})
-		result.Count += len(matches)
 	}
-	return result, nil
+	return unreadable, ctx.Err()
+}
+
+func changedSearchFiles(ctx context.Context, root string) (map[string]bool, error) {
+	repo := &gitservice.Repository{Root: root}
+	changed := map[string]bool{}
+	repositories, err := repo.WorkspaceRepositories(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, owner := range repositories {
+		raw, err := owner.Run(ctx, "status", "--porcelain=v1", "-z", "--untracked-files=all")
+		if err != nil {
+			return nil, err
+		}
+		entries, err := gitservice.ParseStatus(raw)
+		if err != nil {
+			return nil, err
+		}
+		for _, entry := range entries {
+			changed[filepath.Join(owner.Root, entry.Path)] = true
+		}
+	}
+	return changed, nil
 }
 
 func metadataPath(path string) bool {
 	for _, part := range strings.Split(filepath.ToSlash(path), "/") {
-		if part == ".git" {
+		if strings.EqualFold(part, ".git") {
 			return true
 		}
 	}

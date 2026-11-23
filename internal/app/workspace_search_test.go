@@ -151,6 +151,35 @@ func TestWorkspaceSearchLayoutScrollAndMouse(t *testing.T) {
 	}
 }
 
+func TestWorkspaceSearchReportsSelectableResultsBeforeCompletion(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	defer m.Close()
+	for _, name := range []string{"a.txt", "b.txt"} {
+		if err := os.WriteFile(filepath.Join(m.repo.Root, name), []byte("needle\n"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	m.openSearch()
+	m.search.query.SetValue("needle")
+	_, next := m.Update(m.runSearch()())
+	if !m.search.loading || m.search.result.Count != 1 || next == nil {
+		t.Fatal("first match was not published during the scan")
+	}
+	m.focusSearch(2)
+	row, ok := m.selectedSearchRow()
+	if !ok || filepath.Base(m.searchEntry(row).file) != "a.txt" {
+		t.Fatal("the early result was not selectable")
+	}
+	if cmd := m.replaceSearch(true); cmd != nil {
+		t.Fatal("replace all was available during the scan")
+	}
+	m.dismissSearchResult(0)
+	drain(t, m, next)
+	if m.search.loading || m.search.result.Count != 1 || filepath.Base(m.search.result.Files[0].Path) != "b.txt" {
+		t.Fatal("completion lost a later file or restored a dismissed result")
+	}
+}
+
 func TestWorkspaceSearchResultHoverWithNoTreeItems(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	m.openSearch()

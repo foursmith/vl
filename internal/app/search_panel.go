@@ -156,6 +156,9 @@ func (m *Model) searchLines(nav []string, w int) []string {
 	switch {
 	case s.loading:
 		summary = searchText("Searching…")
+		if s.result.Count > 0 {
+			summary = searchText("%d results · Searching…", s.result.Count)
+		}
 	case s.err != "":
 		summary = s.err
 	case s.options.Query == "":
@@ -235,7 +238,7 @@ func (m *Model) clickSearch(x, y int) tea.Cmd {
 	if row, ok := m.selectedSearchRow(); ok && row.match < 0 && x < m.searchResultChevronX()+2 {
 		m.lastClickKey = ""
 		path := m.search.result.Files[row.file].Path
-		m.search.folded[path] = !m.search.folded[path]
+		m.search.setFolded(path, !m.search.folded[path])
 		m.clampSearch()
 		return nil
 	}
