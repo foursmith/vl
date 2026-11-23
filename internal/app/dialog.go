@@ -30,6 +30,9 @@ func (m *Model) confirmationDialog() bool {
 }
 
 func (m *Model) showDialog(kind, title string) {
+	if kind != "quick" {
+		m.clearQuickFilePicker()
+	}
 	if kind != "githubPublish" {
 		m.githubPublish = nil
 	}
@@ -48,6 +51,7 @@ func (m *Model) openConfirmation(title, detail string, cancel func() tea.Cmd, ac
 }
 
 func (m *Model) dismissDialog() {
+	m.clearQuickFilePicker()
 	m.confirmationActions = nil
 	m.githubPublish = nil
 	m.modal = ""

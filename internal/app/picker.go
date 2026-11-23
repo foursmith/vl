@@ -1,9 +1,12 @@
 package app
 
 import (
+	"context"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
+	searchservice "github.com/foursmith/vl/internal/search"
 	"github.com/foursmith/vl/internal/theme"
 )
 
@@ -12,6 +15,10 @@ type pickerLayout struct {
 }
 
 func (m *Model) pickerHeight() int { return min(16, max(1, m.height-7)) }
+
+func (m *Model) hasPickerIgnoreToggle() bool {
+	return !m.editorOnly && m.modal == "quick" && !m.commandPicker()
+}
 
 func (l pickerLayout) indexAt(x, y int) int {
 	i := y - l.y - 3
@@ -33,15 +40,38 @@ func (m *Model) pickerLayout(rows []action) pickerLayout {
 	return pickerLayout{(m.width - w) / 2, 1, w, m.pickerTop, min(m.pickerHeight(), max(0, len(rows)-m.pickerTop))}
 }
 
+func (m *Model) pickerIgnoreControl(l pickerLayout) searchPanelControl {
+	label := m.symbol(symbolIgnoreRules)
+	width := max(2, ansi.StringWidth(label))
+	return searchPanelControl{id: "ignore", label: label, x: l.x + l.width - 2 - width, y: l.y + 1, width: width, embedded: true}
+}
+
+func (m *Model) pickerIgnoreAt(l pickerLayout, x, y int) bool {
+	if !m.hasPickerIgnoreToggle() {
+		return false
+	}
+	c := m.pickerIgnoreControl(l)
+	return y == c.y && x >= c.x && x < c.x+c.width
+}
+
 func (m *Model) pickerOverlay(base []string) []string {
 	rows := m.filteredActions()
 	l := m.pickerLayout(rows)
 	bg := m.colors.Panel
 	w := l.width - 2
 	border := theme.Style(m.colors.PopupBorder, bg)
+	shown := m.input
+	inputWidth, controls := w, ""
+	if m.hasPickerIgnoreToggle() {
+		c := m.pickerIgnoreControl(l)
+		inputWidth = c.x - l.x - 1
+		shown.SetWidth(max(1, inputWidth-3))
+		controls = m.searchControlView(c, bg, !m.fileListIncludeIgnored, m.pickerIgnoreAt(l, m.hoverX, m.hoverY)) +
+			row("", w-inputWidth-c.width, m.colors.InputForeground, bg)
+	}
 	box := []string{
 		inputBorderRule(border, l.width, "╭", "╮"),
-		border.Render("│") + row(" "+m.inputView(m.input, l.x+2, l.y+1), w, m.colors.InputForeground, bg) + border.Render("│"),
+		border.Render("│") + row(" "+m.inputView(shown, l.x+2, l.y+1), inputWidth, m.colors.InputForeground, bg) + controls + border.Render("│"),
 		inputBorderRule(border, l.width, "├", "┤"),
 	}
 	hovered := l.indexAt(m.hoverX, m.hoverY)
@@ -51,7 +81,9 @@ func (m *Model) pickerOverlay(base []string) []string {
 
 	if len(rows) == 0 {
 		message := m.tr("No matches")
-		if m.modal == "recent" && m.input.Value() == "" {
+		if m.modal == "quick" && !m.commandPicker() && m.fileListLoading && len(m.snapshot.Files) == 0 {
+			message = m.tr("Loading…")
+		} else if m.modal == "recent" && m.input.Value() == "" {
 			message = m.tr("No recent workspaces")
 		}
 		box = append(box, border.Render("│")+row("  "+message, w, theme.Readable(m.colors.Muted, bg), bg)+border.Render("│"))
@@ -74,6 +106,9 @@ func (m *Model) clickPicker(msg tea.MouseClickMsg) tea.Cmd {
 		return nil
 	}
 	if msg.Button == tea.MouseLeft && msg.X >= l.x && msg.X < l.x+l.width {
+		if m.pickerIgnoreAt(l, msg.X, msg.Y) {
+			return m.togglePickerIgnore()
+		}
 		if msg.Y >= l.y && msg.Y < l.y+3 {
 			return nil
 		}
@@ -104,11 +139,15 @@ func (m *Model) selectPickerChoice() tea.Cmd {
 		return nil
 	}
 	a := rows[m.pickerIndex]
-	if a.run == nil {
-		return nil
-	}
 	if a.disabled != "" {
 		m.notice = a.disabled
+		return nil
+	}
+	if a.run == nil {
+		if m.modal == "quick" && !m.commandPicker() && a.id != "" {
+			m.dismissDialog()
+			return m.openFileInExplorer(a.id)
+		}
 		return nil
 	}
 	if m.commandPicker() {
@@ -125,6 +164,42 @@ func (m *Model) selectPickerChoice() tea.Cmd {
 }
 
 func (m *Model) openQuickFiles() tea.Cmd { return m.openQuickPicker("") }
+
+func (m *Model) refreshWorkspaceFiles() tea.Cmd {
+	if m.fileListCancel != nil {
+		m.fileListCancel()
+	}
+	ctx, cancel := context.WithCancel(m.ctx)
+	m.fileListCancel = cancel
+	m.fileListSeq++
+	m.fileListLoading = true
+	seq, root, includeIgnored := m.fileListSeq, m.repo.Root, m.fileListIncludeIgnored
+	return func() tea.Msg {
+		defer cancel()
+		paths, err := searchservice.ListFilePaths(ctx, root, includeIgnored)
+		return workspaceFilesMsg{seq, paths, err}
+	}
+}
+
+func (m *Model) togglePickerIgnore() tea.Cmd {
+	m.fileListIncludeIgnored = !m.fileListIncludeIgnored
+	m.snapshot.Files = nil
+	m.palette = nil
+	m.syncQuickPicker()
+	m.syncPicker()
+	return m.refreshWorkspaceFiles()
+}
+
+func (m *Model) clearQuickFilePicker() {
+	if m.quickFilesFilter.base == nil {
+		return
+	}
+	if len(m.palette) > 0 && m.quickFilesFilter.base == &m.palette[0] {
+		m.palette = nil
+	}
+	m.pickerFilter = pickerFilterCache{}
+	m.quickFilesFilter = quickFilesFilter{}
+}
 
 func (m *Model) commandPicker() bool {
 	return m.modal == "quick" && strings.HasPrefix(m.input.Value(), ">")
@@ -152,6 +227,7 @@ func (m *Model) syncQuickPicker() {
 	}
 	m.modalTitle = title
 	m.pickerIndex = 0
+	m.quickFilesFilter = quickFilesFilter{}
 	if m.commandPicker() {
 		m.input.Placeholder = ""
 		m.palette = m.commandActions()
@@ -160,6 +236,9 @@ func (m *Model) syncQuickPicker() {
 	m.input.Placeholder = m.tr("Go to File (name or path, add :line or :line:column)")
 	m.palette = make([]action, 0, len(m.snapshot.Files))
 	for _, path := range m.snapshot.Files {
-		m.palette = append(m.palette, action{id: path, label: path, run: func() tea.Cmd { return m.openFileInExplorer(path) }})
+		m.palette = append(m.palette, action{id: path, label: path})
+	}
+	if len(m.palette) > 0 {
+		m.quickFilesFilter.base = &m.palette[0]
 	}
 }

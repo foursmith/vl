@@ -195,6 +195,9 @@ func (m *Model) renderRowActions(actions []rowAction, bg string) string {
 }
 
 func (m *Model) hoverHint() string {
+	if m.pickerIgnoreAt(m.pickerLayout(nil), m.hoverX, m.hoverY) {
+		return m.tr("Respect ignore rules") + " · " + pickerKeys.ToggleIgnore.Help().Key
+	}
 	if m.modal == "" && m.contextMenu == nil && m.sidebarAt(m.hoverX) {
 		if state := m.repositoryEmptyState(); m.repositoryEmptyButtonAt(state, m.hoverX-m.sideX(), m.hoverY) {
 			return m.tr(state.label) + " · Enter"

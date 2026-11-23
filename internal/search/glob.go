@@ -66,13 +66,27 @@ func compileGlobs(value string) ([]*regexp.Regexp, error) {
 	return patterns, nil
 }
 func globExpression(pattern string) (string, error) {
+	return pathGlobExpression(pattern, false)
+}
+
+func pathGlobExpression(pattern string, ignoreSyntax bool) (string, error) {
 	var b strings.Builder
 	depth := 0
 	for i := 0; i < len(pattern); i++ {
 		switch c := pattern[i]; c {
 		case '*':
-			if i+1 < len(pattern) && pattern[i+1] == '*' {
+			end := i + 1
+			for end < len(pattern) && pattern[end] == '*' {
+				end++
+			}
+			if ignoreSyntax && (end-i == 1 || i > 0 && pattern[i-1] != '/' || end < len(pattern) && pattern[end] != '/') {
+				b.WriteString("[^/]*")
+				i = end - 1
+			} else if i+1 < len(pattern) && pattern[i+1] == '*' {
 				i++
+				if ignoreSyntax {
+					i = end - 1
+				}
 				if i+1 < len(pattern) && pattern[i+1] == '/' {
 					b.WriteString("(?:.*/)?")
 					i++
@@ -82,12 +96,30 @@ func globExpression(pattern string) (string, error) {
 			} else {
 				b.WriteString("[^/]*")
 			}
+		case '\\':
+			if ignoreSyntax {
+				i++
+				if i == len(pattern) {
+					return "", fmt.Errorf("trailing escape in file pattern %q", pattern)
+				}
+				b.WriteString(regexp.QuoteMeta(pattern[i : i+1]))
+			} else {
+				b.WriteString(regexp.QuoteMeta(string(c)))
+			}
 		case '?':
 			b.WriteString("[^/]")
 		case '{':
+			if ignoreSyntax {
+				b.WriteString(regexp.QuoteMeta(string(c)))
+				continue
+			}
 			depth++
 			b.WriteString("(?:")
 		case '}':
+			if ignoreSyntax {
+				b.WriteString(regexp.QuoteMeta(string(c)))
+				continue
+			}
 			depth--
 			b.WriteByte(')')
 		case ',':
@@ -106,6 +138,12 @@ func globExpression(pattern string) (string, error) {
 				end++
 			}
 			for end < len(pattern) && pattern[end] != ']' {
+				if ignoreSyntax && strings.HasPrefix(pattern[end:], "[:") {
+					if offset := strings.Index(pattern[end+2:], ":]"); offset >= 0 {
+						end += offset + 4
+						continue
+					}
+				}
 				end++
 			}
 			if end == len(pattern) {
@@ -113,7 +151,7 @@ func globExpression(pattern string) (string, error) {
 			}
 			content := pattern[i+1 : end]
 			b.WriteByte('[')
-			if strings.HasPrefix(content, "!") {
+			if strings.HasPrefix(content, "!") || ignoreSyntax && strings.HasPrefix(content, "^") {
 				b.WriteString("^/")
 				content = content[1:]
 			}

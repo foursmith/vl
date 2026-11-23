@@ -135,6 +135,7 @@
   "Line number must be greater than 0": "行号必须大于 0",
   "Column number must be greater than 0": "列号必须大于 0",
   "Current file": "当前文件",
+  "Respect ignore rules": "遵循忽略规则",
   "Open a text file first, then enter :line[:column]": "请先打开文本文件，再输入 :行号[:列号]",
   "Go to line is unavailable in image previews": "图片预览不支持转到行",
   "No commits yet": "尚无提交",

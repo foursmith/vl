@@ -45,7 +45,9 @@ In confirmation dialogs, use `←`/`→` or `Tab` to select a button, `Enter` to
 | `F7` / right-click | Open the context menu |
 | `Ctrl+Q` | Quit. Prompts if there are unsaved changes. |
 
-Go to File filters by filename or path as you type. Prefix the input with `>` for
+Go to File filters by filename or path as you type. It scans the workspace
+directory and applies local `.gitignore` and `.ignore` rules. Press `F4` or click
+the ignore rules icon beside the input to toggle them. Prefix the input with `>` for
 commands, or use `:line[:column]` to jump within the current file. See the
 [Vim guide](VIM.md#save-and-quit-commands) for save and quit commands. In a picker,
 use `Down` / `Up` or `Ctrl+J` / `Ctrl+K` to select the next / previous

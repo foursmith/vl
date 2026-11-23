@@ -18,7 +18,7 @@ func (m *Model) quickPositionActions(value string) ([]action, bool) {
 		if a.id == value {
 			return nil, false
 		}
-		if strings.HasPrefix(value, a.id+":") && len(a.id) > colon {
+		if suffix, ok := strings.CutPrefix(value, a.id); ok && strings.HasPrefix(suffix, ":") && len(a.id) > colon {
 			colon = len(a.id)
 		}
 	}
@@ -59,24 +59,21 @@ func (m *Model) quickPositionActions(value string) ([]action, bool) {
 		})}, true
 	}
 	var rows []action
-	query = strings.ToLower(query)
-	for _, a := range m.palette {
-		if strings.Contains(strings.ToLower(a.id), query) {
-			path := a.id
-			rows = append(rows, makeAction(path, func() tea.Cmd {
-				if !m.openDocument(path, false) {
-					return nil
-				}
-				if d := m.editorDocument(); d != nil {
-					d.SetPosition(line-1, column-1)
-				} else {
-					m.notice = m.tr("Go to line is unavailable in image previews")
-				}
-				cmd := m.revealDocument(path)
-				m.ensureTextCursor()
-				return cmd
-			}))
-		}
+	for _, a := range m.matchQuickFiles(query) {
+		path := a.id
+		rows = append(rows, makeAction(path, func() tea.Cmd {
+			if !m.openDocument(path, false) {
+				return nil
+			}
+			if d := m.editorDocument(); d != nil {
+				d.SetPosition(line-1, column-1)
+			} else {
+				m.notice = m.tr("Go to line is unavailable in image previews")
+			}
+			cmd := m.revealDocument(path)
+			m.ensureTextCursor()
+			return cmd
+		}))
 	}
 	return rows, true
 }

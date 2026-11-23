@@ -218,6 +218,9 @@ func (m *Model) filterActions() []action {
 		if rows, ok := m.quickPositionActions(query); ok {
 			return rows
 		}
+		if len(m.palette) > 0 && m.quickFilesFilter.base == &m.palette[0] {
+			return m.matchQuickFiles(query)
+		}
 	}
 	query = strings.ToLower(query)
 	if query == "" {
@@ -241,6 +244,42 @@ func (m *Model) filterActions() []action {
 		}
 	}
 	return result
+}
+
+type quickFilesFilter struct {
+	base  *action
+	query string
+	rows  []action
+}
+
+func (m *Model) matchQuickFiles(query string) []action {
+	query = strings.ToLower(query)
+	if query == "" {
+		return m.palette
+	}
+	filter := &m.quickFilesFilter
+	cached := len(m.palette) > 0 && filter.base == &m.palette[0]
+	if cached && filter.query == query {
+		return filter.rows
+	}
+	candidates := m.palette
+	if cached && filter.query != "" && strings.HasPrefix(query, filter.query) {
+		candidates = filter.rows
+	}
+	var rows []action
+	if len(query) == 1 {
+		// A single character commonly matches most paths in a large worktree.
+		rows = make([]action, 0, len(candidates))
+	}
+	for _, file := range candidates {
+		if strings.Contains(strings.ToLower(file.id), query) {
+			rows = append(rows, file)
+		}
+	}
+	if cached {
+		filter.query, filter.rows = query, rows
+	}
+	return rows
 }
 
 func (m *Model) prompt(kind, title, value string) tea.Cmd {
@@ -300,6 +339,9 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 		return restore
 	}
 	if m.isPicker() {
+		if m.hasPickerIgnoreToggle() && key.Matches(msg, pickerKeys.ToggleIgnore) {
+			return m.togglePickerIgnore()
+		}
 		if key.Matches(msg, pickerKeys.Accept) {
 			return m.selectPickerChoice()
 		}

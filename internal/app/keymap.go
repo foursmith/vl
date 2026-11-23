@@ -89,12 +89,13 @@ var sidebarKeys = struct {
 	OpenPullRequest: binding("o", "Open on GitHub", "o"),
 }
 
-var pickerKeys = struct{ Up, Down, First, Last, Accept key.Binding }{
-	Up:     binding("↑ / Ctrl+K", "Previous", upArrow, "ctrl+k"),
-	Down:   binding("↓ / Ctrl+J", "Next", downArrow, "ctrl+j"),
-	First:  binding("Home", "First", "home"),
-	Last:   binding("End", "Last", "end"),
-	Accept: binding("Enter", "Select", "enter"),
+var pickerKeys = struct{ Up, Down, First, Last, Accept, ToggleIgnore key.Binding }{
+	Up:           binding("↑ / Ctrl+K", "Previous", upArrow, "ctrl+k"),
+	Down:         binding("↓ / Ctrl+J", "Next", downArrow, "ctrl+j"),
+	First:        binding("Home", "First", "home"),
+	Last:         binding("End", "Last", "end"),
+	Accept:       binding("Enter", "Select", "enter"),
+	ToggleIgnore: binding("F4", "Toggle ignore rules", "f4"),
 }
 
 // pageDelta uses the height of the focused view, excluding its chrome.

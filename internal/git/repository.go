@@ -11,8 +11,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/foursmith/vl/internal/files"
 )
 
 type Repository struct{ Root string }
@@ -212,14 +210,35 @@ func ParseStatus(raw string) ([]Change, error) {
 }
 
 func (r *Repository) Snapshot(ctx context.Context) (Snapshot, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	var listing WorkspaceFiles
+	var filesErr error
+	var tasks sync.WaitGroup
+	tasks.Go(func() {
+		listing, filesErr = r.ListWorkspaceFiles(ctx, false)
+		if filesErr != nil {
+			cancel()
+		}
+	})
+	snapshot, err := r.StatusSnapshot(ctx)
+	if err != nil {
+		cancel()
+	}
+	tasks.Wait()
+	snapshot.Files = listing.Paths
+	return snapshot, errors.Join(err, filesErr)
+}
+
+// StatusSnapshot reads Git state without enumerating the workspace's files.
+func (r *Repository) StatusSnapshot(ctx context.Context) (Snapshot, error) {
 	if !r.HasRepository() {
-		paths, err := files.List(ctx, r.Root)
-		return Snapshot{NoRepository: true, Files: paths}, err
+		return Snapshot{NoRepository: true}, ctx.Err()
 	}
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	var s Snapshot
-	var statusErr, metadataErr, filesErr error
+	var statusErr, metadataErr error
 	var tasks sync.WaitGroup
 	tasks.Go(func() {
 		state, err := r.readChanges(ctx)
@@ -241,15 +260,8 @@ func (r *Repository) Snapshot(ctx context.Context) (Snapshot, error) {
 			cancel()
 		}
 	})
-	tasks.Go(func() {
-		listing, err := r.ListWorkspaceFiles(ctx, false)
-		s.Files, filesErr = listing.Paths, err
-		if filesErr != nil {
-			cancel()
-		}
-	})
 	tasks.Wait()
-	return s, errors.Join(statusErr, metadataErr, filesErr)
+	return s, errors.Join(statusErr, metadataErr)
 }
 
 func (r *Repository) readMetadata(ctx context.Context, s *Snapshot) error {

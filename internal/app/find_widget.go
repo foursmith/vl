@@ -351,29 +351,33 @@ func (m *Model) paintSearchControls(lines []string, w int, controls []searchPane
 		if c.y < 0 || c.y >= len(lines) {
 			continue
 		}
-		fg := m.colors.Accent
-		bg := background
-		if c.embedded {
-			fg, bg = m.colors.InputForeground, m.colors.Panel
-			if c.id == "replaceAll" {
-				fg = m.colors.Accent
-			}
-		}
-		if c.quiet || c.disabled {
-			fg = m.colors.Muted
-		}
 		hovered := m.modal == "" && m.hoverY == originY+c.y && m.hoverX >= originX+c.x && m.hoverX < originX+c.x+c.width
-		if c.quiet && hovered {
-			fg = m.colors.SideForeground
-		}
 		selected := c.id == "case" && m.search.options.Case || c.id == "word" && m.search.options.Word || c.id == "regex" && m.search.options.Regex || c.id == "preserve" && m.search.options.PreserveCase
 		selected = selected || c.id == "changed" && m.search.options.ChangedOnly || c.id == "open" && m.search.options.OnlyOpen || c.id == "ignore" && !m.search.options.IncludeIgnored
-		if selected {
+		lines[c.y] = row(ansi.Cut(lines[c.y], 0, c.x), c.x, m.colors.SideForeground, background) +
+			m.searchControlView(c, background, selected, hovered) + ansi.Cut(lines[c.y], c.x+c.width, w)
+	}
+}
+
+func (m *Model) searchControlView(c searchPanelControl, background string, selected, hovered bool) string {
+	fg, bg := m.colors.Accent, background
+	if c.embedded {
+		fg, bg = m.colors.InputForeground, m.colors.Panel
+		if c.id == "replaceAll" {
 			fg = m.colors.Accent
 		}
-		label := theme.TextStyle(fg, bg).Underline(c.id == "word").Reverse(selected && m.monochrome).Render(c.label)
-		lines[c.y] = row(ansi.Cut(lines[c.y], 0, c.x), c.x, m.colors.SideForeground, background) + row(label, c.width, fg, bg) + ansi.Cut(lines[c.y], c.x+c.width, w)
 	}
+	if c.quiet || c.disabled {
+		fg = m.colors.Muted
+	}
+	if c.quiet && hovered {
+		fg = m.colors.SideForeground
+	}
+	if selected {
+		fg = m.colors.Accent
+	}
+	label := theme.TextStyle(fg, bg).Underline(c.id == "word").Reverse(selected && m.monochrome).Render(c.label)
+	return row(label, c.width, fg, bg)
 }
 func (m *Model) fileFindStatus() string {
 	cache := m.fileFindCache()

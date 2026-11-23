@@ -307,15 +307,40 @@ func TestDiffRefreshSupersedesPendingPreview(t *testing.T) {
 
 func TestRepeatedRefreshCancelsObsoleteSnapshot(t *testing.T) {
 	m := explorerWorkspace(t)
+	m.section = changes
 	old := m.refresh()
 	latest := m.refresh()
-	stale := old().(snapshotMsg)
-	if stale.err == nil {
-		t.Fatal("superseded snapshot kept running")
+	obsolete := old().(tea.BatchMsg)
+	staleStatus := obsolete[0]().(snapshotMsg)
+	staleFiles := obsolete[1]().(workspaceFilesMsg)
+	if staleStatus.err == nil || staleFiles.err == nil {
+		t.Fatal("superseded refresh kept running")
 	}
-	m.Update(stale)
+	m.Update(staleStatus)
+	m.Update(staleFiles)
+	if !m.loading || !m.fileListLoading {
+		t.Fatal("obsolete replies changed the current refresh")
+	}
 	drain(t, m, latest)
 	if m.snapshot.Branch != "main" {
 		t.Fatal("latest snapshot did not load", m.notice)
+	}
+}
+
+func TestStatusBeforeWorkspaceFilesKeepsPickerLoading(t *testing.T) {
+	m := explorerWorkspace(t)
+	defer m.Close()
+	m.snapshot = gitservice.Snapshot{}
+	m.section = changes
+	commands := m.refresh()().(tea.BatchMsg)
+	drain(t, m, commands[0])
+	m.openQuickFiles()
+	if m.loading || !m.fileListLoading || m.snapshot.Branch != "main" ||
+		!strings.Contains(plain(m.View().Content), m.tr("Loading…")) {
+		t.Fatal("Git status did not publish while the file picker was still loading")
+	}
+	drain(t, m, commands[1])
+	if m.fileListLoading || len(m.filteredActions()) == 0 || m.snapshot.Branch != "main" {
+		t.Fatal("workspace files did not populate the open picker and preserve Git status")
 	}
 }

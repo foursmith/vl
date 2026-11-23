@@ -97,6 +97,11 @@ type snapshotMsg struct {
 	snapshot gitservice.Snapshot
 	err      error
 }
+type workspaceFilesMsg struct {
+	seq   int
+	paths []string
+	err   error
+}
 type diffMsg struct {
 	target    *diffState
 	seq       int
@@ -185,6 +190,10 @@ type Model struct {
 	selected, sideTop       int
 	refreshSeq              int
 	refreshCancel           context.CancelFunc
+	fileListSeq             int
+	fileListCancel          context.CancelFunc
+	fileListLoading         bool
+	fileListIncludeIgnored  bool
 	loading, busy           bool
 	remoteProgress          *remoteProgress
 	operationProgress       string
@@ -256,6 +265,7 @@ type Model struct {
 	renderFrame             frameCache
 	welcomeOrbit            welcomeOrbit
 	pickerFilter            pickerFilterCache
+	quickFilesFilter        quickFilesFilter
 	workspaceSeq            int
 	workspaces              []string
 	openingRepository       bool
@@ -341,7 +351,15 @@ func (m *Model) refreshRepository() tea.Cmd {
 	m.refreshSeq++
 	seq := m.refreshSeq
 	m.loading = true
-	return func() tea.Msg { defer cancel(); s, err := m.repo.Snapshot(ctx); return snapshotMsg{seq, s, err} }
+	repo := m.repo
+	commands := []tea.Cmd{
+		func() tea.Msg {
+			snapshot, err := repo.StatusSnapshot(ctx)
+			return snapshotMsg{seq, snapshot, err}
+		},
+		m.refreshWorkspaceFiles(),
+	}
+	return tea.Batch(commands...)
 }
 
 func (m *Model) rebuildItems() {
@@ -539,7 +557,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 				next = tea.Batch(next, cmd)
 			}
 		}
-		if m.watchDirty && !m.loading && !m.busy {
+		if m.watchDirty && !m.loading && !m.fileListLoading && !m.busy {
 			m.watchDirty = false
 			cmd := m.refreshRepository()
 			if next == nil {
@@ -805,10 +823,26 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		m.finishAutoFetch(msg)
 	case tickMsg:
 		pullRequestRefresh := m.refreshPullRequests(false)
-		if !m.loading && !m.busy {
+		if !m.loading && !m.fileListLoading && !m.busy {
 			return m, tea.Batch(m.refresh(), m.reloadWatchedFiles(nil), pullRequestRefresh, m.tick())
 		}
 		return m, tea.Batch(pullRequestRefresh, m.tick())
+	case workspaceFilesMsg:
+		if msg.seq != m.fileListSeq {
+			return m, nil
+		}
+		m.fileListLoading = false
+		if msg.err != nil {
+			m.notice = m.tr(msg.err.Error())
+			return m, nil
+		}
+		first := len(m.snapshot.Files) == 0
+		m.snapshot.Files = msg.paths
+		if first && len(msg.paths) > 0 && m.modal == "quick" && !m.commandPicker() {
+			m.palette = nil
+			m.syncQuickPicker()
+			m.syncPicker()
+		}
 	case snapshotMsg:
 		if msg.seq != m.refreshSeq {
 			return m, nil
@@ -819,6 +853,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			return m, nil
 		}
 		previous := m.snapshot
+		msg.snapshot.Files = previous.Files
 		m.snapshot = msg.snapshot
 		m.reconcileChangeDiffs(previous)
 		m.reconcileIndexDiffTabs()

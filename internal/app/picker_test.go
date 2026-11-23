@@ -10,6 +10,43 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
+func TestQuickFilesToggleIgnoreKeepsQuery(t *testing.T) {
+	m := explorerWorkspace(t)
+	defer m.Close()
+	const path = "examples/artifact.txt"
+	if err := os.WriteFile(filepath.Join(m.repo.Root, path), []byte("example"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	m.openQuickFiles()
+	m.Update(tea.PasteMsg{Content: "artifact"})
+	if len(m.filteredActions()) != 0 {
+		t.Fatal("ignored file appeared with ignore rules enabled")
+	}
+	_, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyF4})
+	if !m.fileListLoading || m.input.Value() != "artifact" {
+		t.Fatal("toggling ignore did not start a scan with the same query")
+	}
+	drain(t, m, cmd)
+	rows := m.filteredActions()
+	if len(rows) != 1 || rows[0].id != path {
+		t.Fatalf("ignored file did not appear: %+v", rows)
+	}
+	control := m.pickerIgnoreControl(m.pickerLayout(rows))
+	lines := strings.Split(plain(m.View().Content), "\n")
+	if !strings.Contains(lines[control.y], m.symbol(symbolIgnoreRules)) {
+		t.Fatal("ignore rules control did not render in the query row")
+	}
+	m.Update(tea.MouseMotionMsg{X: control.x, Y: control.y})
+	if !strings.Contains(m.hoverHint(), "F4") {
+		t.Fatal("ignore rules control did not advertise its shortcut")
+	}
+	_, cmd = m.Update(tea.MouseClickMsg{X: control.x, Y: control.y, Button: tea.MouseLeft})
+	drain(t, m, cmd)
+	if m.fileListIncludeIgnored || m.input.Value() != "artifact" || len(m.filteredActions()) != 0 {
+		t.Fatal("clicking the toggle did not restore ignore rules")
+	}
+}
+
 func TestQuickFileRevealsTreeAndKeepsEditorFocus(t *testing.T) {
 	m := explorerWorkspace(t)
 	m.Update(tea.WindowSizeMsg{Width: 120, Height: 8})
