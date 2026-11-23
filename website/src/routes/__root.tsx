@@ -10,7 +10,6 @@ export const Route = createRootRoute({
     const { siteTitle: title, description, imageAlt } = locales[locale]
     return {
       meta: [
-        { charSet: "utf-8" },
         { name: "viewport", content: "width=device-width, initial-scale=1" },
         { name: "theme-color", content: "#181818" },
         { title },
@@ -52,7 +51,10 @@ function RootDocument(props: { children: JSX.Element }) {
   return (
     <NoHydration>
       <html lang={locale()}>
-        <head><HeadContent /></head>
+        <head>
+          <meta charset="utf-8" />
+          <HeadContent />
+        </head>
         <body>
           {props.children}
           <Scripts />
