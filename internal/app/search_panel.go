@@ -149,8 +149,8 @@ func (m *Model) searchLines(nav []string, w int) []string {
 		field(&s.replacement, 1, l.replacement, "Replace", "")
 	}
 	if s.details {
-		field(&s.include, 3, l.include, "", " ⊕")
-		field(&s.exclude, 4, l.exclude, "", " ⊖")
+		field(&s.include, 3, l.include, "", " +")
+		field(&s.exclude, 4, l.exclude, "", " -")
 	}
 	summary := searchText("%d results in %d files", s.result.Count, len(s.result.Files))
 	switch {

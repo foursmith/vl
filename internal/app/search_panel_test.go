@@ -62,7 +62,7 @@ func TestSearchDetailsInlineFieldsAndFocus(t *testing.T) {
 	if !strings.HasPrefix(plain(lines[layout.details+1]), "╭") || !strings.HasPrefix(plain(lines[layout.summary-1]), "╰") {
 		t.Fatal("path filter box must have rounded corners")
 	}
-	if !strings.HasPrefix(plain(lines[layout.include]), "│⊕ ") || !strings.HasPrefix(plain(lines[layout.exclude]), "│⊖ ") {
+	if !strings.HasPrefix(plain(lines[layout.include]), "│+ ") || !strings.HasPrefix(plain(lines[layout.exclude]), "│- ") {
 		t.Fatal("path filter symbols must be inset inside the box")
 	}
 	m.clickSearch(3, layout.include)
@@ -70,7 +70,7 @@ func TestSearchDetailsInlineFieldsAndFocus(t *testing.T) {
 	if m.search.include.Value() != "*.go" {
 		t.Fatal("include field did not receive input")
 	}
-	if line := plain(m.searchLines(nil, 36)[layout.include]); !strings.HasPrefix(line, "│⊕ *.go") {
+	if line := plain(m.searchLines(nil, 36)[layout.include]); !strings.HasPrefix(line, "│+ *.go") {
 		t.Fatalf("filter symbol needs a space before the input: %q", line)
 	}
 	m.searchKey(tea.KeyPressMsg{Code: tea.KeyTab})
