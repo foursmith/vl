@@ -18,7 +18,10 @@ const (
 	beforeInput
 )
 
-const fromSearch = fromSidebarSearch | fromFileFind | blurFileFind
+const (
+	fromSearchFields = fromSidebarSearch | fromFileFind
+	fromSearch       = fromSearchFields | blurFileFind
+)
 
 type workbenchShortcut struct {
 	id      string
@@ -161,7 +164,7 @@ func (m *Model) workbenchRuleHint(id string) string {
 }
 
 func (m *Model) contentCopyFocused() bool {
-	return !m.sidebar && (m.editing() || m.diffOpen)
+	return m.textEditFocused() || m.modal == "" && !m.sidebar && m.diffOpen
 }
 
 func (m *Model) toggleEditorFocus() {

@@ -1132,8 +1132,8 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	k := msg.String()
 	route := m.resolveWorkbenchShortcut(k)
-	if handled, cmd := m.textEditingShortcut(k, route); handled {
-		return cmd
+	if isTextEditCommand(route.command) {
+		return m.executeCommand(route.command, "")
 	}
 	if m.flash != nil {
 		return m.flashKey(msg)
@@ -1186,9 +1186,6 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		return cmd
 	}
 	if route.command == commandSave {
-		if m.editorDocument() != nil && !m.tabs[m.activeTab].vim.InsertMode {
-			m.tabs[m.activeTab].vim.CancelPending()
-		}
 		return m.executeCommand(route.command, "")
 	}
 	if d := m.editorDocument(); !m.sidebar && d != nil {

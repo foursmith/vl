@@ -168,6 +168,32 @@ func TestContextMenuRunsDisplayedEditorShortcuts(t *testing.T) {
 	}
 }
 
+func TestSelectAllSharesEditorCommandAcrossEntries(t *testing.T) {
+	for _, entry := range []string{"shortcut", "menu", "palette"} {
+		t.Run(entry, func(t *testing.T) {
+			m := tabWorkspace(t, 1)
+			defer m.Close()
+			m.openFile("file0.go")
+			press(m, "d")
+			switch entry {
+			case "shortcut":
+				press(m, "ctrl+a")
+			case "menu":
+				m.Update(tea.KeyPressMsg{Code: tea.KeyF7})
+				chooseContextAction(t, m, "Select All")
+			case "palette":
+				press(m, "ctrl+p")
+				press(m, "edit.selectAll")
+				press(m, "enter")
+			}
+			d := m.document()
+			if d.SelectedText() != d.Text || m.tabs[m.activeTab].vim.CommandPending() {
+				t.Fatal("Select All did not select the document and clear the pending Vim command")
+			}
+		})
+	}
+}
+
 func TestContextMenuFitsAndScrolls(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	m.openFile("file0.go")

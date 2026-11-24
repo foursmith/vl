@@ -359,30 +359,14 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 			m.focusEditor()
 			if m.activeTab >= 0 && m.activeTab < len(m.tabs) {
 				if m.editing() {
-					selected := m.document().SelectedText() != ""
-					reason := m.tr("Select text first")
-					if selected {
-						reason = ""
-					}
-					actions = append(actions,
-						m.commandAction(commandCopy, "Copy", reason, ""),
-						action{label: m.tr("Cut"), key: editorKeys.Cut.Help().Key, disabled: reason, run: func() tea.Cmd { return m.copy(true) }},
-					)
-					add(m.tr("Paste"), editorKeys.Paste.Help().Key, m.paste)
-					add(m.tr("Select All"), editorKeys.SelectAll.Help().Key, func() tea.Cmd { m.document().SelectAll(); return nil })
-					add(m.tr("Undo"), editorKeys.Undo.Help().Key, func() tea.Cmd { m.document().Undo(); m.ensureEditor(); return nil })
-					add(m.tr("Redo"), editorKeys.Redo.Help().Key, func() tea.Cmd { m.document().Redo(); m.ensureEditor(); return nil })
+					actions = append(actions, m.textEditorActions()...)
 					actions = append(actions, m.commandAction(commandSave, "Save", "", ""), m.commandAction(commandFind, "Find…", "", ""))
 				} else if m.diffOpen {
 					if index := m.viewport.YOffset() + y - m.contentRow(); y >= m.contentRow() && index < len(m.diffRowHunks) {
 						m.diffHunk = m.diffRowHunks[index]
 					}
 					actions = append(actions, m.reviewActions()...)
-					reason := ""
-					if m.diffSelectedText() == "" {
-						reason = m.tr("Select text first")
-					}
-					actions = append(actions, m.commandAction(commandCopy, "Copy", reason, ""))
+					actions = append(actions, m.textEditorActions()...)
 					actions = append(actions, m.commandAction(commandDiffLayout, "Toggle Inline View", "", ""), m.commandAction(commandFind, "Find…", "", ""))
 				} else if m.currentImage() != nil {
 					add(m.tr("Fit to Window"), imageKeys.Fit.Help().Key, func() tea.Cmd { m.resetImageZoom(); return nil })

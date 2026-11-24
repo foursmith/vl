@@ -80,7 +80,6 @@ func (m *Model) actions() []action {
 			m.SetSidebarLayout(0, m.sidebarRight)
 			return m.savePreferences()
 		}},
-		m.commandAction(commandRefresh, "Refresh", "", ""),
 		{"git.stageAll", m.tr("Git: Stage All Changes") + stageSuffix, stageAllKey, m.repositoryStageReason(stageTarget, false), func() tea.Cmd { return m.stageRepository(stageTarget, false) }},
 		{"git.unstageAll", m.tr("Git: Unstage All Changes") + stageSuffix, unstageAllKey, m.repositoryStageReason(stageTarget, true), func() tea.Cmd { return m.stageRepository(stageTarget, true) }},
 		{"git.commit", m.tr("Git: Commit Staged") + suffix, commitKey, m.commitDisabled(target), func() tea.Cmd { return m.commitInRepository(target) }},

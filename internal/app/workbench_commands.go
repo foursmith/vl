@@ -11,6 +11,11 @@ type commandID string
 const (
 	commandQuit         commandID = "app.quit"
 	commandCopy         commandID = "edit.copy"
+	commandCut          commandID = "edit.cut"
+	commandPaste        commandID = "edit.paste"
+	commandSelectAll    commandID = "edit.selectAll"
+	commandUndo         commandID = "edit.undo"
+	commandRedo         commandID = "edit.redo"
 	commandFiles        commandID = "workspace.quickOpen"
 	commandRecent       commandID = "workspace.openRecent"
 	commandPalette      commandID = "workbench.commandPalette"
@@ -21,7 +26,7 @@ const (
 	commandPullRequests commandID = "view.pullRequests"
 	commandSidebar      commandID = "view.sidebar"
 	commandFocus        commandID = "view.toggleFocus"
-	commandRefresh      commandID = "git.refresh"
+	commandRefresh      commandID = "workbench.refresh"
 	commandDiffLayout   commandID = "view.diff"
 	commandSave         commandID = "file.save"
 	commandClose        commandID = "file.close"
@@ -37,11 +42,12 @@ const (
 // A workbench command can be invoked on the current selection or on an
 // explicit target supplied by a context menu. Tab identities survive reorder.
 func (m *Model) executeCommand(id commandID, tabKey string) tea.Cmd {
+	if isTextEditCommand(id) {
+		return m.executeTextEdit(id)
+	}
 	switch id {
 	case commandQuit:
 		return m.quit()
-	case commandCopy:
-		return m.copy(false)
 	case commandFiles:
 		return m.openQuickFiles()
 	case commandRecent:
@@ -69,6 +75,9 @@ func (m *Model) executeCommand(id commandID, tabKey string) tea.Cmd {
 		m.renderDiff()
 	case commandSave:
 		if m.editing() {
+			if v := &m.tabs[m.activeTab].vim; !v.InsertMode {
+				v.CancelPending()
+			}
 			return m.save()
 		}
 	case commandClose:

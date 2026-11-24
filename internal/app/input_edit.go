@@ -65,29 +65,29 @@ func (i textInput) selection() (start, end int) {
 
 type inputCutMsg struct{}
 
-func (i *textInput) edit(action textEditAction) tea.Cmd {
+func (i *textInput) edit(action commandID) tea.Cmd {
 	switch action {
-	case textSelectAll:
+	case commandSelectAll:
 		i.anchor = 0
 		i.CursorEnd()
 		i.revision++
-	case textCopy, textCut:
+	case commandCopy, commandCut:
 		start, end := i.selection()
 		if start == end {
 			return nil
 		}
 		var apply clipboardApply
-		if action == textCut {
+		if action == commandCut {
 			i.revision++
 			apply = i.clipboardTarget(true)
 		}
 		return writeClipboard(string([]rune(i.Value())[start:end]), apply)
-	case textPaste:
+	case commandPaste:
 		i.revision++
 		return readClipboard(i.clipboardTarget(false))
-	case textUndo:
+	case commandUndo:
 		i.restore(&i.undo, &i.redo)
-	case textRedo:
+	case commandRedo:
 		i.restore(&i.redo, &i.undo)
 	}
 	return nil
@@ -98,7 +98,7 @@ func (i *textInput) update(msg tea.Msg) tea.Cmd {
 		return nil
 	}
 	if action, ok := msg.(textEditAction); ok {
-		return i.edit(action)
+		return i.edit(action.command)
 	}
 	before := i.snapshot()
 	start, end := i.selection()

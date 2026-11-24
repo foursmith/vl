@@ -7,114 +7,130 @@ import (
 	"github.com/foursmith/vl/internal/editor"
 )
 
-type textEditAction uint8
+type textEditAction struct{ command commandID }
 
-const (
-	noTextEdit textEditAction = iota
-	textSelectAll
-	textCopy
-	textCut
-	textPaste
-	textUndo
-	textRedo
-)
-
-func textEditShortcut(k string) textEditAction {
-	switch {
-	case matchesShortcut(k, editorKeys.SelectAll):
-		return textSelectAll
-	case matchesShortcut(k, copyTextKey):
-		return textCopy
-	case matchesShortcut(k, editorKeys.Cut):
-		return textCut
-	case matchesShortcut(k, editorKeys.Paste):
-		return textPaste
-	case matchesShortcut(k, editorKeys.Undo):
-		return textUndo
-	case matchesShortcut(k, editorKeys.Redo):
-		return textRedo
+func isTextEditCommand(id commandID) bool {
+	switch id {
+	case commandCopy, commandCut, commandPaste, commandSelectAll, commandUndo, commandRedo:
+		return true
+	default:
+		return false
 	}
-	return noTextEdit
 }
 
-// Workbench editing commands run before the focused editor's Vim commands.
-func (m *Model) textEditingShortcut(k string, route workbenchShortcut) (bool, tea.Cmd) {
-	action := textEditShortcut(k)
-	if action != noTextEdit {
-		if _, update := m.focusedTextInput(); update != nil {
-			m.navigationState = navigationState{}
-			return true, update(action)
-		}
-	}
+func (m *Model) textEditFocused() bool {
+	return m.focusedInput() != nil || m.modal == "" && !m.sidebar && !m.fileFindFocused() && m.editorDocument() != nil
+}
 
-	if route.command == commandCopy {
-		action = textCopy
-	} else if action == textCopy {
-		// Copy in the editor follows the configured workbench binding.
-		return false, nil
+func (m *Model) executeTextEdit(command commandID) tea.Cmd {
+	if _, update := m.focusedTextInput(); update != nil {
+		m.navigationState = navigationState{}
+		return update(textEditAction{command})
 	}
-	if action == noTextEdit || m.sidebar || m.modal != "" || m.fileFindFocused() || route.has(beforeInput) {
-		return false, nil
+	if m.sidebar || m.modal != "" || m.fileFindFocused() {
+		return nil
 	}
 	d := m.editorDocument()
-	if d == nil && action != textCopy {
-		return false, nil
+	if d == nil && (command != commandCopy || !m.diffOpen) {
+		return nil
 	}
 	m.cancelFlash()
 	m.stopTextDrag()
 	m.leaderTarget = ""
 	m.pathCompletion = nil
 	m.navigationState = navigationState{}
-	if action == textCopy {
+	if command == commandCopy {
 		if d != nil && !m.tabs[m.activeTab].vim.InsertMode {
 			m.tabs[m.activeTab].vim.CancelPending()
 		}
-		return true, m.executeCommand(commandCopy, "")
+		return m.copy(false)
 	}
 
 	v := &m.tabs[m.activeTab].vim
 	v.CancelPending()
-	if action == textSelectAll {
+	if command == commandSelectAll {
 		v.SelectAll(d)
 		m.ensureTextCursor()
-		return true, nil
+		return nil
 	}
 	if d.ReadOnly {
-		return true, nil
+		return nil
 	}
-	switch action {
-	case textCut:
-		return true, m.copy(true)
-	case textPaste:
-		return true, m.paste()
-	case textUndo:
+	switch command {
+	case commandCut:
+		return m.copy(true)
+	case commandPaste:
+		return m.paste()
+	case commandUndo:
 		d.Undo()
-	case textRedo:
+	case commandRedo:
 		d.Redo()
 	}
 	if v.VisualMode {
 		v.SyncVisual(d)
 	}
 	m.ensureTextCursor()
-	return true, nil
+	return nil
 }
 
-func (m *Model) focusedTextInput() (*textInput, func(tea.Msg) tea.Cmd) {
+func (m *Model) textEditorActions() []action {
+	d := m.editorDocument()
+	if m.sidebar || d == nil && !m.diffOpen {
+		return nil
+	}
+	var selected string
+	if m.editing() {
+		selected = d.SelectedText()
+	} else {
+		selected = m.diffSelectedText()
+	}
+	reason := ""
+	if selected == "" {
+		reason = m.tr("Select text first")
+	}
+	actions := []action{m.commandAction(commandCopy, "Copy", reason, "")}
+	if d == nil {
+		return actions
+	}
+	selectAll := m.commandAction(commandSelectAll, "Select All", "", "")
+	if d.ReadOnly {
+		return append(actions, selectAll)
+	}
+	return append(actions,
+		m.commandAction(commandCut, "Cut", reason, ""),
+		m.commandAction(commandPaste, "Paste", "", ""),
+		selectAll,
+		m.commandAction(commandUndo, "Undo", "", ""),
+		m.commandAction(commandRedo, "Redo", "", ""),
+	)
+}
+
+func (m *Model) focusedInput() *textInput {
 	switch {
 	case m.modal != "":
 		if m.input.Focused() {
-			return &m.input, m.updateDialogInput
+			return &m.input
 		}
-	case m.fileFindFocused():
+	case m.fileFindFocused(), m.sidebar && m.section == search:
 		if field := m.searchField(m.search.focus); field != nil && field.Focused() {
-			return field, m.fileFindInput
-		}
-	case m.sidebar && m.section == search:
-		if field := m.searchField(m.search.focus); field != nil && field.Focused() {
-			return field, m.searchInput
+			return field
 		}
 	}
-	return nil, nil
+	return nil
+}
+
+func (m *Model) focusedTextInput() (*textInput, func(tea.Msg) tea.Cmd) {
+	field := m.focusedInput()
+	switch {
+	case field == nil:
+		return nil, nil
+	case field == &m.input:
+		return field, m.updateDialogInput
+	case m.fileFindFocused():
+		return field, m.fileFindInput
+	default:
+		return field, m.searchInput
+	}
 }
 
 func (m *Model) pasteText(msg tea.PasteMsg) tea.Cmd {

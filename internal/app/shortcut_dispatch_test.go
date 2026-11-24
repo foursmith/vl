@@ -40,6 +40,17 @@ func TestDefaultWorkbenchShortcutActions(t *testing.T) {
 		{commandCopy, false, []tea.KeyPressMsg{ctrl('c')}, func(m *Model, cmd tea.Cmd) bool {
 			return cmd != nil && m.modal == "" && m.document().SelectedText() != ""
 		}},
+		{commandCut, false, []tea.KeyPressMsg{ctrl('x')}, func(m *Model, cmd tea.Cmd) bool {
+			return cmd != nil && m.document().SelectedText() != ""
+		}},
+		{commandPaste, false, []tea.KeyPressMsg{ctrl('v')}, func(_ *Model, cmd tea.Cmd) bool { return cmd != nil }},
+		{commandSelectAll, false, []tea.KeyPressMsg{ctrl('a')}, func(m *Model, _ tea.Cmd) bool {
+			return m.document().SelectedText() == m.document().Text
+		}},
+		{commandUndo, false, []tea.KeyPressMsg{ctrl('z')}, func(m *Model, _ tea.Cmd) bool { return !m.document().Dirty() }},
+		{commandRedo, false, []tea.KeyPressMsg{ctrlShift('z'), ctrlShift('Z')}, func(m *Model, _ tea.Cmd) bool {
+			return m.document().Dirty()
+		}},
 		{commandFiles, false, []tea.KeyPressMsg{ctrl('g')}, func(m *Model, _ tea.Cmd) bool {
 			return m.modal == "quick" && !m.commandPicker()
 		}},
@@ -95,9 +106,14 @@ func TestDefaultWorkbenchShortcutActions(t *testing.T) {
 				switch test.command {
 				case commandQuit:
 					m.document().Insert("unsaved")
-				case commandCopy:
+				case commandCopy, commandCut:
 					m.document().Insert("unsaved")
 					m.document().SelectAll()
+				case commandUndo, commandRedo:
+					m.document().Insert("unsaved")
+					if test.command == commandRedo {
+						m.document().Undo()
+					}
 				case commandSave:
 					m.document().Insert("saved")
 					// Save should reach the workbench while a Vim operator is pending.

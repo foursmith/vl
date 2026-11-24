@@ -27,13 +27,17 @@ const (
 )
 
 var dismissKey = binding("Esc", "Dismiss", "esc")
-var copyTextKey = binding("Ctrl+C", "Copy", "ctrl+c")
 
 // Declare defaults in precedence order. The last matching rule wins, so
 // context-specific rules can share a key with a workbench fallback.
 var workbenchKeybindings = []workbenchShortcut{
 	{binding: binding("Ctrl+Q", "Quit", "ctrl+q"), context: fromSearch, command: commandQuit},
-	{binding: copyTextKey, command: commandCopy, when: (*Model).contentCopyFocused},
+	{binding: binding("Ctrl+C", "Copy", "ctrl+c"), context: fromSearchFields, command: commandCopy, when: (*Model).contentCopyFocused},
+	{binding: binding("Ctrl+X", "Cut", "ctrl+x"), context: fromSearchFields, command: commandCut, when: (*Model).textEditFocused},
+	{binding: binding("Ctrl+V", "Paste", "ctrl+v"), context: fromSearchFields, command: commandPaste, when: (*Model).textEditFocused},
+	{binding: binding("Ctrl+A", "Select All", "ctrl+a"), context: fromSearchFields, command: commandSelectAll, when: (*Model).textEditFocused},
+	{binding: binding("Ctrl+Z", "Undo", "ctrl+z"), context: fromSearchFields, command: commandUndo, when: (*Model).textEditFocused},
+	{binding: binding("Ctrl+Shift+Z", "Redo", "ctrl+shift+z", "ctrl+shift+Z"), context: fromSearchFields, command: commandRedo, when: (*Model).textEditFocused},
 	{binding: binding("Ctrl+G", "Go to File", "ctrl+g"), context: fromSearch, command: commandFiles},
 	{binding: binding("Ctrl+R", "Open Recent Workspace", "ctrl+r"), context: workspaceOnly | fromSidebarSearch, command: commandRecent},
 	{binding: binding("Ctrl+P", "Commands", "ctrl+p"), context: fromSearch, command: commandPalette},
@@ -44,19 +48,19 @@ var workbenchKeybindings = []workbenchShortcut{
 	{binding: binding("Ctrl+5", "Pull Requests", "ctrl+5"), context: workspaceOnly | fromSearch, command: commandPullRequests},
 	{binding: binding("F12", "Toggle sidebar visibility", "f12"), context: workspaceOnly | fromSearch, command: commandSidebar},
 	{binding: binding("F2", "Switch focus", "f2"), context: workspaceOnly | fromSearch, command: commandFocus},
-	{binding: binding("F5", "Refresh", "f5"), context: fromSidebarSearch | fromFileFind, command: commandRefresh},
+	{binding: binding("F5", "Refresh", "f5"), context: fromSearchFields, command: commandRefresh},
 	{id: sidebarRefreshRuleID, binding: binding("r", "Refresh", "r", "R", "shift+r"), command: commandRefresh, when: func(m *Model) bool {
 		return m.sidebar && m.section != search
 	}},
 	{context: workspaceOnly, command: commandDiffLayout},
-	{binding: binding("Ctrl+S", "Save", "ctrl+s"), context: fromSidebarSearch | fromFileFind, command: commandSave},
+	{binding: binding("Ctrl+S", "Save", "ctrl+s"), context: fromSearchFields, command: commandSave},
 	{binding: binding("Ctrl+W", "Close Editor", "ctrl+w"), context: fromSidebarSearch, command: commandClose, when: func(m *Model) bool {
 		return !m.sidebar || m.section != search || m.searchField(m.search.focus) == nil
 	}},
 	{binding: binding("Ctrl+Shift+W", "Close Other Editors", "ctrl+shift+w", "ctrl+shift+W"), context: beforeInput, command: commandCloseOthers},
 	{command: commandCloseAll},
-	{binding: binding("Ctrl+F", "Find", "ctrl+f"), context: fromSidebarSearch | fromFileFind, command: commandFind},
-	{binding: binding("F7", "Context menu", "f7"), context: fromSidebarSearch | fromFileFind, command: commandContextMenu},
+	{binding: binding("Ctrl+F", "Find", "ctrl+f"), context: fromSearchFields, command: commandFind},
+	{binding: binding("F7", "Context menu", "f7"), context: fromSearchFields, command: commandContextMenu},
 }
 
 var inputKeys = textinput.KeyMap{
@@ -70,16 +74,6 @@ var inputKeys = textinput.KeyMap{
 	DeleteCharacterForward:  key.NewBinding(key.WithKeys("delete")),
 	DeleteWordBackward:      key.NewBinding(key.WithKeys("ctrl+backspace")),
 	DeleteWordForward:       key.NewBinding(key.WithKeys("ctrl+delete")),
-}
-
-var editorKeys = struct {
-	Cut, Paste, SelectAll, Undo, Redo key.Binding
-}{
-	Cut:       binding("Ctrl+X", "Cut", "ctrl+x"),
-	Paste:     binding("Ctrl+V", "Paste", "ctrl+v"),
-	SelectAll: binding("Ctrl+A", "Select All", "ctrl+a"),
-	Undo:      binding("Ctrl+Z", "Undo", "ctrl+z"),
-	Redo:      binding("Ctrl+Shift+Z", "Redo", "ctrl+shift+z", "ctrl+shift+Z"),
 }
 
 var searchKeys = struct {
