@@ -16,6 +16,42 @@ import (
 	gitservice "github.com/foursmith/vl/internal/git"
 )
 
+func TestStatusBarKeepsLayoutWhileTextDiffLoads(t *testing.T) {
+	change := gitservice.Change{Path: "file0.go", Index: ' ', Worktree: 'M'}
+	for _, tc := range []struct {
+		name    string
+		section section
+		target  diffTarget
+	}{
+		{"Changes", changes, diffTarget{path: change.Path, change: &change}},
+		{"History", history, diffTarget{path: change.Path, commit: "test"}},
+		{"PullRequests", pullRequests, diffTarget{path: change.Path, pr: gitservice.PullRequest{Number: 1}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := tabWorkspace(t, 1)
+			t.Cleanup(m.Close)
+			m.section, m.sidebar, m.selected = tc.section, true, 0
+			m.items = []item{{change: tc.target.change}}
+			m.SetTerminalSize(120, 24)
+			cmd := m.requestDiff(tc.target, func(context.Context) (string, error) {
+				return diffTabText("new"), nil
+			})
+			status := func() string {
+				lines := strings.Split(m.View().Content, "\n")
+				return lines[len(lines)-1]
+			}
+			loading := status()
+			if m.editorDocument() != nil || !strings.Contains(plain(loading), "NORMAL") {
+				t.Fatal("loading text diff did not render its initial status")
+			}
+			drain(t, m, cmd)
+			if got := status(); got != loading {
+				t.Fatalf("status changed on diff load:\nloading: %q\n loaded: %q", plain(loading), plain(got))
+			}
+		})
+	}
+}
+
 func TestRevisionHoverAndFocusUseStatusNoticeArea(t *testing.T) {
 	const title = "长标题 · Display a full revision title that cannot fit in the sidebar row"
 	for _, tt := range []struct {

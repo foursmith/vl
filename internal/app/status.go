@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/foursmith/vl/internal/editor"
 	"github.com/foursmith/vl/internal/theme"
 )
 
@@ -239,6 +240,17 @@ func fitStatusHints(hints []string, width int) string {
 	return text
 }
 
+func (m *Model) statusEditor() (*editor.Document, *editor.Vim) {
+	if m.diffOpen && m.diffLoading && m.patch.Raw == "" && !m.isImageDiff() {
+		// An unloaded text diff starts at the first line in Normal mode.
+		return &editor.Document{Path: filepath.Join(m.repo.Root, m.diffPath), ReadOnly: true}, &editor.Vim{}
+	}
+	if d := m.editorDocument(); d != nil {
+		return d, &m.tabs[m.activeTab].vim
+	}
+	return nil, nil
+}
+
 func (m *Model) statusLayout() []statusSegment {
 	left := []statusSegment{{id: "init", text: m.tr("Initialize Repository")}}
 	if m.editorOnly {
@@ -265,9 +277,10 @@ func (m *Model) statusLayout() []statusSegment {
 	} else if m.gitUnavailable {
 		left = nil
 	}
+	doc, vim := m.statusEditor()
 	mode := ""
-	if m.editorDocument() != nil {
-		mode = m.tabs[m.activeTab].vim.Label()
+	if vim != nil {
+		mode = vim.Label()
 	}
 	if m.leaderActive() {
 		mode = "LEADER"
@@ -305,15 +318,15 @@ func (m *Model) statusLayout() []statusSegment {
 		rightLimit = min(rightLimit, max(0, m.width-x-hintWidth))
 	}
 	var candidates []statusSegment
-	if d := m.editorDocument(); d != nil {
-		line, col := d.Position()
+	if doc != nil {
+		line, col := doc.Position()
 		eol := "LF"
-		if d.CRLF {
+		if doc.CRLF {
 			eol = "CRLF"
 		}
-		language := m.tr(m.language(d.Path).Name)
+		language := m.tr(m.language(doc.Path).Name)
 		candidates = []statusSegment{{id: "position", text: m.tr("Ln %d, Col %d", line+1, col+1)}, {id: "encoding", text: "UTF-8"}, {id: "eol", text: eol}, {id: "language", text: language}}
-		if d.ReadOnly {
+		if doc.ReadOnly {
 			candidates = append([]statusSegment{{id: "readOnly", text: m.tr("Read-only")}}, candidates...)
 		}
 	}
@@ -367,12 +380,11 @@ func (m *Model) statusLayout() []statusSegment {
 	return append(result, right...)
 }
 
-func (m *Model) vimModeBackground() string {
-	if m.editorDocument() == nil {
+func vimModeBackground(vim *editor.Vim) string {
+	if vim == nil {
 		return ""
 	}
 	// VSCodeVim's defaults with statusBarColorControl enabled.
-	vim := &m.tabs[m.activeTab].vim
 	switch {
 	case vim.InsertMode:
 		return "#5F0000"
@@ -388,7 +400,8 @@ func (m *Model) vimModeBackground() string {
 func (m *Model) statusLine() string {
 	background := m.colors.Panel
 	foreground := theme.Readable(m.colors.SideForeground, background)
-	modeBackground := m.vimModeBackground()
+	_, vim := m.statusEditor()
+	modeBackground := vimModeBackground(vim)
 	pureStyle := m.statusBarStyle == statusBarPure
 	if !pureStyle && modeBackground != "" {
 		foreground, background = "#FFFFFF", modeBackground
