@@ -75,3 +75,71 @@ func TestExplorerOutlineOnlyShowsForMarkdown(t *testing.T) {
 		}
 	}
 }
+
+func TestExplorerHeaderChevronsAlign(t *testing.T) {
+	m := sidebarListWorkspace(t, explorer)
+	m.height = 20
+	if err := os.WriteFile(filepath.Join(m.repo.Root, "guide.md"), []byte("# Guide\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if !m.openDocument("guide.md", false) {
+		t.Fatal("could not open Markdown file")
+	}
+	root := m.repositoryHeader("", explorerRootKey)
+	m.items = []item{root}
+	m.sidebarCollapsed[root.key] = true
+	m.explorerPanel = explorerPanelNone
+	m.fileHistory = &fileHistoryState{path: "guide.md"}
+
+	for _, monochrome := range []bool{false, true} {
+		m.monochrome = monochrome
+		lines := m.sidebarLinesWidth(40)
+		outline, _ := m.outlineLayout()
+		timeline, _ := m.fileHistoryLayout()
+		glyph := m.treeChevron(false)
+		want := strings.Index(plain(lines[headerHeight]), glyph)
+		if want < 0 {
+			t.Fatal("missing repository chevron")
+		}
+		for _, y := range []int{outline, timeline} {
+			if got := strings.Index(plain(lines[y]), glyph); got != want {
+				t.Fatalf("monochrome=%v: chevron column %d, want %d in %q", monochrome, got, want, plain(lines[y]))
+			}
+		}
+	}
+}
+
+func TestKeyboardPreviewKeepsSelectedExplorerFileVisible(t *testing.T) {
+	m := sidebarListWorkspace(t, explorer)
+	root, err := filepath.EvalSymlinks(m.repo.Root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.repo.Root = root
+	m.SetTerminalSize(100, 24)
+	for name, source := range map[string]string{
+		"short.txt": "Short\n",
+		"long.md":   strings.Repeat("# Heading\n\n", 12),
+	} {
+		if err := os.WriteFile(filepath.Join(root, name), []byte(source), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	m.snapshot.NoRepository = true
+	if !m.openDocument("short.txt", true) {
+		t.Fatal("could not preview the short file")
+	}
+	drain(t, m, m.syncFileHistory())
+	before := m.treeList().height
+	last := before - 1
+	m.items[last-1] = item{key: "short.txt", file: "short.txt"}
+	m.items[last] = item{key: "long.md", file: "long.md"}
+	m.selected = last - 1
+	drain(t, m, press(m, "j"))
+	if got := filepath.Base(m.document().Path); got != "long.md" || m.treeList().height >= before {
+		t.Fatalf("preview did not open Outline: file=%s height=%d", got, m.treeList().height)
+	}
+	if y := m.sidebarSelectionY(); m.sidebarRowAt(y) != m.selected {
+		t.Fatalf("expanded Outline covered the keyboard selection at row %d", y)
+	}
+}

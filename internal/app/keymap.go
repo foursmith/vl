@@ -78,15 +78,16 @@ func shortcutHint(label string, binding key.Binding) string {
 }
 
 var sidebarKeys = struct {
-	Open, Edit, Delete, SplitFolders, Paste, FocusOutline, OpenPullRequest key.Binding
+	Open, Edit, Delete, SplitFolders, Paste, FocusOutline, FocusFileHistory, OpenPullRequest key.Binding
 }{
-	Open:            binding("Enter", "Open selected item", "enter"),
-	Edit:            binding("e", "Edit selected file", "e"),
-	Delete:          binding("Del", "Delete selected item", "delete"),
-	SplitFolders:    binding("L", "Split Folders", "L", "shift+l"),
-	Paste:           binding("p", "Paste", "p"),
-	FocusOutline:    binding("o", "Focus Outline", "o"),
-	OpenPullRequest: binding("o", "Open on GitHub", "o"),
+	Open:             binding("Enter", "Open selected item", "enter"),
+	Edit:             binding("e", "Edit selected file", "e"),
+	Delete:           binding("Del", "Delete selected item", "delete"),
+	SplitFolders:     binding("L", "Split Folders", "L", "shift+l"),
+	Paste:            binding("p", "Paste", "p"),
+	FocusFileHistory: binding("t", "Focus Timeline", "t"),
+	FocusOutline:     binding("o", "Focus Outline", "o"),
+	OpenPullRequest:  binding("o", "Open on GitHub", "o"),
 }
 
 var pickerKeys = struct{ Up, Down, First, Last, Accept, ToggleIgnore key.Binding }{

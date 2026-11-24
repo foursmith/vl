@@ -21,6 +21,14 @@ const (
 	sidebarNavigationWidth = 4
 )
 
+// Monochrome sidebar headers reserve a cell for the focus marker.
+func (m *Model) sidebarHeaderIndent() string {
+	if m.monochrome {
+		return " "
+	}
+	return ""
+}
+
 func (m *Model) sidebarAt(x int) bool {
 	if m.sideShown() {
 		start := m.sideX() - sidebarLeftPadding
@@ -175,10 +183,14 @@ func (m *Model) renderSidebarWidth(w int, cache *sidebarRowCache) []string {
 			}
 		}
 	}
-	treeEnd, outline := m.outlineLayout()
+	panels := m.explorerPanels()
+	treeEnd := h
+	if panels.count > 0 {
+		treeEnd = panels.panels[0].header
+	}
 	hovered := m.hoveredSidebarRow()
 	sticky := m.sidebarStickyRows()
-	treeFocused := m.sidebar && !(treeEnd < h && m.outlineFocused)
+	treeFocused := m.sidebar && !m.outlineHasFocus() && !m.fileHistoryHasFocus()
 	if cache != nil {
 		cache.begin()
 	}
@@ -235,7 +247,20 @@ func (m *Model) renderSidebarWidth(w int, cache *sidebarRowCache) []string {
 		}
 		lines = append(lines, rendered)
 	}
-	return m.appendOutline(lines, w, treeEnd, outline)[:h]
+	pad := func(end int) {
+		if len(lines) < end && blank == "" {
+			blank = row("", w, m.colors.SideForeground, m.colors.Panel)
+		}
+		for len(lines) < end {
+			lines = append(lines, blank)
+		}
+	}
+	for _, panel := range panels.panels[:panels.count] {
+		lines = append(lines, m.explorerPanelHeader(panel, w))
+		lines = panel.spec.render(m, lines, w, panel.list)
+		pad(panel.header + 1 + panel.list.height)
+	}
+	return lines[:h]
 }
 
 type treeRowState struct{ selected, hovered bool }
@@ -335,9 +360,8 @@ func (m *Model) clickSidebar(msg tea.MouseClickMsg) tea.Cmd {
 	if m.section == search {
 		return m.clickSearch(msg.X, y)
 	}
-	if header, outline := m.outlineLayout(); y >= header && y < m.bodyHeight() {
-		m.clickOutline(y, header, outline)
-		return nil
+	if panel, ok := m.explorerPanelAt(y); ok {
+		return m.clickExplorerPanel(panel, y)
 	}
 	m.outlineFocused = false
 	w := m.sidebarContentWidth()

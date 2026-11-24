@@ -16,7 +16,10 @@ type sidebarList struct {
 }
 
 func (m *Model) treeList() sidebarList {
-	end, _ := m.outlineLayout()
+	end := m.bodyHeight()
+	if panels := m.explorerPanels(); panels.count > 0 {
+		end = panels.panels[0].header
+	}
 	return sidebarList{&m.selected, &m.sideTop, len(m.items), headerHeight, max(1, end-headerHeight)}
 }
 func (m *Model) searchList() sidebarList {
@@ -97,6 +100,13 @@ func (m *Model) sidebarNavigationKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 		return true, m.openSelected()
 	}
 	if l.move(action, count) {
+		if m.section == explorer {
+			// The new file can change the Outline and Timeline layout.
+			preview := m.preview()
+			history := m.syncFileHistory()
+			m.ensureSidebar()
+			return true, tea.Batch(preview, history)
+		}
 		m.ensureSidebar()
 		return true, m.preview()
 	}
@@ -111,6 +121,7 @@ func (m *Model) selectSidebarRow(index int) *item {
 	*l.selected = index
 	m.sidebar = true
 	m.outlineFocused = false
+	m.blurFileHistory()
 	if m.section == search {
 		m.focusSearch(2)
 	}

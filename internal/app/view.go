@@ -153,20 +153,19 @@ const (
 	scrollUnchanged
 )
 
-// Other messages discard the cache. Passive mouse motion and local wheel
-// scrolling can keep regions whose inputs did not change.
+// Local interactions can keep regions whose inputs did not change.
 type frameCache struct {
-	content       []string
-	sidebar       []string
-	sidebarRows   sidebarRowCache
-	sidebarCaret  *tea.Cursor
-	tabBar        string
-	toolbar       string
-	status        string
-	sidebarPoint  tea.Position
-	view          tea.View
-	key           hoverRenderKey
-	reuseOnScroll bool
+	content      []string
+	sidebar      []string
+	sidebarRows  sidebarRowCache
+	sidebarCaret *tea.Cursor
+	tabBar       string
+	toolbar      string
+	status       string
+	sidebarPoint tea.Position
+	view         tea.View
+	key          hoverRenderKey
+	reuseRegions bool
 }
 
 func (f *frameCache) afterScroll(region scrollRegion) {
@@ -178,18 +177,18 @@ func (f *frameCache) afterScroll(region scrollRegion) {
 	case scrollSidebar:
 		f.sidebar, f.sidebarCaret, f.status = nil, nil, ""
 	case scrollUnchanged:
-		f.reuseOnScroll = true
+		f.reuseRegions = true
 		return
 	default:
 		*f = frameCache{}
 		return
 	}
 	f.view = tea.View{}
-	f.reuseOnScroll = true
+	f.reuseRegions = true
 }
 
 type hoverRenderKey struct {
-	row, outlineRow       int
+	row, panelRow         int
 	tab                   int
 	menu                  *contextMenu
 	menuSelected, menuTop int
@@ -210,7 +209,7 @@ func (m *Model) View() tea.View {
 		return v
 	}
 	key := hoverRenderKey{
-		row: m.hoveredSidebarRow(), outlineRow: m.hoveredOutlineRow(), hint: m.hoverHint(),
+		row: m.hoveredSidebarRow(), panelRow: m.hoveredExplorerPanelRow(), hint: m.hoverHint(),
 		tab:         m.hoveredTab(),
 		picker:      m.hoveredPickerIndex(),
 		divider:     m.sidebarDividerAt(m.hoverX, m.hoverY),
@@ -226,10 +225,10 @@ func (m *Model) View() tea.View {
 		key.statusX = m.hoverX + 1
 	}
 	frame := &m.renderFrame
-	if (m.hoverOnly || frame.reuseOnScroll) && frame.view.Content != "" && frame.key == key {
+	if (m.hoverOnly || frame.reuseRegions) && frame.view.Content != "" && frame.key == key {
 		return frame.view
 	}
-	if !m.hoverOnly && !frame.reuseOnScroll {
+	if !m.hoverOnly && !frame.reuseRegions {
 		*frame = frameCache{}
 	}
 	sidebarPoint := tea.Position{X: -1, Y: -1}

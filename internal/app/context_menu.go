@@ -188,7 +188,7 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 		actions = append(actions, action{label: label, key: key, run: run})
 	}
 	if m.sidebarAt(x) && y >= headerHeight && y < m.bodyHeight() {
-		if header, _ := m.outlineLayout(); y >= header {
+		if m.section == explorer && y >= headerHeight+m.treeList().height {
 			return nil
 		}
 		m.sidebar = true
@@ -295,6 +295,11 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 			}
 			path := entryPath(entry)
 			if path != "" {
+				if entry.isSidebarFile() && !m.gitUnavailable {
+					a := m.fileHistoryAction(path)
+					a.run = bind(a.run)
+					actions = append(actions, a)
+				}
 				actions = append(actions, m.copyPathActions(path)...)
 			}
 		}
@@ -333,7 +338,11 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 				} else if m.currentImage() != nil {
 					add(m.tr("Fit to Window"), imageKeys.Fit.Help().Key, func() tea.Cmd { m.resetImageZoom(); return nil })
 				}
-				actions = append(actions, m.copyPathActions(m.tabs[m.activeTab].path())...)
+				path := m.tabs[m.activeTab].path()
+				if !m.editorOnly && !m.gitUnavailable {
+					actions = append(actions, m.fileHistoryAction(path))
+				}
+				actions = append(actions, m.copyPathActions(path)...)
 			}
 		}
 	}
@@ -354,6 +363,9 @@ func (m *Model) tabContextActions(x int) []action {
 			m.commandAction(commandClose, "Close", "", targetKey),
 			m.commandAction(commandCloseOthers, "Close Others", "", targetKey),
 			m.commandAction(commandCloseAll, "Close All", "", ""),
+		}
+		if !m.gitUnavailable {
+			actions = append(actions, m.fileHistoryAction(target.path()))
 		}
 		return append(actions, m.copyPathActions(target.path())...)
 	}

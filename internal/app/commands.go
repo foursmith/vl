@@ -55,6 +55,13 @@ func (m *Model) actions() []action {
 	if m.repositoryState(m.statusRepository()).GitHubURL == "" {
 		githubReason = m.tr("No GitHub remote found")
 	}
+	historyPath := m.fileHistoryPath()
+	fileHistory := m.fileHistoryAction(historyPath)
+	if historyPath == "" {
+		fileHistory.disabled = m.tr("Select a file in the workspace")
+	} else if m.gitUnavailable {
+		fileHistory.disabled = m.tr("Git is not available")
+	}
 	actions := []action{
 		m.commandAction(commandRecent, "File: Open Recent Workspace", "", ""),
 
@@ -67,6 +74,7 @@ func (m *Model) actions() []action {
 		m.commandAction(commandSearch, "Search: Find in Files", "", ""),
 		m.commandAction(commandChanges, "View: Changes", "", ""),
 		m.commandAction(commandHistory, "View: Commit History", "", ""),
+		fileHistory,
 		m.commandAction(commandPullRequests, "View: Pull Requests", "", ""),
 		{"view.pullRequestFilter", m.tr("Filter Pull Requests"), "", "", func() tea.Cmd {
 			if m.sidebar && m.section == pullRequests {
@@ -477,6 +485,9 @@ func (m *Model) push(target string) tea.Cmd {
 }
 
 func (m *Model) refreshView() tea.Cmd {
+	if m.fileHistory != nil && m.section == explorer {
+		m.setFileHistory(m.fileHistory.path, m.fileHistory.anchor, m.fileHistory.focused)
+	}
 	if !m.snapshot.NoRepository {
 		if m.sidebar && m.section == pullRequests {
 			return m.forceRefreshPullRequests()

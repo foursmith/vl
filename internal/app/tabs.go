@@ -156,6 +156,7 @@ func (m *Model) activateTab(index int) {
 }
 
 func (m *Model) focusEditor() {
+	m.blurFileHistory()
 	m.sidebar = false
 	m.outlineFocused = false
 	m.keepTab()

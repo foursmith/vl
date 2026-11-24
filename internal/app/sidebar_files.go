@@ -50,7 +50,7 @@ func entryPath(entry *item) string {
 }
 
 func (m *Model) openSidebarContextMenu() tea.Cmd {
-	if m.outlineHasFocus() {
+	if m.outlineHasFocus() || m.fileHistoryHasFocus() {
 		return nil
 	}
 	m.ensureSidebar()

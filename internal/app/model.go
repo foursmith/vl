@@ -178,7 +178,7 @@ type Model struct {
 	sidebar, sidebarVisible bool
 	sidebarWidth            int
 	sidebarRight            bool
-	outlineCollapsed        bool
+	explorerPanel           explorerPanelID
 	outlineFocused          bool
 	resizingSidebar         bool
 	textDrag                *editor.Document
@@ -203,6 +203,7 @@ type Model struct {
 	split                   bool
 	lastFileRepository      string
 	historyStates           map[string]*historyState
+	fileHistory             *fileHistoryState
 	historyPages            map[string]*historyPageState
 	historySeq              int
 	pullRequests            []gitservice.PullRequest
@@ -462,6 +463,9 @@ func (m *Model) selectSection(s section) tea.Cmd {
 
 func (m *Model) selectSectionInRepository(s section, repository string) tea.Cmd {
 	m.revealFile = ""
+	if s != explorer {
+		m.stopFileHistory()
+	}
 	if m.section == history && s != history {
 		for _, state := range m.historyStates {
 			if state.cancel != nil {
@@ -523,6 +527,17 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 	m.hoverOnly = motion && !m.resizingSidebar && !m.welcomeOrbit.dragging && m.textDrag == nil && m.diffDrag == nil && m.imagePan == nil
 	_, wheel := msg.(tea.MouseWheelMsg)
 	var scrolled scrollRegion
+	var timelineContent []string
+	var timelineTab string
+	if click, ok := msg.(tea.MouseClickMsg); ok && click.Button == tea.MouseLeft &&
+		m.modal == "" && m.contextMenu == nil && m.flash == nil && m.textDrag == nil && m.diffDrag == nil &&
+		m.sidebarAt(click.X) && (m.editing() && m.tabs[m.activeTab].markdownImages == nil ||
+		m.diffOpen && m.diffCommit != "" && m.images == nil) {
+		if panel, ok := m.explorerPanelAt(click.Y); ok && panel.spec.id == explorerPanelTimeline {
+			timelineContent = m.renderFrame.content
+			timelineTab = m.fileHistoryAnchor()
+		}
+	}
 	if !m.hoverOnly {
 		if !wheel {
 			m.renderFrame = frameCache{}
@@ -555,7 +570,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			}
 		}
 		if !m.hoverOnly {
-			next = tea.Batch(next, m.startAutoFetch())
+			next = tea.Batch(next, m.syncFileHistory(), m.startAutoFetch())
 			if cmd := m.loadVisibleHistory(); cmd != nil {
 				next = tea.Batch(next, cmd)
 			}
@@ -605,6 +620,11 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		} else if wheel {
 			m.renderFrame.afterScroll(scrolled)
 		}
+		if timelineContent != nil && !m.mainShowsSidebar() {
+			if m.fileHistoryAnchor() == timelineTab {
+				m.renderFrame = frameCache{content: timelineContent, reuseRegions: true}
+			}
+		}
 	}()
 	if cmd, handled := m.contextMenuInput(msg); handled {
 		return m, cmd
@@ -623,6 +643,8 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		return m, m.finishThemeImport(msg)
 	case historyPageMsg:
 		m.applyHistoryPage(msg)
+	case fileHistoryMsg:
+		m.applyFileHistory(msg)
 	case cachedPullRequestsMsg:
 		return m, m.applyCachedPullRequests(msg)
 	case pullRequestsMsg:
@@ -911,6 +933,9 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 	case historyFilesMsg:
 		m.applyHistoryFiles(msg)
 	case diffMsg:
+		if m.fileHistory != nil && m.fileHistory.pending != nil && m.fileHistory.pending == msg.target {
+			return m, m.finishFileHistoryDiff(msg)
+		}
 		return m, m.finishDiff(msg)
 	case changeFilePositionMsg:
 		m.finishChangeFilePosition(msg)
@@ -1060,8 +1085,8 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 				scrolled = scrollUnchanged
 			}
 			l := m.sidebarList()
-			if header, outline := m.outlineLayout(); msg.Y >= header {
-				l = outline
+			if panel, ok := m.explorerPanelAt(msg.Y); ok {
+				l = panel.list
 			}
 			if l.count > 0 && msg.Y >= l.start && msg.Y < l.start+l.height {
 				top := *l.top
@@ -1209,10 +1234,13 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		}
 	}
 	if m.sidebar && m.section == explorer {
+		if cmd, handled := m.fileHistoryKey(k); handled {
+			return cmd
+		}
 		if m.outlineKey(k) {
 			return nil
 		}
-		if m.outlineHasFocus() {
+		if m.outlineHasFocus() || m.fileHistoryHasFocus() {
 			return m.executeCommand(route.command, "")
 		}
 	}

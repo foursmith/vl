@@ -133,8 +133,20 @@ func (m *Model) statusHints() []string {
 		if m.section == changes && entry != nil && !m.busy {
 			return m.changeStatusHints(entry)
 		}
-		if m.section == explorer && !m.outlineHasFocus() && m.activeTab >= 0 && m.tabs[m.activeTab].preview {
+		if m.section == explorer && !m.outlineHasFocus() {
 			var hints []string
+			if header, list := m.fileHistoryLayout(); header < m.bodyHeight() {
+				if m.fileHistoryPanelFocused() {
+					if list.count > 0 && m.fileHistory.selected < len(m.fileHistory.revisions) {
+						hints = append(hints, sidebarKeys.Open.Help().Key+" "+m.tr("Keep Preview"))
+					}
+					return append(hints, "Esc "+m.tr("File tree"))
+				}
+				hints = append(hints, sidebarKeys.FocusFileHistory.Help().Key+" "+m.tr("Timeline"))
+			}
+			if m.activeTab < 0 || !m.tabs[m.activeTab].preview {
+				return hints
+			}
 			if entry != nil && entry.file != "" {
 				path := entry.file
 				if !filepath.IsAbs(path) {

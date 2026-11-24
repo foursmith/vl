@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/foursmith/vl/internal/theme"
 )
@@ -15,26 +16,24 @@ type outlineEntry struct {
 	line, depth int
 }
 
-// The header and list share geometry across rendering and input. An
-// unavailable outline starts after the body, leaving all rows to the tree.
-func (m *Model) outlineLayout() (header int, list sidebarList) {
-	end := m.bodyHeight()
-	available := end - headerHeight
+func (m *Model) outlineAvailable() bool {
 	doc := m.document()
-	if m.section != explorer || m.editorOnly || available < 4 || doc == nil || !isMarkdownPath(doc.Path) {
-		return end, sidebarList{}
-	}
-	if m.outlineCollapsed {
-		return end - 1, sidebarList{}
-	}
+	return doc != nil && isMarkdownPath(doc.Path)
+}
 
+func (m *Model) outlineLayout() (int, sidebarList) {
+	return m.explorerPanelLayout(explorerPanelOutline)
+}
+
+func (m *Model) outlineList() sidebarList {
 	t := &m.tabs[m.activeTab]
 	t.syncMarkdown()
 	cache := &t.markdown
-	height := max(1, min(len(cache.headings), available/3))
-	list = sidebarList{&cache.outlineSelected, &cache.outlineTop, len(cache.headings), end - height, height}
-	return list.start - 1, list
+	return sidebarList{selected: &cache.outlineSelected, top: &cache.outlineTop, count: len(cache.headings)}
 }
+
+func (m *Model) outlinePanelFocused() bool { return m.outlineFocused }
+func (m *Model) blurOutline()              { m.outlineFocused = false }
 
 func (m *Model) outlineHasFocus() bool {
 	if !m.sidebar || !m.outlineFocused {
@@ -44,29 +43,12 @@ func (m *Model) outlineHasFocus() bool {
 	return header < m.bodyHeight()
 }
 
-func (m *Model) appendOutline(lines []string, width, header int, l sidebarList) []string {
-	if header == m.bodyHeight() {
-		return lines
-	}
-	bg := m.colors.Panel
-	focused := m.sidebar && m.outlineFocused
-	hovered := m.hoveredOutlineRowAt(header)
-	titlePrefix := " "
-	if focused && l.count == 0 {
-		bg = m.colors.SidebarSelection(true)
-		titlePrefix = "›"
-	} else if hovered == header {
-		bg = m.colors.Hover
-	}
-	title := titlePrefix + m.treeChevron(!m.outlineCollapsed) + " " + m.tr("Outline")
-	rule := strings.Repeat("─", max(0, width-ansi.StringWidth(title)-2))
-	ruleColor := theme.WithOpacity(m.colors.Muted, .45)
-	headerText := theme.TextStyle(m.colors.Strong, bg).Bold(true).Render(title) + " " +
-		theme.Style(ruleColor, bg).Render(rule)
-	lines = append(lines, row(headerText, width, m.colors.Strong, bg))
+func (m *Model) appendOutline(lines []string, width int, l sidebarList) []string {
 	if l.height == 0 {
 		return lines
 	}
+	focused := m.sidebar && m.outlineFocused
+	hovered := m.explorerPanelHoverY()
 	if l.count == 0 {
 		label := m.tr("No headings")
 		return append(lines, row("    "+label, width, theme.Readable(m.colors.Muted, m.colors.Panel), m.colors.Panel))
@@ -78,7 +60,7 @@ func (m *Model) appendOutline(lines []string, width, header int, l sidebarList) 
 	entries := t.markdown.headings
 	active := sort.Search(len(entries), func(i int) bool { return entries[i].line > cursor }) - 1
 	numberWidth := len(strconv.Itoa(entries[len(entries)-1].line + 1))
-	for i := top; i < top+l.height; i++ {
+	for i := top; i < min(l.count, top+l.height); i++ {
 		line := m.outlineRow(entries[i], width, numberWidth, i == active, focused && i == *l.selected, hovered == l.start+i-top)
 		lines = append(lines, line)
 	}
@@ -128,34 +110,11 @@ func (m *Model) outlineRow(entry outlineEntry, width, numberWidth int, active, s
 	return row(prefix+body+gap+number, width, foreground, fill)
 }
 
-func (m *Model) hoveredOutlineRow() int {
-	header, _ := m.outlineLayout()
-	return m.hoveredOutlineRowAt(header)
-}
-
-func (m *Model) hoveredOutlineRowAt(header int) int {
-	if m.modal == "" && !m.resizingSidebar && m.sidebarAt(m.hoverX) && m.hoverY >= header && m.hoverY < m.bodyHeight() {
-		return m.hoverY
-	}
-	return -1
-}
-
-func (m *Model) clickOutline(y, header int, l sidebarList) {
+func (m *Model) clickOutline(y int, l sidebarList) tea.Cmd {
 	m.lastClickKey = ""
-	if y == header {
-		m.outlineFocused = false
-		m.toggleOutline()
-		return
-	}
-	if l.count > 0 {
-		l.clampScroll()
-		m.jumpToOutline(*l.top + y - l.start)
-	}
-}
-
-func (m *Model) toggleOutline() {
-	m.outlineCollapsed = !m.outlineCollapsed
-	m.clampSidebarScroll()
+	l.clampScroll()
+	m.jumpToOutline(*l.top + y - l.start)
+	return nil
 }
 
 func (m *Model) jumpToOutline(index int) {
@@ -176,9 +135,13 @@ func (m *Model) outlineKey(k string) bool {
 	if matchesShortcut(k, sidebarKeys.FocusOutline) {
 		m.outlineFocused = !m.outlineFocused
 		m.navigationState = navigationState{}
-		if m.outlineFocused && l.count > 0 {
-			l.clampScroll()
-			l.ensureSelected()
+		if m.outlineFocused {
+			m.setExplorerPanel(explorerPanelOutline)
+			_, l = m.outlineLayout()
+			if l.count > 0 {
+				l.clampScroll()
+				l.ensureSelected()
+			}
 		}
 		return true
 	}
@@ -190,15 +153,16 @@ func (m *Model) outlineKey(k string) bool {
 		m.outlineFocused = false
 		return true
 	case matchesShortcut(k, navigationKeys.Left):
-		if !m.outlineCollapsed {
-			m.toggleOutline()
+		if l.height > 0 {
+			m.explorerPanel = explorerPanelNone
+			m.clampSidebarScroll()
 		}
 		return true
 	case matchesShortcut(k, pickerKeys.Accept), matchesShortcut(k, navigationKeys.Right):
 		if l.count > 0 {
 			m.jumpToOutline(*l.selected)
 		} else {
-			m.toggleOutline()
+			m.setExplorerPanel(explorerPanelOutline)
 		}
 		return true
 	}

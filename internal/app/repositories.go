@@ -139,11 +139,7 @@ func (m *Model) repositoryHeader(repo, key string) item {
 }
 
 func (m *Model) repositoryHeaderPrefix(entry item) string {
-	prefix := m.treeChevron(m.folderExpanded(entry)) + " " + m.symbol(symbolRepository) + " "
-	if m.monochrome {
-		return " " + prefix
-	}
-	return prefix
+	return m.sidebarHeaderIndent() + m.treeChevron(m.folderExpanded(entry)) + " " + m.symbol(symbolRepository) + " "
 }
 
 type repositoryRowLayout struct {

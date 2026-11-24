@@ -99,6 +99,7 @@ When cycling to Search, focus starts in the results. Press `/` to edit the query
 | Shortcut | Action |
 | --- | --- |
 | `o` | Switch focus between the file tree and Outline |
+| `t` | Switch focus between the file tree and Timeline |
 | `L` | Split the selected compact folder chain |
 | `dd` / `Delete` | Delete the selected file or folder after confirmation |
 | `yy` | Yank the selected file or folder into the Explorer's file clipboard |
@@ -113,6 +114,12 @@ name ending in `-copy` if the default destination is the source itself.
 Outline appears for the active Markdown file. Use `j` / `k` to select a section and
 `Enter` to jump to it, or click the entry. Click the Outline heading to toggle
 it. From within Outline, press `Left` to collapse it and `Right` to reopen it.
+
+Outline and Timeline share one expandable area in Explorer. Opening either
+panel collapses the other. Timeline follows the active file. Click a commit or use `j` / `k`
+in Timeline to preview its file diff. Double-click or press `Enter` to keep
+the diff tab. Click the Timeline heading to collapse or expand it. **Show File
+History** in the file context menu or command palette also opens Timeline.
 
 ### Changes
 

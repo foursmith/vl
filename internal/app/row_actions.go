@@ -230,6 +230,9 @@ func (m *Model) hoverHint() string {
 		return m.searchHoverHint(m.hoverX-m.sideX(), m.hoverY)
 	}
 
+	if hint := m.fileHistoryHoverHint(); hint != "" {
+		return hint
+	}
 	if index := m.hoveredSidebarRow(); index >= 0 {
 		entry := m.items[index]
 		if m.contextMenu == nil {
