@@ -200,10 +200,6 @@ directory itself, for example `./dist`.
 Open the Replace field with the chevron. **Replace All** applies to the results
 still in the list, so use `dd` or `Delete` to skip specific matches or files.
 
-**Replace in Files saves to disk immediately**, including any edits already in
-the affected open buffers. Open files keep an undo step for the replacement.
-If a result goes stale, run the search again before replacing.
-
 ## Diff editor
 
 The diff editor is read-only. Use the same motions, Visual selections, yanks,

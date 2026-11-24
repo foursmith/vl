@@ -134,8 +134,8 @@ func TestCompleteSearchPanelScopesAndPreserveCase(t *testing.T) {
 	}
 	assertReplacementFile(t, m, "file0.go", "NEW New new\n")
 	m.document().Undo()
-	if m.document().Text != "OLD Old old\n" {
-		t.Fatal("not one undo step")
+	if m.document().Text != "NEW New new\n" || m.document().Dirty() {
+		t.Fatal("undo changed a saved workspace replacement")
 	}
 	// Opening and closing options must retain the active scope.
 	m.updateModal(tea.KeyPressMsg{Code: tea.KeyEscape})

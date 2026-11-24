@@ -34,6 +34,7 @@ func assertReplacementFile(t *testing.T, m *Model, name, want string) {
 }
 
 func TestWorkspaceReplaceSavesAffectedFiles(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
 	m := replacementWorkspace(t)
 	path := filepath.Join(m.repo.Root, "file2.go")
 	if err := os.WriteFile(path, []byte("\ufeffold\r\n"), 0755); err != nil {
@@ -52,7 +53,6 @@ func TestWorkspaceReplaceSavesAffectedFiles(t *testing.T) {
 	m.tabs[m.activeTab].vim.InsertMode = true
 	dirty.BeginEditGroup()
 	dirty.Insert("old ")
-	original := dirty.Text
 	drain(t, m, m.runSearch())
 	m.openReplace()
 	m.search.replacement.SetValue("新")
@@ -76,13 +76,19 @@ func TestWorkspaceReplaceSavesAffectedFiles(t *testing.T) {
 	}
 	dirty.Undo()
 	clean.Undo()
-	if dirty.Text != original || clean.Text != "猫 old old\n" || !dirty.Dirty() || !clean.Dirty() {
-		t.Fatal("replacement must be one undo step in open files", dirty.Text, clean.Text)
+	if dirty.Text != "新 猫 新 新\n" || clean.Text != "猫 新 新\n" || dirty.Dirty() || clean.Dirty() {
+		t.Fatal("undo should stop at the workspace replacement", dirty.Text, clean.Text)
 	}
 	clean.Redo()
 	dirty.Redo()
-	if clean.Dirty() || dirty.Dirty() {
-		t.Fatal("redo should restore the saved text")
+	if dirty.Text != "新 猫 新 新\n" || clean.Text != "猫 新 新\n" || dirty.Dirty() || clean.Dirty() {
+		t.Fatal("redo changed a workspace replacement", dirty.Text, clean.Text)
+	}
+	m.openFile("file2.go")
+	reopened := m.document()
+	reopened.Undo()
+	if reopened.Text != "新\n" || reopened.Dirty() {
+		t.Fatal("replacement history leaked into a file opened after replacement", reopened.Text)
 	}
 }
 

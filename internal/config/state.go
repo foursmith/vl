@@ -34,7 +34,19 @@ func LoadCommandState(path string) (CommandState, error) {
 
 func SaveCommandState(path string, state CommandState) error { return saveJSON(path, state) }
 
+func UndoHistoryPath(path string) (string, error) {
+	dir, err := statePath("undo")
+	if err != nil {
+		return "", err
+	}
+	return fileStatePathWithSuffix(dir, path, ".undo")
+}
+
 func fileStatePath(dir, path string) (string, error) {
+	return fileStatePathWithSuffix(dir, path, ".json")
+}
+
+func fileStatePathWithSuffix(dir, path, suffix string) (string, error) {
 	abs, err := filepath.Abs(path)
 	if err != nil {
 		return "", err
@@ -42,5 +54,5 @@ func fileStatePath(dir, path string) (string, error) {
 	if real, err := filepath.EvalSymlinks(abs); err == nil {
 		abs = real
 	}
-	return filepath.Join(dir, fmt.Sprintf("%x.json", sha256.Sum256([]byte(filepath.Clean(abs))))), nil
+	return filepath.Join(dir, fmt.Sprintf("%x%s", sha256.Sum256([]byte(filepath.Clean(abs))), suffix)), nil
 }

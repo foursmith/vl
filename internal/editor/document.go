@@ -15,6 +15,11 @@ import (
 
 const MaxFileSize = 4 << 20
 
+const (
+	maxUndoBytes = 8 << 20
+	maxUndoSteps = 128
+)
+
 type Document struct {
 	ReadOnly            bool
 	Path                string
@@ -35,6 +40,7 @@ type Document struct {
 	Cursor, Anchor      int
 	selectionKind       uint8
 	undo, redo          []editState
+	undoHistoryLoaded   bool
 	editGroup           bool
 	groupRecorded       bool
 	groupStart          editState
@@ -174,6 +180,7 @@ func (d *Document) Edit(text string) {
 	if text == d.Text {
 		return
 	}
+	d.loadUndoHistory()
 	if !d.editGroup || !d.groupRecorded {
 		snapshot := d.state()
 		if d.editGroup {
@@ -185,7 +192,7 @@ func (d *Document) Edit(text string) {
 	budget := 0
 	for i := len(d.undo) - 1; i >= 0; i-- {
 		budget += len(d.undo[i].text)
-		if i < len(d.undo)-1 && (budget > 8<<20 || len(d.undo)-i > 128) {
+		if i < len(d.undo)-1 && (budget > maxUndoBytes || len(d.undo)-i > maxUndoSteps) {
 			clear(d.undo[:i+1])
 			d.undo = d.undo[i+1:]
 			break
@@ -219,6 +226,7 @@ func (d *Document) Undo() {
 		return
 	}
 	d.EndEditGroup()
+	d.loadUndoHistory()
 	if len(d.undo) == 0 {
 		return
 	}
@@ -234,6 +242,7 @@ func (d *Document) Redo() {
 		return
 	}
 	d.EndEditGroup()
+	d.loadUndoHistory()
 	if len(d.redo) == 0 {
 		return
 	}
@@ -442,11 +451,39 @@ func (d *Document) SetPosition(row, col int) {
 }
 
 func (d *Document) Save() error {
-	return d.SaveEdit(d.Text)
+	data := d.encode(d.Text)
+	if err := d.writeFile(data); err != nil {
+		return err
+	}
+	d.loadUndoHistory()
+	d.markSaved(data)
+	d.saveUndoHistory()
+	return nil
 }
 
-// SaveEdit writes the new text before applying it as an undoable edit.
-func (d *Document) SaveEdit(text string) error {
+// SaveWorkspaceEdit makes the replacement the buffer's new undo baseline.
+func (d *Document) SaveWorkspaceEdit(text string) error {
+	data := d.encode(text)
+	if err := d.writeFile(data); err != nil {
+		return err
+	}
+	if text != d.Text {
+		// Existing snapshots would also undo the workspace replacement.
+		d.EndEditGroup()
+		d.undo, d.redo = nil, nil
+		d.undoHistoryLoaded = true
+	}
+	d.Text = text
+	d.markSaved(data)
+	return nil
+}
+
+func (d *Document) markSaved(data []byte) {
+	d.saved = data
+	d.savedText, d.savedCRLF, d.savedBOM = d.Text, d.CRLF, d.BOM
+}
+
+func (d *Document) writeFile(data []byte) error {
 	if d.ReadOnly {
 		return errors.New("file is read-only")
 	}
@@ -469,7 +506,6 @@ func (d *Document) SaveEdit(text string) error {
 		return err
 	}
 	defer os.Remove(tmp.Name())
-	data := d.encode(text)
 	if err = tmp.Chmod(info.Mode().Perm()); err == nil {
 		_, err = tmp.Write(data)
 	}
@@ -491,14 +527,5 @@ func (d *Document) SaveEdit(text string) error {
 	if !bytes.Equal(current, d.saved) {
 		return errors.New("file changed on disk while saving")
 	}
-	if err = os.Rename(tmp.Name(), d.Path); err != nil {
-		return err
-	}
-	if text != d.Text {
-		d.EndEditGroup()
-		d.Edit(text)
-	}
-	d.saved = data
-	d.savedText, d.savedCRLF, d.savedBOM = d.Text, d.CRLF, d.BOM
-	return nil
+	return os.Rename(tmp.Name(), d.Path)
 }

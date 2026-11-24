@@ -8,7 +8,7 @@ import (
 	searchservice "github.com/foursmith/vl/internal/search"
 )
 
-// Validate all targets before writing. Edits to open documents remain undoable.
+// Validate all targets before writing.
 func (m *Model) replaceSearch(all bool) tea.Cmd {
 	s := &m.search
 	if s.loading || s.err != "" || len(s.result.Files) == 0 {
@@ -104,7 +104,7 @@ func (m *Model) replaceSearch(all bool) tea.Cmd {
 		if e.tab >= 0 {
 			line, col = e.doc.Position()
 		}
-		if err := e.doc.SaveEdit(e.text); err != nil {
+		if err := e.doc.SaveWorkspaceEdit(e.text); err != nil {
 			path, relErr := filepath.Rel(m.repo.Root, e.doc.Path)
 			if relErr != nil {
 				path = e.doc.Path
