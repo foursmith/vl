@@ -69,31 +69,26 @@ func (m *Model) explorerPanels() explorerPanelGroup {
 		return group
 	}
 	active := m.explorerPanel
-	activeVisible := false
+	if active == explorerPanelAuto {
+		active = explorerPanelOutline
+	}
 	for _, spec := range explorerPanelSpecs() {
 		if spec.available(m) {
 			group.panels[group.count].spec = spec
 			group.count++
-			activeVisible = activeVisible || spec.id == active
 		}
 	}
 	if group.count == 0 || group.count >= room {
 		return explorerPanelGroup{}
 	}
-	if !activeVisible && active != explorerPanelNone {
-		active = group.panels[0].spec.id
-	}
 	height := min(room/3, room-int(explorerPanelCount)-1)
-	if active != explorerPanelNone && height > 0 {
-		// Give unused header rows to the expanded list without moving the group.
-		height += int(explorerPanelCount) - group.count
-	}
 	for i := group.count - 1; i >= 0; i-- {
 		panel := &group.panels[i]
 		if panel.spec.id == active && height > 0 {
 			panel.list = panel.spec.list(m)
-			panel.list.height = height
-			panel.list.start = end - height
+			// Give unused header rows to the expanded list without moving the group.
+			panel.list.height = height + int(explorerPanelCount) - group.count
+			panel.list.start = end - panel.list.height
 		}
 		panel.header = end - panel.list.height - 1
 		end = panel.header

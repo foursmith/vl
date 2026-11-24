@@ -9,6 +9,44 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
+func TestFileTimelineStaysCollapsedWhenOutlineIsUnavailable(t *testing.T) {
+	m := explorerWorkspace(t)
+	t.Cleanup(m.Close)
+
+	open := func(path string) {
+		t.Helper()
+		drain(t, m, m.openFileInExplorer(path))
+		drain(t, m, m.syncFileHistory())
+	}
+	open("README.md")
+	if _, layout := m.outlineLayout(); layout.height == 0 {
+		t.Fatal("Outline did not expand for Markdown")
+	}
+	open("cmd/main.go")
+	if header, layout := m.fileHistoryLayout(); header >= m.bodyHeight() || layout.height != 0 {
+		t.Fatal("Timeline should show only its header for a non-Markdown file")
+	}
+
+	open("README.md")
+	if _, layout := m.outlineLayout(); layout.height == 0 {
+		t.Fatal("Outline did not expand after returning to Markdown")
+	}
+	drain(t, m, press(m, "ctrl+1"))
+	drain(t, m, press(m, "o"))
+	if !m.outlineHasFocus() {
+		t.Fatal("Outline did not receive focus")
+	}
+	open("cmd/main.go")
+	if header, layout := m.fileHistoryLayout(); header >= m.bodyHeight() || layout.height != 0 {
+		t.Fatal("Timeline expanded after switching away from a focused Outline")
+	}
+	drain(t, m, press(m, "ctrl+1"))
+	drain(t, m, press(m, "t"))
+	if _, layout := m.fileHistoryLayout(); layout.height == 0 {
+		t.Fatal("Timeline did not expand after pressing t")
+	}
+}
+
 func TestFileTimelineFollowsNestedFileInExplorer(t *testing.T) {
 	m, child := childWorkspace(t)
 	path := "child space/README.md"
