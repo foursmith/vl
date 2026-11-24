@@ -43,10 +43,16 @@ func (m *Model) pickerRow(a action, index, width, hovered int) string {
 	}
 	w := width - 2
 	label := " " + safe(a.label)
+	trailing := " "
 	if a.disabled != "" {
 		label = theme.Style(fg, bg).Italic(true).Render(label)
 	}
 	if m.modal == "recent" && a.id != "" {
+		w -= recentRemoveWidth - 1
+		trailing = "   "
+		if index == hovered {
+			trailing = " × "
+		}
 		label = ansi.Truncate(label, w, "…")
 		if remaining := w - ansi.StringWidth(label); remaining > 2 {
 			pathColor := theme.WithOpacity(fg, .7)
@@ -71,7 +77,7 @@ func (m *Model) pickerRow(a action, index, width, hovered int) string {
 	if selected && m.monochrome {
 		marker = ">"
 	}
-	return row(marker+row(label, w, fg, bg)+" ", width, fg, bg)
+	return row(marker+row(label, w, fg, bg)+trailing, width, fg, bg)
 }
 
 // Synchronize selection and scroll position in event handlers, never rendering.

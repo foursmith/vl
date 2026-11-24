@@ -270,6 +270,7 @@ type Model struct {
 	pickerFilter            pickerFilterCache
 	quickFilesFilter        quickFilesFilter
 	workspaceSeq            int
+	removingWorkspace       bool
 	workspaces              []string
 	openingRepository       bool
 	nextRepository          *gitservice.Repository
@@ -697,6 +698,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		if msg.seq != m.workspaceSeq {
 			break
 		}
+		m.removingWorkspace = false
 		if msg.err != nil {
 			if m.modal == "recent" {
 				m.modal = ""

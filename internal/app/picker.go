@@ -14,6 +14,8 @@ type pickerLayout struct {
 	x, y, width, start, count int
 }
 
+const recentRemoveWidth = 3 // " × "
+
 func (m *Model) pickerHeight() int { return min(16, max(1, m.height-7)) }
 
 func (m *Model) hasPickerIgnoreToggle() bool {
@@ -115,6 +117,11 @@ func (m *Model) clickPicker(msg tea.MouseClickMsg) tea.Cmd {
 		if index := l.indexAt(msg.X, msg.Y); index >= 0 {
 			if m.pickerHeading(rows[index]) {
 				return nil
+			}
+			right := l.x + l.width - 1
+			if m.modal == "recent" && msg.X >= right-recentRemoveWidth && msg.X < right &&
+				index == l.indexAt(m.hoverX, m.hoverY) {
+				return m.removeWorkspace(rows[index].id)
 			}
 			m.selectPickerIndex(index)
 			return m.selectPickerChoice()

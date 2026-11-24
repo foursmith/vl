@@ -211,6 +211,15 @@ func TestFailedAndCurrentFolderKeepRepository(t *testing.T) {
 }
 
 func TestRecentPickerContextMenuRemovesFilteredWorkspace(t *testing.T) {
+	testRecentPickerRemovesFilteredWorkspace(t, false)
+}
+
+func TestRecentPickerHoverButtonRemovesFilteredWorkspace(t *testing.T) {
+	testRecentPickerRemovesFilteredWorkspace(t, true)
+}
+
+func testRecentPickerRemovesFilteredWorkspace(t *testing.T, useButton bool) {
+	t.Helper()
 	t.Setenv("XDG_STATE_HOME", t.TempDir())
 	m := explorerWorkspace(t)
 	defer m.Close()
@@ -229,12 +238,31 @@ func TestRecentPickerContextMenuRemovesFilteredWorkspace(t *testing.T) {
 	m.input.SetValue("target")
 	m.syncPicker()
 	l := m.pickerLayout(m.filteredActions())
-	m.Update(tea.MouseClickMsg{X: l.x + 3, Y: l.y + 3, Button: tea.MouseRight})
-	if m.contextMenu == nil || m.modal != "recent" {
-		t.Fatal("right click did not open a menu above the recent picker")
+	y := l.y + 3
+	if useButton {
+		x := l.x + l.width - 3
+		if strings.Contains(plain(m.View().Content), "×") {
+			t.Fatal("remove button visible before hovering")
+		}
+		m.Update(tea.MouseMotionMsg{X: l.x + 3, Y: y})
+		if line := strings.Split(plain(m.View().Content), "\n")[y]; !strings.Contains(line, " × │") {
+			t.Fatal("remove button missing at the right edge of the hovered row")
+		}
+		m.Update(tea.MouseMotionMsg{X: x, Y: y - 1})
+		if strings.Contains(plain(m.View().Content), "×") {
+			t.Fatal("remove button stayed visible after leaving the row")
+		}
+		m.Update(tea.MouseMotionMsg{X: x, Y: y})
+		_, cmd := m.Update(tea.MouseClickMsg{X: x, Y: y, Button: tea.MouseLeft})
+		drain(t, m, cmd)
+	} else {
+		m.Update(tea.MouseClickMsg{X: l.x + 3, Y: y, Button: tea.MouseRight})
+		if m.contextMenu == nil || m.modal != "recent" {
+			t.Fatal("right click did not open a menu above the recent picker")
+		}
+		m.View()
+		drain(t, m, chooseContextAction(t, m, "Remove from workspace list"))
 	}
-	m.View()
-	drain(t, m, chooseContextAction(t, m, "Remove from workspace list"))
 	if m.contextMenu != nil || m.modal != "recent" || m.input.Value() != "target" || len(m.filteredActions()) != 0 {
 		t.Fatal("removal did not refresh the picker while preserving its search")
 	}
@@ -246,6 +274,6 @@ func TestRecentPickerContextMenuRemovesFilteredWorkspace(t *testing.T) {
 		t.Fatalf("workspace directory changed: %v", err)
 	}
 	if m.nextRepository != nil {
-		t.Fatal("right click switched workspace")
+		t.Fatal("removal switched workspace")
 	}
 }

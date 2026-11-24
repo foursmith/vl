@@ -82,6 +82,9 @@ type workspacesMsg struct {
 }
 
 func (m *Model) loadWorkspaces() tea.Cmd {
+	if m.removingWorkspace {
+		return nil
+	}
 	m.workspaceSeq++
 	seq, ctx := m.workspaceSeq, m.ctx
 	return func() tea.Msg {
@@ -94,6 +97,10 @@ func (m *Model) loadWorkspaces() tea.Cmd {
 }
 
 func (m *Model) removeWorkspace(folder string) tea.Cmd {
+	if m.removingWorkspace {
+		return nil
+	}
+	m.removingWorkspace = true
 	m.workspaceSeq++
 	seq, ctx := m.workspaceSeq, m.ctx
 	return func() tea.Msg {
