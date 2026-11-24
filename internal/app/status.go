@@ -129,6 +129,21 @@ func (m *Model) statusHints() []string {
 	if m.modal != "" || m.contextMenu != nil || m.fileFindFocused() || m.leaderActive() || m.flashValid() {
 		return nil
 	}
+	if m.editorOnly {
+		var hints []string
+		for _, command := range [...]struct {
+			id    commandID
+			label string
+		}{
+			{commandQuit, "Quit"},
+			{commandPalette, "Show All Commands"},
+		} {
+			if key := m.commandShortcutHint(command.id); key != "" {
+				hints = append(hints, key+" "+m.tr(command.label))
+			}
+		}
+		return hints
+	}
 	if m.sidebar {
 		entry := m.current()
 		if m.section == changes && entry != nil && !m.busy {
@@ -164,10 +179,12 @@ func (m *Model) statusHints() []string {
 		}
 		return nil
 	}
-	if !m.busy && !m.editing() && m.diffOpen && m.diffChange != nil &&
+	if !m.busy && !m.editing() && m.diffOpen && m.diffChange != nil && m.patch.Raw != "" &&
 		m.activeTab >= 0 && !m.tabs[m.activeTab].vim.CommandPending() {
 		var stage, discard []string
-		for _, action := range m.reviewActions() {
+		// A background refresh keeps showing the previous patch. Keep its
+		// shortcuts visible while the action handlers wait for fresh data.
+		for _, action := range m.reviewActionsForKey("", false) {
 			if action.key == "" || action.disabled != "" {
 				continue
 			}
@@ -260,24 +277,14 @@ func (m *Model) statusEditor() (*editor.Document, *editor.Vim) {
 func (m *Model) statusLayout() []statusSegment {
 	left := []statusSegment{{id: "init", text: m.tr("Initialize Repository")}}
 	if m.editorOnly {
-		var hints []string
-		for _, id := range [...]commandID{commandSave, commandClose, commandPalette} {
-			if hint := m.commandShortcutHint(id); hint != "" {
-				hints = append(hints, hint)
-			}
-		}
-		shortcuts := strings.Join(hints, " · ")
-		label := shortcuts
+		left = nil
 		if d := m.document(); d != nil {
-			label = safe(filepath.Base(d.Path))
+			label := safe(filepath.Base(d.Path))
 			if d.Dirty() {
 				label += " *"
 			}
-			if m.width >= 100 && shortcuts != "" {
-				label += " · " + shortcuts
-			}
+			left = []statusSegment{{id: "editor", text: label}}
 		}
-		left = []statusSegment{{id: "editor", text: label}}
 	} else if !m.snapshot.NoRepository {
 		left = m.gitStatusSegments()
 	} else if m.gitUnavailable {

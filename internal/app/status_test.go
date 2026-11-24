@@ -145,9 +145,19 @@ func TestStatusHintsFollowGitScopeAndSelection(t *testing.T) {
 	m.diffPath, m.diffChange = change.Path, &change
 	m.patch = diff.Parse("@@ -1 +1 @@\n-old\n+new\n")
 	showDiffFixture(m)
-	if got := statusPart(t, m, "notice").text; got != "s Stage Hunk · S Stage File · d Discard Hunk · D Discard File" {
+	want := "s Stage Hunk · S Stage File · d Discard Hunk · D Discard File"
+	if got := statusPart(t, m, "notice").text; got != want {
 		t.Fatalf("diff hint = %q", got)
 	}
+	m.diffLoading = true
+	if got := statusPart(t, m, "notice").text; got != want {
+		t.Fatalf("diff hint changed while refreshing the displayed patch: %q", got)
+	}
+	if handled, cmd := m.diffChangeShortcut("s"); !handled || cmd != nil || m.notice != "Wait for the diff to finish refreshing" {
+		t.Fatal("status hint let a staging shortcut act on a refreshing diff")
+	}
+	m.diffLoading = false
+	m.notice = ""
 	m.diffSelection = diffSelection{active: true, right: m.diffLayout.split, anchor: textPoint{0, 0}, cursor: textPoint{0, 3}}
 	if got := statusPart(t, m, "notice").text; !strings.HasPrefix(got, "s Stage Selected Ranges · S Stage File") {
 		t.Fatalf("selection hint = %q", got)

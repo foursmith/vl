@@ -237,11 +237,11 @@ func (m *Model) textRowAt(y int) int {
 	return -1
 }
 
-func (m *Model) partialStageReason(reverse bool) string {
+func (m *Model) partialStageReason(reverse, checkRefresh bool) string {
 	if m.diffChange == nil || m.editing() || m.diffStaged != reverse {
 		return m.tr("Open a working-tree or index diff first")
 	}
-	if m.diffLoading || m.diffStale {
+	if checkRefresh && (m.diffLoading || m.diffStale) {
 		return m.tr("Wait for the diff to finish refreshing")
 	}
 	c := *m.diffChange
@@ -257,11 +257,11 @@ func (m *Model) partialStageReason(reverse bool) string {
 	return ""
 }
 
-func (m *Model) partialDiscardReason() string {
+func (m *Model) partialDiscardReason(checkRefresh bool) string {
 	if m.busy {
 		return m.tr("Wait for the current Git operation to finish")
 	}
-	if m.diffChange == nil || m.diffStaged || m.diffLoading || m.diffStale || m.editing() {
+	if m.diffChange == nil || m.diffStaged || m.editing() || checkRefresh && (m.diffLoading || m.diffStale) {
 		return m.tr("Open a working-tree diff first")
 	}
 	c := *m.diffChange
@@ -304,10 +304,10 @@ func (m *Model) selectedDiffChanges() map[*diff.Line]bool {
 }
 
 func (m *Model) reviewActions() []action {
-	return m.reviewActionsForKey("")
+	return m.reviewActionsForKey("", true)
 }
 
-func (m *Model) reviewActionsForKey(pressed string) []action {
+func (m *Model) reviewActionsForKey(pressed string, checkRefresh bool) []action {
 	var actions []action
 	add := func(a action, shortcut key.Binding) {
 		if pressed == "" || matchesShortcut(pressed, shortcut) {
@@ -318,7 +318,7 @@ func (m *Model) reviewActionsForKey(pressed string) []action {
 	sourceReason := ""
 	if m.diffChange == nil {
 		sourceReason = m.tr("Open a working-tree or index diff first")
-	} else if m.diffLoading || m.diffStale {
+	} else if checkRefresh && (m.diffLoading || m.diffStale) {
 		sourceReason = m.tr("Wait for the diff to finish refreshing")
 	}
 	if m.diffChange != nil {
@@ -338,8 +338,8 @@ func (m *Model) reviewActionsForKey(pressed string) []action {
 			}
 		}
 		stage := func(run func() tea.Cmd) func() tea.Cmd { return bind("Diff changed; refresh before staging", run) }
-		partialReason := m.partialStageReason(reverse)
-		discardReason := m.partialDiscardReason()
+		partialReason := m.partialStageReason(reverse, checkRefresh)
+		discardReason := m.partialDiscardReason(checkRefresh)
 		addDiscard := func(id, label, prompt string, shortcut key.Binding, selected func(*diff.Line) bool) {
 			if reverse {
 				return
@@ -420,7 +420,7 @@ func (m *Model) diffChangeShortcut(k string) (bool, tea.Cmd) {
 	if m.tabs[m.activeTab].vim.CommandPending() {
 		return false, nil
 	}
-	if actions := m.reviewActionsForKey(k); len(actions) != 0 {
+	if actions := m.reviewActionsForKey(k, true); len(actions) != 0 {
 		action := actions[0]
 		if action.disabled != "" {
 			m.notice = action.disabled

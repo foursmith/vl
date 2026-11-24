@@ -77,6 +77,9 @@ func TestComponentsDoNotBorrowEditorOrPickerColors(t *testing.T) {
 	m.snapshot.NoRepository = true
 	assertStatusColors("init", "#FFFFFF", "#005F5F")
 	m.editorOnly = true
+	if got := statusPart(t, m, "editor").text; got != "file0.go" {
+		t.Fatalf("editor status label = %q, want file0.go", got)
+	}
 	assertStatusColors("editor", "#FFFFFF", "#005F5F")
 	assertStatusColors("vim", "#FFFFFF", "#005F5F")
 	m.statusBarStyle = statusBarPure
@@ -85,7 +88,11 @@ func TestComponentsDoNotBorrowEditorOrPickerColors(t *testing.T) {
 	m.statusBarStyle = statusBarStandard
 	activeTab := m.activeTab
 	m.activeTab = -1
-	assertStatusColors("editor", sidebarFG, "#171819")
+	for _, segment := range m.statusLayout() {
+		if segment.id == "editor" {
+			t.Fatalf("editor status shown without an active document: %q", segment.text)
+		}
+	}
 	m.editorOnly = false
 	assertStatusColors("init", sidebarFG, "#171819")
 	m.activeTab = activeTab

@@ -28,8 +28,8 @@ func (m *Model) hoveredDiffButtons() diffButtons {
 	if i >= len(m.diffRowHunks) || m.diffRowHunks[i] < 0 {
 		return diffButtons{}
 	}
-	canStage := m.partialStageReason(m.diffStaged) == ""
-	canDiscard := m.partialDiscardReason() == ""
+	canStage := m.partialStageReason(m.diffStaged, true) == ""
+	canDiscard := m.partialDiscardReason(true) == ""
 	if !canStage && !canDiscard {
 		return diffButtons{}
 	}

@@ -614,7 +614,7 @@ func (m *Model) repositoryStageReason(target string, unstage bool) string {
 }
 
 func (m *Model) stageDiffLines(reverse bool, title string, selected func(*diff.Line) bool) tea.Cmd {
-	if reason := m.partialStageReason(reverse); reason != "" {
+	if reason := m.partialStageReason(reverse, true); reason != "" {
 		m.notice = reason
 		return nil
 	}
@@ -640,7 +640,7 @@ func (m *Model) stageDiffLines(reverse bool, title string, selected func(*diff.L
 }
 
 func (m *Model) discardDiffLines(title string, selected func(*diff.Line) bool) tea.Cmd {
-	if reason := m.partialDiscardReason(); reason != "" {
+	if reason := m.partialDiscardReason(true); reason != "" {
 		m.notice = reason
 		return nil
 	}

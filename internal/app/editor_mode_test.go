@@ -141,6 +141,47 @@ func TestEditorModeIsolatedAndFullWidth(t *testing.T) {
 	}
 }
 
+func TestEditorModeStatusHintsAdvertiseQuitAndCommands(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "file.txt")
+	if err := os.WriteFile(path, []byte("hello\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	m, err := NewEditor(t.Context(), path, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer m.Close()
+	m.SetTerminalSize(120, 24)
+	m.notice = ""
+	if got := statusPart(t, m, "notice").text; got != "Ctrl+Q Quit · Ctrl+P Show All Commands" {
+		t.Fatalf("clean editor hint = %q", got)
+	}
+
+	keymap, err := buildWorkbenchKeymap([]workbenchKeyOverride{
+		{id: string(commandQuit), binding: binding("F8", "", "f8")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.workbenchKeymap = keymap
+	m.document().Insert("edited ")
+	if got := statusPart(t, m, "notice").text; got != "F8 Quit · Ctrl+P Show All Commands" {
+		t.Fatalf("modified editor hint = %q", got)
+	}
+	if got := statusPart(t, m, "editor").text; got != "file.txt *" {
+		t.Fatalf("modified editor label = %q", got)
+	}
+	m.SetTerminalSize(22, 24)
+	if got := plain(m.statusLine()); strings.Contains(got, "F8") {
+		t.Fatalf("quit hint displayed without enough space: %q", got)
+	}
+	m.SetTerminalSize(120, 24)
+	press(m, "ctrl+f")
+	if hints := m.statusHints(); len(hints) != 0 {
+		t.Fatalf("editing hints shown while Find has focus: %v", hints)
+	}
+}
+
 func TestEditorStartupHighlightsWithSavedTheme(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "main.go")
 	if err := os.WriteFile(path, []byte("package main\n"), 0600); err != nil {
