@@ -62,8 +62,8 @@ func TestSearchDetailsInlineFieldsAndFocus(t *testing.T) {
 	if !strings.HasPrefix(plain(lines[layout.details+1]), "╭") || !strings.HasPrefix(plain(lines[layout.summary-1]), "╰") {
 		t.Fatal("path filter box must have rounded corners")
 	}
-	if !strings.HasPrefix(plain(lines[layout.include]), "│+ ") || !strings.HasPrefix(plain(lines[layout.exclude]), "│- ") {
-		t.Fatal("path filter symbols must be inset inside the box")
+	if !strings.HasPrefix(plain(lines[layout.include]), "│+ Include paths") || !strings.HasPrefix(plain(lines[layout.exclude]), "│- Exclude paths") {
+		t.Fatal("empty path filters must show their symbols and placeholders inside the box")
 	}
 	m.clickSearch(3, layout.include)
 	m.Update(tea.PasteMsg{Content: "*.go"})

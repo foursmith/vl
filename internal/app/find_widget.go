@@ -335,7 +335,14 @@ func (m *Model) searchFieldLine(input *textinput.Model, active bool, textEnd, bo
 	shown := *input
 	shown.SetWidth(max(1, min(textEnd, boxEnd)-inset-2))
 	shown.Placeholder = placeholder
-	shown.SetStyles(m.input.Styles())
+	bg := m.colors.Panel
+	styles := m.input.Styles()
+	if label != "" {
+		placeholderStyle := theme.TextStyle(theme.WithOpacity(m.colors.InputPlaceholder, .75), bg)
+		styles.Focused.Placeholder = placeholderStyle
+		styles.Blurred.Placeholder = placeholderStyle
+	}
+	shown.SetStyles(styles)
 	if active {
 		*input = shown
 	}
@@ -343,7 +350,6 @@ func (m *Model) searchFieldLine(input *textinput.Model, active bool, textEnd, bo
 		shown.Blur()
 	}
 	text := ansi.Truncate(m.inputView(shown, x+inset, y), max(0, textEnd-inset-1), "")
-	bg := m.colors.Panel
 	return row(label, inset, theme.Readable(m.colors.Muted, bg), bg) + row(text, boxEnd-inset, m.colors.InputForeground, bg)
 }
 func (m *Model) paintSearchControls(lines []string, w int, controls []searchPanelControl, originX, originY int, background string) {
