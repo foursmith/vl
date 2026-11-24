@@ -1,10 +1,13 @@
 package app
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/foursmith/vl/internal/config"
 	"github.com/foursmith/vl/internal/editor"
 )
 
@@ -200,6 +203,41 @@ func TestVimWordObjectsThroughWorkbench(t *testing.T) {
 	}
 }
 
+func TestVimChineseWordsThroughWorkbench(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	dir, err := config.Dir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	dictionary := []byte("中文 1755 nz\n分词 19 n\n测试 2444 v\n")
+	if err := os.WriteFile(filepath.Join(dir, "dict.txt.big"), dictionary, 0600); err != nil {
+		t.Fatal(err)
+	}
+	m := flashModel(t, "中文分词测试 foo")
+	d := m.document()
+	press(m, "w")
+	if d.Cursor != 7 {
+		t.Fatalf("default word boundary at %d", d.Cursor)
+	}
+	m.SetLayout(config.Layout{Vim: config.VimPreferences{EnableJieba: true}})
+	d.SetPosition(0, 0)
+	press(m, "w")
+	if d.Cursor != 2 {
+		t.Fatalf("Chinese word boundary at %d", d.Cursor)
+	}
+	for _, key := range []string{"d", "i", "w"} {
+		press(m, key)
+	}
+	if d.Text != "中文测试 foo" || m.vimRegister != "分词" {
+		t.Fatalf("text = %q, register = %q", d.Text, m.vimRegister)
+	}
+}
+
 func TestVimColonReusesQuickPosition(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	defer m.Close()
@@ -263,6 +301,8 @@ func TestVimFlashTargetsAndRepeatThroughWorkbench(t *testing.T) {
 	press(m, "i")
 	m.Update(tea.PasteMsg{Content: "你好"})
 	press(m, "esc")
+	// Han text and the adjacent identifier are separate words.
+	press(m, "2")
 	press(m, "w")
 	press(m, ".")
 	if d.Text != "你好one 你好two" || m.tabs[0].vim.InsertMode {

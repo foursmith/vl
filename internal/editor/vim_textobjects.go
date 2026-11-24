@@ -1,10 +1,8 @@
 package editor
 
-import "unicode"
-
-func textObject(d *Document, key string, inner bool, count int) (int, int, bool) {
+func (v *Vim) textObject(d *Document, key string, inner bool, count int) (int, int, bool) {
 	if key == "w" || key == "W" {
-		return wordObject(d, key, inner, count)
+		return v.wordObject(d, key, inner, count)
 	}
 	open, close, ok := delimiterPair(key)
 	if !ok {
@@ -13,23 +11,16 @@ func textObject(d *Document, key string, inner bool, count int) (int, int, bool)
 	return delimiterObject(d, open, close, inner, count)
 }
 
-// Word objects use document grapheme boundaries, while character classes only
-// distinguish whitespace, identifier characters and punctuation.
-func wordObject(d *Document, key string, inner bool, count int) (int, int, bool) {
+// Word objects use the same character classes as word motions and keep
+// document graphemes intact.
+func (v *Vim) wordObject(d *Document, key string, inner bool, count int) (int, int, bool) {
 	row, _ := d.Position()
 	floor := d.LineOffset(row)
 	ceiling := floor + d.LineRuneCount(row)
 	if ceiling == floor {
 		return 0, 0, false
 	}
-	runes := []rune(d.Text)
-	class := func(pos int) int {
-		c := wordClass(runes[pos])
-		if key == "W" && c != 0 {
-			return 1
-		}
-		return c
-	}
+	class := v.wordClassifier(d, key == "W")
 	cursor := d.snap(d.Cursor, false)
 	if cursor >= ceiling {
 		cursor = d.previous(ceiling)
@@ -51,22 +42,26 @@ func wordObject(d *Document, key string, inner bool, count int) (int, int, bool)
 	}
 	for i := 1; i < count; i++ {
 		next := end
-		for next < len(runes) && class(next) == 0 {
+		for next < d.runeCount && class(next) == 0 {
 			next = d.next(next)
 		}
-		if next >= len(runes) {
+		if next >= d.runeCount {
 			break
 		}
 		nextClass := class(next)
 		end = d.next(next)
-		for end < len(runes) && class(end) == nextClass {
+		for end < d.runeCount && class(end) == nextClass {
 			end = d.next(end)
 		}
 	}
 	if !inner && kind != 0 {
 		tail := end
 		// Surrounding whitespace stays on its line, so daw does not join lines.
-		for tail < len(runes) && runes[tail] != '\n' && unicode.IsSpace(runes[tail]) {
+		for tail < d.runeCount {
+			r := d.wordRuneAt(tail)
+			if r == '\n' || wordClass(r) != 0 {
+				break
+			}
 			tail = d.next(tail)
 		}
 		if tail > end {
@@ -74,7 +69,7 @@ func wordObject(d *Document, key string, inner bool, count int) (int, int, bool)
 		} else {
 			for start > floor {
 				prev := d.previous(start)
-				if !unicode.IsSpace(runes[prev]) {
+				if wordClass(d.wordRuneAt(prev)) != 0 {
 					break
 				}
 				start = prev

@@ -28,6 +28,8 @@ type Document struct {
 	byteOffsets         []int
 	plainASCII          []bool
 	graphemes           map[int][]int
+	hanWordRun          hanWordRun
+	wordPosition        wordPosition
 	runeCount           int
 	CRLF, BOM           bool
 	Cursor, Anchor      int
@@ -121,6 +123,8 @@ func (d *Document) Lines() []string {
 	if d.lines == nil || d.indexedText != d.Text {
 		d.indexedText = d.Text
 		d.graphemes = nil
+		d.hanWordRun = hanWordRun{}
+		d.wordPosition = wordPosition{}
 		d.lines = strings.Split(d.Text, "\n")
 		d.lineOffsets = make([]int, len(d.lines))
 		d.byteOffsets = make([]int, len(d.lines))

@@ -251,7 +251,7 @@ func TestSidebarLayoutPaletteAndDragCancellation(t *testing.T) {
 
 func TestLayoutRestoresPreferencesAcrossWorkspaces(t *testing.T) {
 	m := newHoverRenderModel(t)
-	want := config.Layout{SidebarWidth: 45, SidebarRight: true, Theme: "light_modern", LightTheme: "light_modern", LastCommand: "view.sidebar",
+	want := config.Layout{SidebarWidth: 45, SidebarRight: true, Theme: "light_modern", LightTheme: "light_modern", LastCommand: "view.sidebar", Vim: config.VimPreferences{EnableJieba: true},
 		AutoSwitchInputMethod: config.InputMethodSwitch{Enable: true, Cmd: []string{"im-select", "com.apple.keylayout.ABC"}}}
 	m.SetLayout(want)
 	want = m.Layout()

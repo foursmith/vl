@@ -89,6 +89,7 @@ func (m *Model) vimKey(k string) (bool, tea.Cmd) {
 	if matchesShortcut(k, editorKeys.Redo) {
 		k = "ctrl+shift+z"
 	}
+	v.HanDictionary = m.vimHanDictionary
 	handled, text := v.Handle(d, k, m.vimRegister)
 	if !handled {
 		return false, nil

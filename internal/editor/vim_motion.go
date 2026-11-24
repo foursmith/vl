@@ -74,10 +74,11 @@ func (v *Vim) motion(d *Document, key string, n int) bool {
 }
 
 func (v *Vim) moveWord(d *Document, key string, count int) {
-	runes := []rune(d.Text)
+	end := wordMotionEnd(d)
+	class := v.wordClassifier(d, false)
 	for range count {
 		before := d.Cursor
-		v.word(d, key, runes)
+		moveOneWord(d, key, end, class)
 		if key == "cw" {
 			key = "e"
 		} else if d.Cursor == before {
@@ -86,41 +87,61 @@ func (v *Vim) moveWord(d *Document, key string, count int) {
 	}
 }
 
-func wordClass(r rune) int {
-	if unicode.IsSpace(r) {
-		return 0
-	}
-	if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_' {
-		return 1
-	}
-	return 2
-}
-func (v *Vim) word(d *Document, key string, runes []rune) {
-	class := func(pos int) int {
-		if pos >= d.runeCount {
-			return 0
+func (v *Vim) wordClassifier(d *Document, bigWord bool) func(int) int {
+	return func(pos int) int {
+		r := d.wordRuneAt(pos)
+		if v.HanDictionary != nil && !bigWord && unicode.Is(unicode.Han, r) {
+			if dict := v.HanDictionary(); dict != nil {
+				return d.hanWordRun.class(dict, d.Text, pos, d.wordByteOffset(pos))
+			}
 		}
-		return wordClass(runes[pos])
+		class := wordClass(r)
+		if bigWord && class != 0 {
+			return 1
+		}
+		return class
 	}
+}
+
+func wordMotionEnd(d *Document) int {
 	d.Lines()
-	end := d.runeCount
+	// The final newline terminates the last line in Vim's buffer.
+	if len(d.Text) != 0 && d.Text[len(d.Text)-1] == '\n' {
+		return d.runeCount - 1
+	}
+	return d.runeCount
+}
+func moveOneWord(d *Document, key string, end int, class func(int) int) {
+	emptyLine := func(pos int) bool {
+		return (pos == end || d.wordRuneAt(pos) == '\n') && (pos == 0 || d.wordRuneAt(pos-1) == '\n')
+	}
 	switch key {
 	case "w":
 		c := class(d.Cursor)
-		for d.Cursor < end && class(d.Cursor) == c {
+		if d.Cursor < end {
 			d.Cursor = d.next(d.Cursor)
 		}
-		for d.Cursor < end && class(d.Cursor) == 0 {
+		for d.Cursor < end && c != 0 && class(d.Cursor) == c {
+			d.Cursor = d.next(d.Cursor)
+		}
+		for d.Cursor < end && class(d.Cursor) == 0 && !emptyLine(d.Cursor) {
 			d.Cursor = d.next(d.Cursor)
 		}
 	case "b":
 		d.Cursor = d.previous(d.Cursor)
 		for d.Cursor > 0 && class(d.Cursor) == 0 {
+			if emptyLine(d.Cursor) {
+				return
+			}
 			d.Cursor = d.previous(d.Cursor)
 		}
 		c := class(d.Cursor)
-		for d.Cursor > 0 && class(d.previous(d.Cursor)) == c {
-			d.Cursor = d.previous(d.Cursor)
+		for d.Cursor > 0 {
+			prev := d.previous(d.Cursor)
+			if class(prev) != c {
+				break
+			}
+			d.Cursor = prev
 		}
 	case "e", "cw":
 		if key == "e" && d.Cursor < end {
@@ -130,8 +151,12 @@ func (v *Vim) word(d *Document, key string, runes []rune) {
 			d.Cursor = d.next(d.Cursor)
 		}
 		c := class(d.Cursor)
-		for d.Cursor < end && d.next(d.Cursor) < end && class(d.next(d.Cursor)) == c {
-			d.Cursor = d.next(d.Cursor)
+		for d.Cursor < end {
+			next := d.next(d.Cursor)
+			if next >= end || class(next) != c {
+				break
+			}
+			d.Cursor = next
 		}
 	}
 }

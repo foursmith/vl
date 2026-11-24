@@ -3,6 +3,7 @@ package app
 import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/foursmith/vl/internal/config"
+	"github.com/foursmith/vl/internal/editor"
 )
 
 const (
@@ -101,12 +102,17 @@ func (m *Model) Layout() config.Layout {
 		LastCommand:           m.lastCommand,
 		Language:              string(m.displayLanguage),
 		StatusBarStyle:        m.statusBarStyle,
+		Vim:                   config.VimPreferences{EnableJieba: m.vimHanDictionary != nil},
 		AutoSwitchInputMethod: m.autoSwitchInputMethod,
 	}
 }
 
 func (m *Model) SetLayout(layout config.Layout) {
 	m.autoSwitchInputMethod = layout.AutoSwitchInputMethod
+	m.vimHanDictionary = nil
+	if layout.Vim.EnableJieba {
+		m.vimHanDictionary = editor.InstalledHanDictionary
+	}
 	m.SetDisplayLanguage(layout.Language)
 	m.lastCommand = layout.LastCommand
 	m.statusBarStyle = statusBarStandard

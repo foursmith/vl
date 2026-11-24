@@ -171,6 +171,7 @@ type Model struct {
 	autoFetch               autoFetchState
 	terminalBlurred         bool
 	autoSwitchInputMethod   config.InputMethodSwitch
+	vimHanDictionary        func() *editor.HanDictionary
 	repo                    *gitservice.Repository
 	width, height           int
 	nerd                    bool

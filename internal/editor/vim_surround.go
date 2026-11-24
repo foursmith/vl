@@ -101,7 +101,7 @@ func (v *Vim) handleSurround(d *Document, key string) bool {
 			}
 		}
 	case surroundObject:
-		start, end, ok := textObject(d, key, request.inner, request.count)
+		start, end, ok := v.textObject(d, key, request.inner, request.count)
 		if !ok {
 			v.clearPending()
 			return true
@@ -156,7 +156,7 @@ func (v *Vim) surroundMotion(d *Document, request *vimSurround, key string, coun
 		return false
 	}
 	end := d.Cursor
-	if key == "e" {
+	if key == "e" && end < wordMotionEnd(d) {
 		end = d.next(end)
 	}
 	start := min(cursor, end)

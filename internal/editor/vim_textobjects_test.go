@@ -25,6 +25,7 @@ func TestVimWordObjects(t *testing.T) {
 		{"copy around", "alpha beta", 2, []string{"y", "a", "w"}, "alpha beta", "alpha "},
 		{"emoji", "👩‍💻 中", 0, []string{"d", "a", "w"}, "中", "👩‍💻 "},
 		{"combining", "é 中", 0, []string{"d", "i", "w"}, " 中", "é"},
+		{"mixed scripts", "foo_中文bar", 5, []string{"d", "i", "w"}, "foo_bar", "中文"},
 		{"empty", "", 0, []string{"d", "a", "w"}, "", ""},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

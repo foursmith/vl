@@ -59,6 +59,26 @@ like `3j` or `2w`.
 | `PageUp` / `PageDown` | Move up / down a page |
 | `Ctrl+U` / `Ctrl+D` | Scroll up / down half a screen |
 
+The `w`, `b`, and `e` motions and the `iw` and `aw` text objects use Vim's default UTF-8 word classes. For example, `foo_中文かな。🙂` has five words (`foo_`, `中文`, `かな`, `。`, and `🙂`). An empty line is a stop for `w` and `b`.
+
+To enable Chinese word motions, set `vim.enableJieba` in `~/.config/vl/vl.json`.
+
+```json
+{
+  "vim": {
+    "enableJieba": true
+  }
+}
+```
+
+Download one Jieba dictionary into `~/.config/vl/` and reopen vl. If more than one dictionary is present, vl uses the first usable dictionary in this order.
+
+1. Standard [`dict.txt`](https://raw.githubusercontent.com/fxsjy/jieba/v0.42.1/jieba/dict.txt)
+2. Small [`dict.txt.small`](https://raw.githubusercontent.com/fxsjy/jieba/v0.42.1/extra_dict/dict.txt.small)
+3. Large [`dict.txt.big`](https://raw.githubusercontent.com/fxsjy/jieba/v0.42.1/extra_dict/dict.txt.big)
+
+For unknown-word recognition, also download [CppJieba's `hmm_model.utf8`](https://raw.githubusercontent.com/yanyiwu/cppjieba/v5.6.7/dict/hmm_model.utf8) into that directory.
+
 In Normal mode, `/` opens the same Find widget as `Ctrl+F`. Matches are
 highlighted and the current match is centered when you jump. `n` advances and
 brings back hidden highlights. See [Find and Replace](KEYBINDINGS.md#find-and-replace)

@@ -10,6 +10,7 @@ import (
 type Vim struct {
 	InsertMode             bool
 	VisualMode, VisualLine bool
+	HanDictionary          func() *HanDictionary
 	visualAnchor           int
 	pending                string
 	count, prefixCount     int

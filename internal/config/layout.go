@@ -18,7 +18,12 @@ type Layout struct {
 	StatusBarStyle        string            `json:"statusBarStyle,omitempty"`
 	SidebarWidth          int               `json:"sidebarWidth"`
 	SidebarRight          bool              `json:"sidebarRight"`
+	Vim                   VimPreferences    `json:"vim,omitzero"`
 	AutoSwitchInputMethod InputMethodSwitch `json:"autoSwitchInputMethod,omitzero"`
+}
+
+type VimPreferences struct {
+	EnableJieba bool `json:"enableJieba,omitempty"`
 }
 
 type InputMethodSwitch struct {

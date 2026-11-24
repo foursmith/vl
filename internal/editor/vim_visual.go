@@ -96,7 +96,7 @@ func (v *Vim) handleVisualPending(d *Document, key string) {
 			d.SetPosition(count-1, 0)
 		}
 	case "i", "a":
-		if start, end, ok := textObject(d, key, pending == "i", count); ok {
+		if start, end, ok := v.textObject(d, key, pending == "i", count); ok {
 			if end <= start {
 				v.Reset(d)
 				d.Cursor = start

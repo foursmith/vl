@@ -2,7 +2,6 @@ package editor
 
 import (
 	"strings"
-	"unicode"
 	"unicode/utf8"
 
 	"github.com/clipperhouse/uax29/v2/graphemes"
@@ -52,7 +51,7 @@ func replaceCharacter(d *Document, key string, count int) {
 func (v *Vim) handleOperator(d *Document, op, key string, count int) string {
 	switch op {
 	case "di", "da", "ci", "ca", "yi", "ya":
-		if start, end, ok := textObject(d, key, op[1] == 'i', count); ok {
+		if start, end, ok := v.textObject(d, key, op[1] == 'i', count); ok {
 			return v.operate(d, op[:1], start, end, false)
 		}
 		return ""
@@ -81,13 +80,10 @@ func (v *Vim) handleOperator(d *Document, op, key string, count int) string {
 
 func (v *Vim) operateMotion(d *Document, op, key string, count int) string {
 	start := d.Cursor
-	if op == "c" && key == "w" && start < d.runeCount {
-		r, _ := utf8.DecodeRuneInString(d.Text[d.ByteOffset(start):])
-		if !unicode.IsSpace(r) {
-			// Include the current word, even when the cursor is on its last character.
-			v.moveWord(d, "cw", count)
-			return v.operate(d, op, start, d.next(d.Cursor), false)
-		}
+	if op == "c" && key == "w" && wordClass(d.wordRuneAt(start)) != 0 {
+		// Include the current word, even when the cursor is on its last character.
+		v.moveWord(d, "cw", count)
+		return v.operate(d, op, start, d.next(d.Cursor), false)
 	}
 	if !v.motion(d, key, count) {
 		return ""
@@ -101,8 +97,7 @@ func (v *Vim) operateMotion(d *Document, op, key string, count int) string {
 			// Stop before trailing whitespace when w crosses a line boundary.
 			for end > start {
 				prev := d.previous(end)
-				r, _ := utf8.DecodeRuneInString(d.Text[d.ByteOffset(prev):])
-				if !unicode.IsSpace(r) {
+				if wordClass(d.wordRuneAt(prev)) != 0 {
 					break
 				}
 				end = prev
@@ -110,7 +105,9 @@ func (v *Vim) operateMotion(d *Document, op, key string, count int) string {
 		}
 	case "e":
 		// Include the last grapheme of the word.
-		end = d.next(end)
+		if end < wordMotionEnd(d) {
+			end = d.next(end)
+		}
 	}
 	return v.operate(d, op, start, end, false)
 }
