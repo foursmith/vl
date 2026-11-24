@@ -1,17 +1,9 @@
 package app
 
-import (
-	tea "charm.land/bubbletea/v2"
-)
+import tea "charm.land/bubbletea/v2"
 
 func (m *Model) openSearchOptions() tea.Cmd {
 	m.fileSearchOptionsDialog = m.fileFindHeight() > 0 && !m.sidebar
-	if !m.fileSearchOptionsDialog {
-		if m.editorOnly {
-			return nil
-		}
-		m.selectSection(search)
-	}
 	return m.showSearchOptions("", 0)
 }
 func (m *Model) changeSearchOption(id string) tea.Cmd {

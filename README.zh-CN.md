@@ -108,7 +108,7 @@ make build
 
 ### 自动切换输入法
 
-在 `~/.config/vl/vl.json` 中添加以下字段，然后重启 vl。
+在 `~/.config/vl/vl.config.json` 中添加以下字段，然后重启 vl。
 
 ```json
 {

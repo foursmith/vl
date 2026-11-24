@@ -157,7 +157,7 @@ type Model struct {
 	themeImporting          bool
 	darkTheme               *theme.Theme
 	lightTheme              *theme.Theme
-	themePinned             bool
+	startupTheme            *theme.Theme
 	statusBarStyle          string
 	appearance              appearanceState
 	layoutStore             *config.LayoutStore
@@ -180,6 +180,7 @@ type Model struct {
 	sidebar, sidebarVisible bool
 	sidebarWidth            int
 	sidebarRight            bool
+	sidebarHidden           bool
 	explorerPanel           explorerPanelID
 	outlineFocused          bool
 	resizingSidebar         bool
@@ -285,7 +286,7 @@ func New(ctx context.Context, repo *gitservice.Repository, nerd bool) *Model {
 func newModel(ctx context.Context, repo *gitservice.Repository, nerd, editorOnly bool) *Model {
 	ctx, cancel := context.WithCancel(ctx)
 	input := newInput()
-	dark, light := theme.Builtin("dark_modern"), theme.Builtin("light_modern")
+	dark, light := theme.Builtin(theme.DefaultDarkID), theme.Builtin(theme.DefaultLightID)
 	m := &Model{displayLanguage: i18n.English, cellWidth: 8, cellHeight: 16, colors: dark.Palette(), colorTheme: dark, darkTheme: dark, lightTheme: light, ctx: ctx, cancel: cancel, repo: repo, width: 120, height: 36, nerd: nerd, editorOnly: editorOnly, sidebar: !editorOnly, sidebarVisible: !editorOnly, split: true, diffState: newDiffState(), input: input, activeTab: -1, notice: "Loading repository…"}
 	m.statusBarStyle = statusBarStandard
 	m.gitUnavailable = !editorOnly && !gitservice.Available()
@@ -1015,9 +1016,6 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}
 		m.resizingSidebar = false
 		if msg.Button == tea.MouseRight {
-			if m.fileFindAt(msg.X, msg.Y) {
-				return m, nil
-			}
 			return m, m.openContextMenu(msg.X, msg.Y)
 		}
 		if m.sidebarDividerAt(msg.X, msg.Y) {

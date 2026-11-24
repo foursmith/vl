@@ -112,7 +112,7 @@ See the [Keyboard shortcuts](docs/KEYBINDINGS.md).
 
 ### Auto Switch IM
 
-Add this field to `~/.config/vl/vl.json` and restart vl.
+Add this field to `~/.config/vl/vl.config.json` and restart vl.
 
 ```json
 {

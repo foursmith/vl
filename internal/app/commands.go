@@ -47,10 +47,6 @@ func (m *Model) actions() []action {
 	if m.activeTab < 0 {
 		tabReason = m.tr("No active tab")
 	}
-	openReason := ""
-	if m.current() == nil || m.current().change == nil && m.current().file == "" {
-		openReason = m.tr("Select a file in Explorer or Changes")
-	}
 	githubReason := ""
 	if m.repositoryState(m.statusRepository()).GitHubURL == "" {
 		githubReason = m.tr("No GitHub remote found")
@@ -68,25 +64,22 @@ func (m *Model) actions() []action {
 		m.commandAction(commandExplorer, "View: Show Explorer", "", ""),
 		{"explorer.newFile", m.tr("Explorer: New File"), "", "", func() tea.Cmd { return m.newEntry(false) }},
 		{"explorer.newFolder", m.tr("Explorer: New Folder"), "", "", func() tea.Cmd { return m.newEntry(true) }},
-		{"explorer.collapseAll", m.tr("Explorer: Collapse Folders in Explorer"), "", "", m.collapseFolders},
-		{"search.options", m.tr("Search: Options"), "", "", m.openSearchOptions},
 		{"search.replace", m.tr("Search: Replace in Files"), "", "", m.openReplace},
 		m.commandAction(commandSearch, "Search: Find in Files", "", ""),
 		m.commandAction(commandChanges, "View: Changes", "", ""),
 		m.commandAction(commandHistory, "View: Commit History", "", ""),
 		fileHistory,
 		m.commandAction(commandPullRequests, "View: Pull Requests", "", ""),
-		{"view.pullRequestFilter", m.tr("Filter Pull Requests"), "", "", func() tea.Cmd {
-			if m.sidebar && m.section == pullRequests {
-				return m.openPullRequestFilter()
-			}
-			return tea.Batch(m.selectSection(pullRequests), m.openPullRequestFilter())
-		}},
 		m.commandAction(commandDiffLayout, "Diff Editor: Toggle Inline View", "", ""),
-		m.commandAction(commandSidebar, "View: Toggle Sidebar", "", ""),
-		{"view.sidebarLeft", m.tr("View: Move Sidebar Left"), "", "", func() tea.Cmd { m.SetSidebarLayout(m.sidebarWidth, false); return nil }},
-		{"view.sidebarRight", m.tr("View: Move Sidebar Right"), "", "", func() tea.Cmd { m.SetSidebarLayout(m.sidebarWidth, true); return nil }},
-		{"view.sidebarResetWidth", m.tr("View: Reset Sidebar Width"), "", "", func() tea.Cmd { m.SetSidebarLayout(0, m.sidebarRight); return nil }},
+		m.commandAction(commandSidebar, "Appearance: Toggle Sidebar Visibility", "", ""),
+		{"view.sidebarPosition", m.tr("Appearance: Toggle Sidebar Position"), "", "", func() tea.Cmd {
+			m.SetSidebarLayout(m.sidebarWidth, !m.sidebarRight)
+			return m.savePreferences()
+		}},
+		{"view.sidebarResetWidth", m.tr("Appearance: Reset Sidebar Width"), "", "", func() tea.Cmd {
+			m.SetSidebarLayout(0, m.sidebarRight)
+			return m.savePreferences()
+		}},
 		m.commandAction(commandRefresh, "Git: Refresh", "", ""),
 		{"git.stageAll", m.tr("Git: Stage All Changes") + stageSuffix, stageAllKey, m.repositoryStageReason(stageTarget, false), func() tea.Cmd { return m.stageRepository(stageTarget, false) }},
 		{"git.unstageAll", m.tr("Git: Unstage All Changes") + stageSuffix, unstageAllKey, m.repositoryStageReason(stageTarget, true), func() tea.Cmd { return m.stageRepository(stageTarget, true) }},
@@ -106,29 +99,9 @@ func (m *Model) actions() []action {
 		{"git.stash", m.tr("Git: Stash (Include Untracked)"), stashKey, "", func() tea.Cmd { return m.stash(target) }},
 		{"git.stashList", m.tr("Git: Manage Stashes…") + suffix, "", "", func() tea.Cmd { return m.openStashes(target) }},
 		{"git.stashModes", m.tr("Git: New Stash…") + suffix, "", "", func() tea.Cmd { return m.openStashModes(target) }},
-		{"file.open", m.tr("File: Open Selected File"), sidebarKeys.Edit.Help().Key, openReason, m.editSelected},
 		{"file.keepOpen", m.tr("View: Keep Editor"), "", tabReason, m.keepTab},
 		m.commandAction(commandCloseOthers, "View: Close Other Editors", "", ""),
 		m.commandAction(commandCloseAll, "View: Close All Editors", "", ""),
-	}
-	if m.sidebar && m.section == changes {
-		if entry := m.current(); entry != nil {
-			scope := item{repoHeader: true, repository: entry.repository}
-			actions = append(actions, action{"git.discardAll", m.tr("Git: %s", m.tr("Discard All Changes")) + suffix,
-				gitKeys.DiscardScope.Help().Key, m.discardScopeReason(entry), func() tea.Cmd { return m.runScopeAction(scope, "discard") }})
-			for _, a := range m.changeRowActions(*entry, m.sidebarContentWidth()) {
-				if (a.id == "stage" || a.id == "unstage" || a.id == "discard") && !entry.repoHeader {
-					targetKey := entry.key
-					actions = append(actions, action{"git." + a.id, m.tr("Git: %s", a.label), m.changeRowShortcut(entry, a.id), a.disabled, func() tea.Cmd {
-						if i := m.sidebarRowWithKey(targetKey); m.section == changes && i >= 0 {
-							return m.runChangeRowAction(i, a.id)
-						}
-						m.notice = m.tr("Target changed; reopen the menu")
-						return nil
-					}})
-				}
-			}
-		}
 	}
 	if m.snapshot.NoRepository {
 		reason := m.tr("This folder is not a Git repository")
@@ -143,9 +116,6 @@ func (m *Model) actions() []action {
 		if !m.gitUnavailable {
 			actions = append(actions, action{id: "git.init", label: m.tr("Git: Initialize Repository"), run: m.initializeRepository})
 		}
-	}
-	if !m.sidebar && m.diffOpen {
-		actions = append(actions, m.reviewActions()...)
 	}
 	return append(editorActions, actions...)
 }

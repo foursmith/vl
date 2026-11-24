@@ -38,8 +38,8 @@ func (m *Model) editorActions() []action {
 		tabReason = m.tr("No active tab")
 	}
 	return []action{
-		{"theme.select", m.tr("Preferences: Color Theme"), "", "", m.openThemePicker},
-		{"statusBar.style", m.tr("Preferences: Status Bar Style"), "", "", m.openStatusBarStylePicker},
+		{"theme.select", m.tr("Appearance: Color Theme"), "", "", m.openThemePicker},
+		{"statusBar.style", m.tr("Appearance: Status Bar Style"), "", "", m.openStatusBarStylePicker},
 		{"language.select", m.tr("Preferences: Configure Display Language"), "", "", m.openLanguagePicker},
 		{"file.syntax", m.tr("Change Syntax Highlighting"), "", syntaxReason, m.openFileSyntaxPicker},
 		m.commandAction(commandSave, "File: Save", docReason, ""),

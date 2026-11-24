@@ -37,7 +37,7 @@ In confirmation dialogs, use `←`/`→` or `Tab` to select a button, `Enter` to
 | --- | --- |
 | `Ctrl+R` | Open Recent Workspace. Prompts if there are unsaved changes. |
 | `Ctrl+1` / `Ctrl+2` / `Ctrl+3` / `Ctrl+4` / `Ctrl+5` | Focus Explorer / Search / Changes / History / Pull Requests |
-| `F12` | Toggle Sidebar |
+| `F12` | Toggle Sidebar Visibility |
 | `Ctrl+Shift+W` | Close the other tabs. Prompts for unsaved changes. |
 | `Space 1` … `Space 9` | Switch to a tab by number from a focused editor outside Insert mode |
 | `Space ←` / `Space →` | Switch to the adjacent tab from a focused editor outside Insert mode |
@@ -163,7 +163,8 @@ Expression to change how the query matches. Replace also supports Preserve
 Case. Use the chevron to toggle the Replace field and the Replace All button to
 replace every match in the file. Replacement text can include capture groups
 like `$1` and `${name}`. In-file replacements stay in the buffer until you save.
-Read-only diffs support Find.
+Read-only diffs support Find. Press `F7` with a Find or Search field focused,
+or right-click the search form, and choose **Search Options**.
 
 ### Search across files
 

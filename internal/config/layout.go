@@ -10,16 +10,26 @@ import (
 // Layout stores user preferences independently of the current terminal size.
 type Layout struct {
 	Language              string            `json:"language,omitempty"`
-	LastCommand           string            `json:"lastCommand,omitempty"`
-	DarkTheme             string            `json:"darkTheme,omitempty"`
-	LightTheme            string            `json:"lightTheme,omitempty"`
-	Theme                 string            `json:"theme,omitempty"`
-	ThemePinned           bool              `json:"themePinned,omitempty"`
-	StatusBarStyle        string            `json:"statusBarStyle,omitempty"`
-	SidebarWidth          int               `json:"sidebarWidth"`
-	SidebarRight          bool              `json:"sidebarRight"`
+	Appearance            Appearance        `json:"appearance,omitzero"`
 	Vim                   VimPreferences    `json:"vim,omitzero"`
 	AutoSwitchInputMethod InputMethodSwitch `json:"autoSwitchInputMethod,omitzero"`
+}
+
+type Appearance struct {
+	Theme          ThemePreferences   `json:"theme,omitzero"`
+	StatusBarStyle string             `json:"statusBarStyle,omitempty"`
+	Sidebar        SidebarPreferences `json:"sidebar,omitzero"`
+}
+
+type ThemePreferences struct {
+	Dark  string `json:"dark,omitempty"`
+	Light string `json:"light,omitempty"`
+}
+
+type SidebarPreferences struct {
+	Side   string `json:"side,omitempty"`
+	Width  int    `json:"width,omitempty"`
+	Hidden bool   `json:"hidden,omitempty"`
 }
 
 type VimPreferences struct {
@@ -38,7 +48,7 @@ func LayoutPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, "vl.json"), nil
+	return filepath.Join(dir, "vl.config.json"), nil
 }
 
 func LoadLayout(path string) (Layout, error) {
@@ -55,18 +65,25 @@ type LayoutStore struct {
 	path     string
 	revision atomic.Uint64
 	mu       sync.Mutex
+	saved    *Layout
 }
 
 func NewLayoutStore(path string) *LayoutStore { return &LayoutStore{path: path} }
+
+func (s *LayoutStore) HasPreparedWrite() bool { return s.revision.Load() != 0 }
 
 func (s *LayoutStore) Prepare(layout Layout) func() error {
 	revision := s.revision.Add(1)
 	return func() error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
-		if revision != s.revision.Load() {
+		if revision != s.revision.Load() || s.saved != nil && layout.Equal(*s.saved) {
 			return nil
 		}
-		return SaveLayout(s.path, layout)
+		if err := SaveLayout(s.path, layout); err != nil {
+			return err
+		}
+		s.saved = &layout
+		return nil
 	}
 }

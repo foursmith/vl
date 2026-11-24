@@ -107,11 +107,23 @@ func main() {
 	if layoutErr == nil {
 		m.SetLayout(layout)
 	}
+	initialLayout := m.Layout()
+
+	statePath, stateErr := config.CommandStatePath()
+	var commandState config.CommandState
+	if stateErr == nil {
+		commandState, stateErr = config.LoadCommandState(statePath)
+	}
+	m.SetLastCommand(commandState.LastCommand)
+	if stateErr != nil {
+		fmt.Fprintln(os.Stderr, "Load command state:", stateErr)
+	}
+
 	if *displayLanguage != "" {
 		m.SetDisplayLanguage(string(language))
 	}
 	if selectedTheme != nil {
-		m.SetColorTheme(selectedTheme)
+		m.SetStartupTheme(selectedTheme)
 	}
 
 	var layoutStore *config.LayoutStore
@@ -149,12 +161,17 @@ func main() {
 
 	if layoutErr != nil {
 		fmt.Fprintln(os.Stderr, "Load layout preferences:", layoutErr)
-	} else {
+	} else if layoutStore != nil {
 		updated := m.Layout()
-		if !updated.Equal(layout) {
+		if layoutStore.HasPreparedWrite() || !updated.Equal(initialLayout) {
 			if saveErr := layoutStore.Prepare(updated)(); saveErr != nil {
 				fmt.Fprintln(os.Stderr, "Save layout preferences:", saveErr)
 			}
+		}
+	}
+	if stateErr == nil && m.LastCommand() != commandState.LastCommand {
+		if saveErr := config.SaveCommandState(statePath, config.CommandState{LastCommand: m.LastCommand()}); saveErr != nil {
+			fmt.Fprintln(os.Stderr, "Save command state:", saveErr)
 		}
 	}
 	if err != nil {

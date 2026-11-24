@@ -8,6 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
+	gitservice "github.com/foursmith/vl/internal/git"
 )
 
 func TestQuickFilesToggleIgnoreKeepsQuery(t *testing.T) {
@@ -179,15 +180,44 @@ func TestCommandPaletteGitHintsRequireChangesFocus(t *testing.T) {
 	}
 }
 
-func TestCommandPalettePRFilterKeepsListPosition(t *testing.T) {
+func TestCommandPaletteOmitsLocalChangeAndDiffActions(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	defer m.Close()
+	change := &gitservice.Change{Path: "file0.go", Index: ' ', Worktree: 'M'}
+	m.section, m.sidebar, m.selected = changes, true, 0
+	m.items = []item{{key: "file0.go", change: change}}
+	for _, a := range m.commandActions() {
+		switch a.id {
+		case "git.stage", "git.unstage", "git.discard", "git.discardAll", "file.open", "explorer.collapseAll", "search.options":
+			t.Errorf("local action %q listed in the command palette", a.id)
+		}
+	}
+	showDiffFixture(m)
+	m.sidebar, m.diffChange = false, change
+	for _, a := range m.commandActions() {
+		if strings.HasPrefix(a.id, "diff.") && a.id != string(commandDiffLayout) {
+			t.Errorf("local diff action %q listed in the command palette", a.id)
+		}
+	}
+}
+
+func TestPRFilterContextMenuKeepsListPosition(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	defer m.Close()
 	m.section, m.sidebar, m.sideTop = pullRequests, true, 7
+	m.items = make([]item, 8)
+	m.items[7] = item{repoHeader: true, key: "repo"}
+
 	m.openPalette()
 	m.input.SetValue(">Filter Pull Requests")
-	press(m, "enter")
+	if rows := m.filteredActions(); len(rows) != 0 {
+		t.Fatalf("PR filter still listed in the command palette: %+v", rows)
+	}
+	press(m, "esc")
+	m.openContextMenu(m.sideX()+2, headerHeight)
+	drain(t, m, chooseContextAction(t, m, "Filter Pull Requests"))
 	if m.modal != "pullRequestFilter" {
-		t.Fatal("command did not open the PR filter")
+		t.Fatal("context menu did not open the PR filter")
 	}
 	press(m, "esc")
 	if m.sideTop != 7 {
@@ -209,7 +239,7 @@ func TestCommandPaletteAlphabeticalOrderAndLastUsed(t *testing.T) {
 	m.lastCommand = "removed.command"
 	m.openPalette()
 	checkSorted(m.filteredActions())
-	m.input.SetValue(">View: Toggle Sidebar")
+	m.input.SetValue(">Appearance: Toggle Sidebar Visibility")
 	m.selectPickerChoice()
 	if m.lastCommand != "view.sidebar" {
 		t.Fatalf("executed command was not remembered: %q", m.lastCommand)
@@ -258,7 +288,7 @@ func TestQuickPickerSwitchesWithEditableCommandPrefix(t *testing.T) {
 	if !m.commandPicker() || len(m.filteredActions()) != len(m.actions()) {
 		t.Fatal("typing > did not switch to commands")
 	}
-	m.Update(tea.PasteMsg{Content: "View: Toggle Sidebar"})
+	m.Update(tea.PasteMsg{Content: "Appearance: Toggle Sidebar Visibility"})
 	if rows := m.filteredActions(); len(rows) != 1 || rows[0].id != "view.sidebar" {
 		t.Fatal("command prefix was included in the search query")
 	}
@@ -267,7 +297,7 @@ func TestQuickPickerSwitchesWithEditableCommandPrefix(t *testing.T) {
 		t.Fatal("command selection did not update history")
 	}
 	m.openQuickFiles()
-	m.Update(tea.PasteMsg{Content: ">View: Toggle Sidebar"})
+	m.Update(tea.PasteMsg{Content: ">Appearance: Toggle Sidebar Visibility"})
 	if rows := m.filteredActions(); !m.commandPicker() || len(rows) != 1 || rows[0].id != "view.sidebar" {
 		t.Fatal("pasting > did not switch modes")
 	}

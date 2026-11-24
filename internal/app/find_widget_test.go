@@ -177,7 +177,8 @@ func TestSharedFindOptionsStayInEditorAndReadonlyDiff(t *testing.T) {
 		m.adoptSearchState()
 		m.navigateFileFind(0)
 		height := m.fileFindHeight()
-		m.openSearchOptions()
+		press(m, "f7")
+		drain(t, m, chooseContextAction(t, m, "Search Options"))
 		if !m.fileSearchOptionsDialog || m.sidebar || m.modal != "searchOptions" {
 			t.Fatal("options escaped into workspace search")
 		}

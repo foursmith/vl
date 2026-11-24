@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -17,6 +18,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"github.com/foursmith/vl/internal/config"
 	"github.com/foursmith/vl/internal/highlight"
+	"github.com/foursmith/vl/internal/platform"
 	"github.com/foursmith/vl/internal/theme"
 )
 
@@ -118,16 +120,25 @@ func loadPreviewTheme(override string) (*theme.Theme, error) {
 	if override != "" {
 		return theme.Load(override)
 	}
-	path, err := config.LayoutPath()
-	if err == nil {
-		layout, err := config.LoadLayout(path)
-		if err == nil && layout.Theme != "" {
-			if selected, err := theme.Load(layout.Theme); err == nil {
-				return selected, nil
+	light, _ := platform.SystemAppearance(context.Background())
+	fallback := theme.DefaultDarkID
+	if light {
+		fallback = theme.DefaultLightID
+	}
+	if path, err := config.LayoutPath(); err == nil {
+		if layout, err := config.LoadLayout(path); err == nil {
+			id := layout.Appearance.Theme.Dark
+			if light {
+				id = layout.Appearance.Theme.Light
+			}
+			if id != "" {
+				if selected, err := theme.Load(id); err == nil {
+					return selected, nil
+				}
 			}
 		}
 	}
-	return theme.Builtin("dark_modern"), nil
+	return theme.Builtin(fallback), nil
 }
 
 func previewLanguage(path string, firstLine []byte) highlight.LanguageInfo {

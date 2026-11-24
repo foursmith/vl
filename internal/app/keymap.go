@@ -40,7 +40,7 @@ var workbenchKeybindings = []workbenchShortcut{
 	{binding: binding("Ctrl+3", "Changes", "ctrl+3"), context: workspaceOnly | fromSearch, command: commandChanges},
 	{binding: binding("Ctrl+4", "History", "ctrl+4"), context: workspaceOnly | fromSearch, command: commandHistory},
 	{binding: binding("Ctrl+5", "Pull Requests", "ctrl+5"), context: workspaceOnly | fromSearch, command: commandPullRequests},
-	{binding: binding("F12", "Toggle sidebar", "f12"), context: workspaceOnly | fromSearch, command: commandSidebar},
+	{binding: binding("F12", "Toggle sidebar visibility", "f12"), context: workspaceOnly | fromSearch, command: commandSidebar},
 	{binding: binding("F2", "Switch focus", "f2"), context: workspaceOnly | fromSearch, command: commandFocus},
 	{binding: binding("F5", "Refresh", "f5"), context: fromFileFind | blurFileFind, command: commandRefresh},
 	{id: sidebarRefreshRuleID, binding: binding("r", "Refresh", "r", "R", "shift+r"), command: commandRefresh, when: func(m *Model) bool {
@@ -52,7 +52,7 @@ var workbenchKeybindings = []workbenchShortcut{
 	{binding: binding("Ctrl+Shift+W", "Close Other Editors", "ctrl+shift+w", "ctrl+shift+W"), context: beforeInput, command: commandCloseOthers},
 	{command: commandCloseAll},
 	{binding: binding("Ctrl+F", "Find", "ctrl+f"), command: commandFind},
-	{binding: binding("F7", "Context menu", "f7"), command: commandContextMenu},
+	{binding: binding("F7", "Context menu", "f7"), context: fromSidebarSearch | fromFileFind, command: commandContextMenu},
 }
 
 var editorKeys = struct {

@@ -20,6 +20,20 @@ func statePath(name string) (string, error) {
 	return filepath.Join(base, "vl", name), nil
 }
 
+type CommandState struct {
+	LastCommand string `json:"lastCommand,omitempty"`
+}
+
+func CommandStatePath() (string, error) { return statePath("state.json") }
+
+func LoadCommandState(path string) (CommandState, error) {
+	var state CommandState
+	err := loadJSON(path, &state)
+	return state, err
+}
+
+func SaveCommandState(path string, state CommandState) error { return saveJSON(path, state) }
+
 func fileStatePath(dir, path string) (string, error) {
 	abs, err := filepath.Abs(path)
 	if err != nil {

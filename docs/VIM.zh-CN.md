@@ -47,7 +47,7 @@ vl 实现了 Vim 的一部分功能，包括可视模式下按字符和按行选
 
 `w`、`b`、`e` 移动和 `iw`、`aw` 文本对象使用 Vim 默认的 UTF-8 字符类别。例如 `foo_中文かな。🙂` 会分成 `foo_`、`中文`、`かな`、`。` 和 `🙂`。 `w` 和 `b` 也会在空行停靠。
 
-要开启中文按词移动，在 `~/.config/vl/vl.json` 中设置 `vim.enableJieba`。
+要开启中文按词移动，在 `~/.config/vl/vl.config.json` 中设置 `vim.enableJieba`。
 
 ```json
 {

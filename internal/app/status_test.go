@@ -203,10 +203,10 @@ func TestStatusBarStylePickerPersistsAndRestores(t *testing.T) {
 		m.input.SetValue("Pure")
 		drain(t, m, m.selectPickerChoice())
 		saved, err := config.LoadLayout(path)
-		if err != nil || saved.StatusBarStyle != statusBarPure || m.statusBarStyle != statusBarPure || m.modal != "" {
+		if err != nil || saved.Appearance.StatusBarStyle != statusBarPure || m.statusBarStyle != statusBarPure || m.modal != "" {
 			t.Fatalf("Pure was not applied and saved: %+v, %v", saved, err)
 		}
-		m.SetLayout(config.Layout{StatusBarStyle: "unknown"})
+		m.SetLayout(config.Layout{Appearance: config.Appearance{StatusBarStyle: "unknown"}})
 		if m.statusBarStyle != statusBarStandard {
 			t.Fatal("unknown style should use Standard")
 		}
@@ -218,7 +218,7 @@ func TestStatusBarStylePickerPersistsAndRestores(t *testing.T) {
 		m.input.SetValue("Standard")
 		drain(t, m, m.selectPickerChoice())
 		saved, err = config.LoadLayout(path)
-		if err != nil || saved.StatusBarStyle != statusBarStandard || m.statusBarStyle != statusBarStandard {
+		if err != nil || saved.Appearance.StatusBarStyle != "" || m.statusBarStyle != statusBarStandard {
 			t.Fatalf("Standard was not applied and saved: %+v, %v", saved, err)
 		}
 	}

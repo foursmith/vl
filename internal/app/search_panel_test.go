@@ -249,7 +249,8 @@ func TestSearchUsesInlineFieldsAndActions(t *testing.T) {
 		}
 	}
 	// Filtering and toggling keep the same dialog and selected row.
-	m.openSearchOptions()
+	m.Update(tea.MouseClickMsg{X: m.sideX() + 2, Y: m.searchPanelLayout().query, Button: tea.MouseRight})
+	drain(t, m, chooseContextAction(t, m, "Search Options"))
 	m.input.SetValue("case")
 	m.selectPickerIndex(0)
 	drain(t, m, m.selectPickerChoice())

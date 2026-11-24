@@ -10,19 +10,23 @@ import (
 //go:embed themes/*.json
 var files embed.FS
 
-const defaultExtensionID = "vscode.theme-defaults"
+const (
+	defaultExtensionID = "vscode.theme-defaults"
+	DefaultDarkID      = "dark_modern"
+	DefaultLightID     = "light_modern"
+)
 
 // The theme files and contribution metadata come from the same pinned VS Code
 // build as defaults.json.
 var builtinThemes = map[string]struct{ vscodeID, label, kind, file string }{
 	"dark_2026":    {"Dark 2026", "Dark 2026", "vs-dark", "2026-dark.json"},
-	"dark_modern":  {"Dark Modern", "Dark Modern", "vs-dark", "dark_modern.json"},
+	DefaultDarkID:  {"Dark Modern", "Dark Modern", "vs-dark", "dark_modern.json"},
 	"dark_plus":    {"Dark+", "Dark+", "vs-dark", "dark_plus.json"},
 	"dark_vs":      {"Visual Studio Dark", "Dark (Visual Studio)", "vs-dark", "dark_vs.json"},
 	"hc_black":     {"Default High Contrast", "Dark High Contrast", "hc-black", "hc_black.json"},
 	"hc_light":     {"Default High Contrast Light", "Light High Contrast", "hc-light", "hc_light.json"},
 	"light_2026":   {"Light 2026", "Light 2026", "vs", "2026-light.json"},
-	"light_modern": {"Light Modern", "Light Modern", "vs", "light_modern.json"},
+	DefaultLightID: {"Light Modern", "Light Modern", "vs", "light_modern.json"},
 	"light_plus":   {"Light+", "Light+", "vs", "light_plus.json"},
 	"light_vs":     {"Visual Studio Light", "Light (Visual Studio)", "vs", "light_vs.json"},
 }

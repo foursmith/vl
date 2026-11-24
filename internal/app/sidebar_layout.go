@@ -4,6 +4,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/foursmith/vl/internal/config"
 	"github.com/foursmith/vl/internal/editor"
+	"github.com/foursmith/vl/internal/i18n"
+	"github.com/foursmith/vl/internal/theme"
 )
 
 const (
@@ -90,22 +92,35 @@ func (m *Model) SetSidebarLayout(width int, right bool) {
 
 // Layout captures user preferences independently of the current terminal size.
 func (m *Model) Layout() config.Layout {
-	selected := m.committedTheme()
-	dark, light := m.darkTheme, m.lightTheme
+	var appearance config.Appearance
+	if m.darkTheme.ID != theme.DefaultDarkID {
+		appearance.Theme.Dark = m.darkTheme.ID
+	}
+	if m.lightTheme.ID != theme.DefaultLightID {
+		appearance.Theme.Light = m.lightTheme.ID
+	}
+	if m.statusBarStyle != statusBarStandard {
+		appearance.StatusBarStyle = m.statusBarStyle
+	}
+	appearance.Sidebar.Width = m.sidebarWidth
+	appearance.Sidebar.Hidden = m.sidebarHidden
+	if m.sidebarRight {
+		appearance.Sidebar.Side = "right"
+	}
+	var language string
+	if m.displayLanguage != i18n.English {
+		language = string(m.displayLanguage)
+	}
 	return config.Layout{
-		SidebarWidth:          m.sidebarWidth,
-		SidebarRight:          m.sidebarRight,
-		Theme:                 selected.ID,
-		ThemePinned:           m.themePinned,
-		DarkTheme:             dark.ID,
-		LightTheme:            light.ID,
-		LastCommand:           m.lastCommand,
-		Language:              string(m.displayLanguage),
-		StatusBarStyle:        m.statusBarStyle,
+		Language:              language,
+		Appearance:            appearance,
 		Vim:                   config.VimPreferences{EnableJieba: m.vimHanDictionary != nil},
 		AutoSwitchInputMethod: m.autoSwitchInputMethod,
 	}
 }
+
+func (m *Model) LastCommand() string      { return m.lastCommand }
+func (m *Model) SetLastCommand(id string) { m.lastCommand = id }
 
 func (m *Model) SetLayout(layout config.Layout) {
 	m.autoSwitchInputMethod = layout.AutoSwitchInputMethod
@@ -114,26 +129,20 @@ func (m *Model) SetLayout(layout config.Layout) {
 		m.vimHanDictionary = editor.InstalledHanDictionary
 	}
 	m.SetDisplayLanguage(layout.Language)
-	m.lastCommand = layout.LastCommand
 	m.statusBarStyle = statusBarStandard
-	if layout.StatusBarStyle == statusBarPure {
+	appearance := layout.Appearance
+	if appearance.StatusBarStyle == statusBarPure {
 		m.statusBarStyle = statusBarPure
 	}
-	m.SetSidebarLayout(layout.SidebarWidth, layout.SidebarRight)
-	restoredDark := m.restoreThemeSlot(layout.DarkTheme, false)
-	restoredLight := m.restoreThemeSlot(layout.LightTheme, true)
-	m.themePinned = false
-	if layout.Theme == "" {
-		return
+	m.sidebarHidden = appearance.Sidebar.Hidden
+	m.sidebarVisible = !m.editorOnly && !m.sidebarHidden
+	if !m.sidebarVisible {
+		m.sidebar = false
 	}
-	switch {
-	case layout.Theme == layout.DarkTheme:
-		m.applyTheme(m.darkTheme)
-		m.themePinned = layout.ThemePinned && restoredDark
-	case layout.Theme == layout.LightTheme:
-		m.applyTheme(m.lightTheme)
-		m.themePinned = layout.ThemePinned && restoredLight
-	}
+	m.SetSidebarLayout(appearance.Sidebar.Width, appearance.Sidebar.Side == "right")
+	m.darkTheme = m.restoreThemeSlot(appearance.Theme.Dark, theme.DefaultDarkID)
+	m.lightTheme = m.restoreThemeSlot(appearance.Theme.Light, theme.DefaultLightID)
+	m.followAppearance()
 }
 
 func (m *Model) dragSidebar(x int) {
@@ -153,13 +162,14 @@ func (m *Model) toggleSidebar() tea.Cmd {
 	m.resizingSidebar = false
 	m.hoverX, m.hoverY = -1, -1
 	m.sidebarVisible = !m.sidebarVisible
+	m.sidebarHidden = !m.sidebarVisible
 	if m.sidebarVisible {
 		m.sidebar = true
 	} else {
 		m.focusEditor()
 	}
 	m.resize()
-	return nil
+	return m.savePreferences()
 }
 
 // SetLayoutStore enables immediate persistence after a preference selection.

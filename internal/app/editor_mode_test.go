@@ -75,7 +75,7 @@ func TestEditorStartupHighlightsWithSavedTheme(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer m.Close()
-	m.SetLayout(config.Layout{Theme: "light_modern", LightTheme: "light_modern"})
+	m.SetLayout(config.Layout{Appearance: config.Appearance{Theme: config.ThemePreferences{Dark: "light_modern"}}})
 	tab := &m.tabs[m.activeTab]
 	before := tab.highlightJob.seq
 	batch := m.Init()().(tea.BatchMsg)

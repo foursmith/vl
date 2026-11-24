@@ -61,7 +61,7 @@ like `3j` or `2w`.
 
 The `w`, `b`, and `e` motions and the `iw` and `aw` text objects use Vim's default UTF-8 word classes. For example, `foo_中文かな。🙂` has five words (`foo_`, `中文`, `かな`, `。`, and `🙂`). An empty line is a stop for `w` and `b`.
 
-To enable Chinese word motions, set `vim.enableJieba` in `~/.config/vl/vl.json`.
+To enable Chinese word motions, set `vim.enableJieba` in `~/.config/vl/vl.config.json`.
 
 ```json
 {

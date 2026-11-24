@@ -100,113 +100,48 @@ func TestLightThemePickerAndDiffSurfaces(t *testing.T) {
 	}
 }
 
-func TestThemeFollowsOnlyWhenPreviouslyAligned(t *testing.T) {
+func TestThemeSelectionFollowsExternalAppearanceAndSurvivesRestart(t *testing.T) {
 	m := tabWorkspace(t, 0)
+	path := filepath.Join(t.TempDir(), "vl.config.json")
+	m.SetLayoutStore(config.NewLayoutStore(path))
 	m.Update(uv.LightColorSchemeEvent{})
-	if !m.colorTheme.IsLight() {
-		t.Fatal("first report did not select the matching startup theme")
-	}
-	m.setTestTheme("light_plus")
+	drain(t, m, m.setTestTheme("dark_vs"))
 	m.Update(uv.DarkColorSchemeEvent{})
-	if m.committedTheme().ID != "dark_modern" {
-		t.Fatal("aligned theme did not follow dark appearance")
-	}
-	m.setTestTheme("dark_vs")
-	m.Update(uv.LightColorSchemeEvent{})
-	if m.committedTheme().ID != "light_plus" {
-		t.Fatal("remembered light theme was lost")
-	}
-	m.Update(uv.DarkColorSchemeEvent{})
-	if m.committedTheme().ID != "dark_vs" {
-		t.Fatal("remembered dark theme was lost")
-	}
-	m.setTestTheme("light_vs") // deliberately differs from dark terminal
-	m.Update(uv.DarkColorSchemeEvent{})
-	m.Update(uv.LightColorSchemeEvent{})
-	if m.committedTheme().ID != "light_vs" {
-		t.Fatal("mismatched manual choice was replaced")
-	}
-	m.Update(uv.DarkColorSchemeEvent{}) // now aligned again, so follow
-	if m.committedTheme().ID != "dark_vs" {
-		t.Fatal("alignment did not resume implicit following")
-	}
-}
-
-func TestThemePairAndAlignmentSurviveRestart(t *testing.T) {
-	m := tabWorkspace(t, 0)
-	m.Update(uv.DarkColorSchemeEvent{})
-	m.setTestTheme("light_plus")
-	m.setTestTheme("dark_plus")
-	next := tabWorkspace(t, 0)
-	next.SetLayout(m.Layout())
-	path := filepath.Join(t.TempDir(), "layout.json")
-	next.SetLayoutStore(config.NewLayoutStore(path))
-	_, cmd := next.Update(uv.LightColorSchemeEvent{})
-	drain(t, next, cmd)
-	if next.committedTheme().ID != "light_plus" {
-		t.Fatal("startup did not follow the appearance change while VL was closed")
-	}
+	drain(t, m, m.setTestTheme("light_plus"))
 	saved, err := config.LoadLayout(path)
-	if err != nil || saved.Theme != "light_plus" || saved.ThemePinned {
-		t.Fatalf("startup theme was not saved: %+v, %v", saved, err)
+	if err != nil || saved.Appearance.Theme != (config.ThemePreferences{Dark: "light_plus", Light: "dark_vs"}) {
+		t.Fatalf("reverse selections saved in wrong slots: %+v, %v", saved, err)
 	}
-	next.Update(uv.DarkColorSchemeEvent{})
-	if next.committedTheme().ID != "dark_plus" {
-		t.Fatal("startup lost the remembered dark theme")
-	}
-	next.Update(uv.LightColorSchemeEvent{})
-	if next.committedTheme().ID != "light_plus" {
-		t.Fatal("remembered light theme did not follow subsequent change")
-	}
-	next.Update(uv.DarkColorSchemeEvent{})
-	if next.committedTheme().ID != "dark_plus" {
-		t.Fatal("remembered dark theme was lost")
-	}
-}
 
-func TestFirstTerminalReportPreservesManualOverrideAcrossSystemHandoff(t *testing.T) {
-	m := tabWorkspace(t, 0)
-	m.setTestTheme("dark_plus")
-	m.Update(systemAppearanceMsg{light: false, known: true})
-	m.Update(uv.LightColorSchemeEvent{})
-	if m.committedTheme().ID != "dark_plus" {
-		t.Fatal("terminal's first report overrode saved theme after system fallback")
+	next := tabWorkspace(t, 0)
+	next.SetLayout(saved)
+	next.SetLayoutStore(config.NewLayoutStore(path))
+	before, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
 	}
-	m.Update(uv.DarkColorSchemeEvent{})
-	m.Update(uv.LightColorSchemeEvent{})
-	if m.committedTheme().ID != "light_modern" {
-		t.Fatal("subsequent aligned terminal changes did not follow")
+	for _, step := range []struct {
+		event tea.Msg
+		id    string
+	}{
+		{systemAppearanceMsg{light: true, known: true}, "dark_vs"},
+		{uv.DarkColorSchemeEvent{}, "light_plus"},
+		{systemAppearanceMsg{light: true, known: true}, "light_plus"},
+		{uv.LightColorSchemeEvent{}, "dark_vs"},
+		{uv.DarkColorSchemeEvent{}, "light_plus"},
+	} {
+		if system, ok := step.event.(systemAppearanceMsg); ok {
+			drain(t, next, next.externalColorScheme(system.light, "system"))
+		} else {
+			_, cmd := next.Update(step.event)
+			drain(t, next, cmd)
+		}
+		if next.committedTheme().ID != step.id {
+			t.Fatalf("%T: theme = %q, want %q", step.event, next.committedTheme().ID, step.id)
+		}
 	}
-}
-
-func TestFirstAppearancePreservesExplicitSelection(t *testing.T) {
-	m := tabWorkspace(t, 0)
-	m.setTestTheme("dark_plus")
-	m.Update(uv.LightColorSchemeEvent{})
-	if m.committedTheme().ID != "dark_plus" {
-		t.Fatal("first report replaced manual theme")
-	}
-	reopened := tabWorkspace(t, 0)
-	reopened.SetLayout(m.Layout())
-	reopened.Update(uv.LightColorSchemeEvent{})
-	if reopened.committedTheme().ID != "dark_plus" || !reopened.Layout().ThemePinned {
-		t.Fatal("reopening lost the manual override")
-	}
-	reopened.Update(uv.DarkColorSchemeEvent{})
-	if reopened.Layout().ThemePinned {
-		t.Fatal("matching external appearance did not resume automatic switching")
-	}
-	reopened.Update(uv.LightColorSchemeEvent{})
-	if reopened.committedTheme().ID != "light_modern" {
-		t.Fatal("reopened VL did not follow after alignment resumed")
-	}
-	m.Update(systemAppearanceMsg{light: false, known: true})
-	if !m.appearance.light {
-		t.Fatal("system fallback overrode terminal report")
-	}
-	m.width, m.height = 20, 5
-	if !sameColor(m.View().BackgroundColor, lipgloss.Color(m.colors.Panel)) {
-		t.Fatal("small view did not update terminal padding")
+	if after, err := os.Stat(path); err != nil || !os.SameFile(before, after) {
+		t.Fatalf("external appearance rewrote configuration: %v", err)
 	}
 }
 
@@ -268,8 +203,12 @@ func TestSameBrightnessSwitchInvalidatesSyntax(t *testing.T) {
 		t.Fatal("Dark+ not selected")
 	}
 	m.Update(uv.LightColorSchemeEvent{})
-	if m.colorTheme.IsLight() {
-		t.Fatal("terminal notification replaced explicit theme")
+	if m.colorTheme != theme.Builtin("light_modern") {
+		t.Fatal("light terminal did not use the light slot")
+	}
+	m.Update(uv.DarkColorSchemeEvent{})
+	if m.colorTheme != theme.Builtin("dark_plus") {
+		t.Fatal("dark terminal lost its selected theme")
 	}
 }
 
@@ -395,7 +334,7 @@ func TestThemeArrowPreviewCancelsAndConfirms(t *testing.T) {
 	m.openThemePicker()
 	drain(t, m, m.updateModal(tea.KeyPressMsg{Code: tea.KeyDown}))
 	drain(t, m, m.updateModal(tea.KeyPressMsg{Code: tea.KeyEnter}))
-	if m.themeBeforePreview != nil || m.modal != "" || m.colorTheme != preview || m.committedTheme().ID != preview.ID || m.Layout().Theme != preview.ID {
+	if m.themeBeforePreview != nil || m.modal != "" || m.colorTheme != preview || m.committedTheme().ID != preview.ID || m.Layout().Appearance.Theme.Dark != preview.ID {
 		t.Fatal("Enter did not commit the preview")
 	}
 }
@@ -464,15 +403,22 @@ func TestThemePickerImportsIntoHighContrastGroups(t *testing.T) {
 
 func TestThemePreviewKeepsSlotsAndTracksCommittedAppearance(t *testing.T) {
 	m := tabWorkspace(t, 0)
-	m.Update(uv.DarkColorSchemeEvent{})
+	m.Update(uv.LightColorSchemeEvent{})
 	m.setTestTheme("light_plus")
+	m.Update(uv.DarkColorSchemeEvent{})
 	m.setTestTheme("dark_plus")
 	m.openThemePicker()
+	if !strings.Contains(m.View().Content, "Select Color Theme for Dark Appearance") {
+		t.Fatal("picker did not show the dark appearance target")
+	}
 	drain(t, m, m.updateModal(tea.KeyPressMsg{Code: tea.KeyHome}))
 	drain(t, m, m.updateModal(tea.KeyPressMsg{Code: tea.KeyDown}))
 	preview := m.colorTheme
 	m.Update(uv.LightColorSchemeEvent{})
-	if m.colorTheme != preview || m.committedTheme().ID != "light_plus" || m.Layout().LightTheme != "light_plus" {
+	if !strings.Contains(m.View().Content, "Select Color Theme for Light Appearance") {
+		t.Fatal("picker did not show the new light appearance target")
+	}
+	if m.colorTheme != preview || m.committedTheme().ID != "light_plus" || m.Layout().Appearance.Theme.Light != "light_plus" {
 		t.Fatal("appearance change replaced preview or corrupted committed preference")
 	}
 	drain(t, m, m.openPalette())
@@ -483,7 +429,7 @@ func TestThemePreviewKeepsSlotsAndTracksCommittedAppearance(t *testing.T) {
 	drain(t, m, m.updateModal(tea.KeyPressMsg{Code: tea.KeyHome}))
 	drain(t, m, m.updateModal(tea.KeyPressMsg{Code: tea.KeyDown}))
 	drain(t, m, m.updateModal(tea.KeyPressMsg{Code: tea.KeyEnter}))
-	if m.Layout().DarkTheme != m.committedTheme().ID || m.Layout().LightTheme != "light_plus" {
+	if m.Layout().Appearance.Theme.Dark != "dark_plus" || m.Layout().Appearance.Theme.Light != m.committedTheme().ID {
 		t.Fatal("Enter did not remember only the chosen appearance")
 	}
 }
@@ -546,8 +492,9 @@ func TestSystemAppearanceFallbackAndTerminalPriority(t *testing.T) {
 func TestRememberedImportedThemeAndMissingFile(t *testing.T) {
 	selected, imported := fixtureTheme(t, "vs", `{"colors":{"editor.background":"#F0E0D0"}}`)
 	m := tabWorkspace(t, 0)
-	m.Update(uv.DarkColorSchemeEvent{})
+	m.Update(uv.LightColorSchemeEvent{})
 	m.SetColorTheme(selected)
+	m.Update(uv.DarkColorSchemeEvent{})
 	m.setTestTheme("dark_plus")
 	next := tabWorkspace(t, 0)
 	next.SetLayout(m.Layout())
@@ -582,7 +529,7 @@ func TestUnsupportedTerminalSavesConfirmedThemeBeforeExit(t *testing.T) {
 	}
 	drain(t, m, m.selectPickerChoice())
 	saved, err := config.LoadLayout(path)
-	if err != nil || saved.Theme != "light_modern" || saved.LightTheme != "light_modern" {
+	if err != nil || saved.Appearance.Theme.Dark != "light_modern" || saved.Appearance.Theme.Light != "" {
 		t.Fatalf("confirmation not saved before exit: %+v, %v", saved, err)
 	}
 	// No quit, terminal appearance event, or exit-time save is involved.
@@ -595,7 +542,7 @@ func TestUnsupportedTerminalSavesConfirmedThemeBeforeExit(t *testing.T) {
 	next.SetLayoutStore(config.NewLayoutStore(path))
 	drain(t, next, next.setTestTheme("dark_plus"))
 	saved, err = config.LoadLayout(path)
-	if err != nil || saved.DarkTheme != "dark_plus" || saved.LightTheme != "light_modern" {
+	if err != nil || saved.Appearance.Theme.Dark != "dark_plus" || saved.Appearance.Theme.Light != "" {
 		t.Fatalf("remembered pair not saved: %+v %v", saved, err)
 	}
 }

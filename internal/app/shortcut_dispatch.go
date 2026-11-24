@@ -160,7 +160,13 @@ func (m *Model) toggleEditorFocus() {
 }
 
 func (m *Model) openFocusedContextMenu() tea.Cmd {
+	if m.fileFindFocused() {
+		return m.openContextMenu(m.fileFindX()+2, m.contentRow()+fileFindQueryRow)
+	}
 	if m.sidebar {
+		if m.section == search && m.searchField(m.search.focus) != nil {
+			return m.openContextMenu(m.sideX()+2, m.searchPanelLayout().query)
+		}
 		return m.openSidebarContextMenu()
 	}
 	if cursor := m.editorCursor(); cursor != nil {

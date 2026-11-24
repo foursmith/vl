@@ -13,8 +13,8 @@ import (
 
 // SetColorTheme commits a selection. Preview changes never call this method.
 func (m *Model) SetColorTheme(selected *theme.Theme) tea.Cmd {
-	m.themePinned = m.appearance.source == "" || selected.IsLight() != m.appearance.light
-	if selected.IsLight() {
+	m.startupTheme = nil
+	if m.appearance.light {
 		m.lightTheme = selected
 	} else {
 		m.darkTheme = selected
@@ -36,27 +36,33 @@ type appearanceState struct {
 }
 
 func (m *Model) externalColorScheme(light bool, source string) tea.Cmd {
-	previous := m.appearance
-	if previous.source == "terminal" && source == "system" {
+	if m.appearance.source == "terminal" && source == "system" {
 		return nil
 	}
 	m.appearance = appearanceState{source: source, light: light}
-	aligned := m.committedTheme().IsLight() == light
-	if m.themePinned {
-		// The first system sample can arrive before a terminal with a
-		// different appearance replies. Let that terminal resolve the pin.
-		if !aligned || (source == "system" && previous.source == "") {
-			return nil
-		}
-		m.themePinned = false
-		return m.savePreferences()
+	if m.modal == "themes" {
+		m.modalTitle = m.themePickerTitle()
+		m.input.Placeholder = m.modalTitle
 	}
-	if aligned {
-		return nil
-	}
+	return m.followAppearance()
+}
+
+// SetStartupTheme applies the explicit --theme choice for this session.
+func (m *Model) SetStartupTheme(selected *theme.Theme) {
+	m.startupTheme = selected
+	m.applyTheme(selected)
+}
+
+func (m *Model) followAppearance() tea.Cmd {
 	selected := m.darkTheme
-	if light {
+	if m.appearance.light {
 		selected = m.lightTheme
+	}
+	if m.startupTheme != nil {
+		selected = m.startupTheme
+	}
+	if selected == m.committedTheme() {
+		return nil
 	}
 	if m.themeBeforePreview != nil {
 		m.pickerFilter = pickerFilterCache{}
@@ -67,9 +73,9 @@ func (m *Model) externalColorScheme(light bool, source string) tea.Cmd {
 				m.palette[i].key = m.tr("Current")
 			}
 		}
-		return m.savePreferences()
+		return nil
 	}
-	return tea.Batch(m.applyTheme(selected), m.savePreferences())
+	return m.applyTheme(selected)
 }
 
 func (m *Model) applyTheme(selected *theme.Theme) tea.Cmd {
@@ -271,11 +277,18 @@ func (m *Model) themeChoices() []action {
 	return choices
 }
 
+func (m *Model) themePickerTitle() string {
+	if m.appearance.light {
+		return m.tr("Select Color Theme for Light Appearance")
+	}
+	return m.tr("Select Color Theme for Dark Appearance")
+}
+
 func (m *Model) openThemePicker() tea.Cmd {
 	restore := m.cancelThemePreview()
 	m.themeBeforePreview = m.colorTheme
 	m.palette = m.themeChoices()
-	cmd := m.prompt("themes", m.tr("Select Color Theme"), "")
+	cmd := m.prompt("themes", m.themePickerTitle(), "")
 	for i, choice := range m.palette {
 		if choice.key == m.tr("Current") {
 			m.selectPickerIndex(i)
@@ -321,23 +334,13 @@ func (m *Model) cancelThemePreview() tea.Cmd {
 	return m.applyTheme(preview)
 }
 
-func (m *Model) restoreThemeSlot(id string, light bool) bool {
-	if id == "" {
-		return false
-	}
-	selected, err := theme.Load(id)
-	if err != nil {
+func (m *Model) restoreThemeSlot(id, fallback string) *theme.Theme {
+	if id != "" {
+		selected, err := theme.Load(id)
+		if err == nil {
+			return selected
+		}
 		m.notice = m.tr("Load remembered theme: %s", m.tr(err.Error()))
-		return false
 	}
-	if selected.IsLight() != light {
-		m.notice = m.tr("Remembered theme has changed appearance: %s", id)
-		return false
-	}
-	if light {
-		m.lightTheme = selected
-	} else {
-		m.darkTheme = selected
-	}
-	return true
+	return theme.Builtin(fallback)
 }

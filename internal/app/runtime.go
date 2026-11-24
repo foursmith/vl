@@ -85,13 +85,16 @@ func (r *Runtime) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		updated.kittySupported, updated.kittyProbeDone = old.kittySupported, old.kittyProbeDone
 		updated.themeNotifications, updated.themeNotificationsOwned = old.themeNotifications, old.themeNotificationsOwned
 		updated.appearance = old.appearance
+		updated.startupTheme = old.startupTheme
+		updated.lastCommand = old.lastCommand
+		themeChange := updated.followAppearance()
 		updated.resize()
 		cleanup := old.ImageCleanupSequence()
 		old.Close()
 		r.current = updated
 		r.generation++
 		// Retire the old images before the new workspace can upload any.
-		return r, tea.Sequence(tea.Raw(cleanup), r.Init())
+		return r, tea.Sequence(tea.Raw(cleanup), tea.Batch(r.Init(), workspaceCommand(r.generation, themeChange)))
 	}
 	var expireFeedback tea.Cmd
 	if feedback := old.statusFeedback; feedback != nil && feedback != previousFeedback {
