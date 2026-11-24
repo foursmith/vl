@@ -109,10 +109,15 @@ func (i *textInput) update(msg tea.Msg) tea.Cmd {
 			i.revision++
 			return nil
 		}
+		if start == end && key.Matches(msgKey, i.KeyMap.DeleteWordForward) &&
+			before.position == utf8.RuneCountInString(before.value)-1 {
+			// Bubbles' forward word deletion reads past the last rune here.
+			msg = tea.KeyPressMsg{Code: tea.KeyDelete}
+		}
 		if start != end {
 			switch {
 			case key.Matches(msgKey, i.KeyMap.DeleteCharacterBackward, i.KeyMap.DeleteCharacterForward,
-				i.KeyMap.DeleteWordBackward, i.KeyMap.DeleteWordForward, i.KeyMap.DeleteBeforeCursor, i.KeyMap.DeleteAfterCursor):
+				i.KeyMap.DeleteWordBackward, i.KeyMap.DeleteWordForward):
 				replace, msg = true, nil
 			case key.Matches(msgKey, i.KeyMap.CharacterBackward):
 				i.SetCursor(start)
@@ -174,8 +179,8 @@ func (i *textInput) extendSelection(msg tea.KeyPressMsg) bool {
 	move.Mod &^= tea.ModShift
 	start := i.Position()
 	direction := move.String()
-	switch direction {
-	case leftArrow, rightArrow:
+	switch {
+	case direction == leftArrow || direction == rightArrow:
 		position := 0
 		iter := graphemes.FromString(i.Value())
 		for iter.Next() {
@@ -190,7 +195,7 @@ func (i *textInput) extendSelection(msg tea.KeyPressMsg) bool {
 			}
 			position = next
 		}
-	case "home", "end", "ctrl+left", "ctrl+right", "alt+left", "alt+right":
+	case key.Matches(move, i.KeyMap.LineStart, i.KeyMap.LineEnd, i.KeyMap.WordBackward, i.KeyMap.WordForward):
 		i.Model, _ = i.Model.Update(move)
 	default:
 		return false

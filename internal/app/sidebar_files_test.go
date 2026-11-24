@@ -71,7 +71,11 @@ func TestSearchContextMenuResolvesResultAndRejectsChangedTarget(t *testing.T) {
 	}
 	path := m.sidebarEntry().file
 	count := m.search.result.Count
-	chooseContextAction(t, m, "Dismiss Result")
+	press(m, "d")
+	if m.contextMenu == nil || m.search.result.Count != count {
+		t.Fatal("first d acted before the menu shortcut was complete")
+	}
+	press(m, "d")
 	if m.search.result.Count >= count {
 		t.Fatal("menu did not dismiss the selected match")
 	}
@@ -83,7 +87,7 @@ func TestSearchContextMenuResolvesResultAndRejectsChangedTarget(t *testing.T) {
 		t.Fatal("keyboard menu unavailable in results")
 	}
 	m.search.result.Files = nil
-	chooseContextAction(t, m, "Dismiss Result")
+	m.Update(tea.KeyPressMsg{Code: tea.KeyDelete})
 	if m.modal != "" || m.notice != "Target changed; reopen the menu" {
 		t.Fatal("stale menu acted on a replacement result")
 	}

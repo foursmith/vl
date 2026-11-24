@@ -4,12 +4,88 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/foursmith/vl/internal/config"
 )
+
+func TestEditorModeGoToFileListsCurrentDirectory(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(dir, "subdir"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"first.txt", "second.txt", ".hidden", "subdir/nested.txt"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("first\nsecond\n"), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	m, err := NewEditor(t.Context(), filepath.Join(dir, "first.txt"), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer m.Close()
+
+	drain(t, m, press(m, "ctrl+g"))
+	var filenames []string
+	for _, a := range m.filteredActions() {
+		filenames = append(filenames, a.id)
+	}
+	if !slices.Equal(filenames, []string{".hidden", "first.txt", "second.txt"}) {
+		t.Fatalf("Go to File listed %v", filenames)
+	}
+	press(m, "second.txt:2:3")
+	press(m, "enter")
+	line, column := m.document().Position()
+	if filepath.Base(m.document().Path) != "second.txt" || line != 1 || column != 2 {
+		t.Fatalf("opened %s at %d:%d", m.document().Path, line, column)
+	}
+	if !m.editorOnly || m.sideShown() || m.refreshSeq != 0 || m.treeSeq != 0 {
+		t.Fatal("Go to File activated workspace UI or indexing")
+	}
+
+	drain(t, m, press(m, "ctrl+g"))
+	press(m, "first.txt")
+	press(m, "enter")
+	if filepath.Base(m.document().Path) != "first.txt" || len(m.tabs) != 2 {
+		t.Fatal("Go to File did not return to the existing editor")
+	}
+}
+
+func TestEditorModeRefreshReloadsCleanFileAndKeepsUnsavedEdits(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "file.txt")
+	if err := os.WriteFile(path, []byte("original\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	m, err := NewEditor(t.Context(), path, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer m.Close()
+
+	press(m, "ctrl+f")
+	refresh := func(diskText string) {
+		t.Helper()
+		if err := os.WriteFile(path, []byte(diskText), 0600); err != nil {
+			t.Fatal(err)
+		}
+		_, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyF5})
+		drain(t, m, cmd)
+	}
+	refresh("updated\n")
+	if m.document().Text != "updated\n" || !m.fileFindFocused() || m.refreshSeq != 0 {
+		t.Fatal("F5 did not reload the current file within the standalone editor")
+	}
+
+	m.document().Insert("unsaved ")
+	refresh("changed again\n")
+	if m.document().Text != "unsaved updated\n" || !m.document().Dirty() ||
+		!m.tabs[m.activeTab].reloadWhenClean {
+		t.Fatal("F5 did not preserve unsaved edits after a disk change")
+	}
+}
 
 func TestEditorModeIsolatedAndFullWidth(t *testing.T) {
 	dir := t.TempDir()

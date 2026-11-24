@@ -57,17 +57,21 @@ func (l sidebarList) move(action string, count int) bool {
 	return true
 }
 
-func (m *Model) sidebarNavigationKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
-	l := m.sidebarList()
+func (m *Model) sidebarNavigationScope(selected int) string {
 	entryKey := ""
 	if entry := m.sidebarEntry(); entry != nil {
 		entryKey = entry.key
 	}
-	scope := fmt.Sprintf("sidebar:%d:%s:%d:%s", m.section, m.repo.Root, *l.selected, entryKey)
+	scope := fmt.Sprintf("sidebar:%d:%s:%d:%s", m.section, m.repo.Root, selected, entryKey)
 	if m.section == search {
 		scope += fmt.Sprintf(":%d", m.search.seq)
 	}
-	action, count, handled := m.navigationState.key(scope, msg.String())
+	return scope
+}
+
+func (m *Model) sidebarNavigationKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
+	l := m.sidebarList()
+	action, count, handled := m.navigationState.key(m.sidebarNavigationScope(*l.selected), msg.String())
 	if m.section == search && (action == sidebarDeleteSequence || key.Matches(msg, sidebarKeys.Delete)) {
 		m.dismissSearchResult(*l.selected)
 		return true, nil

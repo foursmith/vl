@@ -11,7 +11,7 @@
 | `Ctrl+F` | Find in the current file |
 | `F2` | Switch focus between the sidebar and the editor |
 | `Ctrl+S` | Save the current file |
-| `Ctrl+W` | Close the current editor, with a prompt for unsaved changes |
+| `Ctrl+W` | Close the current editor from the editor or a sidebar list. Prompts for unsaved changes. |
 | `Esc` | Cancel the current mode, menu, or input |
 
 Files open in Normal mode by default. Use **Preferences: Toggle Vim Mode**
@@ -20,7 +20,7 @@ from the command palette to switch to direct text editing. The
 [save and quit compatibility shortcuts](VIM.md#save-and-quit-commands).
 
 Use `Ctrl+U` / `Ctrl+D` to scroll up / down by half the height of the active
-view. This works in text and diff editors (including Insert and Visual),
+view. This works in text and diff editors with Vim mode on or off, as well as
 sidebar lists, pickers, menus, and scrollable confirmation details. In
 Search, the keys navigate the results. In Find, they scroll the document
 while keeping focus on the field. In a zoomed image preview, they pan vertically.
@@ -43,14 +43,16 @@ In confirmation dialogs, use `←`/`→` or `Tab` to select a button, `Enter` to
 | `Ctrl+Shift+W` | Close the other tabs. Prompts for unsaved changes. |
 | `Space 1` … `Space 9` | Switch to a tab by number from a focused editor with Vim mode on and outside Insert mode |
 | `Space ←` / `Space →` | Switch to the adjacent tab from a focused editor with Vim mode on and outside Insert mode |
-| `F5` | Refresh the active view |
+| `F5` | Refresh the active view. In the editor, check for disk changes and keep any unsaved edits. |
 | `F7` / right-click | Open the context menu |
 | `Ctrl+Q` | Quit. Prompts if there are unsaved changes. |
 
 Go to File filters by filename or path and works without Git. Type
 `src/main.go:42:8` to open a file at line 42, column 8, or `:42` to jump within
-the current file. Press `F4` or click the ignore icon beside the input to show
-ignored files. Prefix the input with `>` to find commands.
+the current file. In a workspace, press `F4` or click the ignore icon beside
+the input to show ignored files. Prefix the input with `>` to find commands.
+
+When vl opens a single file, Go to File lists files directly alongside the active file.
 
 In a picker, use `Down` / `Up` or `Ctrl+J` / `Ctrl+K` to select the next / previous
 result while typing. `PageUp` / `PageDown` move by a page, and `Home` / `End`
@@ -71,8 +73,10 @@ mode is on or off. Read-only diffs support select all and copy.
 
 Double-click to select a word using the [Vim word boundaries](VIM.md#motions-and-search),
 even with Vim mode off. Triple-click to select a line or the whole value in a
-single-line input. In input fields, hold `Shift` with the Left or Right arrow
-to extend the selection.
+single-line input. In input fields, use `Ctrl` with Left or Right to
+move by word. Hold `Shift` with a movement key to extend the selection.
+`Ctrl+Backspace` deletes the previous word, and
+`Ctrl+Delete` deletes the next word.
 
 ### Terminal compatibility
 
@@ -268,6 +272,8 @@ Click the image or its tab to keep the preview open.
 | `Home` / `End` | Select the first / last menu item |
 | `l` / `Enter` / `Space` | Run the selected action |
 | `h` / `Esc` / `F7` | Close the context menu |
+
+Press the shortcut shown beside a context menu action to run it directly.
 
 In Changes, History, and Pull Requests, right-click a repository row or select
 it and press `F7` to switch branches. The Changes and History menus also offer

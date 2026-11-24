@@ -31,7 +31,8 @@ func TestContextMenuSplitsCompactFolders(t *testing.T) {
 					break
 				}
 			}
-			drain(t, m, chooseContextAction(t, m, "Split Folders"))
+			_, cmd := m.Update(tea.KeyPressMsg{Code: 'l', Mod: tea.ModShift})
+			drain(t, m, cmd)
 			assertSplit := func() {
 				t.Helper()
 				for path, depth := range map[string]int{"parent": 1, "parent/chain": 2, "parent/chain/leaf": 3} {
@@ -147,6 +148,26 @@ func TestContextMenuPreservesSelectionAndConsumesInput(t *testing.T) {
 	}
 }
 
+func TestContextMenuRunsDisplayedEditorShortcuts(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	defer m.Close()
+	m.openFile("file0.go")
+	m.document().Insert("// saved from menu\n")
+	m.Update(tea.KeyPressMsg{Code: tea.KeyF7})
+	if m.contextMenu == nil {
+		t.Fatal("missing editor menu")
+	}
+	press(m, "ctrl+c")
+	if m.contextMenu == nil || m.notice != "Select text first" {
+		t.Fatal("Ctrl+C bypassed the disabled copy action")
+	}
+	drain(t, m, press(m, "ctrl+s"))
+	saved, err := os.ReadFile(m.document().Path)
+	if err != nil || m.contextMenu != nil || m.document().Dirty() || string(saved) != m.document().Text {
+		t.Fatalf("Ctrl+S did not save from the menu, read error: %v", err)
+	}
+}
+
 func TestContextMenuFitsAndScrolls(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	m.openFile("file0.go")
@@ -191,7 +212,7 @@ func TestContextMenuTargetsClickedTabAndConfirmsDirtyClose(t *testing.T) {
 	if m.document() != second || !m.sidebar {
 		t.Fatal("opening a tab menu changed the active tab or focus")
 	}
-	chooseContextAction(t, m, "Close")
+	press(m, "ctrl+w")
 	if m.contextMenu != nil || !hasSaveConfirmation(m) || len(m.closeQueue) != 1 || m.closeQueue[0] != first || len(m.tabs) != 2 {
 		t.Fatal("close did not confirm closing the clicked dirty tab")
 	}
@@ -261,7 +282,7 @@ func TestContextMenuChangeActionsAndStaleTargets(t *testing.T) {
 	}
 	_, y = hoverAction(t, m, "README.md", "discard")
 	m.Update(tea.MouseClickMsg{X: m.sideX() + 4, Y: y, Button: tea.MouseRight})
-	chooseContextAction(t, m, "Delete Untracked File")
+	press(m, "d")
 	if m.modal != "confirm" {
 		t.Fatal("discard bypassed confirmation")
 	}

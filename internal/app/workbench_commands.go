@@ -82,6 +82,12 @@ func (m *Model) executeCommand(id commandID, tabKey string) tea.Cmd {
 	case commandCloseAll:
 		return m.closeAllTabs()
 	case commandFind:
+		if m.sidebar && m.section == search {
+			return m.focusSearch(0)
+		}
+		if m.fileFindFocused() {
+			return m.focusFileFind(0)
+		}
 		return m.openFileFind()
 	case commandContextMenu:
 		return m.openFocusedContextMenu()
@@ -118,7 +124,7 @@ func (m *Model) commandAction(id commandID, label, disabled, tabKey string) acti
 
 func (m *Model) commandShortcutHint(id commandID) string {
 	for _, rule := range slices.Backward(m.activeWorkbenchKeymap().byCommand[id]) {
-		if rule.applies(m) && m.resolveWorkbenchRule(rule.binding.Keys()[0], nil).command == id {
+		if m.resolveWorkbenchShortcut(rule.binding.Keys()[0]).ruleID() == rule.ruleID() {
 			return rule.binding.Help().Key
 		}
 	}

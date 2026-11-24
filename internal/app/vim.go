@@ -1,7 +1,6 @@
 package app
 
 import (
-	"sort"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -82,10 +81,6 @@ func (m *Model) vimQuit(discard bool) tea.Cmd {
 func (m *Model) vimKey(k string) (bool, tea.Cmd) {
 	v := &m.tabs[m.activeTab].vim
 	d := m.editorDocument()
-	if isHalfPageKey(k) {
-		m.scrollTextHalfPage(k)
-		return true, nil
-	}
 	if !v.InsertMode && !v.CommandPending() && (k == "pgup" || k == "pgdown") {
 		rows := m.contentHeight()
 		if k == "pgup" {
@@ -130,48 +125,4 @@ func (m *Model) vimKey(k string) (bool, tea.Cmd) {
 		m.editorFold(action)
 	}
 	return true, nil
-}
-
-func (m *Model) scrollTextHalfPage(k string) {
-	d := m.editorDocument()
-	if d == nil {
-		return
-	}
-	t := &m.tabs[m.activeTab]
-	height := m.contentHeight()
-	revealCursor := true
-	t.vim.ScrollPage(d, pageDelta(k, height), func(line, delta int) int {
-		if m.editing() {
-			m.syncMarkdownImageRows(t)
-			top := t.editorDisplayTop()
-			cursor := min(top+height-1, max(top, t.editorDisplayRow(line)))
-			t.setEditorDisplayTop(top + delta)
-			m.clampEditorScroll(t)
-			target, image, _ := t.editorDisplayAt(cursor + delta)
-			// An embedded image can fill the viewport without a text row to reveal.
-			if image != nil && t.editorDisplayRow(target) < t.editorDisplayTop() {
-				next, _, _ := t.editorDisplayAt(image.first + image.region.Rows)
-				if next < len(d.Lines()) && t.editorDisplayRow(next) < t.editorDisplayTop()+height {
-					return next
-				}
-				revealCursor = false
-			}
-			return target
-		}
-		if len(m.reviewRows) == 0 {
-			return line
-		}
-		top := m.viewport.YOffset()
-		cursor := m.reviewRows[min(line, len(m.reviewRows)-1)]
-		target := min(top+height-1, max(top, cursor)) + delta
-		m.viewport.SetYOffset(top + delta)
-		index := sort.SearchInts(m.reviewRows, target)
-		if delta < 0 && index > 0 && (index == len(m.reviewRows) || m.reviewRows[index] != target) {
-			index--
-		}
-		return min(index, len(m.reviewRows)-1)
-	})
-	if revealCursor {
-		m.ensureTextCursor()
-	}
 }

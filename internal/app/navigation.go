@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"sort"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -89,4 +90,55 @@ func (m *Model) navigationKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 		return false, nil
 	}
 	return m.sidebarNavigationKey(msg)
+}
+
+func (m *Model) scrollTextHalfPage(k string) {
+	d := m.editorDocument()
+	if d == nil {
+		return
+	}
+	t := &m.tabs[m.activeTab]
+	height := m.contentHeight()
+	revealCursor := true
+	targetLine := func(line, delta int) int {
+		if m.editing() {
+			m.syncMarkdownImageRows(t)
+			top := t.editorDisplayTop()
+			cursor := min(top+height-1, max(top, t.editorDisplayRow(line)))
+			t.setEditorDisplayTop(top + delta)
+			m.clampEditorScroll(t)
+			target, image, _ := t.editorDisplayAt(cursor + delta)
+			// An embedded image can fill the viewport without a text row to reveal.
+			if image != nil && t.editorDisplayRow(target) < t.editorDisplayTop() {
+				next, _, _ := t.editorDisplayAt(image.first + image.region.Rows)
+				if next < len(d.Lines()) && t.editorDisplayRow(next) < t.editorDisplayTop()+height {
+					return next
+				}
+				revealCursor = false
+			}
+			return target
+		}
+		if len(m.reviewRows) == 0 {
+			return line
+		}
+		top := m.viewport.YOffset()
+		cursor := m.reviewRows[min(line, len(m.reviewRows)-1)]
+		target := min(top+height-1, max(top, cursor)) + delta
+		m.viewport.SetYOffset(top + delta)
+		index := sort.SearchInts(m.reviewRows, target)
+		if delta < 0 && index > 0 && (index == len(m.reviewRows) || m.reviewRows[index] != target) {
+			index--
+		}
+		return min(index, len(m.reviewRows)-1)
+	}
+	delta := pageDelta(k, height)
+	if m.vimDisabled {
+		line, col := d.Position()
+		d.SetPosition(targetLine(line, delta), col)
+	} else {
+		t.vim.ScrollPage(d, delta, targetLine)
+	}
+	if revealCursor {
+		m.ensureTextCursor()
+	}
 }

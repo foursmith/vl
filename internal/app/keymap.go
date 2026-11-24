@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/textinput"
 )
 
 func binding(display, description string, keys ...string) key.Binding {
@@ -43,17 +44,32 @@ var workbenchKeybindings = []workbenchShortcut{
 	{binding: binding("Ctrl+5", "Pull Requests", "ctrl+5"), context: workspaceOnly | fromSearch, command: commandPullRequests},
 	{binding: binding("F12", "Toggle sidebar visibility", "f12"), context: workspaceOnly | fromSearch, command: commandSidebar},
 	{binding: binding("F2", "Switch focus", "f2"), context: workspaceOnly | fromSearch, command: commandFocus},
-	{binding: binding("F5", "Refresh", "f5"), context: fromFileFind | blurFileFind, command: commandRefresh},
+	{binding: binding("F5", "Refresh", "f5"), context: fromSidebarSearch | fromFileFind, command: commandRefresh},
 	{id: sidebarRefreshRuleID, binding: binding("r", "Refresh", "r", "R", "shift+r"), command: commandRefresh, when: func(m *Model) bool {
 		return m.sidebar && m.section != search
 	}},
 	{context: workspaceOnly, command: commandDiffLayout},
 	{binding: binding("Ctrl+S", "Save", "ctrl+s"), context: fromSidebarSearch | fromFileFind, command: commandSave},
-	{binding: binding("Ctrl+W", "Close Editor", "ctrl+w"), context: fromSidebarSearch, command: commandClose},
+	{binding: binding("Ctrl+W", "Close Editor", "ctrl+w"), context: fromSidebarSearch, command: commandClose, when: func(m *Model) bool {
+		return !m.sidebar || m.section != search || m.searchField(m.search.focus) == nil
+	}},
 	{binding: binding("Ctrl+Shift+W", "Close Other Editors", "ctrl+shift+w", "ctrl+shift+W"), context: beforeInput, command: commandCloseOthers},
 	{command: commandCloseAll},
-	{binding: binding("Ctrl+F", "Find", "ctrl+f"), command: commandFind},
+	{binding: binding("Ctrl+F", "Find", "ctrl+f"), context: fromSidebarSearch | fromFileFind, command: commandFind},
 	{binding: binding("F7", "Context menu", "f7"), context: fromSidebarSearch | fromFileFind, command: commandContextMenu},
+}
+
+var inputKeys = textinput.KeyMap{
+	CharacterBackward:       key.NewBinding(key.WithKeys(leftArrow)),
+	CharacterForward:        key.NewBinding(key.WithKeys(rightArrow)),
+	WordBackward:            key.NewBinding(key.WithKeys("ctrl+left")),
+	WordForward:             key.NewBinding(key.WithKeys("ctrl+right")),
+	LineStart:               key.NewBinding(key.WithKeys("home")),
+	LineEnd:                 key.NewBinding(key.WithKeys("end")),
+	DeleteCharacterBackward: key.NewBinding(key.WithKeys("backspace")),
+	DeleteCharacterForward:  key.NewBinding(key.WithKeys("delete")),
+	DeleteWordBackward:      key.NewBinding(key.WithKeys("ctrl+backspace")),
+	DeleteWordForward:       key.NewBinding(key.WithKeys("ctrl+delete")),
 }
 
 var editorKeys = struct {

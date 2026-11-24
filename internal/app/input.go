@@ -21,8 +21,7 @@ func inputBorderRule(style lipgloss.Style, width int, left, right string) string
 
 func newInput() textInput {
 	input := textinput.New()
-	input.KeyMap.LineStart.SetKeys("home")
-	input.KeyMap.Paste.SetEnabled(false)
+	input.KeyMap = inputKeys
 	input.CharLimit = 2000
 	input.SetVirtualCursor(false)
 	return textInput{Model: input, anchor: -1}

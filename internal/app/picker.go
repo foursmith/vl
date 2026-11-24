@@ -2,6 +2,8 @@ package app
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -162,8 +164,9 @@ func (m *Model) selectPickerChoice() tea.Cmd {
 	}
 	if a.run == nil {
 		if m.modal == "quick" && !m.commandPicker() && a.id != "" {
+			path := m.quickFilePath(a.id)
 			m.dismissDialog()
-			return m.openFileInExplorer(a.id)
+			return m.openFileInExplorer(path)
 		}
 		return nil
 	}
@@ -182,7 +185,7 @@ func (m *Model) selectPickerChoice() tea.Cmd {
 
 func (m *Model) openQuickFiles() tea.Cmd { return m.openQuickPicker("") }
 
-func (m *Model) refreshWorkspaceFiles() tea.Cmd {
+func (m *Model) refreshFileList() tea.Cmd {
 	if m.fileListCancel != nil {
 		m.fileListCancel()
 	}
@@ -191,11 +194,47 @@ func (m *Model) refreshWorkspaceFiles() tea.Cmd {
 	m.fileListSeq++
 	m.fileListLoading = true
 	seq, root, includeIgnored := m.fileListSeq, m.repo.Root, m.fileListIncludeIgnored
+	editorOnly := m.editorOnly
+	if editorOnly {
+		root = m.quickFileDir
+	}
 	return func() tea.Msg {
 		defer cancel()
+		if editorOnly {
+			paths, err := listEditorDirectoryFiles(ctx, root)
+			return fileListMsg{seq, paths, err}
+		}
 		paths, err := searchservice.ListFilePaths(ctx, root, includeIgnored)
-		return workspaceFilesMsg{seq, paths, err}
+		return fileListMsg{seq, paths, err}
 	}
+}
+
+func listEditorDirectoryFiles(ctx context.Context, dir string) ([]string, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	var paths []string
+	for _, entry := range entries {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		if entry.Type().IsRegular() {
+			paths = append(paths, entry.Name())
+		} else if entry.Type()&os.ModeSymlink != 0 {
+			if info, err := os.Stat(filepath.Join(dir, entry.Name())); err == nil && info.Mode().IsRegular() {
+				paths = append(paths, entry.Name())
+			}
+		}
+	}
+	return paths, nil
+}
+
+func (m *Model) quickFilePath(path string) string {
+	if m.editorOnly {
+		return filepath.Join(m.quickFileDir, path)
+	}
+	return path
 }
 
 func (m *Model) togglePickerIgnore() tea.Cmd {
@@ -204,7 +243,7 @@ func (m *Model) togglePickerIgnore() tea.Cmd {
 	m.palette = nil
 	m.syncQuickPicker()
 	m.syncPicker()
-	return m.refreshWorkspaceFiles()
+	return m.refreshFileList()
 }
 
 func (m *Model) clearQuickFilePicker() {
@@ -224,11 +263,20 @@ func (m *Model) commandPicker() bool {
 
 func (m *Model) openQuickPicker(value string) tea.Cmd {
 	restore := m.cancelThemePreview()
+	var listFiles tea.Cmd
+	if m.editorOnly {
+		m.quickFileDir = m.repo.Root
+		if m.activeTab >= 0 && m.activeTab < len(m.tabs) {
+			m.quickFileDir = filepath.Dir(m.tabs[m.activeTab].path())
+		}
+		m.snapshot.Files = nil
+		listFiles = m.refreshFileList()
+	}
 	m.palette = nil
 	cmd := m.prompt("quick", "", value)
 	m.syncQuickPicker()
 	m.syncPicker()
-	return tea.Batch(restore, cmd)
+	return tea.Batch(restore, cmd, listFiles)
 }
 
 func (m *Model) syncQuickPicker() {

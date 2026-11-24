@@ -249,22 +249,128 @@ func TestWorkbenchShortcutsWithFocusedSearchInputs(t *testing.T) {
 	press(m, "ctrl+f")
 	press(m, "x")
 	press(m, "ctrl+w")
-	if !m.fileFindFocused() || m.search.query.Value() != "" || len(m.tabs) != 2 {
-		t.Fatal("file find must own Ctrl+W for deleting a word")
+	if !m.fileFindFocused() || m.search.query.Value() != "x" || len(m.tabs) != 2 {
+		t.Fatal("Ctrl+W changed file find or closed an editor")
 	}
 	press(m, "ctrl+p")
 	if !m.commandPicker() || m.fileFindFocused() {
 		t.Fatal("Ctrl+P must leave file find and open the command palette")
 	}
+	press(m, "help")
+	press(m, "ctrl+w")
+	if m.input.Value() != ">help" || !m.commandPicker() || len(m.tabs) != 2 {
+		t.Fatal("Ctrl+W changed the command palette or closed an editor")
+	}
 	press(m, "esc")
 
 	press(m, "ctrl+2")
 	press(m, "S")
-	if !m.sidebar || m.section != search || m.search.query.Value() != "S" {
+	if !m.sidebar || m.section != search || m.search.query.Value() != "xS" {
 		t.Fatal("workspace search must receive printable Git keys as text")
+	}
+	press(m, "ctrl+w")
+	if m.search.query.Value() != "xS" || len(m.tabs) != 2 {
+		t.Fatal("Ctrl+W changed the workspace query or closed an editor")
 	}
 	m.Update(tea.KeyPressMsg{Code: 'w', Mod: tea.ModCtrl | tea.ModShift})
 	if len(m.tabs) != 1 || m.document() != active {
 		t.Fatal("Ctrl+Shift+W must close other tabs with workspace search focused")
+	}
+	press(m, "esc")
+	press(m, "ctrl+w")
+	if len(m.tabs) != 0 {
+		t.Fatal("Ctrl+W did not close the editor from the workspace results")
+	}
+}
+
+func TestWorkspaceSearchWorkbenchShortcutsFollowFocus(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	defer m.Close()
+	m.openFile("file0.go")
+	press(m, "ctrl+2")
+	m.search.query.SetValue("package")
+
+	for _, focus := range []int{0, 2} {
+		m.focusSearch(focus)
+		previous := m.search.seq
+		if hint := m.commandShortcutHint(commandRefresh); hint != "F5" {
+			t.Fatalf("refresh hint with search focus %d = %q", focus, hint)
+		}
+		m.Update(tea.KeyPressMsg{Code: tea.KeyF5})
+		if m.search.seq != previous+1 || m.search.focus != focus || !m.sidebar {
+			t.Fatalf("F5 did not refresh workspace search and preserve focus %d", focus)
+		}
+	}
+	press(m, "ctrl+f")
+	if m.search.focus != 0 || !m.sidebar || m.fileFindFocused() {
+		t.Fatal("Ctrl+F did not focus the workspace query")
+	}
+}
+
+func TestWorkspaceRefreshReloadsFileAndKeepsFindFocused(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	defer m.Close()
+	m.openFile("file0.go")
+	press(m, "ctrl+f")
+	press(m, "package")
+	const updated = "package updated\n"
+	if err := os.WriteFile(m.document().Path, []byte(updated), 0600); err != nil {
+		t.Fatal(err)
+	}
+	previous := m.refreshSeq
+	_, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyF5})
+	drain(t, m, cmd)
+	if m.refreshSeq != previous+1 || m.document().Text != updated ||
+		!m.fileFindFocused() || !m.search.query.Focused() ||
+		m.search.query.Value() != "package" {
+		t.Fatal("F5 did not refresh the workspace and file while keeping focus and query in file find")
+	}
+}
+
+func TestGoToFileShortcutAcrossFocus(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		keys []string
+	}{
+		{name: "editor"},
+		{name: "explorer", keys: []string{"ctrl+1"}},
+		{name: "file find", keys: []string{"ctrl+f"}},
+		{name: "workspace search input", keys: []string{"ctrl+2"}},
+		{name: "workspace search results", keys: []string{"ctrl+2", "esc"}},
+		{name: "command palette", keys: []string{"ctrl+p"}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			m := tabWorkspace(t, 1)
+			defer m.Close()
+			m.openFile("file0.go")
+			for _, k := range test.keys {
+				press(m, k)
+			}
+			press(m, "ctrl+g")
+			if m.modal != "quick" || m.input.Value() != "" || m.fileFindFocused() {
+				t.Fatal("Ctrl+G did not open Go to File")
+			}
+		})
+	}
+}
+
+func TestWorkbenchShortcutHintRespectsSidebarNavigation(t *testing.T) {
+	m := tabWorkspace(t, 2)
+	defer m.Close()
+	m.openFile("file0.go")
+	m.sidebar = true
+	keymap, err := buildWorkbenchKeymap([]workbenchKeyOverride{
+		{id: string(commandPalette), binding: binding("j", "", "j")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.workbenchKeymap = keymap
+	if hint := m.commandShortcutHint(commandPalette); hint != "" {
+		t.Fatalf("command palette advertises sidebar navigation key %q", hint)
+	}
+	press(m, "j")
+	if m.commandPicker() {
+		t.Fatal("j opened the command palette from the sidebar")
 	}
 }

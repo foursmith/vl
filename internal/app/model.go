@@ -94,7 +94,7 @@ type snapshotMsg struct {
 	snapshot gitservice.Snapshot
 	err      error
 }
-type workspaceFilesMsg struct {
+type fileListMsg struct {
 	seq   int
 	paths []string
 	err   error
@@ -190,6 +190,7 @@ type Model struct {
 	fileListCancel          context.CancelFunc
 	fileListLoading         bool
 	fileListIncludeIgnored  bool
+	quickFileDir            string
 	loading, busy           bool
 	remoteProgress          *remoteProgress
 	operationProgress       string
@@ -363,7 +364,7 @@ func (m *Model) refreshRepository(includeFiles bool) tea.Cmd {
 		},
 	}
 	if includeFiles {
-		commands = append(commands, m.refreshWorkspaceFiles())
+		commands = append(commands, m.refreshFileList())
 	}
 	if m.section == explorer {
 		// Explorer reads the visible directories. The snapshot supplies Git
@@ -885,7 +886,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			return m, tea.Batch(m.refresh(), m.reloadWatchedFiles(nil), pullRequestRefresh, m.tick())
 		}
 		return m, tea.Batch(pullRequestRefresh, m.tick())
-	case workspaceFilesMsg:
+	case fileListMsg:
 		if msg.seq != m.fileListSeq {
 			return m, nil
 		}
@@ -1159,20 +1160,17 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		return m.executeCommand(route.command, "")
 	}
 	if m.fileFindFocused() {
-		if !route.has(fromFileFind) {
+		if route.command == "" {
 			return m.fileFindKey(msg)
 		}
 		if route.has(blurFileFind) {
 			m.blurFileFind()
 		}
 	}
-	if m.editorOnly && route.has(workspaceOnly) {
-		return nil
-	}
 	if handled, cmd := m.sidebarTabKey(k); handled {
 		return cmd
 	}
-	if m.sidebar && m.section == search && !route.has(fromSidebarSearch) {
+	if m.sidebar && m.section == search && route.command == "" {
 		return m.searchKey(msg)
 	}
 	if m.editing() && m.sidebar {
@@ -1194,6 +1192,10 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		return m.executeCommand(route.command, "")
 	}
 	if d := m.editorDocument(); !m.sidebar && d != nil {
+		if isHalfPageKey(k) {
+			m.scrollTextHalfPage(k)
+			return nil
+		}
 		if matchesShortcut(k, pickerKeys.Accept) {
 			if cmd, handled := m.enterMarkdownRemoteImage(); handled {
 				return cmd

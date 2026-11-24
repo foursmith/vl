@@ -47,12 +47,20 @@ func (m *Model) contextMenuInput(msg tea.Msg) (tea.Cmd, bool) {
 	case tea.KeyPressMsg:
 		m.navigationState = navigationState{}
 		k := msg.String()
-		if k != navigationDeletePrefix && k != navigationCopyPrefix && k != navigationLeftLetter && k != navigationRightLetter {
+		if cmd, handled := m.runContextMenuShortcut(k); handled {
+			return cmd, true
+		}
+		if k != navigationLeftLetter && k != navigationRightLetter {
 			action, count, handled := menu.navigation.key(fmt.Sprintf("menu:%d", menu.selected), k)
 			if handled {
 				switch action {
 				case "":
 					return nil, true
+				case sidebarDeleteSequence, sidebarCopySequence:
+					if count == 1 {
+						cmd, _ := m.runContextMenuShortcut(action)
+						return cmd, true
+					}
 				case "up":
 					m.moveContextMenu(-count)
 				case "down":
@@ -129,10 +137,45 @@ func (m *Model) ensureContextMenu() {
 	menu.top = min(menu.top, menu.selected)
 	menu.top = max(menu.top, menu.selected-count+1)
 }
+
+func (m *Model) runContextMenuShortcut(name string) (tea.Cmd, bool) {
+	menu := m.contextMenu
+	for i, a := range menu.actions {
+		if a.key == "" {
+			continue
+		}
+		if menuShortcutMatches(name, a.key) || a.id != "" && m.matchWorkbenchCommand(name, commandID(a.id)) {
+			menu.selected = i
+			return m.runContextMenu(), true
+		}
+	}
+	return nil, false
+}
+
+func menuShortcutMatches(name, hint string) bool {
+	for label := range strings.SplitSeq(hint, " / ") {
+		switch {
+		case len(label) == 1:
+			if name == label || label[0] >= 'A' && label[0] <= 'Z' && name == "shift+"+strings.ToLower(label) {
+				return true
+			}
+		case label == sidebarKeys.Delete.Help().Key:
+			if matchesShortcut(name, sidebarKeys.Delete) {
+				return true
+			}
+		case strings.EqualFold(name, label):
+			return true
+		}
+	}
+	return false
+}
+
 func (m *Model) runContextMenu() tea.Cmd {
 	a := m.contextMenu.actions[m.contextMenu.selected]
 	if a.disabled != "" {
 		m.notice = a.disabled
+		m.contextMenu.navigation = navigationState{}
+		m.ensureContextMenu()
 		return nil
 	}
 	m.contextMenu = nil

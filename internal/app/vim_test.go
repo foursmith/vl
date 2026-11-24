@@ -129,6 +129,14 @@ func TestVimDisabledReadOnlyDiffAndPathCompletion(t *testing.T) {
 	m.SetLayout(config.Layout{Vim: config.VimPreferences{Enable: new(false)}})
 	m.focusEditor()
 	original := m.review.Text
+	press(m, "ctrl+d")
+	if row, _ := m.review.Position(); row == 0 {
+		t.Fatal("Ctrl+D did not scroll the diff with Vim disabled")
+	}
+	press(m, "ctrl+u")
+	if row, _ := m.review.Position(); row != 0 {
+		t.Fatal("Ctrl+U did not return to the start of the diff with Vim disabled")
+	}
 	m.Update(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
 	if m.review.SelectedText() == "" || m.tabs[m.activeTab].vim.VisualMode {
 		t.Fatal("read-only diff did not select text directly")

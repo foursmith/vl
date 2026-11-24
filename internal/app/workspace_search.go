@@ -266,8 +266,6 @@ func (m *Model) searchKey(msg tea.KeyPressMsg) tea.Cmd {
 	s := &m.search
 	k := msg.String()
 	switch {
-	case m.matchWorkbenchCommand(k, commandFind):
-		return m.focusSearch(0)
 	case key.Matches(msg, searchKeys.NextField, searchKeys.PreviousField):
 		order := []int{0}
 		if s.replace {
@@ -319,9 +317,6 @@ func (m *Model) searchKey(msg tea.KeyPressMsg) tea.Cmd {
 	}
 	if key.Matches(msg, searchKeys.FocusQuery) {
 		return m.focusSearch(0)
-	}
-	if m.matchWorkbenchCommand(k, commandContextMenu) {
-		return m.openSidebarContextMenu()
 	}
 	_, cmd := m.sidebarNavigationKey(msg)
 	return cmd

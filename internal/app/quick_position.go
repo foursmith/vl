@@ -60,8 +60,8 @@ func (m *Model) quickPositionActions(value string) ([]action, bool) {
 	}
 	var rows []action
 	for _, a := range m.matchQuickFiles(query) {
-		path := a.id
-		rows = append(rows, makeAction(path, func() tea.Cmd {
+		path := m.quickFilePath(a.id)
+		rows = append(rows, makeAction(a.id, func() tea.Cmd {
 			if !m.openDocument(path, false) {
 				return nil
 			}

@@ -123,7 +123,7 @@ func TestTreeVimNavigationAndFileOperators(t *testing.T) {
 }
 
 func TestHalfPageScrollInAllEditorModes(t *testing.T) {
-	for _, mode := range []string{"normal", "i", "v", "V"} {
+	for _, mode := range []string{"normal", "i", "v", "V", "vim disabled"} {
 		t.Run(mode, func(t *testing.T) {
 			m := tabWorkspace(t, 1)
 			defer m.Close()
@@ -133,7 +133,11 @@ func TestHalfPageScrollInAllEditorModes(t *testing.T) {
 			d := tab.doc
 			original := strings.Repeat("    text\n", 100)
 			d.Text = original
-			if mode != "normal" {
+			switch mode {
+			case "vim disabled":
+				m.setVimDisabled(true)
+			case "normal":
+			default:
 				press(m, mode)
 			}
 			for _, step := range []struct {

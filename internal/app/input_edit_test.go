@@ -9,6 +9,51 @@ import (
 	"github.com/foursmith/vl/internal/editor"
 )
 
+func TestInputUsesExplicitBindings(t *testing.T) {
+	input := newInput()
+	input.Focus()
+	input.SetValue("one two")
+	input.SetCursor(3)
+	for _, msg := range []tea.KeyPressMsg{
+		{Code: tea.KeyLeft, Mod: tea.ModAlt},
+		{Code: tea.KeyRight, Mod: tea.ModAlt},
+		{Code: tea.KeyLeft, Mod: tea.ModAlt | tea.ModShift},
+		{Code: tea.KeyRight, Mod: tea.ModAlt | tea.ModShift},
+		{Code: tea.KeyBackspace, Mod: tea.ModAlt},
+		{Code: tea.KeyDelete, Mod: tea.ModAlt},
+		{Code: 'd', Mod: tea.ModAlt},
+		{Code: 'b', Mod: tea.ModAlt},
+		{Code: 'f', Mod: tea.ModAlt},
+		{Code: 'b', Mod: tea.ModCtrl},
+		{Code: 'd', Mod: tea.ModCtrl},
+		{Code: 'e', Mod: tea.ModCtrl},
+		{Code: 'f', Mod: tea.ModCtrl},
+		{Code: 'h', Mod: tea.ModCtrl},
+		{Code: 'k', Mod: tea.ModCtrl},
+		{Code: 'u', Mod: tea.ModCtrl},
+		{Code: 'w', Mod: tea.ModCtrl},
+	} {
+		input.update(msg)
+		if input.Value() != "one two" || input.Position() != 3 || input.anchor != -1 {
+			t.Fatalf("%s changed input to %q at %d with anchor %d", msg, input.Value(), input.Position(), input.anchor)
+		}
+	}
+	input.update(tea.KeyPressMsg{Code: tea.KeyLeft, Mod: tea.ModCtrl})
+	if input.Position() != 0 {
+		t.Fatalf("Ctrl+Left moved the cursor to %d, want 0", input.Position())
+	}
+	input.update(tea.KeyPressMsg{Code: tea.KeyDelete, Mod: tea.ModCtrl})
+	if input.Value() != " two" {
+		t.Fatalf("Ctrl+Delete changed input to %q, want %q", input.Value(), " two")
+	}
+	input.SetValue("a界")
+	input.SetCursor(1)
+	input.update(tea.KeyPressMsg{Code: tea.KeyDelete, Mod: tea.ModCtrl})
+	if input.Value() != "a" {
+		t.Fatalf("Ctrl+Delete before the final character left %q, want %q", input.Value(), "a")
+	}
+}
+
 func TestTextEditingShortcutsFollowInputFocus(t *testing.T) {
 	for _, test := range []struct {
 		name  string

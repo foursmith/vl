@@ -312,7 +312,7 @@ func TestRepeatedRefreshCancelsObsoleteSnapshot(t *testing.T) {
 	latest := m.refresh()
 	obsolete := old().(tea.BatchMsg)
 	staleStatus := obsolete[0]().(snapshotMsg)
-	staleFiles := obsolete[1]().(workspaceFilesMsg)
+	staleFiles := obsolete[1]().(fileListMsg)
 	if staleStatus.err == nil || staleFiles.err == nil {
 		t.Fatal("superseded refresh kept running")
 	}
@@ -357,7 +357,7 @@ func TestExplorerAndPickerWhileSnapshotLoads(t *testing.T) {
 	if !strings.Contains(plain(m.View().Content), m.tr("Loading…")) {
 		t.Fatal("file picker did not indicate its pending file list")
 	}
-	files := commands[1]().(workspaceFilesMsg)
+	files := commands[1]().(fileListMsg)
 	if files.err != nil {
 		t.Fatal(files.err)
 	}

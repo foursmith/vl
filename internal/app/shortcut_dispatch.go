@@ -107,10 +107,26 @@ func (m *Model) activeWorkbenchKeymap() *workbenchKeymap {
 
 func (m *Model) resolveWorkbenchShortcut(name string) workbenchShortcut {
 	return m.resolveWorkbenchRule(name, func(rule workbenchShortcut) bool {
-		if !rule.has(beforeInput) &&
-			(m.fileFindFocused() && !rule.has(fromFileFind) ||
-				m.sidebar && m.section == search && !rule.has(fromSidebarSearch)) {
+		if m.editorOnly && rule.has(workspaceOnly) {
 			return false
+		}
+		if rule.has(beforeInput) {
+			return true
+		}
+		if m.fileFindFocused() && !rule.has(fromFileFind) ||
+			m.sidebar && m.section == search && !rule.has(fromSidebarSearch) {
+			return false
+		}
+		if m.sidebar {
+			// Check local navigation without consuming its pending sequence.
+			navigation := m.navigationState
+			scope := ""
+			if navigation.pending != "" || navigation.count != 0 {
+				scope = m.sidebarNavigationScope(*m.sidebarList().selected)
+			}
+			if _, _, handled := navigation.key(scope, name); handled {
+				return false
+			}
 		}
 		return true
 	})

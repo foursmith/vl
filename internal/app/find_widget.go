@@ -218,8 +218,6 @@ func (m *Model) fileFindKey(msg tea.KeyPressMsg) tea.Cmd {
 	case isHalfPageKey(msg.String()):
 		m.scrollTextHalfPage(msg.String())
 		return nil
-	case m.matchWorkbenchCommand(msg.String(), commandFind):
-		return m.focusFileFind(0)
 	case key.Matches(msg, pickerKeys.Down):
 		m.navigateFileFind(1)
 		return nil

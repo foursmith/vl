@@ -80,7 +80,7 @@ func (m *Model) actions() []action {
 			m.SetSidebarLayout(0, m.sidebarRight)
 			return m.savePreferences()
 		}},
-		m.commandAction(commandRefresh, "Git: Refresh", "", ""),
+		m.commandAction(commandRefresh, "Refresh", "", ""),
 		{"git.stageAll", m.tr("Git: Stage All Changes") + stageSuffix, stageAllKey, m.repositoryStageReason(stageTarget, false), func() tea.Cmd { return m.stageRepository(stageTarget, false) }},
 		{"git.unstageAll", m.tr("Git: Unstage All Changes") + stageSuffix, unstageAllKey, m.repositoryStageReason(stageTarget, true), func() tea.Cmd { return m.stageRepository(stageTarget, true) }},
 		{"git.commit", m.tr("Git: Commit Staged") + suffix, commitKey, m.commitDisabled(target), func() tea.Cmd { return m.commitInRepository(target) }},
@@ -450,6 +450,18 @@ func (m *Model) push(target string) tea.Cmd {
 }
 
 func (m *Model) refreshView() tea.Cmd {
+	var reload tea.Cmd
+	if !m.sidebar && m.activeTab >= 0 && m.activeTab < len(m.tabs) {
+		if t := &m.tabs[m.activeTab]; t.diff == nil {
+			reload = m.reloadWatchedFiles([]string{t.path()})
+		}
+	}
+	if m.editorOnly {
+		return reload
+	}
+	if m.sidebar && m.section == search {
+		return m.runSearch()
+	}
 	if m.fileHistory != nil && m.section == explorer {
 		m.setFileHistory(m.fileHistory.path, m.fileHistory.anchor, m.fileHistory.focused)
 	}
@@ -462,9 +474,9 @@ func (m *Model) refreshView() tea.Cmd {
 		}
 	}
 	if !m.busy {
-		return m.refresh()
+		return tea.Batch(reload, m.refresh())
 	}
-	return nil
+	return reload
 }
 
 func (m *Model) changesKey(k string) (bool, tea.Cmd) {
