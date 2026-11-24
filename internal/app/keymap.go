@@ -26,12 +26,13 @@ const (
 )
 
 var dismissKey = binding("Esc", "Dismiss", "esc")
+var copyTextKey = binding("Ctrl+C", "Copy", "ctrl+c")
 
 // Declare defaults in precedence order. The last matching rule wins, so
 // context-specific rules can share a key with a workbench fallback.
 var workbenchKeybindings = []workbenchShortcut{
 	{binding: binding("Ctrl+Q", "Quit", "ctrl+q"), context: fromSearch, command: commandQuit},
-	{binding: binding("Ctrl+C", "Copy", "ctrl+c"), command: commandCopy, when: (*Model).contentCopyFocused},
+	{binding: copyTextKey, command: commandCopy, when: (*Model).contentCopyFocused},
 	{binding: binding("Ctrl+G", "Go to File", "ctrl+g"), context: fromSearch, command: commandFiles},
 	{binding: binding("Ctrl+R", "Open Recent Workspace", "ctrl+r"), context: workspaceOnly | fromSidebarSearch, command: commandRecent},
 	{binding: binding("Ctrl+P", "Commands", "ctrl+p"), context: fromSearch, command: commandPalette},

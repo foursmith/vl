@@ -24,7 +24,7 @@ func TestVimSystemClipboardShortcuts(t *testing.T) {
 	if cut == nil || d.SelectedText() != "one" || d.Text != "one two" {
 		t.Fatal("cut did not retain the selection while writing to the clipboard")
 	}
-	m.Update(clipboardMsg{doc: d, cut: true, text: "one"})
+	m.Update(clipboardMsg{text: "one", apply: documentClipboardTarget(d, true)})
 	if d.Text != " two" || m.tabs[0].vim.VisualMode {
 		t.Fatal("cut did not remove the selection and exit Visual mode")
 	}
@@ -37,7 +37,7 @@ func TestVimSystemClipboardShortcuts(t *testing.T) {
 	if paste == nil {
 		t.Fatal("paste did not request the system clipboard")
 	}
-	m.Update(clipboardMsg{doc: d, text: "one"})
+	m.Update(clipboardMsg{text: "one", apply: documentClipboardTarget(d, false)})
 	if d.Text != "one two" {
 		t.Fatalf("direct clipboard paste produced %q", d.Text)
 	}
@@ -46,6 +46,152 @@ func TestVimSystemClipboardShortcuts(t *testing.T) {
 	m.Update(tea.PasteMsg{Content: "p\n猫"})
 	if d.Text != "p\n猫one two" || m.tabs[0].vim.CommandPending() {
 		t.Fatal("terminal paste in Normal mode did not insert literal text and clear the pending command")
+	}
+}
+
+func TestDocumentClipboardDoesNotFollowFocusOrSelection(t *testing.T) {
+	m := flashModel(t, "same same")
+	d := m.document()
+	d.SelectRange(0, 4)
+	cut := clipboardMsg{text: "same", apply: documentClipboardTarget(d, true)}
+	d.SelectRange(5, 9)
+	m.Update(cut)
+	if d.Text != "same same" || d.SelectedText() != "same" {
+		t.Fatal("a delayed cut removed a different occurrence of the selected text")
+	}
+	paste := clipboardMsg{text: "late", apply: documentClipboardTarget(d, false)}
+	m.openFileFind()
+	m.Update(paste)
+	if d.Text != "same same" {
+		t.Fatal("a delayed paste changed the document while Find was focused")
+	}
+}
+
+func TestToggleVimModeFromCommandPalette(t *testing.T) {
+	m := flashModel(t, "one two")
+	m.editorOnly = true
+	path := filepath.Join(t.TempDir(), "vl.config.json")
+	m.SetLayoutStore(config.NewLayoutStore(path))
+	m.autoSwitchInputMethod = config.InputMethodSwitch{Enable: true, Cmd: []string{"im-select"}}
+	d := m.document()
+	press(m, "w")
+	press(m, "v")
+	toggle := func() {
+		t.Helper()
+		press(m, "ctrl+p")
+		press(m, "Toggle Vim Mode")
+		drain(t, m, press(m, "enter"))
+	}
+	toggle()
+	if m.Layout().Vim.Enabled() || m.wantsEnglishInput() || strings.Contains(plain(m.statusLine()), "VISUAL") {
+		t.Fatal("disabling Vim left modal editor state active")
+	}
+	layout, err := config.LoadLayout(path)
+	if err != nil || layout.Vim.Enabled() {
+		t.Fatalf("saved Vim preferences = %+v, %v", layout.Vim, err)
+	}
+	if cursor := m.View().Cursor; cursor == nil || cursor.Shape != tea.CursorBar {
+		t.Fatalf("direct editing cursor = %+v", cursor)
+	}
+	if got := d.SelectedText(); got != "t" {
+		t.Fatalf("disabling Vim changed the character selection to %q", got)
+	}
+	press(m, "i")
+	press(m, " ")
+	press(m, "v")
+	if got := d.Text; got != "one i vwo" {
+		t.Fatalf("direct typing produced %q", got)
+	}
+	m.Update(tea.KeyPressMsg{Code: tea.KeyLeft, Mod: tea.ModShift})
+	if got := d.SelectedText(); got != "v" {
+		t.Fatalf("Shift+Left selected %q", got)
+	}
+	press(m, "esc")
+	if d.SelectedText() != "" {
+		t.Fatal("Escape retained the selection")
+	}
+	press(m, "ctrl+a")
+	if d.SelectedText() != d.Text {
+		t.Fatal("Ctrl+A did not select all in direct editing")
+	}
+	toggle()
+	if !m.Layout().Vim.Enabled() || !strings.Contains(plain(m.statusLine()), "NORMAL") {
+		t.Fatal("enabling Vim did not restore Normal mode")
+	}
+	press(m, "i")
+	if !m.tabs[m.activeTab].vim.InsertMode || d.Text != "one i vwo" {
+		t.Fatal("enabling Vim did not restore modal keystrokes")
+	}
+}
+
+func TestVimDisabledReadOnlyDiffAndPathCompletion(t *testing.T) {
+	m := reviewWorkspace(t, false)
+	m.SetLayout(config.Layout{Vim: config.VimPreferences{Enable: new(false)}})
+	m.focusEditor()
+	original := m.review.Text
+	m.Update(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
+	if m.review.SelectedText() == "" || m.tabs[m.activeTab].vim.VisualMode {
+		t.Fatal("read-only diff did not select text directly")
+	}
+	press(m, "v")
+	press(m, " ")
+	if m.review.Text != original || strings.Contains(plain(m.statusLine()), "NORMAL") {
+		t.Fatal("read-only diff entered Vim mode or modified text")
+	}
+	press(m, "]")
+	if m.diffHunk != 1 {
+		t.Fatal("diff hunk navigation depended on Vim mode")
+	}
+
+	m = flashModel(t, "")
+	m.SetLayout(config.Layout{Vim: config.VimPreferences{Enable: new(false)}})
+	m.focusEditor()
+	m.document().Path = filepath.Join(m.repo.Root, "example.go")
+	press(m, "./")
+	if m.pathCompletionDocument() != m.document() {
+		t.Fatal("direct typing did not allow path completion")
+	}
+}
+
+func TestWorkbenchSelectAllBeforeVim(t *testing.T) {
+	const text = "one two\n最后一行\n"
+	for _, test := range []struct {
+		name, start string
+		visual      bool
+		insert      bool
+	}{
+		{name: "normal operator", start: "d"},
+		{name: "visual", start: "v", visual: true},
+		{name: "visual line", start: "V", visual: true},
+		{name: "insert", start: "i", insert: true},
+		{name: "flash", start: "f"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			m := flashModel(t, text)
+			d := m.document()
+			d.SetPosition(0, 4)
+			press(m, test.start)
+			press(m, "ctrl+a")
+			v := &m.tabs[m.activeTab].vim
+			if d.SelectedText() != text || v.VisualMode != test.visual || v.InsertMode != test.insert ||
+				v.CommandPending() || m.flash != nil {
+				t.Fatalf("select all left mode %q, Flash = %v, selection = %q", v.Label(), m.flash != nil, d.SelectedText())
+			}
+			if press(m, "ctrl+c") == nil || press(m, "ctrl+x") == nil {
+				t.Fatal("workbench shortcut did not request the system clipboard")
+			}
+		})
+	}
+
+	m := reviewWorkspace(t, false)
+	press(m, "ctrl+a")
+	if m.diffSelectedText() != m.review.Text || press(m, "ctrl+c") == nil {
+		t.Fatal("read-only diff did not expose its entire text selection for copying")
+	}
+	for _, shortcut := range []string{"ctrl+x", "ctrl+v", "ctrl+z"} {
+		if press(m, shortcut) != nil {
+			t.Fatalf("%s requested an edit on a read-only diff", shortcut)
+		}
 	}
 }
 
@@ -236,6 +382,22 @@ func TestVimChineseWordsThroughWorkbench(t *testing.T) {
 	}
 	if d.Text != "中文测试 foo" || m.vimRegister != "分词" {
 		t.Fatalf("text = %q, register = %q", d.Text, m.vimRegister)
+	}
+
+	m.setVimDisabled(true)
+	x, y := m.mainX()+editorGutterWidth+4, m.contentRow()
+	clickText(t, m, x, y)
+	clickText(t, m, x, y)
+	if got := d.SelectedText(); got != "测试" {
+		t.Fatalf("double-click with Vim mode off selected %q", got)
+	}
+	m.prompt("newFile", "Prompt", "中文测试")
+	l := m.dialogLayout()
+	x, y = l.x+8, l.y+2
+	clickText(t, m, x, y)
+	clickText(t, m, x, y)
+	if start, end := m.input.selection(); start != 2 || end != 4 {
+		t.Fatalf("input double-click selected [%d, %d)", start, end)
 	}
 }
 

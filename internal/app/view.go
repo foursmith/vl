@@ -130,7 +130,6 @@ func (m *Model) resize() {
 	m.hoverOnly = false
 	m.renderFrame = frameCache{}
 	m.pickerFilter = pickerFilterCache{}
-	m.resizeInput()
 	m.syncPicker()
 	m.renderDiff()
 	m.ensureSidebar()
@@ -361,7 +360,7 @@ func (m *Model) editorCursor() *tea.Cursor {
 		return nil
 	}
 	shape, blink := tea.CursorBar, true
-	if !t.vim.InsertMode {
+	if !m.textInserting() {
 		shape, blink = tea.CursorBlock, false
 	}
 	return &tea.Cursor{Position: tea.Position{X: m.mainX() + x, Y: m.contentRow() + y}, Shape: shape, Blink: blink, Color: lipgloss.Color(m.colors.Foreground)}

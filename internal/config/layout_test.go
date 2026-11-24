@@ -19,16 +19,16 @@ func TestLayoutPath(t *testing.T) {
 func TestLayoutRoundTripAndInvalidFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vl", "vl.config.json")
 	got, err := LoadLayout(path)
-	if err != nil || !got.Equal(Layout{}) {
+	if err != nil || !got.Equal(Layout{}) || !got.Vim.Enabled() {
 		t.Fatalf("missing preferences: %+v, %v", got, err)
 	}
-	want := Layout{Appearance: Appearance{Theme: ThemePreferences{Dark: "dark_plus", Light: "light_plus"}, Sidebar: SidebarPreferences{Side: "right", Width: 52}}, Vim: VimPreferences{EnableJieba: true},
+	want := Layout{Appearance: Appearance{Theme: ThemePreferences{Dark: "dark_plus", Light: "light_plus"}, Sidebar: SidebarPreferences{Side: "right", Width: 52}}, Vim: VimPreferences{Enable: new(false), EnableJieba: true},
 		AutoSwitchInputMethod: InputMethodSwitch{Enable: true, Cmd: []string{"im-select", "com.apple.keylayout.ABC"}}}
 	if err := SaveLayout(path, want); err != nil {
 		t.Fatal(err)
 	}
 	got, err = LoadLayout(path)
-	if err != nil || !got.Equal(want) {
+	if err != nil || !got.Equal(want) || got.Vim.Enabled() {
 		t.Fatalf("loaded %+v, %v", got, err)
 	}
 	if err := SaveLayout(path, Layout{}); err != nil {

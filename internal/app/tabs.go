@@ -445,7 +445,7 @@ func (m *Model) ensureTabVisible() {
 
 func (m *Model) doubleClick(key string) bool {
 	now := time.Now()
-	double := m.lastClickKey == key && now.Sub(m.lastClickTime) < 400*time.Millisecond
+	double := m.lastClickKey == key && now.Sub(m.lastClickTime) < multiClickInterval
 	m.lastClickKey, m.lastClickTime = key, now
 	if double {
 		m.lastClickKey = ""

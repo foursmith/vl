@@ -230,14 +230,12 @@ func TestSearchUsesInlineFieldsAndActions(t *testing.T) {
 		}
 	}
 	for _, width := range []int{28, 36, 60} {
-		m.search.focus = 0
-		m.search.query.Focus()
 		lines := m.searchLines(nil, width)
-		m.search.focus = 1
-		m.search.replacement.Focus()
-		m.searchLines(nil, width)
-		if m.search.query.Width() < 8 || m.search.replacement.Width() < 8 {
-			t.Fatal("inline controls left insufficient input space")
+		controls := m.searchPanelControls(width)
+		for _, y := range []int{layout.query, layout.replacement} {
+			if area := searchInputArea(0, y, searchFieldEnd(controls, y, width), width-1); area.width < 8 {
+				t.Fatal("inline controls left insufficient input space")
+			}
 		}
 		query := plain(lines[m.searchPanelLayout().query])
 		if !strings.Contains(query, "Aa") || !strings.Contains(query, ".*") {

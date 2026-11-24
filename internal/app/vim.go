@@ -5,7 +5,49 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/foursmith/vl/internal/editor"
 )
+
+func (m *Model) textInserting() bool {
+	return m.editing() && (m.vimDisabled || m.tabs[m.activeTab].vim.InsertMode)
+}
+
+func (m *Model) setVimDisabled(disabled bool) {
+	if m.vimDisabled == disabled {
+		return
+	}
+	m.vimDisabled = disabled
+	m.cancelFlash()
+	m.leaderTarget = ""
+	m.pathCompletion = nil
+	m.renderFrame = frameCache{}
+	for i := range m.tabs {
+		t := &m.tabs[i]
+		d := t.doc
+		if d == nil && t.diff != nil {
+			d = t.diff.review
+		}
+		if d == nil {
+			continue
+		}
+		if !disabled {
+			t.vim.Reset(d)
+			continue
+		}
+		d.EndEditGroup()
+		if t.vim.VisualMode {
+			start, end := d.Selection()
+			if d.Cursor < d.Anchor {
+				start, end = end, start
+			}
+			d.SelectRange(start, end)
+		}
+		t.vim = editor.Vim{}
+	}
+	if m.editorDocument() != nil {
+		m.ensureTextCursor()
+	}
+}
 
 func (m *Model) quickVimCommand(query string) action {
 	var label string
@@ -40,19 +82,6 @@ func (m *Model) vimQuit(discard bool) tea.Cmd {
 func (m *Model) vimKey(k string) (bool, tea.Cmd) {
 	v := &m.tabs[m.activeTab].vim
 	d := m.editorDocument()
-	if d.ReadOnly && !v.CommandPending() && !v.VisualMode {
-		if k == "enter" {
-			return m.toggleNearestDiffFold()
-		}
-		if k == "[" {
-			m.nextHunk(-1)
-			return true, nil
-		}
-		if k == "]" {
-			m.nextHunk(1)
-			return true, nil
-		}
-	}
 	if isHalfPageKey(k) {
 		m.scrollTextHalfPage(k)
 		return true, nil
@@ -85,10 +114,6 @@ func (m *Model) vimKey(k string) (bool, tea.Cmd) {
 	}
 	before, _ := d.Position()
 	vertical := !v.InsertMode && !v.CommandPending() && (k == "j" || k == "k" || k == "up" || k == "down")
-	// Terminals may report Shift+Z as uppercase. Vim replay expects lowercase.
-	if matchesShortcut(k, editorKeys.Redo) {
-		k = "ctrl+shift+z"
-	}
 	v.HanDictionary = m.vimHanDictionary
 	handled, text := v.Handle(d, k, m.vimRegister)
 	if !handled {

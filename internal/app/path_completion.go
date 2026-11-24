@@ -63,7 +63,7 @@ func pathDelimiter(r rune) bool {
 
 func (m *Model) pathCompletionDocument() *editor.Document {
 	if !m.editing() || m.sidebar || m.modal != "" || m.contextMenu != nil || m.fileFindFocused() ||
-		!m.tabs[m.activeTab].vim.InsertMode {
+		!m.textInserting() {
 		return nil
 	}
 	d := m.document()

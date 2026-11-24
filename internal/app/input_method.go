@@ -24,7 +24,7 @@ func (m *Model) wantsEnglishInput() bool {
 	case m.sidebar:
 		return m.section != search || m.searchField(m.search.focus) == nil
 	default:
-		return m.editorDocument() == nil || !m.tabs[m.activeTab].vim.InsertMode
+		return !m.textInserting()
 	}
 }
 

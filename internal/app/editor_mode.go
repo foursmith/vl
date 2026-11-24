@@ -4,6 +4,7 @@ import (
 	"context"
 	"path/filepath"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/foursmith/vl/internal/editor"
 	gitservice "github.com/foursmith/vl/internal/git"
 )
@@ -40,6 +41,10 @@ func (m *Model) editorActions() []action {
 	return []action{
 		{"theme.select", m.tr("Appearance: Color Theme"), "", "", m.openThemePicker},
 		{"statusBar.style", m.tr("Appearance: Status Bar Style"), "", "", m.openStatusBarStylePicker},
+		{"editor.toggleVim", m.tr("Preferences: Toggle Vim Mode"), "", "", func() tea.Cmd {
+			m.setVimDisabled(!m.vimDisabled)
+			return m.savePreferences()
+		}},
 		{"language.select", m.tr("Preferences: Configure Display Language"), "", "", m.openLanguagePicker},
 		{"file.syntax", m.tr("Change Syntax Highlighting"), "", syntaxReason, m.openFileSyntaxPicker},
 		m.commandAction(commandSave, "File: Save", docReason, ""),

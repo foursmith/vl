@@ -13,8 +13,8 @@ import (
 	"github.com/foursmith/vl/internal/editor"
 )
 
-// Diff contributes source text and a mapping to painted rows. The editor's Vim
-// engine owns cursor/selection commands for both editable and read-only text.
+// Diff contributes source text and a mapping to painted rows for the shared
+// text cursor and selection commands.
 func (m *Model) editorDocument() *editor.Document {
 	if d := m.document(); d != nil {
 		return d
@@ -65,7 +65,7 @@ func (m *Model) rebuildReview() {
 		}
 	}
 	for i := range m.tabs {
-		if m.tabs[i].diff == m.diffState {
+		if !m.vimDisabled && m.tabs[i].diff == m.diffState {
 			m.tabs[i].vim.Reset(m.review)
 		}
 	}
@@ -181,7 +181,11 @@ func (m *Model) reviewCursor() *tea.Cursor {
 	if y < 0 || y >= m.contentHeight() || x < left+m.diffGutter || x >= left+width || m.fileFindAt(x, m.contentRow()+y) {
 		return nil
 	}
-	return &tea.Cursor{Position: tea.Position{X: x, Y: m.contentRow() + y}, Shape: tea.CursorBlock, Color: lipgloss.Color(m.colors.Foreground)}
+	shape := tea.CursorBlock
+	if m.vimDisabled {
+		shape = tea.CursorBar
+	}
+	return &tea.Cursor{Position: tea.Position{X: x, Y: m.contentRow() + y}, Shape: shape, Color: lipgloss.Color(m.colors.Foreground)}
 }
 
 func (d *diffState) reviewHunkStartLine() int {
@@ -386,6 +390,24 @@ func (m *Model) reviewActionsForKey(pressed string) []action {
 	}
 	add(action{id: "diff.edit", label: m.tr("Open Working Tree File"), disabled: sourceReason, run: m.editDiff}, key.Binding{})
 	return actions
+}
+
+func (m *Model) reviewKey(k string) (bool, tea.Cmd) {
+	v := &m.tabs[m.activeTab].vim
+	if v.CommandPending() || v.VisualMode {
+		return false, nil
+	}
+	switch k {
+	case "enter":
+		return m.toggleNearestDiffFold()
+	case "[":
+		m.nextHunk(-1)
+	case "]":
+		m.nextHunk(1)
+	default:
+		return false, nil
+	}
+	return true, nil
 }
 
 func (m *Model) diffChangeShortcut(k string) (bool, tea.Cmd) {

@@ -273,7 +273,6 @@ func (m *Model) prompt(kind, title, value string) tea.Cmd {
 		m.input.Placeholder = m.tr("Optional message")
 		m.input.Prompt = ""
 	}
-	m.resizeInput()
 	if m.isPicker() {
 		m.input.Prompt = ""
 		m.input.Placeholder = title
@@ -282,16 +281,6 @@ func (m *Model) prompt(kind, title, value string) tea.Cmd {
 	m.pickerIndex = 0
 	m.syncPicker()
 	return m.input.Focus()
-}
-
-func (m *Model) resizeInput() {
-	width := max(10, min(66, m.width-14))
-	if m.isPicker() {
-		width = max(1, min(96, m.width-4)-4)
-	} else if m.gitMessageDialog() {
-		width = max(1, m.gitMessageDialogWidth()-9)
-	}
-	m.input.SetWidth(width)
 }
 
 func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
@@ -371,10 +360,16 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 		}
 		return nil
 	}
-	var cmd tea.Cmd
-	m.input, cmd = m.input.Update(msg)
-	m.syncQuickPicker()
-	m.selectPickerIndex(0)
+	return m.updateDialogInput(msg)
+}
+
+func (m *Model) updateDialogInput(msg tea.Msg) tea.Cmd {
+	before := m.input.Value()
+	cmd := m.input.update(msg)
+	if m.input.Value() != before {
+		m.syncQuickPicker()
+		m.selectPickerIndex(0)
+	}
 	return cmd
 }
 

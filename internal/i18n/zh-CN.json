@@ -11,6 +11,7 @@
   "Type to search · label to jump · Tab next · Esc cancel": "输入搜索 · 标签跳转 · Tab 下一组 · Esc 取消",
   "Configure Display Language": "配置显示语言",
   "Preferences: Configure Display Language": "首选项：配置显示语言",
+  "Preferences: Toggle Vim Mode": "首选项：切换 Vim 模式",
   "Display language changed": "已切换显示语言",
   "Missing": "不存在",
   "Refresh": "刷新",

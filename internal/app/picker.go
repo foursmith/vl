@@ -56,24 +56,32 @@ func (m *Model) pickerIgnoreAt(l pickerLayout, x, y int) bool {
 	return y == c.y && x >= c.x && x < c.x+c.width
 }
 
+func (m *Model) pickerInput(l pickerLayout) (inputArea, int) {
+	rowWidth := l.width - 2
+	width := max(1, l.width-4)
+	if m.hasPickerIgnoreToggle() {
+		rowWidth = m.pickerIgnoreControl(l).x - l.x - 1
+		width = max(1, rowWidth-3)
+	}
+	return inputArea{x: l.x + 2, y: l.y + 1, width: width}, rowWidth
+}
+
 func (m *Model) pickerOverlay(base []string) []string {
 	rows := m.filteredActions()
 	l := m.pickerLayout(rows)
 	bg := m.colors.Panel
 	w := l.width - 2
 	border := theme.Style(m.colors.PopupBorder, bg)
-	shown := m.input
-	inputWidth, controls := w, ""
+	input, inputWidth := m.pickerInput(l)
+	controls := ""
 	if m.hasPickerIgnoreToggle() {
 		c := m.pickerIgnoreControl(l)
-		inputWidth = c.x - l.x - 1
-		shown.SetWidth(max(1, inputWidth-3))
 		controls = m.searchControlView(c, bg, !m.fileListIncludeIgnored, m.pickerIgnoreAt(l, m.hoverX, m.hoverY)) +
 			row("", w-inputWidth-c.width, m.colors.InputForeground, bg)
 	}
 	box := []string{
 		inputBorderRule(border, l.width, "╭", "╮"),
-		border.Render("│") + row(" "+m.inputView(shown, l.x+2, l.y+1), inputWidth, m.colors.InputForeground, bg) + controls + border.Render("│"),
+		border.Render("│") + row(" "+m.inputView(m.input, input), inputWidth, m.colors.InputForeground, bg) + controls + border.Render("│"),
 		inputBorderRule(border, l.width, "├", "┤"),
 	}
 	hovered := l.indexAt(m.hoverX, m.hoverY)
@@ -112,6 +120,8 @@ func (m *Model) clickPicker(msg tea.MouseClickMsg) tea.Cmd {
 			return m.togglePickerIgnore()
 		}
 		if msg.Y >= l.y && msg.Y < l.y+3 {
+			input, _ := m.pickerInput(l)
+			m.clickInput(&m.input, input, msg.X, msg.Y)
 			return nil
 		}
 		if index := l.indexAt(msg.X, msg.Y); index >= 0 {

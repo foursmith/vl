@@ -2,13 +2,40 @@ package app
 
 import (
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/clipperhouse/uax29/v2/graphemes"
 	"github.com/foursmith/vl/internal/diff"
+	"github.com/foursmith/vl/internal/editor"
 )
+
+const multiClickInterval = 400 * time.Millisecond
+
+type textClick struct {
+	target      any
+	x, y, count int
+	at          time.Time
+}
+
+func (m *Model) countTextClick(target any, x, y int) int {
+	now := time.Now()
+	previous := m.textClick
+	count := 1
+	if previous.target == target && previous.y == y && previous.x == x &&
+		now.Sub(previous.at) < multiClickInterval && previous.count < 3 {
+		count = previous.count + 1
+	}
+	m.textClick = textClick{target: target, x: x, y: y, count: count, at: now}
+	return count
+}
+
+func (m *Model) mouseWordRange(d *editor.Document, offset int) (start, end int) {
+	vim := editor.Vim{HanDictionary: m.vimHanDictionary}
+	return vim.InnerWordRange(d, offset)
+}
 
 // Mouse columns are terminal cells; selection columns are source rune offsets.
 func textColumn(text string, goal int, gaps tablePadding) int {
@@ -147,6 +174,9 @@ func (m *Model) stopTextDrag() {
 }
 
 func (m *Model) dragText(x, y int) {
+	if (m.textDrag != nil || m.diffDrag != nil) && (x != m.textClick.x || y != m.textClick.y) {
+		m.textClick = textClick{}
+	}
 	if m.modal != "" {
 		m.stopTextDrag()
 		return
@@ -166,11 +196,46 @@ func (m *Model) dragText(x, y int) {
 }
 
 func (m *Model) beginTextDrag(msg tea.MouseClickMsg) {
+	extend := msg.Mod.Contains(tea.ModShift)
 	if m.editing() {
-		m.positionEditor(msg.X, msg.Y, msg.Mod.Contains(tea.ModShift))
-		m.textDrag = m.document()
+		d := m.document()
+		m.positionEditor(msg.X, msg.Y, extend)
+		if msg.Mod == 0 {
+			switch m.countTextClick(d, msg.X, msg.Y) {
+			case 2:
+				from, to := m.mouseWordRange(d, d.Cursor)
+				d.SelectRange(from, to)
+				m.ensureEditor()
+				return
+			case 3:
+				line, _ := d.Position()
+				from := d.LineOffset(line)
+				to := from + d.LineRuneCount(line)
+				if line+1 < len(d.Lines()) {
+					to = d.LineOffset(line + 1)
+				}
+				d.SelectRange(from, to)
+				m.ensureEditor()
+				return
+			}
+		}
+		m.textDrag = d
 	} else if m.diffOpen {
-		m.positionDiff(msg.X, msg.Y, msg.Mod.Contains(tea.ModShift) && m.diffSelection.active)
+		m.positionDiff(msg.X, msg.Y, extend && m.diffSelection.active)
+		if msg.Mod == 0 && m.diffSelection.active {
+			s := &m.diffSelection
+			line := codeLine(m.selectionLine(s.cursor.row, s.right))
+			switch m.countTextClick(m.diffState, msg.X, msg.Y) {
+			case 2:
+				s.anchor.col, s.cursor.col = m.mouseWordRange(&editor.Document{Text: line}, s.cursor.col)
+				m.syncReviewMouse()
+				return
+			case 3:
+				s.anchor.col, s.cursor.col = 0, utf8.RuneCountInString(line)
+				m.syncReviewMouse()
+				return
+			}
+		}
 		m.diffDrag = m.diffState
 	}
 }

@@ -6,7 +6,7 @@ func (m *Model) leaderAvailable() bool {
 	if m.sidebar || m.modal != "" || m.contextMenu != nil || m.activeTab < 0 || m.activeTab >= len(m.tabs) {
 		return false
 	}
-	return m.editorDocument() == nil || m.tabs[m.activeTab].vim.AcceptsLeader()
+	return m.editorDocument() == nil || !m.vimDisabled && m.tabs[m.activeTab].vim.AcceptsLeader()
 }
 
 func (m *Model) leaderActive() bool {

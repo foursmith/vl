@@ -14,7 +14,9 @@
 | `Ctrl+W` | Close the current editor, with a prompt for unsaved changes |
 | `Esc` | Cancel the current mode, menu, or input |
 
-Files open in Normal mode. The [Vim guide](VIM.md) covers motions and
+Files open in Normal mode by default. Use **Preferences: Toggle Vim Mode**
+from the command palette to switch to direct text editing. The
+[Vim guide](VIM.md) covers motions and
 [save and quit compatibility shortcuts](VIM.md#save-and-quit-commands).
 
 Use `Ctrl+U` / `Ctrl+D` to scroll up / down by half the height of the active
@@ -39,8 +41,8 @@ In confirmation dialogs, use `←`/`→` or `Tab` to select a button, `Enter` to
 | `Ctrl+1` / `Ctrl+2` / `Ctrl+3` / `Ctrl+4` / `Ctrl+5` | Focus Explorer / Search / Changes / History / Pull Requests |
 | `F12` | Toggle Sidebar Visibility |
 | `Ctrl+Shift+W` | Close the other tabs. Prompts for unsaved changes. |
-| `Space 1` … `Space 9` | Switch to a tab by number from a focused editor outside Insert mode |
-| `Space ←` / `Space →` | Switch to the adjacent tab from a focused editor outside Insert mode |
+| `Space 1` … `Space 9` | Switch to a tab by number from a focused editor with Vim mode on and outside Insert mode |
+| `Space ←` / `Space →` | Switch to the adjacent tab from a focused editor with Vim mode on and outside Insert mode |
 | `F5` | Refresh the active view |
 | `F7` / right-click | Open the context menu |
 | `Ctrl+Q` | Quit. Prompts if there are unsaved changes. |
@@ -56,7 +58,21 @@ jump to the first / last result. `Enter` accepts and `Esc` dismisses the picker.
 Path completion also supports arrow keys, `Ctrl+J` / `Ctrl+K`, and half- or
 full-page navigation. `Tab` inserts the selected path. See the [Vim guide](VIM.md#save-and-quit-commands) for save and quit commands.
 
-`Ctrl+C` copies selected text when the text or diff editor has focus.
+### Text editing
+
+These shortcuts act on the focused text editor or input field whether Vim
+mode is on or off. Read-only diffs support select all and copy.
+
+| Shortcut | Action |
+| --- | --- |
+| `Ctrl+A` | Select all |
+| `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copy / cut / paste using the system clipboard |
+| `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo |
+
+Double-click to select a word using the [Vim word boundaries](VIM.md#motions-and-search),
+even with Vim mode off. Triple-click to select a line or the whole value in a
+single-line input. In input fields, hold `Shift` with the Left or Right arrow
+to extend the selection.
 
 ### Terminal compatibility
 

@@ -12,6 +12,15 @@ func (v *Vim) SyncVisual(d *Document) {
 	d.SelectVisual(v.visualAnchor, d.Cursor, v.VisualLine)
 }
 
+// SelectAll keeps Visual's anchor in sync with the workbench selection.
+func (v *Vim) SelectAll(d *Document) {
+	d.SelectAll()
+	if v.VisualMode {
+		v.visualAnchor = d.Anchor
+		v.SyncVisual(d)
+	}
+}
+
 func (v *Vim) visualLineRange(d *Document) (first, last int) {
 	anchor, _ := d.positionAt(v.visualAnchor)
 	row, _ := d.Position()

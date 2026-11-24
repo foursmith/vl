@@ -287,27 +287,32 @@ func TestSharedFindSwitchToNewDiffUpdatesViewportHeight(t *testing.T) {
 	}
 }
 
-func TestSharedFindInputOwnerKeepsOwnWidth(t *testing.T) {
+func TestSharedFindInputUsesFocusedSurfaceGeometry(t *testing.T) {
 	m := replacementWorkspace(t)
 	m.clickSearch(7, m.searchResultY())
 	m.openFileFind()
 	m.Update(tea.WindowSizeMsg{Width: 160, Height: 24})
 	m.search.query.SetValue(strings.Repeat("needle", 40))
+	m.search.query.CursorEnd()
 	m.adoptSearchState()
-	m.fileFindLines()
-	inputWidth := m.search.query.Width()
-	m.View()
-	if m.search.query.Width() != inputWidth || inputWidth >= m.mainWidth()-4 {
-		t.Fatal("sidebar changed editor find input width")
+
+	atEnd := func(area inputArea) {
+		t.Helper()
+		c := m.View().Cursor
+		if c == nil || c.X != area.x+area.width || c.Y != area.y {
+			t.Fatalf("caret %+v does not match focused input %+v", c, area)
+		}
 	}
+	w := m.fileFindWidth()
+	end := searchFieldEnd(m.fileFindControls(w), fileFindQueryRow, w-1)
+	atEnd(searchInputArea(m.fileFindX(), m.contentRow()+fileFindQueryRow, end, w))
+
 	m.sidebar = true
 	m.focusSearch(0)
-	m.searchLines(nil, m.sidebarContentWidth())
-	inputWidth = m.search.query.Width()
-	m.View()
-	if m.search.query.Width() != inputWidth {
-		t.Fatal("editor changed sidebar find input width")
-	}
+	w = m.sidebarContentWidth()
+	row := m.searchPanelLayout().query
+	end = searchFieldEnd(m.searchPanelControls(w), row, w)
+	atEnd(searchInputArea(m.sideX(), row, end, w-1))
 }
 
 func TestSharedFindUndoRefreshesWorkspaceResults(t *testing.T) {

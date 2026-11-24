@@ -3,13 +3,10 @@ package app
 import (
 	"context"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"charm.land/bubbles/v2/key"
-	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
-	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/colorprofile"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
@@ -121,12 +118,6 @@ type statusFeedback struct{ text string }
 type statusFeedbackExpiredMsg struct{ feedback *statusFeedback }
 
 type tickMsg time.Time
-type clipboardMsg struct {
-	text string
-	err  error
-	doc  *editor.Document
-	cut  bool
-}
 
 type Model struct {
 	workbenchKeymap                    *workbenchKeymap
@@ -138,6 +129,7 @@ type Model struct {
 	flash                              *flashState
 	pathCompletion                     *pathCompletion
 	vimRegister                        string
+	vimDisabled                        bool
 	flashRevision                      uint64
 	displayLanguage                    i18n.Language
 	kittySupported, kittyProbeDone     bool
@@ -230,7 +222,7 @@ type Model struct {
 	statusFeedback          *statusFeedback
 	contextMenu             *contextMenu
 	modal, modalTitle       string
-	input                   textinput.Model
+	input                   textInput
 	inputCaret              *tea.Cursor
 	palette                 []action
 	lastCommand             string
@@ -253,6 +245,7 @@ type Model struct {
 	revealFile              string
 	tabStart                int
 	closeQueue              []*editor.Document
+	textClick               textClick
 	lastClickKey            string
 	lastClickTime           time.Time
 	sidebarCollapsed        map[string]bool
@@ -517,6 +510,17 @@ func (m *Model) preview() tea.Cmd {
 }
 
 func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
+	switch msg.(type) {
+	case tea.MouseClickMsg:
+		previous := m.textClick
+		defer func() {
+			if m.textClick == previous {
+				m.textClick = textClick{}
+			}
+		}()
+	case tea.KeyPressMsg, tea.PasteMsg, tea.BlurMsg, tea.MouseWheelMsg, tea.WindowSizeMsg:
+		m.textClick = textClick{}
+	}
 	// Normalize the Vim escape chord before any input handler sees it.
 	if key, ok := msg.(tea.KeyPressMsg); ok && key.Mod.Contains(tea.ModCtrl) && key.String() == "ctrl+[" {
 		msg = tea.KeyPressMsg{Code: tea.KeyEscape}
@@ -984,17 +988,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}
 		return m, m.refresh()
 	case clipboardMsg:
-		if msg.err != nil {
-			m.notice = m.tr(msg.err.Error())
-		} else if msg.doc != nil && m.document() == msg.doc {
-			if msg.cut {
-				if msg.doc.SelectedText() == msg.text {
-					m.insertClipboardText("")
-				}
-			} else if msg.text != "" {
-				m.insertClipboardText(msg.text)
-			}
-		}
+		return m, m.applyClipboard(msg)
 	case pathEntriesMsg:
 		if m.pathCompletion == msg.request && m.validPathCompletion() {
 			m.pathCompletion.entries = msg.entries
@@ -1127,46 +1121,31 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}
 	case tea.KeyPressMsg:
 		m.welcomeOrbit.dragging = false
-		if m.flash != nil {
-			return m, m.flashKey(msg)
-		}
-		if m.modal != "" {
-			m.leaderTarget = ""
-			m.navigationState = navigationState{}
-			return m, m.updateModal(msg)
-		}
 		return m, m.key(msg)
 	case tea.PasteMsg:
-		m.pathCompletion = nil
-		if m.modal == "" && m.fileFindFocused() {
-			return m, m.fileFindInput(msg)
-		}
-		if m.modal == "" && m.sidebar && m.section == search {
-			return m, m.searchInput(msg)
-		}
-		if m.flash != nil {
-			return m, m.flashText(msg.Content)
-		}
-		if m.modal != "" {
-			var cmd tea.Cmd
-			m.input, cmd = m.input.Update(msg)
-			m.syncQuickPicker()
-			m.selectPickerIndex(0)
-			return m, cmd
-		}
-		if !m.sidebar && m.editing() && msg.Content != "" {
-			m.insertClipboardText(msg.Content)
-		}
+		return m, m.pasteText(msg)
 	}
 	return m, nil
 }
 
 func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
+	k := msg.String()
+	route := m.resolveWorkbenchShortcut(k)
+	if handled, cmd := m.textEditingShortcut(k, route); handled {
+		return cmd
+	}
+	if m.flash != nil {
+		return m.flashKey(msg)
+	}
+	if m.modal != "" {
+		m.leaderTarget = ""
+		m.navigationState = navigationState{}
+		return m.updateModal(msg)
+	}
 	m.stopTextDrag()
 	if m.sidebar && (m.section == history || m.section == pullRequests) {
 		m.hoverX, m.hoverY = -1, -1
 	}
-	k := msg.String()
 	if handled, cmd := m.pathCompletionKey(k); handled {
 		return cmd
 	}
@@ -1174,7 +1153,6 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	if !updatePath {
 		m.pathCompletion = nil
 	}
-	route := m.resolveWorkbenchShortcut(k)
 	if route.has(beforeInput) {
 		m.leaderTarget = ""
 		m.navigationState = navigationState{}
@@ -1209,30 +1187,27 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	if handled, cmd := m.diffChangeShortcut(k); handled {
 		return cmd
 	}
-	if route.command == commandCopy || route.command == commandSave {
+	if route.command == commandSave {
 		if m.editorDocument() != nil && !m.tabs[m.activeTab].vim.InsertMode {
 			m.tabs[m.activeTab].vim.CancelPending()
 		}
 		return m.executeCommand(route.command, "")
 	}
 	if d := m.editorDocument(); !m.sidebar && d != nil {
-		if matchesShortcut(k, editorKeys.Cut) || matchesShortcut(k, editorKeys.Paste) {
-			if d.ReadOnly {
-				return nil
-			}
-			m.tabs[m.activeTab].vim.CancelPending()
-			if matchesShortcut(k, editorKeys.Cut) {
-				return m.copy(true)
-			}
-			return m.paste()
-		}
 		if matchesShortcut(k, pickerKeys.Accept) {
 			if cmd, handled := m.enterMarkdownRemoteImage(); handled {
 				return cmd
 			}
 		}
-		if handled, cmd := m.vimKey(k); handled {
-			return cmd
+		if d.ReadOnly {
+			if handled, cmd := m.reviewKey(k); handled {
+				return cmd
+			}
+		}
+		if !m.vimDisabled {
+			if handled, cmd := m.vimKey(k); handled {
+				return cmd
+			}
 		}
 	}
 	if m.sidebar && m.section == explorer {
@@ -1295,51 +1270,7 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		return nil
 	}
 	if d := m.editorDocument(); d != nil {
-		if m.tabs[m.activeTab].vim.InsertMode {
-			d.BeginEditGroup()
-		}
-		switch {
-		case matchesShortcut(k, editorKeys.Undo):
-			d.Undo()
-		case matchesShortcut(k, editorKeys.Redo):
-			d.Redo()
-		case matchesShortcut(k, editorKeys.SelectAll):
-			d.SelectAll()
-		case matchesShortcut(k, eraseCharacter):
-			d.Delete(true)
-		case k == "delete":
-			d.Delete(false)
-		case matchesShortcut(k, pickerKeys.Accept):
-			d.Insert("\n")
-		case k == "tab":
-			d.Insert("\t")
-		case k == "pgup", k == "pgdown":
-			dir := "up"
-			if k == "pgdown" {
-				dir = "down"
-			}
-			for i := 0; i < m.contentHeight(); i++ {
-				d.Move(dir, false)
-			}
-		default:
-			base := strings.ReplaceAll(k, "shift+", "")
-			switch base {
-			case "left", "right", "up", "down", "home", "end", "ctrl+home", "ctrl+end", "ctrl+left", "ctrl+right":
-				d.Move(base, strings.Contains(k, "shift+"))
-			default:
-				if msg.Text != "" {
-					d.Insert(msg.Text)
-				}
-			}
-		}
-		if m.tabs[m.activeTab].vim.VisualMode {
-			m.tabs[m.activeTab].vim.SyncVisual(d)
-		}
-		m.ensureTextCursor()
-		if updatePath {
-			return m.refreshPathCompletion()
-		}
-		return nil
+		return m.editDocument(d, msg, k, updatePath)
 	}
 	if matchesShortcut(k, pickerKeys.Accept) {
 		return m.keepTab()
@@ -1440,47 +1371,6 @@ func (m *Model) reloadCleanTabs() {
 		m.diffState = m.emptyDiff
 	} else {
 		m.selectTab(m.activeTab)
-	}
-	m.ensureEditor()
-}
-
-func (m *Model) copy(cut bool) tea.Cmd {
-	d := m.document()
-	text := ""
-	if d != nil {
-		text = d.SelectedText()
-	} else if m.diffOpen && !cut {
-		text = m.diffSelectedText()
-	}
-	if !cut {
-		d = nil
-	}
-	return writeClipboard(text, d)
-}
-
-func writeClipboard(text string, cut *editor.Document) tea.Cmd {
-	if text == "" {
-		return nil
-	}
-	return func() tea.Msg {
-		return clipboardMsg{text: text, err: clipboard.WriteAll(text), doc: cut, cut: cut != nil}
-	}
-}
-
-func (m *Model) paste() tea.Cmd {
-	d := m.document()
-	return func() tea.Msg { text, err := clipboard.ReadAll(); return clipboardMsg{text: text, err: err, doc: d} }
-}
-
-func (m *Model) insertClipboardText(text string) {
-	d := m.document()
-	v := &m.tabs[m.activeTab].vim
-	if !v.InsertMode {
-		v.CancelPending()
-	}
-	d.Insert(text)
-	if v.VisualMode {
-		v.Reset(d)
 	}
 	m.ensureEditor()
 }

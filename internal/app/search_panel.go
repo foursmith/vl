@@ -4,7 +4,6 @@ import (
 	"slices"
 	"strings"
 
-	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/foursmith/vl/internal/theme"
@@ -128,6 +127,15 @@ func (m *Model) searchControlAction(id string) tea.Cmd {
 	}
 	return m.runSearch()
 }
+func searchFieldEnd(controls []searchPanelControl, y, end int) int {
+	for _, c := range controls {
+		if c.y == y && c.id != "replaceToggle" && c.id != "replacement" {
+			end = min(end, c.x)
+		}
+	}
+	return end
+}
+
 func (m *Model) searchLines(nav []string, w int) []string {
 	s := &m.search
 	l := m.searchPanelLayout()
@@ -135,13 +143,8 @@ func (m *Model) searchLines(nav []string, w int) []string {
 	copy(lines, nav)
 	indent := strings.Repeat(" ", sidebarSearchFieldInset)
 	controls := m.searchPanelControls(w)
-	field := func(input *textinput.Model, focus, y int, placeholder, label string) {
-		end := w
-		for _, control := range controls {
-			if control.y == y && control.id != "replaceToggle" {
-				end = min(end, control.x)
-			}
-		}
+	field := func(input *textInput, focus, y int, placeholder, label string) {
+		end := searchFieldEnd(controls, y, w)
 		lines[y] = m.searchFieldLine(input, m.sidebar && s.focus == focus, end, w-1, placeholder, label, m.sideX(), y)
 	}
 	field(&s.query, 0, l.query, searchText("Search in files"), "")
@@ -198,7 +201,9 @@ func (m *Model) searchLines(nav []string, w int) []string {
 func (m *Model) clickSearch(x, y int) tea.Cmd {
 	m.sidebar = true
 	l := m.searchPanelLayout()
-	for _, c := range m.searchPanelControls(m.sidebarContentWidth()) {
+	w := m.sidebarContentWidth()
+	controls := m.searchPanelControls(w)
+	for _, c := range controls {
 		if y == c.y && x >= c.x && x < c.x+c.width {
 			if c.disabled {
 				return nil
@@ -206,19 +211,24 @@ func (m *Model) clickSearch(x, y int) tea.Cmd {
 			return m.searchControlAction(c.id)
 		}
 	}
-	switch y {
-	case l.include:
-		if y >= 0 {
-			return m.focusSearch(3)
+	focus := -1
+	if y >= 0 {
+		switch y {
+		case l.query:
+			focus = 0
+		case l.replacement:
+			focus = 1
+		case l.include:
+			focus = 3
+		case l.exclude:
+			focus = 4
 		}
-	case l.exclude:
-		if y >= 0 {
-			return m.focusSearch(4)
-		}
-	case l.replacement:
-		if y >= 0 {
-			return m.focusSearch(1)
-		}
+	}
+	if focus >= 0 {
+		cmd := m.focusSearch(focus)
+		area := searchInputArea(m.sideX(), y, searchFieldEnd(controls, y, w), w-1)
+		m.clickInput(m.searchField(focus), area, m.sideX()+x, y)
+		return cmd
 	}
 	if y >= headerHeight && y < l.details {
 		return m.focusSearch(0)

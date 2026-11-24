@@ -8,7 +8,6 @@ import (
 	"unicode/utf8"
 
 	"charm.land/bubbles/v2/key"
-	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/foursmith/vl/internal/editor"
@@ -181,8 +180,7 @@ func (m *Model) fileFindInput(msg tea.Msg) tea.Cmd {
 		return nil
 	}
 	before := field.Value()
-	var cmd tea.Cmd
-	*field, cmd = field.Update(msg)
+	cmd := field.update(msg)
 	if before == field.Value() {
 		return cmd
 	}
@@ -328,12 +326,14 @@ func (m *Model) frameSearchBox(lines []string, width, height int, title string) 
 	}
 }
 
-func (m *Model) searchFieldLine(input *textinput.Model, active bool, textEnd, boxEnd int, placeholder, label string, x, y int) string {
+func searchInputArea(x, y, textEnd, boxEnd int) inputArea {
+	return inputArea{x: x + searchFieldInset, y: y, width: max(1, min(textEnd, boxEnd)-searchFieldInset-2)}
+}
+
+func (m *Model) searchFieldLine(input *textInput, active bool, textEnd, boxEnd int, placeholder, label string, x, y int) string {
 	const inset = searchFieldInset
-	// Only the focused surface owns input geometry. The other surface paints a
-	// copy, so sidebar and editor widths remain independent.
+	area := searchInputArea(x, y, textEnd, boxEnd)
 	shown := *input
-	shown.SetWidth(max(1, min(textEnd, boxEnd)-inset-2))
 	shown.Placeholder = placeholder
 	bg := m.colors.Panel
 	styles := m.input.Styles()
@@ -343,13 +343,10 @@ func (m *Model) searchFieldLine(input *textinput.Model, active bool, textEnd, bo
 		styles.Blurred.Placeholder = placeholderStyle
 	}
 	shown.SetStyles(styles)
-	if active {
-		*input = shown
-	}
 	if !active || m.modal != "" {
 		shown.Blur()
 	}
-	text := ansi.Truncate(m.inputView(shown, x+inset, y), max(0, textEnd-inset-1), "")
+	text := ansi.Truncate(m.inputView(shown, area), max(0, textEnd-inset-1), "")
 	return row(label, inset, theme.Readable(m.colors.Muted, bg), bg) + row(text, boxEnd-inset, m.colors.InputForeground, bg)
 }
 func (m *Model) paintSearchControls(lines []string, w int, controls []searchPanelControl, originX, originY int, background string) {
@@ -407,16 +404,11 @@ func (m *Model) fileFindLines() []string {
 	}
 	lines := make([]string, h)
 	controls := m.fileFindControls(w)
-	field := func(input *textinput.Model, focus, line int, placeholder string) {
+	field := func(input *textInput, focus, line int, placeholder string) {
 		if line >= h {
 			return
 		}
-		end := w - 1
-		for _, control := range controls {
-			if control.y == line && control.id != "replacement" {
-				end = min(end, control.x)
-			}
-		}
+		end := searchFieldEnd(controls, line, w-1)
 		lines[line] = m.searchFieldLine(input, m.fileFindFocused() && m.search.focus == focus, end, w, placeholder, "", m.fileFindX(), m.contentRow()+line)
 	}
 	field(&m.search.query, 0, fileFindQueryRow, "Find")
@@ -439,7 +431,9 @@ func (m *Model) clickFileFind(x, y int) tea.Cmd {
 		return nil
 	}
 	m.focusEditor()
-	for _, c := range m.fileFindControls(m.fileFindWidth()) {
+	w := m.fileFindWidth()
+	controls := m.fileFindControls(w)
+	for _, c := range controls {
 		if y == c.y && x >= c.x && x < c.x+c.width {
 			if c.disabled {
 				return nil
@@ -461,11 +455,18 @@ func (m *Model) clickFileFind(x, y int) tea.Cmd {
 			return nil
 		}
 	}
+	focus := 0
 	if y == fileReplaceRow && m.search.replace && m.editing() {
-		return m.focusFileFind(1)
+		focus = 1
 	}
 	if y >= 0 && y < m.fileFindHeight() {
-		return m.focusFileFind(0)
+		cmd := m.focusFileFind(focus)
+		if y == fileFindQueryRow || focus == 1 {
+			origin := m.fileFindX()
+			area := searchInputArea(origin, m.contentRow()+y, searchFieldEnd(controls, y, w-1), w)
+			m.clickInput(m.searchField(focus), area, origin+x, area.y)
+		}
+		return cmd
 	}
 	return nil
 }

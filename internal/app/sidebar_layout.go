@@ -111,10 +111,14 @@ func (m *Model) Layout() config.Layout {
 	if m.displayLanguage != i18n.English {
 		language = string(m.displayLanguage)
 	}
+	vim := config.VimPreferences{EnableJieba: m.vimHanDictionary != nil}
+	if m.vimDisabled {
+		vim.Enable = new(false)
+	}
 	return config.Layout{
 		Language:              language,
 		Appearance:            appearance,
-		Vim:                   config.VimPreferences{EnableJieba: m.vimHanDictionary != nil},
+		Vim:                   vim,
 		AutoSwitchInputMethod: m.autoSwitchInputMethod,
 	}
 }
@@ -124,6 +128,7 @@ func (m *Model) SetLastCommand(id string) { m.lastCommand = id }
 
 func (m *Model) SetLayout(layout config.Layout) {
 	m.autoSwitchInputMethod = layout.AutoSwitchInputMethod
+	m.setVimDisabled(!layout.Vim.Enabled())
 	m.vimHanDictionary = nil
 	if layout.Vim.EnableJieba {
 		m.vimHanDictionary = editor.InstalledHanDictionary

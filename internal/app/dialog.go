@@ -15,6 +15,7 @@ type dialogLayout struct {
 	x, y, width, top, maxTop, page int
 	content                        []string
 	buttons                        []dialogButton
+	input                          inputArea
 }
 
 type dialogButton struct{ x, y, width int }
@@ -168,6 +169,9 @@ func (m *Model) clickModal(msg tea.MouseClickMsg) tea.Cmd {
 	}
 	l := m.dialogLayout()
 	if msg.Button == tea.MouseLeft {
+		if l.input.width > 0 && msg.X < l.x+l.width-1 {
+			m.clickInput(&m.input, l.input, msg.X, msg.Y)
+		}
 		for i, button := range l.buttons {
 			x, y := l.x+button.x, l.y+button.y
 			if msg.Y != y || msg.X < x || msg.X >= x+button.width {
@@ -199,16 +203,18 @@ func (m *Model) dialogLayout() dialogLayout {
 	w := max(6, min(76, m.width-4))
 	paint := func(text, fg string) string { return row(" "+text, w-2, fg, m.colors.Panel) }
 	x, y := (m.width-w)/2, min(3, max(0, m.height-5))
+	input := inputArea{x: x + 2, y: y + 2, width: max(10, min(66, m.width-14))}
 	content := []string{
 		paint(safe(m.modalTitle), m.colors.Foreground),
-		row(" "+m.inputView(m.input, x+2, y+2), w-2, m.colors.InputForeground, m.colors.Panel),
+		row(" "+m.inputView(m.input, input), w-2, m.colors.InputForeground, m.colors.Panel),
 	}
-	return dialogLayout{width: w, x: x, y: y, content: content}
+	return dialogLayout{width: w, x: x, y: y, content: content, input: input}
 }
 
 func (m *Model) gitMessageLayout() dialogLayout {
 	w := m.gitMessageDialogWidth()
 	l := dialogLayout{width: w, x: (m.width - w) / 2, y: max(0, (m.height-8)/2)}
+	l.input = inputArea{x: l.x + 4, y: l.y + 4, width: max(1, w-9)}
 	popup, field := m.colors.Panel, m.colors.Input
 	inner := w - 2
 	paint := func(text, fg string) string { return row(text, inner, fg, popup) }
@@ -231,7 +237,7 @@ func (m *Model) gitMessageLayout() dialogLayout {
 	styles.Focused.Text = theme.TextStyle(m.colors.InputForeground, field)
 	styles.Focused.Placeholder = theme.TextStyle(m.colors.InputPlaceholder, field)
 	input.SetStyles(styles)
-	message := row(" "+m.inputView(input, l.x+4, l.y+4), inner-4, m.colors.InputForeground, field)
+	message := row(" "+m.inputView(input, l.input), inner-4, m.colors.InputForeground, field)
 	l.content = []string{
 		paint("  "+title, m.colors.PopupForeground),
 		paint("  "+subtitle, theme.Readable(m.colors.Muted, popup)),

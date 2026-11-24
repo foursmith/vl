@@ -93,14 +93,13 @@ func TestInputCursorTracksScrolledUnicode(t *testing.T) {
 	m := newHoverRenderModel(t)
 	m.input.Focus()
 	m.input.Prompt = " "
-	m.input.SetWidth(4)
 	for _, tt := range []struct {
 		text string
 		x    int
 	}{{"", 11}, {"中a", 14}, {"abcdef", 15}, {"中中中", 15}, {"e\u0301abc", 15}} {
 		m.input.SetValue(tt.text)
 		m.input.CursorEnd()
-		view := m.inputView(m.input, 10, 2)
+		view := m.inputView(m.input, inputArea{x: 10, y: 2, width: 4})
 		if c := m.inputCaret; c == nil || c.Shape != tea.CursorBar || c.X != tt.x || c.Y != 2 {
 			t.Fatalf("%q: %+v", tt.text, c)
 		}

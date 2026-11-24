@@ -7,14 +7,13 @@ import (
 	"unicode/utf8"
 
 	"charm.land/bubbles/v2/key"
-	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	searchservice "github.com/foursmith/vl/internal/search"
 )
 
 type searchState struct {
-	query, replacement textinput.Model
-	include, exclude   textinput.Model
+	query, replacement textInput
+	include, exclude   textInput
 	replace            bool
 	details            bool
 	options            searchservice.Options
@@ -38,7 +37,7 @@ type searchMsg struct {
 type searchRow struct{ file, match int }
 
 func newSearch() searchState {
-	field := func() textinput.Model {
+	field := func() textInput {
 		input := newInput()
 		input.Prompt = ""
 		return input
@@ -66,7 +65,7 @@ func (m *Model) openSearchAt(focus int) tea.Cmd {
 func (m *Model) focusSearch(focus int) tea.Cmd {
 	m.navigationState = navigationState{}
 	m.search.focus = focus
-	for _, field := range []*textinput.Model{&m.search.query, &m.search.replacement, &m.search.include, &m.search.exclude} {
+	for _, field := range []*textInput{&m.search.query, &m.search.replacement, &m.search.include, &m.search.exclude} {
 		field.Blur()
 	}
 	if field := m.searchField(focus); field != nil {
@@ -74,7 +73,7 @@ func (m *Model) focusSearch(focus int) tea.Cmd {
 	}
 	return nil
 }
-func (m *Model) searchField(focus int) *textinput.Model {
+func (m *Model) searchField(focus int) *textInput {
 	switch focus {
 	case 0:
 		return &m.search.query
@@ -349,8 +348,7 @@ func (m *Model) searchInput(msg tea.Msg) tea.Cmd {
 		return nil
 	}
 	before := field.Value()
-	var cmd tea.Cmd
-	*field, cmd = field.Update(msg)
+	cmd := field.update(msg)
 	if s.focus != 1 && before != field.Value() {
 		return tea.Batch(cmd, m.scheduleSearch(150*time.Millisecond))
 	}
@@ -389,10 +387,14 @@ func (m *Model) loadSearchResult() (tea.Cmd, bool) {
 		m.adoptSearchState()
 		m.findHidden = false
 		hit := matches[r.match]
-		t := &m.tabs[m.activeTab]
-		t.vim.Reset(d)
-		t.vim.JumpTo(d, utf8.RuneCountInString(d.Text[:hit.Start]))
-		d.SelectRange(utf8.RuneCountInString(d.Text[:hit.End]), d.Cursor)
+		start := utf8.RuneCountInString(d.Text[:hit.Start])
+		if !m.vimDisabled {
+			vim := &m.tabs[m.activeTab].vim
+			vim.Reset(d)
+			vim.JumpTo(d, start)
+			start = d.Cursor
+		}
+		d.SelectRange(utf8.RuneCountInString(d.Text[:hit.End]), start)
 		m.centerTextCursor()
 		return nil, true
 	}

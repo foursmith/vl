@@ -33,8 +33,11 @@ type SidebarPreferences struct {
 }
 
 type VimPreferences struct {
-	EnableJieba bool `json:"enableJieba,omitempty"`
+	Enable      *bool `json:"enable,omitempty"`
+	EnableJieba bool  `json:"enableJieba,omitempty"`
 }
+
+func (v VimPreferences) Enabled() bool { return v.Enable == nil || *v.Enable }
 
 type InputMethodSwitch struct {
 	Enable bool     `json:"enable"`

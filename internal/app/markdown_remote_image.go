@@ -229,7 +229,7 @@ func (m *Model) enterMarkdownRemoteImage() (tea.Cmd, bool) {
 		return nil, false
 	}
 	t := &m.tabs[m.activeTab]
-	if t.markdownImages == nil || t.vim.InsertMode || t.vim.VisualMode || t.vim.CommandPending() {
+	if t.markdownImages == nil || m.textInserting() || t.vim.VisualMode || t.vim.CommandPending() {
 		return nil, false
 	}
 	line, _ := t.doc.Position()

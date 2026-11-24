@@ -4,7 +4,13 @@
   English · <a href="VIM.zh-CN.md">简体中文</a>
 </p>
 
-Text files open in **Normal mode**. Use `i` to enter Insert mode, `v` to enter
+Vim mode is enabled by default. Open the command palette with `Ctrl+P` and
+choose **Preferences: Toggle Vim Mode** to switch immediately. To turn it off
+in `~/.config/vl/vl.config.json`, set `"vim": {"enable": false}`. With Vim mode
+off, type directly in the editor and hold `Shift` with a movement key to select text.
+The [text editing shortcuts](KEYBINDINGS.md#text-editing) remain available.
+
+With Vim mode on, text files open in **Normal mode**. Use `i` to enter Insert mode, `v` to enter
 Visual mode, and `Esc` or `Ctrl+[` to get back to Normal. The diff editor is
 read-only and shares the motions, selections, yanks, and jumps. See
 [Keyboard shortcuts](KEYBINDINGS.md) for the rest of the workbench.
@@ -33,10 +39,10 @@ For Vim's defaults, see [motions](https://vimhelp.org/motion.txt.html),
 **Know which clipboard you're using.** `y` yanks into vl's unnamed register.
 `d`, `c`, `x`, and `s` also put removed text there. `p` and `P` read that
 register, which is shared across editor tabs. For example, `ddp` moves a line
-down. In Normal, Visual, and Insert modes, use `Ctrl+C`, `Ctrl+X`, and
-`Ctrl+V` to copy, cut, and paste using the system clipboard. Copy and cut
-require a selection. Cut and paste require an editable text file. Explorer's
-`yy` and `p` have their own file clipboard.
+down. The workbench's [text editing shortcuts](KEYBINDINGS.md#text-editing)
+use the system clipboard and work in every Vim mode. Copy and cut require a
+selection. Cut and paste require an editable text file. Explorer's `yy` and
+`p` have their own file clipboard.
 
 vl supports a subset of Vim, including Visual characterwise and linewise
 selection and the save and quit commands below. Visual block, macros, named
@@ -164,9 +170,6 @@ Parentheses, square brackets, and braces can nest and span lines.
 | `Shift` + a movement key above | Extend the selection |
 | `PageUp` / `PageDown` | Move up / down a page |
 | `Ctrl+U` / `Ctrl+D` | Scroll up / down half a screen |
-| `Ctrl+A` | Select All |
-| `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copy / Cut / Paste using the system clipboard |
-| `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo |
 | `Backspace` / `Delete` | Delete the selection or the character before / after the cursor |
 | `Enter` / `Tab` | Insert a newline / tab |
 

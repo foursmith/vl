@@ -242,10 +242,16 @@ func fitStatusHints(hints []string, width int) string {
 
 func (m *Model) statusEditor() (*editor.Document, *editor.Vim) {
 	if m.diffOpen && m.diffLoading && m.patch.Raw == "" && !m.isImageDiff() {
-		// An unloaded text diff starts at the first line in Normal mode.
-		return &editor.Document{Path: filepath.Join(m.repo.Root, m.diffPath), ReadOnly: true}, &editor.Vim{}
+		d := &editor.Document{Path: filepath.Join(m.repo.Root, m.diffPath), ReadOnly: true}
+		if m.vimDisabled {
+			return d, nil
+		}
+		return d, &editor.Vim{}
 	}
 	if d := m.editorDocument(); d != nil {
+		if m.vimDisabled {
+			return d, nil
+		}
 		return d, &m.tabs[m.activeTab].vim
 	}
 	return nil, nil
