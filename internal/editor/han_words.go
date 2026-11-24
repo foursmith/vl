@@ -28,7 +28,7 @@ var installedHanDictionary = sync.OnceValue(func() *HanDictionary {
 	if err != nil {
 		return nil
 	}
-	return loadHanDictionaryFromDir(dir)
+	return loadHanDictionaryFromDir(filepath.Join(dir, "extra"))
 })
 
 // InstalledHanDictionary loads the user's dictionary once, on first use.

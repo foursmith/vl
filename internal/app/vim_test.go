@@ -211,6 +211,7 @@ func TestVimChineseWordsThroughWorkbench(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	dir = filepath.Join(dir, "extra")
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		t.Fatal(err)
 	}

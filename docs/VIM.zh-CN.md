@@ -57,11 +57,13 @@ vl 实现了 Vim 的一部分功能，包括可视模式下按字符和按行选
 }
 ```
 
-任选一个 Jieba 词典下载到 `~/.config/vl/`，再重开 vl。如果目录里有多个版本，vl 会按以下顺序使用第一个可用的词典。
+任选一个 Jieba 词典下载到 `~/.config/vl/extra/`，再重开 vl。如果目录里有多个版本，vl 会按表格从上到下的顺序使用第一个可用文件。
 
-1. 标准版 [`dict.txt`](https://raw.githubusercontent.com/fxsjy/jieba/v0.42.1/jieba/dict.txt)
-2. 小版 [`dict.txt.small`](https://raw.githubusercontent.com/fxsjy/jieba/v0.42.1/extra_dict/dict.txt.small)
-3. 大版 [`dict.txt.big`](https://raw.githubusercontent.com/fxsjy/jieba/v0.42.1/extra_dict/dict.txt.big)
+| 词典 | 下载大小 | 词汇覆盖 |
+| --- | ---: | --- |
+| [`dict.txt`](https://raw.githubusercontent.com/fxsjy/jieba/v0.42.1/jieba/dict.txt) | 4.84 MiB | Jieba 默认使用的标准词典。 |
+| [`dict.txt.small`](https://raw.githubusercontent.com/fxsjy/jieba/v0.42.1/extra_dict/dict.txt.small) | 1.48 MiB | 词条最少，下载文件也最小。 |
+| [`dict.txt.big`](https://raw.githubusercontent.com/fxsjy/jieba/v0.42.1/extra_dict/dict.txt.big) | 8.19 MiB | 词条最多，繁体词汇覆盖更广。 |
 
 如果还想识别生词，可以把 [CppJieba 的 `hmm_model.utf8`](https://raw.githubusercontent.com/yanyiwu/cppjieba/v5.6.7/dict/hmm_model.utf8) 下载到同一目录。
 

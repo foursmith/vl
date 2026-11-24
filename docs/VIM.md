@@ -71,11 +71,13 @@ To enable Chinese word motions, set `vim.enableJieba` in `~/.config/vl/vl.json`.
 }
 ```
 
-Download one Jieba dictionary into `~/.config/vl/` and reopen vl. If more than one dictionary is present, vl uses the first usable dictionary in this order.
+Download one Jieba dictionary into `~/.config/vl/extra/` and reopen vl. If more than one dictionary is present, vl checks the rows from top to bottom and uses the first usable file.
 
-1. Standard [`dict.txt`](https://raw.githubusercontent.com/fxsjy/jieba/v0.42.1/jieba/dict.txt)
-2. Small [`dict.txt.small`](https://raw.githubusercontent.com/fxsjy/jieba/v0.42.1/extra_dict/dict.txt.small)
-3. Large [`dict.txt.big`](https://raw.githubusercontent.com/fxsjy/jieba/v0.42.1/extra_dict/dict.txt.big)
+| Dictionary | Download size | Vocabulary |
+| --- | ---: | --- |
+| [`dict.txt`](https://raw.githubusercontent.com/fxsjy/jieba/v0.42.1/jieba/dict.txt) | 4.84 MiB | Jieba's standard dictionary. |
+| [`dict.txt.small`](https://raw.githubusercontent.com/fxsjy/jieba/v0.42.1/extra_dict/dict.txt.small) | 1.48 MiB | The fewest entries and the smallest download. |
+| [`dict.txt.big`](https://raw.githubusercontent.com/fxsjy/jieba/v0.42.1/extra_dict/dict.txt.big) | 8.19 MiB | The most entries, with broader coverage of Traditional Chinese. |
 
 For unknown-word recognition, also download [CppJieba's `hmm_model.utf8`](https://raw.githubusercontent.com/yanyiwu/cppjieba/v5.6.7/dict/hmm_model.utf8) into that directory.
 
