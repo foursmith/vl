@@ -106,6 +106,23 @@ make build
 
 工作台的操作见[键盘快捷键](docs/KEYBINDINGS.zh-CN.md)。
 
+### 自动切换输入法
+
+在 `~/.config/vl/vl.json` 中添加以下字段，然后重启 vl。
+
+```json
+{
+  "autoSwitchInputMethod": {
+    "enable": true,
+    "cmd": ["im-select", "com.apple.keylayout.ABC"]
+  }
+}
+```
+
+离开输入框、退出 Insert 模式或回到终端后，如果焦点在导航区域，vl 会运行这条命令。启动时焦点在导航区域也会触发。将 `enable` 设为 `false` 即可关闭。
+
+示例使用 [im-select](https://github.com/daipeihust/im-select) 切换到 macOS 的 ABC 输入源。请根据系统填写程序和参数，例如 Windows 的 `["im-select.exe", "1033"]`，或 Linux 上 Fcitx 5 的 `["fcitx5-remote", "-c"]`。程序必须位于 `PATH` 中，也可以填写绝对路径。
+
 ### Yazi 集成
 
 #### 预览代码

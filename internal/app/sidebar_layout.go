@@ -92,19 +92,21 @@ func (m *Model) Layout() config.Layout {
 	selected := m.committedTheme()
 	dark, light := m.darkTheme, m.lightTheme
 	return config.Layout{
-		SidebarWidth:   m.sidebarWidth,
-		SidebarRight:   m.sidebarRight,
-		Theme:          selected.ID,
-		ThemePinned:    m.themePinned,
-		DarkTheme:      dark.ID,
-		LightTheme:     light.ID,
-		LastCommand:    m.lastCommand,
-		Language:       string(m.displayLanguage),
-		StatusBarStyle: m.statusBarStyle,
+		SidebarWidth:          m.sidebarWidth,
+		SidebarRight:          m.sidebarRight,
+		Theme:                 selected.ID,
+		ThemePinned:           m.themePinned,
+		DarkTheme:             dark.ID,
+		LightTheme:            light.ID,
+		LastCommand:           m.lastCommand,
+		Language:              string(m.displayLanguage),
+		StatusBarStyle:        m.statusBarStyle,
+		AutoSwitchInputMethod: m.autoSwitchInputMethod,
 	}
 }
 
 func (m *Model) SetLayout(layout config.Layout) {
+	m.autoSwitchInputMethod = layout.AutoSwitchInputMethod
 	m.SetDisplayLanguage(layout.Language)
 	m.lastCommand = layout.LastCommand
 	m.statusBarStyle = statusBarStandard

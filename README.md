@@ -110,6 +110,23 @@ disables highlighting.
 
 See the [Keyboard shortcuts](docs/KEYBINDINGS.md).
 
+### Auto Switch IM
+
+Add this field to `~/.config/vl/vl.json` and restart vl.
+
+```json
+{
+  "autoSwitchInputMethod": {
+    "enable": true,
+    "cmd": ["im-select", "com.apple.keylayout.ABC"]
+  }
+}
+```
+
+vl runs the command when navigation resumes after using a text field, leaving Insert mode, or returning to the terminal. It also runs at startup if navigation has focus. Set `enable` to `false` to disable switching.
+
+The example selects ABC on macOS using [im-select](https://github.com/daipeihust/im-select). Use the executable and arguments for your input method setup, such as `["im-select.exe", "1033"]` on Windows or `["fcitx5-remote", "-c"]` with Fcitx 5 on Linux. The executable must be in `PATH` or given by its absolute path.
+
 ### Yazi integration
 
 #### Preview code

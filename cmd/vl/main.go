@@ -151,7 +151,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Load layout preferences:", layoutErr)
 	} else {
 		updated := m.Layout()
-		if updated != layout {
+		if !updated.Equal(layout) {
 			if saveErr := layoutStore.Prepare(updated)(); saveErr != nil {
 				fmt.Fprintln(os.Stderr, "Save layout preferences:", saveErr)
 			}

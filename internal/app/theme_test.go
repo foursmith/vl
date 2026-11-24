@@ -378,7 +378,7 @@ func TestThemeArrowPreviewCancelsAndConfirms(t *testing.T) {
 	if !m.colorTheme.IsLight() || m.colorTheme == original || m.modal != "themes" {
 		t.Fatal("arrow did not preview the highlighted theme")
 	}
-	if m.Layout() != preference || m.committedTheme().ID != "dark_plus" {
+	if !m.Layout().Equal(preference) || m.committedTheme().ID != "dark_plus" {
 		t.Fatal("preview changed the saved preference")
 	}
 	if old.ctx.Err() == nil || m.startHighlight(old) != nil {
@@ -389,7 +389,7 @@ func TestThemeArrowPreviewCancelsAndConfirms(t *testing.T) {
 	}
 	preview := m.colorTheme
 	drain(t, m, m.updateModal(tea.KeyPressMsg{Code: tea.KeyEscape}))
-	if m.colorTheme != original || m.Layout() != preference || m.themeBeforePreview != nil {
+	if m.colorTheme != original || !m.Layout().Equal(preference) || m.themeBeforePreview != nil {
 		t.Fatal("Escape did not restore the original theme")
 	}
 	m.openThemePicker()

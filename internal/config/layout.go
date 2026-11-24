@@ -2,22 +2,31 @@ package config
 
 import (
 	"path/filepath"
+	"reflect"
 	"sync"
 	"sync/atomic"
 )
 
 // Layout stores user preferences independently of the current terminal size.
 type Layout struct {
-	Language       string `json:"language,omitempty"`
-	LastCommand    string `json:"lastCommand,omitempty"`
-	DarkTheme      string `json:"darkTheme,omitempty"`
-	LightTheme     string `json:"lightTheme,omitempty"`
-	Theme          string `json:"theme,omitempty"`
-	ThemePinned    bool   `json:"themePinned,omitempty"`
-	StatusBarStyle string `json:"statusBarStyle,omitempty"`
-	SidebarWidth   int    `json:"sidebarWidth"`
-	SidebarRight   bool   `json:"sidebarRight"`
+	Language              string            `json:"language,omitempty"`
+	LastCommand           string            `json:"lastCommand,omitempty"`
+	DarkTheme             string            `json:"darkTheme,omitempty"`
+	LightTheme            string            `json:"lightTheme,omitempty"`
+	Theme                 string            `json:"theme,omitempty"`
+	ThemePinned           bool              `json:"themePinned,omitempty"`
+	StatusBarStyle        string            `json:"statusBarStyle,omitempty"`
+	SidebarWidth          int               `json:"sidebarWidth"`
+	SidebarRight          bool              `json:"sidebarRight"`
+	AutoSwitchInputMethod InputMethodSwitch `json:"autoSwitchInputMethod,omitzero"`
 }
+
+type InputMethodSwitch struct {
+	Enable bool     `json:"enable"`
+	Cmd    []string `json:"cmd,omitempty"`
+}
+
+func (l Layout) Equal(other Layout) bool { return reflect.DeepEqual(l, other) }
 
 func LayoutPath() (string, error) {
 	dir, err := Dir()

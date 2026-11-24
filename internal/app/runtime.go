@@ -13,6 +13,7 @@ type Runtime struct {
 	current         *Model
 	generation      uint64
 	switchWorkspace func(*Model, *gitservice.Repository) *Model
+	inputMethod     inputMethodSwitcher
 }
 
 type workspaceResult struct {
@@ -27,7 +28,8 @@ func NewRuntime(m *Model, switchWorkspace func(*Model, *gitservice.Repository) *
 func (r *Runtime) Current() *Model { return r.current }
 func (r *Runtime) View() tea.View  { return r.current.View() }
 func (r *Runtime) Init() tea.Cmd {
-	return workspaceCommand(r.generation, tea.Batch(r.current.Init(), r.current.prepareImageUploads()))
+	return workspaceCommand(r.generation, tea.Batch(r.current.Init(), r.current.prepareImageUploads(),
+		r.inputMethod.update(r.current, r.current.wantsEnglishInput())))
 }
 
 // Filter runs before Bubble Tea handles RawMsg and QuitMsg as well as before
@@ -69,6 +71,7 @@ func workspaceCommand(generation uint64, cmd tea.Cmd) tea.Cmd {
 
 func (r *Runtime) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	old := r.current
+	wasEnglish := old.wantsEnglishInput()
 	previousFeedback := old.statusFeedback
 	_, cmd := old.Update(msg)
 	if next := old.nextRepository; next != nil && r.switchWorkspace != nil {
@@ -96,5 +99,9 @@ func (r *Runtime) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return statusFeedbackExpiredMsg{feedback: feedback}
 		})
 	}
-	return r, workspaceCommand(r.generation, tea.Batch(cmd, r.current.prepareImageUploads(), expireFeedback))
+	var inputMethod tea.Cmd
+	if english := old.wantsEnglishInput(); english != wasEnglish {
+		inputMethod = r.inputMethod.update(old, english)
+	}
+	return r, workspaceCommand(r.generation, tea.Batch(cmd, r.current.prepareImageUploads(), expireFeedback, inputMethod))
 }

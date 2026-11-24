@@ -170,6 +170,7 @@ type Model struct {
 	watchFilesDirty         bool
 	autoFetch               autoFetchState
 	terminalBlurred         bool
+	autoSwitchInputMethod   config.InputMethodSwitch
 	repo                    *gitservice.Repository
 	width, height           int
 	nerd                    bool

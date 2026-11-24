@@ -19,22 +19,23 @@ func TestLayoutPath(t *testing.T) {
 func TestLayoutRoundTripAndInvalidFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vl", "vl.json")
 	got, err := LoadLayout(path)
-	if err != nil || got != (Layout{}) {
+	if err != nil || !got.Equal(Layout{}) {
 		t.Fatalf("missing preferences: %+v, %v", got, err)
 	}
-	want := Layout{SidebarWidth: 52, SidebarRight: true, Theme: "dark_plus", DarkTheme: "dark_plus", LightTheme: "light_plus", ThemePinned: true, LastCommand: "view.sidebar"}
+	want := Layout{SidebarWidth: 52, SidebarRight: true, Theme: "dark_plus", DarkTheme: "dark_plus", LightTheme: "light_plus", ThemePinned: true, LastCommand: "view.sidebar",
+		AutoSwitchInputMethod: InputMethodSwitch{Enable: true, Cmd: []string{"im-select", "com.apple.keylayout.ABC"}}}
 	if err := SaveLayout(path, want); err != nil {
 		t.Fatal(err)
 	}
 	got, err = LoadLayout(path)
-	if err != nil || got != want {
+	if err != nil || !got.Equal(want) {
 		t.Fatalf("loaded %+v, %v", got, err)
 	}
 	if err := SaveLayout(path, Layout{}); err != nil {
 		t.Fatal(err)
 	}
 	got, err = LoadLayout(path)
-	if err != nil || got != (Layout{}) {
+	if err != nil || !got.Equal(Layout{}) {
 		t.Fatal("reset did not persist")
 	}
 	if err := os.WriteFile(path, []byte("broken JSON"), 0600); err != nil {

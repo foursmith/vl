@@ -251,7 +251,8 @@ func TestSidebarLayoutPaletteAndDragCancellation(t *testing.T) {
 
 func TestLayoutRestoresPreferencesAcrossWorkspaces(t *testing.T) {
 	m := newHoverRenderModel(t)
-	want := config.Layout{SidebarWidth: 45, SidebarRight: true, Theme: "light_modern", LightTheme: "light_modern", LastCommand: "view.sidebar"}
+	want := config.Layout{SidebarWidth: 45, SidebarRight: true, Theme: "light_modern", LightTheme: "light_modern", LastCommand: "view.sidebar",
+		AutoSwitchInputMethod: config.InputMethodSwitch{Enable: true, Cmd: []string{"im-select", "com.apple.keylayout.ABC"}}}
 	m.SetLayout(want)
 	want = m.Layout()
 	m.Update(tea.WindowSizeMsg{Width: 30, Height: 12})
@@ -266,7 +267,7 @@ func TestLayoutRestoresPreferencesAcrossWorkspaces(t *testing.T) {
 	next := newHoverRenderModel(t)
 	next.workspaces = []string{next.repo.Root}
 	next.SetLayout(saved)
-	if got := next.Layout(); got != want || !next.colorTheme.IsLight() {
+	if got := next.Layout(); !got.Equal(want) || !next.colorTheme.IsLight() {
 		t.Fatalf("restored layout: %+v", got)
 	}
 }
