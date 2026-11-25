@@ -49,7 +49,7 @@ func TestSearchRanges(t *testing.T) {
 
 func TestSearchHighlightsAllAndClearsUntilNext(t *testing.T) {
 	m := newHoverRenderModel(t)
-	d := &editor.Document{Text: "one one\none one", Anchor: -1}
+	d := &editor.Document{Buffer: editor.Buffer{Text: "one one\none one", Anchor: -1}}
 	m.tabs = []tab{{doc: d}}
 	m.activeTab = 0
 	m.sidebar = false

@@ -30,7 +30,7 @@ func TestVimVisualSelection(t *testing.T) {
 		{"unicode backward", "👩‍💻é中", []string{"l", "v", "h"}, "👩‍💻é", 0, "VISUAL"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			d := &Document{Text: tt.text, Anchor: -1}
+			d := &Document{Buffer: Buffer{Text: tt.text, Anchor: -1}}
 			v := &Vim{}
 			vimKeys(d, v, tt.keys...)
 			if d.SelectedText() != tt.selection || d.Cursor != tt.cursor || v.Label() != tt.label {
@@ -56,7 +56,7 @@ func TestVimVisualEdits(t *testing.T) {
 		{"delete emoji", "👩‍💻é中", []string{"v", "l", "d"}, "中", "👩‍💻é"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			d := &Document{Text: tt.text, Anchor: -1}
+			d := &Document{Buffer: Buffer{Text: tt.text, Anchor: -1}}
 			v := &Vim{}
 			copied := vimKeys(d, v, tt.keys...)
 			if d.Text != tt.want || copied != tt.copyText || v.VisualMode || v.InsertMode || d.Anchor != -1 {
@@ -73,7 +73,7 @@ func TestVimVisualEdits(t *testing.T) {
 }
 func TestVimVisualExit(t *testing.T) {
 	for _, keys := range [][]string{{"v", "l", "esc"}, {"v", "l", "v"}, {"V", "j", "V"}} {
-		d := &Document{Text: "abc\ndef", Anchor: -1}
+		d := &Document{Buffer: Buffer{Text: "abc\ndef", Anchor: -1}}
 		v := &Vim{}
 		vimKeys(d, v, keys...)
 		if v.VisualMode || d.Anchor != -1 || d.SelectedText() != "" {

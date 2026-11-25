@@ -269,7 +269,7 @@ func TestEditorInsideRepositoryNeedsNoGitState(t *testing.T) {
 		t.Fatal("editor initialized workspace/Git state")
 	}
 	m.openPalette()
-	refreshAvailable := false
+	refreshAvailable, deleteToStartAvailable, deleteToEndAvailable := false, false, false
 	for _, a := range m.filteredActions() {
 		if strings.HasPrefix(a.id, "git.") || strings.HasPrefix(a.id, "github.") || strings.HasPrefix(a.id, "view.") || a.id == "file.closeOthers" || a.id == "file.keepOpen" {
 			t.Fatalf("non-editor command exposed: %s", a.id)
@@ -277,9 +277,18 @@ func TestEditorInsideRepositoryNeedsNoGitState(t *testing.T) {
 		if a.id == string(commandRefresh) {
 			refreshAvailable = a.key == "F5" && a.disabled == ""
 		}
+		if a.id == string(commandDeleteToLineStart) {
+			deleteToStartAvailable = a.key == "Ctrl+Backspace" && a.disabled == ""
+		}
+		if a.id == string(commandDeleteToLineEnd) {
+			deleteToEndAvailable = a.key == "Ctrl+Delete" && a.disabled == ""
+		}
 	}
 	if !refreshAvailable {
 		t.Fatal("editor palette did not expose the standalone refresh command")
+	}
+	if !deleteToStartAvailable || !deleteToEndAvailable {
+		t.Fatal("editor palette did not expose the line boundary deletion shortcuts")
 	}
 	m.modal = ""
 	m.document().Insert("// no git needed\n")

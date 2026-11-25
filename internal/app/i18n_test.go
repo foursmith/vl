@@ -65,7 +65,7 @@ func TestDisplayLanguagePickerPersistsAndRestores(t *testing.T) {
 func TestDisplayLanguagePreservesEditingAndFitsBothLanguages(t *testing.T) {
 	m := tabWorkspace(t, 0)
 	defer m.Close()
-	doc := &editor.Document{Path: filepath.Join(m.repo.Root, "Changes.go"), Text: "Changes\n更改\n", Anchor: -1}
+	doc := &editor.Document{Buffer: editor.Buffer{Text: "Changes\n更改\n", Anchor: -1}, Path: filepath.Join(m.repo.Root, "Changes.go")}
 	doc.Insert("unsaved")
 	m.tabs = []tab{{doc: doc}}
 	m.activeTab = 0

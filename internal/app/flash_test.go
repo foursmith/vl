@@ -12,7 +12,7 @@ import (
 func flashModel(t *testing.T, text string) *Model {
 	t.Helper()
 	m := newHoverRenderModel(t)
-	m.tabs = []tab{{doc: &editor.Document{Text: text, Anchor: -1}}}
+	m.tabs = []tab{{doc: &editor.Document{Buffer: editor.Buffer{Text: text, Anchor: -1}}}}
 	m.activeTab = 0
 	m.sidebar = false
 	m.sidebarVisible = false

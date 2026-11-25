@@ -273,10 +273,8 @@ func (m *Model) openQuickPicker(value string) tea.Cmd {
 		listFiles = m.refreshFileList()
 	}
 	m.palette = nil
-	cmd := m.prompt("quick", "", value)
-	m.syncQuickPicker()
-	m.syncPicker()
-	return tea.Batch(restore, cmd, listFiles)
+	m.prompt("quick", "", value)
+	return tea.Batch(restore, listFiles)
 }
 
 func (m *Model) syncQuickPicker() {

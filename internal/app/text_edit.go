@@ -11,7 +11,7 @@ type textEditAction struct{ command commandID }
 
 func isTextEditCommand(id commandID) bool {
 	switch id {
-	case commandCopy, commandCut, commandPaste, commandSelectAll, commandUndo, commandRedo:
+	case commandCopy, commandCut, commandPaste, commandSelectAll, commandDeleteToLineStart, commandDeleteToLineEnd, commandUndo, commandRedo:
 		return true
 	default:
 		return false
@@ -61,6 +61,10 @@ func (m *Model) executeTextEdit(command commandID) tea.Cmd {
 		return m.copy(true)
 	case commandPaste:
 		return m.paste()
+	case commandDeleteToLineStart, commandDeleteToLineEnd:
+		if d.DeleteToLineBoundary(command == commandDeleteToLineStart) && !m.vimDisabled && !v.InsertMode {
+			v.Reset(d)
+		}
 	case commandUndo:
 		d.Undo()
 	case commandRedo:
@@ -100,6 +104,8 @@ func (m *Model) textEditorActions() []action {
 		m.commandAction(commandCut, "Cut", reason, ""),
 		m.commandAction(commandPaste, "Paste", "", ""),
 		selectAll,
+		m.commandAction(commandDeleteToLineStart, "Delete to Line Start", "", ""),
+		m.commandAction(commandDeleteToLineEnd, "Delete to Line End", "", ""),
 		m.commandAction(commandUndo, "Undo", "", ""),
 		m.commandAction(commandRedo, "Redo", "", ""),
 	)
@@ -147,6 +153,22 @@ func (m *Model) pasteText(msg tea.PasteMsg) tea.Cmd {
 	return nil
 }
 
+func editBufferKey(buffer *editor.Buffer, key string) bool {
+	switch key {
+	case "backspace", "delete":
+		buffer.Delete(key == "backspace")
+	default:
+		move := strings.ReplaceAll(key, "shift+", "")
+		switch move {
+		case leftArrow, rightArrow, "home", "end", "ctrl+left", "ctrl+right":
+			buffer.Move(move, move != key)
+		default:
+			return false
+		}
+	}
+	return true
+}
+
 func (m *Model) editDocument(d *editor.Document, msg tea.KeyPressMsg, k string, updatePath bool) tea.Cmd {
 	vim := &m.tabs[m.activeTab].vim
 	if vim.InsertMode {
@@ -155,10 +177,7 @@ func (m *Model) editDocument(d *editor.Document, msg tea.KeyPressMsg, k string, 
 	switch {
 	case m.vimDisabled && matchesShortcut(k, dismissKey):
 		d.ClearSelection()
-	case matchesShortcut(k, eraseCharacter):
-		d.Delete(true)
-	case k == "delete":
-		d.Delete(false)
+	case editBufferKey(&d.Buffer, k):
 	case matchesShortcut(k, pickerKeys.Accept):
 		d.Insert("\n")
 	case k == "tab":
@@ -174,7 +193,7 @@ func (m *Model) editDocument(d *editor.Document, msg tea.KeyPressMsg, k string, 
 	default:
 		base := strings.ReplaceAll(k, "shift+", "")
 		switch base {
-		case "left", "right", "up", "down", "home", "end", "ctrl+home", "ctrl+end", "ctrl+left", "ctrl+right":
+		case "up", "down", "ctrl+home", "ctrl+end":
 			d.Move(base, base != k)
 		default:
 			if msg.Text != "" {

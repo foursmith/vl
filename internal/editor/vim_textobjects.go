@@ -13,18 +13,18 @@ func (v *Vim) textObject(d *Document, key string, inner bool, count int) (int, i
 
 // InnerWordRange returns the Vim word under a rune offset without moving the
 // cursor. An offset at the end of a line has no word under it.
-func (v *Vim) InnerWordRange(d *Document, offset int) (start, end int) {
+func (d *Buffer) InnerWordRange(offset int, dictionary func() *HanDictionary) (start, end int) {
 	row, _ := d.positionAt(offset)
 	floor := d.LineOffset(row)
 	ceiling := floor + d.LineRuneCount(row)
 	if offset >= ceiling {
 		return ceiling, ceiling
 	}
-	start, end, _ = wordClassRange(d, d.snap(offset, false), floor, ceiling, v.wordClassifier(d, false))
+	start, end, _ = wordClassRange(d, d.snap(offset, false), floor, ceiling, d.wordClassifier(dictionary, false))
 	return start, end
 }
 
-func wordClassRange(d *Document, cursor, floor, ceiling int, class func(int) int) (start, end, kind int) {
+func wordClassRange(d *Buffer, cursor, floor, ceiling int, class func(int) int) (start, end, kind int) {
 	kind = class(cursor)
 	start, end = cursor, d.next(cursor)
 	for start > floor && class(d.previous(start)) == kind {
@@ -45,12 +45,12 @@ func (v *Vim) wordObject(d *Document, key string, inner bool, count int) (int, i
 	if ceiling == floor {
 		return 0, 0, false
 	}
-	class := v.wordClassifier(d, key == "W")
+	class := d.wordClassifier(v.HanDictionary, key == "W")
 	cursor := d.snap(d.Cursor, false)
 	if cursor >= ceiling {
 		cursor = d.previous(ceiling)
 	}
-	start, end, kind := wordClassRange(d, cursor, floor, ceiling, class)
+	start, end, kind := wordClassRange(&d.Buffer, cursor, floor, ceiling, class)
 	// On whitespace, aw includes the following word; iw selects the whitespace.
 	if kind == 0 && !inner && end < ceiling {
 		nextClass := class(end)

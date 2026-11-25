@@ -29,7 +29,7 @@ func TestVimWordObjects(t *testing.T) {
 		{"empty", "", 0, []string{"d", "a", "w"}, "", ""},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			d := &Document{Text: tt.text, Anchor: -1}
+			d := &Document{Buffer: Buffer{Text: tt.text, Anchor: -1}}
 			d.SetPosition(0, tt.col)
 			v := &Vim{}
 			copied := vimKeys(d, v, tt.keys...)
@@ -47,7 +47,7 @@ func TestVimWordObjects(t *testing.T) {
 }
 func TestVimVisualWordObjects(t *testing.T) {
 	for _, tt := range []struct{ key, want string }{{"i", "beta"}, {"a", "beta "}} {
-		d := &Document{Text: "alpha beta gamma", Anchor: -1}
+		d := &Document{Buffer: Buffer{Text: "alpha beta gamma", Anchor: -1}}
 		d.SetPosition(0, 8)
 		v := &Vim{}
 		vimKeys(d, v, "v", tt.key, "w")
@@ -59,7 +59,7 @@ func TestVimVisualWordObjects(t *testing.T) {
 			t.Fatal("delete retained visual mode")
 		}
 	}
-	d := &Document{Text: "alpha beta", Anchor: -1}
+	d := &Document{Buffer: Buffer{Text: "alpha beta", Anchor: -1}}
 	v := &Vim{}
 	vimKeys(d, v, "d", "a", "esc", "w")
 	if d.Text != "alpha beta" || v.InsertMode {

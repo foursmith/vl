@@ -8,7 +8,7 @@ func TestReadOnlyVimRejectsMutationsAndSupportsYank(t *testing.T) {
 		{"i", "X"}, {"a", "X"}, {"I"}, {"A"}, {"o"}, {"O"}, {"x"}, {"d", "d"}, {"c", "c"}, {"p"}, {"P"}, {"u"}, {"U"}, {"tab"}, {"`"}, {"."},
 		{"v", "l", "d"}, {"V", "j", "c"}, {"v", "S", "\""}, {"y", "s", "i", "w", "\""}, {"J"}, {"V", "j", "J"},
 	} {
-		d := &Document{ReadOnly: true, Text: source, Anchor: -1}
+		d := &Document{Buffer: Buffer{ReadOnly: true, Text: source, Anchor: -1}}
 		v := &Vim{}
 		for _, key := range keys {
 			v.Handle(d, key, "")
@@ -25,7 +25,7 @@ func TestReadOnlyVimRejectsMutationsAndSupportsYank(t *testing.T) {
 			t.Fatal("document boundary allowed mutation or save")
 		}
 	}
-	d := &Document{ReadOnly: true, Text: source, Anchor: -1}
+	d := &Document{Buffer: Buffer{ReadOnly: true, Text: source, Anchor: -1}}
 	v := &Vim{}
 	text := vimKeys(d, v, "w", "v", "e", "y")
 	if text != "two" || d.Text != source || v.VisualMode {

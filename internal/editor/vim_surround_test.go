@@ -25,7 +25,7 @@ func TestVimChangeSurround(t *testing.T) {
 		{"escape", "(value)", 2, []string{"c", "s", "(", "esc", "["}, "(value)"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			d := &Document{Text: tt.text, Cursor: tt.cursor, Anchor: -1}
+			d := &Document{Buffer: Buffer{Text: tt.text, Cursor: tt.cursor, Anchor: -1}}
 			v := &Vim{}
 			copied := vimKeys(d, v, tt.keys...)
 			if d.Text != tt.want || v.InsertMode || v.CommandPending() {
@@ -51,7 +51,7 @@ func TestVimChangeSurround(t *testing.T) {
 	}
 }
 func TestVimChangeSurroundRepeat(t *testing.T) {
-	d := &Document{Text: "(one) (two)", Cursor: 2, Anchor: -1}
+	d := &Document{Buffer: Buffer{Text: "(one) (two)", Cursor: 2, Anchor: -1}}
 	v := &Vim{}
 	vimKeys(d, v, "c", "s", "(", "[")
 	d.SetPosition(0, 8)
@@ -95,7 +95,7 @@ func TestVimDeleteAndAddSurround(t *testing.T) {
 		{"cancel delete", "(hello)", 2, []string{"d", "s", "esc", "("}, "(hello)"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			d := &Document{Text: tt.text, Cursor: tt.cursor, Anchor: -1}
+			d := &Document{Buffer: Buffer{Text: tt.text, Cursor: tt.cursor, Anchor: -1}}
 			v := &Vim{}
 			copied := vimKeys(d, v, tt.keys...)
 			if d.Text != tt.want || v.InsertMode || v.CommandPending() {
@@ -118,7 +118,7 @@ func TestVimDeleteAndAddSurround(t *testing.T) {
 	}
 }
 func TestVimVisualSurroundAndRepeat(t *testing.T) {
-	d := &Document{Text: "one two", Anchor: -1}
+	d := &Document{Buffer: Buffer{Text: "one two", Anchor: -1}}
 	v := &Vim{}
 	vimKeys(d, v, "v", "l", "l", "S", "]")
 	if d.Text != "[one] two" || v.VisualMode {
@@ -129,13 +129,13 @@ func TestVimVisualSurroundAndRepeat(t *testing.T) {
 	if d.Text != "[one] [two]" {
 		t.Fatal("visual repeat:", d.Text)
 	}
-	d = &Document{Text: "one\ntwo\n", Anchor: -1}
+	d = &Document{Buffer: Buffer{Text: "one\ntwo\n", Anchor: -1}}
 	v = &Vim{}
 	vimKeys(d, v, "V", "j", "S", "]")
 	if d.Text != "[one\ntwo]\n" {
 		t.Fatal("Visual line surround:", d.Text)
 	}
-	d = &Document{Text: "one two", Anchor: -1}
+	d = &Document{Buffer: Buffer{Text: "one two", Anchor: -1}}
 	v = &Vim{}
 	vimKeys(d, v, "y", "s", "i", "w", "\"")
 	d.SetPosition(0, 6)
@@ -143,7 +143,7 @@ func TestVimVisualSurroundAndRepeat(t *testing.T) {
 	if d.Text != `"one" "two"` {
 		t.Fatal("word repeat:", d.Text)
 	}
-	d = &Document{Text: `"one" "two"`, Cursor: 2, Anchor: -1}
+	d = &Document{Buffer: Buffer{Text: `"one" "two"`, Cursor: 2, Anchor: -1}}
 	v = &Vim{}
 	vimKeys(d, v, "d", "s", "\"")
 	d.SetPosition(0, 6)
@@ -153,7 +153,7 @@ func TestVimVisualSurroundAndRepeat(t *testing.T) {
 	}
 }
 func TestVimSurroundFlashRangeAndRepeat(t *testing.T) {
-	d := &Document{Text: "a,b,c", Anchor: -1}
+	d := &Document{Buffer: Buffer{Text: "a,b,c", Anchor: -1}}
 	v := &Vim{}
 	vimKeys(d, v, "y", "s")
 	if op, ok := v.FlashOperator(); !ok || op != "ys" {
@@ -175,19 +175,19 @@ func TestVimSurroundFlashRangeAndRepeat(t *testing.T) {
 }
 
 func TestVimSurroundMotions(t *testing.T) {
-	d := &Document{Text: "one\ntwo\nthree", Cursor: 8, Anchor: -1}
+	d := &Document{Buffer: Buffer{Text: "one\ntwo\nthree", Cursor: 8, Anchor: -1}}
 	v := &Vim{}
 	vimKeys(d, v, "y", "s", "g", "g", "]")
 	if d.Text != "[one\ntwo\nthree]" {
 		t.Fatal("first-line surround motion:", d.Text)
 	}
-	d = &Document{Text: "one\ntwo\nthree", Anchor: -1}
+	d = &Document{Buffer: Buffer{Text: "one\ntwo\nthree", Anchor: -1}}
 	v = &Vim{}
 	vimKeys(d, v, "y", "s", "2", "G", "]")
 	if d.Text != "[one\ntwo]\nthree" {
 		t.Fatal("counted G surround:", d.Text)
 	}
-	d = &Document{Text: "hello", Anchor: -1}
+	d = &Document{Buffer: Buffer{Text: "hello", Anchor: -1}}
 	v = &Vim{}
 	vimKeys(d, v, "y", "s", "i", "w")
 	if handled, _ := v.Handle(d, "f1", ""); handled || v.CommandPending() || d.Text != "hello" {
@@ -196,7 +196,7 @@ func TestVimSurroundMotions(t *testing.T) {
 }
 
 func TestVimSurroundRejectsStaleRange(t *testing.T) {
-	d := &Document{Text: "hello", Anchor: -1}
+	d := &Document{Buffer: Buffer{Text: "hello", Anchor: -1}}
 	v := &Vim{}
 	vimKeys(d, v, "y", "s", "i", "w")
 	d.Edit("external")
@@ -210,7 +210,7 @@ func TestVimTagCommandsAreUnmapped(t *testing.T) {
 	for _, keys := range [][]string{
 		{"d", "s", "t"}, {"c", "s", "t"}, {"c", "i", "t"}, {"d", "a", "t"}, {"y", "s", "i", "w", "t"},
 	} {
-		d := &Document{Text: "<p>hello</p>", Cursor: 5, Anchor: -1}
+		d := &Document{Buffer: Buffer{Text: "<p>hello</p>", Cursor: 5, Anchor: -1}}
 		v := &Vim{}
 		vimKeys(d, v, keys...)
 		if d.Text != "<p>hello</p>" || v.InsertMode || v.CommandPending() {

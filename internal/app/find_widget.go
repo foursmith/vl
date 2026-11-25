@@ -58,14 +58,14 @@ func (m *Model) presentFileFind() {
 	m.findHidden = false
 	m.findWidget.visible = true
 }
-func (m *Model) openFileFind() tea.Cmd {
+func (m *Model) openFileFind() {
 	if m.editorDocument() == nil {
-		return nil
+		return
 	}
 	m.presentFileFind()
 	m.findWidget.anchor = m.editorDocument().Cursor + 1
 	m.tabs[m.activeTab].vim.CancelPending()
-	return m.focusFileFind(0)
+	m.focusFileFind(0)
 }
 func (m *Model) openFileReplace() tea.Cmd {
 	if !m.editing() {
@@ -74,12 +74,13 @@ func (m *Model) openFileReplace() tea.Cmd {
 	m.presentFileFind()
 	m.search.replace = true
 	m.findWidget.anchor = m.document().Cursor
-	return m.focusFileFind(1)
+	m.focusFileFind(1)
+	return nil
 }
-func (m *Model) focusFileFind(focus int) tea.Cmd {
+func (m *Model) focusFileFind(focus int) {
 	m.focusEditor()
 	m.findWidget.focused = true
-	return m.focusSearch(focus)
+	m.focusSearch(focus)
 }
 func (m *Model) blurFileFind() {
 	m.findWidget.focused = false
@@ -200,15 +201,16 @@ func (m *Model) refreshWorkspaceSearch() tea.Cmd {
 	}
 	return nil
 }
-func (m *Model) toggleFileReplacement() tea.Cmd {
+func (m *Model) toggleFileReplacement() {
 	if !m.editing() {
-		return nil
+		return
 	}
 	m.search.replace = !m.search.replace
 	if m.search.replace {
-		return m.focusFileFind(1)
+		m.focusFileFind(1)
+	} else {
+		m.focusFileFind(0)
 	}
-	return m.focusFileFind(0)
 }
 func (m *Model) fileFindKey(msg tea.KeyPressMsg) tea.Cmd {
 	switch {
@@ -226,7 +228,8 @@ func (m *Model) fileFindKey(msg tea.KeyPressMsg) tea.Cmd {
 		return nil
 	case key.Matches(msg, searchKeys.NextField, searchKeys.PreviousField):
 		if m.search.replace && m.editing() {
-			return m.focusFileFind(1 - m.search.focus)
+			m.focusFileFind(1 - m.search.focus)
+			return nil
 		}
 		m.blurFileFind()
 		return nil
@@ -332,17 +335,12 @@ func (m *Model) searchFieldLine(input *textInput, active bool, textEnd, boxEnd i
 	const inset = searchFieldInset
 	area := searchInputArea(x, y, textEnd, boxEnd)
 	shown := *input
+	shown.focused = input.Focused() && active && m.modal == ""
 	shown.Placeholder = placeholder
 	bg := m.colors.Panel
-	styles := m.input.Styles()
+	shown.styles = m.input.styles
 	if label != "" {
-		placeholderStyle := theme.TextStyle(theme.WithOpacity(m.colors.InputPlaceholder, .75), bg)
-		styles.Focused.Placeholder = placeholderStyle
-		styles.Blurred.Placeholder = placeholderStyle
-	}
-	shown.SetStyles(styles)
-	if !active || m.modal != "" {
-		shown.Blur()
+		shown.styles.placeholder = theme.TextStyle(theme.WithOpacity(m.colors.InputPlaceholder, .75), bg)
 	}
 	text := ansi.Truncate(m.inputView(shown, area), max(0, textEnd-inset-1), "")
 	return row(label, inset, theme.Readable(m.colors.Muted, bg), bg) + row(text, boxEnd-inset, m.colors.InputForeground, bg)
@@ -446,7 +444,8 @@ func (m *Model) clickFileFind(x, y int) tea.Cmd {
 			case "next":
 				m.navigateFileFind(1)
 			case "replacement":
-				return m.toggleFileReplacement()
+				m.toggleFileReplacement()
+				return nil
 			case "replaceAll":
 				return m.replaceFileFind(true)
 			}
@@ -458,13 +457,12 @@ func (m *Model) clickFileFind(x, y int) tea.Cmd {
 		focus = 1
 	}
 	if y >= 0 && y < m.fileFindHeight() {
-		cmd := m.focusFileFind(focus)
+		m.focusFileFind(focus)
 		if y == fileFindQueryRow || focus == 1 {
 			origin := m.fileFindX()
 			area := searchInputArea(origin, m.contentRow()+y, searchFieldEnd(controls, y, w-1), w)
 			m.clickInput(m.searchField(focus), area, origin+x, area.y)
 		}
-		return cmd
 	}
 	return nil
 }

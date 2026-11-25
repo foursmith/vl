@@ -70,13 +70,14 @@ mode is on or off. Read-only diffs support select all and copy.
 | `Ctrl+A` | Select all |
 | `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copy / cut / paste using the system clipboard |
 | `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo |
+| `Ctrl+Backspace` / `Ctrl+Delete` | Delete from the cursor to the start / end of the current line |
 
+Drag to select text in the editor or an input field.
 Double-click to select a word using the [Vim word boundaries](VIM.md#motions-and-search),
 even with Vim mode off. Triple-click to select a line or the whole value in a
-single-line input. In input fields, use `Ctrl` with Left or Right to
-move by word. Hold `Shift` with a movement key to extend the selection.
-`Ctrl+Backspace` deletes the previous word, and
-`Ctrl+Delete` deletes the next word.
+single-line input. In input fields, `Ctrl+Left` and `Ctrl+Right` move
+to the previous or next word start, using whitespace as the boundary.
+Hold `Shift` with a movement key to extend the selection.
 
 ### Terminal compatibility
 

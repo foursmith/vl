@@ -65,9 +65,9 @@ func (m *Model) openFileSyntaxPicker() tea.Cmd {
 			return nil
 		}})
 	}
-	cmd := m.prompt("fileSyntax", m.tr("Syntax Highlighting"), "")
+	m.prompt("fileSyntax", m.tr("Syntax Highlighting"), "")
 	m.selectPickerIndex(current)
-	return cmd
+	return nil
 }
 
 func (m *Model) setFileSyntax(record string, language highlight.LanguageInfo) {

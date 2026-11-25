@@ -97,7 +97,8 @@ func (m *Model) commitInRepository(repo string) tea.Cmd {
 		return nil
 	}
 	m.commitRepository = repo
-	return m.prompt("commit", m.tr("Commit staged changes"), m.commitDrafts[repo])
+	m.prompt("commit", m.tr("Commit staged changes"), m.commitDrafts[repo])
+	return nil
 }
 
 func (m *Model) rememberCommitDraft() {

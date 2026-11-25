@@ -95,7 +95,7 @@ func TestVimChineseWordBoundaries(t *testing.T) {
 		{"他来到了网易杭研大厦", "e", 6, 7},
 		{"𠀀杭研𠀁", "w", 1, 3},
 	} {
-		d := &Document{Text: tt.text, Anchor: -1}
+		d := &Document{Buffer: Buffer{Text: tt.text, Anchor: -1}}
 		d.SetPosition(0, tt.start)
 		v := &Vim{HanDictionary: dict}
 		for _, key := range tt.keys {
@@ -108,7 +108,7 @@ func TestVimChineseWordBoundaries(t *testing.T) {
 }
 
 func TestVimChineseWordObjectUsesHMM(t *testing.T) {
-	d := &Document{Text: "他来到了网易杭研大厦", Anchor: -1}
+	d := &Document{Buffer: Buffer{Text: "他来到了网易杭研大厦", Anchor: -1}}
 	d.SetPosition(0, 7)
 	copied := vimKeys(d, &Vim{HanDictionary: testHanDictionary(t)}, "d", "i", "w")
 	if d.Text != "他来到了网易大厦" || copied != "杭研" {
@@ -117,7 +117,7 @@ func TestVimChineseWordObjectUsesHMM(t *testing.T) {
 }
 
 func TestVimChineseWordEditsUseCurrentText(t *testing.T) {
-	d := &Document{Text: "中文分词测试", Anchor: -1}
+	d := &Document{Buffer: Buffer{Text: "中文分词测试", Anchor: -1}}
 	v := &Vim{HanDictionary: testHanDictionary(t)}
 	vimKeys(d, v, "w", "d", "w")
 	if d.Text != "中文测试" {
@@ -141,7 +141,7 @@ func TestVimChineseWordEditsUseCurrentText(t *testing.T) {
 }
 
 func TestVimWordLookupsAfterJumpAndEdit(t *testing.T) {
-	d := &Document{Text: strings.Repeat("中文", 80) + "\n中文分词测试\n𠀀𠀁结果", Anchor: -1}
+	d := &Document{Buffer: Buffer{Text: strings.Repeat("中文", 80) + "\n中文分词测试\n𠀀𠀁结果", Anchor: -1}}
 	v := &Vim{HanDictionary: testHanDictionary(t)}
 	d.SetPosition(1, 0)
 	vimKeys(d, v, "3", "w", "b")
@@ -161,7 +161,7 @@ func TestVimWordLookupsAfterJumpAndEdit(t *testing.T) {
 }
 
 func TestVimWordMotionWithMissingDictionary(t *testing.T) {
-	d := &Document{Text: "中文分词测试 next", Anchor: -1}
+	d := &Document{Buffer: Buffer{Text: "中文分词测试 next", Anchor: -1}}
 	vimKeys(d, &Vim{HanDictionary: func() *HanDictionary { return nil }}, "w")
 	if d.Cursor != 7 {
 		t.Fatalf("word motion with missing dictionary: cursor %d, want 7", d.Cursor)

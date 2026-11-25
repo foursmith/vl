@@ -144,7 +144,7 @@ func TestVimMappedSaveCloseConflict(t *testing.T) {
 }
 func TestVimMappedFocusAndClearSearch(t *testing.T) {
 	m := newHoverRenderModel(t)
-	d := &editor.Document{Text: "one two", Anchor: -1}
+	d := &editor.Document{Buffer: editor.Buffer{Text: "one two", Anchor: -1}}
 	m.tabs = []tab{{doc: d}}
 	m.activeTab = 0
 	m.sidebar = false
@@ -180,7 +180,7 @@ func TestVimUnnamedRegister(t *testing.T) {
 	if source.Text != "two\none" || m.vimRegister != "one\n" {
 		t.Fatalf("ddp = %q, register = %q", source.Text, m.vimRegister)
 	}
-	target := &editor.Document{Text: "three", Anchor: -1}
+	target := &editor.Document{Buffer: editor.Buffer{Text: "three", Anchor: -1}}
 	m.tabs = append(m.tabs, tab{doc: target})
 	m.activeTab = 1
 	if handled, cmd := m.vimKey("P"); !handled || cmd != nil || target.Text != "one\nthree" {

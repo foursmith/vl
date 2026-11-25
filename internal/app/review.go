@@ -53,7 +53,7 @@ func (m *Model) rebuildReview() {
 		m.reviewRows = append(m.reviewRows, i)
 		lines = append(lines, codeLine(line))
 	}
-	m.review = &editor.Document{ReadOnly: true, Path: filepath.Join(m.repo.Root, m.diffPath), Text: strings.Join(lines, "\n"), Anchor: -1}
+	m.review = &editor.Document{Buffer: editor.Buffer{ReadOnly: true, Text: strings.Join(lines, "\n"), Anchor: -1}, Path: filepath.Join(m.repo.Root, m.diffPath)}
 	if index, ok := m.reviewLine[oldLine]; ok {
 		oldRow = index
 	}

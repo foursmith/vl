@@ -14,10 +14,10 @@ type repositoryOpenedMsg struct {
 }
 
 func (m *Model) openRecentWorkspaces() tea.Cmd {
-	prompt := m.prompt("recent", m.tr("Open Recent Workspace"), "")
+	m.prompt("recent", m.tr("Open Recent Workspace"), "")
 	m.input.Placeholder = m.tr("Search recent workspaces")
 	m.populateRecentWorkspaces()
-	return tea.Batch(prompt, m.loadWorkspaces())
+	return m.loadWorkspaces()
 }
 
 func (m *Model) populateRecentWorkspaces() {

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -13,44 +14,49 @@ func TestInputUsesExplicitBindings(t *testing.T) {
 	input := newInput()
 	input.Focus()
 	input.SetValue("one two")
-	input.SetCursor(3)
+	input.buffer.SelectRange(3, 3)
 	for _, msg := range []tea.KeyPressMsg{
-		{Code: tea.KeyLeft, Mod: tea.ModAlt},
-		{Code: tea.KeyRight, Mod: tea.ModAlt},
-		{Code: tea.KeyLeft, Mod: tea.ModAlt | tea.ModShift},
-		{Code: tea.KeyRight, Mod: tea.ModAlt | tea.ModShift},
 		{Code: tea.KeyBackspace, Mod: tea.ModAlt},
-		{Code: tea.KeyDelete, Mod: tea.ModAlt},
-		{Code: 'd', Mod: tea.ModAlt},
-		{Code: 'b', Mod: tea.ModAlt},
-		{Code: 'f', Mod: tea.ModAlt},
-		{Code: 'b', Mod: tea.ModCtrl},
-		{Code: 'd', Mod: tea.ModCtrl},
-		{Code: 'e', Mod: tea.ModCtrl},
-		{Code: 'f', Mod: tea.ModCtrl},
+		{Code: tea.KeyDelete, Mod: tea.ModCtrl},
 		{Code: 'h', Mod: tea.ModCtrl},
-		{Code: 'k', Mod: tea.ModCtrl},
-		{Code: 'u', Mod: tea.ModCtrl},
-		{Code: 'w', Mod: tea.ModCtrl},
 	} {
 		input.update(msg)
-		if input.Value() != "one two" || input.Position() != 3 || input.anchor != -1 {
-			t.Fatalf("%s changed input to %q at %d with anchor %d", msg, input.Value(), input.Position(), input.anchor)
+		if input.Value() != "one two" || input.Position() != 3 || input.buffer.Anchor != -1 {
+			t.Fatalf("%s changed input to %q at %d with anchor %d", msg, input.Value(), input.Position(), input.buffer.Anchor)
 		}
 	}
 	input.update(tea.KeyPressMsg{Code: tea.KeyLeft, Mod: tea.ModCtrl})
 	if input.Position() != 0 {
 		t.Fatalf("Ctrl+Left moved the cursor to %d, want 0", input.Position())
 	}
-	input.update(tea.KeyPressMsg{Code: tea.KeyDelete, Mod: tea.ModCtrl})
-	if input.Value() != " two" {
-		t.Fatalf("Ctrl+Delete changed input to %q, want %q", input.Value(), " two")
+	input.update(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModCtrl | tea.ModShift})
+	if got := input.buffer.SelectedText(); got != "one " {
+		t.Fatalf("Ctrl+Shift+Right selected %q, want %q", got, "one ")
 	}
-	input.SetValue("a界")
-	input.SetCursor(1)
-	input.update(tea.KeyPressMsg{Code: tea.KeyDelete, Mod: tea.ModCtrl})
-	if input.Value() != "a" {
-		t.Fatalf("Ctrl+Delete before the final character left %q, want %q", input.Value(), "a")
+}
+
+func TestInputEditsWholeGraphemes(t *testing.T) {
+	input := newInput()
+	input.Focus()
+	input.SetValue("中e\u0301👩‍💻")
+	input.update(tea.KeyPressMsg{Code: tea.KeyLeft})
+	input.update(tea.KeyPressMsg{Code: tea.KeyBackspace})
+	if got := input.Value(); got != "中👩‍💻" {
+		t.Fatalf("Backspace left %q", got)
+	}
+	input.update(tea.KeyPressMsg{Code: tea.KeyDelete})
+	if got := input.Value(); got != "中" {
+		t.Fatalf("Delete left %q", got)
+	}
+	input.SetValue("中\uFFFD")
+	input.update(tea.PasteMsg{Content: "\uFFFD"})
+	if got := input.Value(); got != "中\uFFFD\uFFFD" {
+		t.Fatalf("replacing and pasting input left %q", got)
+	}
+	input.SetValue(strings.Repeat("a", inputRuneLimit-1))
+	input.update(tea.PasteMsg{Content: "e\u0301"})
+	if len(input.Value()) != inputRuneLimit-1 {
+		t.Fatal("pasting at the input limit split a grapheme")
 	}
 }
 
@@ -79,7 +85,7 @@ func TestTextEditingShortcutsFollowInputFocus(t *testing.T) {
 				m.prompt(test.modal, "Prompt", "")
 				input = &m.input
 			case test.find:
-				m.tabs = []tab{{doc: &editor.Document{Text: "example", Anchor: -1}}}
+				m.tabs = []tab{{doc: &editor.Document{Buffer: editor.Buffer{Text: "example", Anchor: -1}}}}
 				m.activeTab = 0
 				m.openFileReplace()
 				m.focusFileFind(test.focus)
@@ -96,8 +102,17 @@ func TestTextEditingShortcutsFollowInputFocus(t *testing.T) {
 				}
 			}
 			input.SetValue("例text")
+			input.buffer.SelectRange(1, 1)
+			m.Update(tea.KeyPressMsg{Code: tea.KeyBackspace, Mod: tea.ModCtrl})
+			expect("text")
+			press(m, "ctrl+z")
+			expect("例text")
+			m.Update(tea.KeyPressMsg{Code: tea.KeyDelete, Mod: tea.ModCtrl})
+			expect("例")
+			press(m, "ctrl+z")
+			expect("例text")
 			press(m, "ctrl+a")
-			if start, end := input.selection(); start != 0 || end != 5 {
+			if start, end := input.buffer.Selection(); start != 0 || end != 5 {
 				t.Fatalf("selection = [%d, %d)", start, end)
 			}
 			if press(m, "ctrl+c") == nil {
@@ -141,9 +156,8 @@ func TestInputSelectionAndStaleClipboardAfterSwitchingFields(t *testing.T) {
 	m.search.replace = true
 	field := &m.search.query
 	field.SetValue("中e\u0301")
-	field.CursorEnd()
 	m.Update(tea.KeyPressMsg{Code: tea.KeyLeft, Mod: tea.ModShift})
-	if start, end := field.selection(); start != 1 || end != 3 {
+	if start, end := field.buffer.Selection(); start != 1 || end != 3 {
 		t.Fatalf("selection = [%d, %d), want the last grapheme", start, end)
 	}
 	m.monochrome = true

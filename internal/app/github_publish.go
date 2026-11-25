@@ -28,12 +28,12 @@ func (m *Model) openGitHubPublish(target, branch string) tea.Cmd {
 	m.githubPublish = picker
 	m.palette = nil
 	name := invalidGitHubNameCharacter.ReplaceAllString(filepath.Base(m.repositoryName(target)), "-")
-	cmd := m.prompt("githubPublish", m.tr("GitHub repository name"), name)
+	m.prompt("githubPublish", m.tr("GitHub repository name"), name)
 	repo, ctx := m.repo, m.ctx
-	return tea.Batch(cmd, func() tea.Msg {
+	return func() tea.Msg {
 		owner, err := repo.GitHubPublishOwner(ctx)
 		return githubPublishOwnerMsg{picker, owner, err}
-	})
+	}
 }
 
 func (m *Model) finishGitHubPublishOwner(msg githubPublishOwnerMsg) {

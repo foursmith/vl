@@ -9,11 +9,15 @@ import (
 type commandID string
 
 const (
-	commandQuit         commandID = "app.quit"
-	commandCopy         commandID = "edit.copy"
-	commandCut          commandID = "edit.cut"
-	commandPaste        commandID = "edit.paste"
-	commandSelectAll    commandID = "edit.selectAll"
+	commandQuit      commandID = "app.quit"
+	commandCopy      commandID = "edit.copy"
+	commandCut       commandID = "edit.cut"
+	commandPaste     commandID = "edit.paste"
+	commandSelectAll commandID = "edit.selectAll"
+
+	commandDeleteToLineStart commandID = "edit.deleteToLineStart"
+	commandDeleteToLineEnd   commandID = "edit.deleteToLineEnd"
+
 	commandUndo         commandID = "edit.undo"
 	commandRedo         commandID = "edit.redo"
 	commandFiles        commandID = "workspace.quickOpen"
@@ -92,12 +96,12 @@ func (m *Model) executeCommand(id commandID, tabKey string) tea.Cmd {
 		return m.closeAllTabs()
 	case commandFind:
 		if m.sidebar && m.section == search {
-			return m.focusSearch(0)
+			m.focusSearch(0)
+		} else if m.fileFindFocused() {
+			m.focusFileFind(0)
+		} else {
+			m.openFileFind()
 		}
-		if m.fileFindFocused() {
-			return m.focusFileFind(0)
-		}
-		return m.openFileFind()
 	case commandContextMenu:
 		return m.openFocusedContextMenu()
 	case commandPreviousTab:

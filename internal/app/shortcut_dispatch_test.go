@@ -47,6 +47,12 @@ func TestDefaultWorkbenchShortcutActions(t *testing.T) {
 		{commandSelectAll, false, []tea.KeyPressMsg{ctrl('a')}, func(m *Model, _ tea.Cmd) bool {
 			return m.document().SelectedText() == m.document().Text
 		}},
+		{commandDeleteToLineStart, false, []tea.KeyPressMsg{ctrl(tea.KeyBackspace)}, func(m *Model, _ tea.Cmd) bool {
+			return m.document().Text == "first\n整行\nlast"
+		}},
+		{commandDeleteToLineEnd, false, []tea.KeyPressMsg{ctrl(tea.KeyDelete)}, func(m *Model, _ tea.Cmd) bool {
+			return m.document().Text == "first\n删除\nlast"
+		}},
 		{commandUndo, false, []tea.KeyPressMsg{ctrl('z')}, func(m *Model, _ tea.Cmd) bool { return !m.document().Dirty() }},
 		{commandRedo, false, []tea.KeyPressMsg{ctrlShift('z'), ctrlShift('Z')}, func(m *Model, _ tea.Cmd) bool {
 			return m.document().Dirty()
@@ -109,6 +115,9 @@ func TestDefaultWorkbenchShortcutActions(t *testing.T) {
 				case commandCopy, commandCut:
 					m.document().Insert("unsaved")
 					m.document().SelectAll()
+				case commandDeleteToLineStart, commandDeleteToLineEnd:
+					m.document().Edit("first\n删除整行\nlast")
+					m.document().Cursor = 8
 				case commandUndo, commandRedo:
 					m.document().Insert("unsaved")
 					if test.command == commandRedo {
@@ -135,6 +144,54 @@ func TestDefaultWorkbenchShortcutActions(t *testing.T) {
 				t.Errorf("default binding %q for %s has no action test", name, rule.ruleID())
 			}
 		}
+	}
+}
+
+func TestDeleteToLineBoundaryFollowsEditorMode(t *testing.T) {
+	for _, mode := range []string{"normal", "insert", "visual", "vim disabled", "read only"} {
+		t.Run(mode, func(t *testing.T) {
+			m := tabWorkspace(t, 1)
+			defer m.Close()
+			m.openFile("file0.go")
+			m.sidebar = false
+			d := m.document()
+			const text = "first\n删除整行\nlast"
+			d.Edit(text)
+			d.Cursor = 8
+			switch mode {
+			case "insert":
+				press(m, "i")
+			case "visual":
+				press(m, "V")
+			case "vim disabled":
+				m.vimDisabled = true
+			case "read only":
+				d.ReadOnly = true
+			}
+			for _, test := range []struct {
+				key  rune
+				want string
+			}{{tea.KeyBackspace, "first\n整行\nlast"}, {tea.KeyDelete, "first\n删除\nlast"}} {
+				want := test.want
+				if mode == "read only" {
+					want = text
+				}
+				key := tea.KeyPressMsg{Code: test.key, Mod: tea.ModCtrl}
+				m.Update(key)
+				if d.Text != want {
+					t.Fatalf("%s changed the document to %q, want %q", key, d.Text, want)
+				}
+				if v := m.tabs[m.activeTab].vim; v.InsertMode != (mode == "insert") || v.VisualMode {
+					t.Fatalf("unexpected Vim mode after %s: %s", key, v.Label())
+				}
+				if mode != "read only" {
+					press(m, "ctrl+z")
+					if d.Text != text {
+						t.Fatalf("undo restored %q, want %q", d.Text, text)
+					}
+				}
+			}
+		})
 	}
 }
 

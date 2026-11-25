@@ -37,12 +37,10 @@ type searchMsg struct {
 type searchRow struct{ file, match int }
 
 func newSearch() searchState {
-	field := func() textInput {
-		input := newInput()
-		input.Prompt = ""
-		return input
+	return searchState{
+		query: newInput(), replacement: newInput(), include: newInput(), exclude: newInput(),
+		folded: map[string]bool{},
 	}
-	return searchState{query: field(), replacement: field(), include: field(), exclude: field(), folded: map[string]bool{}}
 }
 func (m *Model) openSearch() tea.Cmd {
 	return m.openSearchAt(0)
@@ -55,23 +53,21 @@ func (m *Model) openSearchAt(focus int) tea.Cmd {
 	}
 	m.findWidget.focused = false
 	m.selectSection(search)
-	m.navigationState = navigationState{}
-	cmd := m.focusSearch(focus)
+	m.focusSearch(focus)
 	if m.search.workspaceDirty {
-		return tea.Batch(cmd, m.runSearch())
+		return m.runSearch()
 	}
-	return cmd
+	return nil
 }
-func (m *Model) focusSearch(focus int) tea.Cmd {
+func (m *Model) focusSearch(focus int) {
 	m.navigationState = navigationState{}
 	m.search.focus = focus
 	for _, field := range []*textInput{&m.search.query, &m.search.replacement, &m.search.include, &m.search.exclude} {
 		field.Blur()
 	}
 	if field := m.searchField(focus); field != nil {
-		return field.Focus()
+		field.Focus()
 	}
-	return nil
 }
 func (m *Model) searchField(focus int) *textInput {
 	switch focus {
@@ -93,16 +89,18 @@ func (m *Model) openReplace() tea.Cmd {
 	m.search.replace = true
 	m.resize()
 	m.clampSearch()
-	return m.focusSearch(1)
+	m.focusSearch(1)
+	return nil
 }
-func (m *Model) toggleSearchReplace() tea.Cmd {
+func (m *Model) toggleSearchReplace() {
 	m.search.replace = !m.search.replace
 	m.resize()
 	m.clampSearch()
 	if m.search.replace {
-		return m.focusSearch(1)
+		m.focusSearch(1)
+	} else {
+		m.focusSearch(0)
 	}
-	return m.focusSearch(0)
 }
 func (m *Model) runSearch() tea.Cmd { return m.scheduleSearch(0) }
 func (m *Model) scheduleSearch(delay time.Duration) tea.Cmd {
@@ -287,9 +285,11 @@ func (m *Model) searchKey(msg tea.KeyPressMsg) tea.Cmd {
 		if key.Matches(msg, searchKeys.PreviousField) {
 			step = -1
 		}
-		return m.focusSearch(order[(index+step+len(order))%len(order)])
+		m.focusSearch(order[(index+step+len(order))%len(order)])
+		return nil
 	case key.Matches(msg, dismissKey):
-		return m.focusSearch(2)
+		m.focusSearch(2)
+		return nil
 	case pageDelta(k, 1) != 0 && s.focus != 2:
 		m.focusSearch(2)
 		_, cmd := m.sidebarNavigationKey(msg)
@@ -309,14 +309,16 @@ func (m *Model) searchKey(msg tea.KeyPressMsg) tea.Cmd {
 				_, cmd := m.sidebarNavigationKey(msg)
 				return cmd
 			}
-			return m.focusSearch(2)
+			m.focusSearch(2)
+			return nil
 		}
 	}
 	if s.focus != 2 {
 		return m.searchInput(msg)
 	}
 	if key.Matches(msg, searchKeys.FocusQuery) {
-		return m.focusSearch(0)
+		m.focusSearch(0)
+		return nil
 	}
 	_, cmd := m.sidebarNavigationKey(msg)
 	return cmd

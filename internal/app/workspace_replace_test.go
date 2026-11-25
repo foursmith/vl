@@ -142,8 +142,8 @@ func TestWorkspaceReplaceChecksEncodedSizeBeforeWriting(t *testing.T) {
 	}
 	drain(t, m, m.runSearch())
 	m.openReplace()
-	m.search.replacement.CharLimit = 0
-	m.search.replacement.SetValue(strings.Repeat("x", editor.MaxFileSize-1))
+	// Bypass the input length limit to exercise the file-size check.
+	m.search.replacement.buffer.Text = strings.Repeat("x", editor.MaxFileSize-1)
 	m.replaceSearch(true)
 	assertReplacementFile(t, m, "file0.go", "old\n")
 	assertReplacementFile(t, m, "file1.go", "\ufeffold\r\n")

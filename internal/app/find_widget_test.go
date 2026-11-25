@@ -293,7 +293,6 @@ func TestSharedFindInputUsesFocusedSurfaceGeometry(t *testing.T) {
 	m.openFileFind()
 	m.Update(tea.WindowSizeMsg{Width: 160, Height: 24})
 	m.search.query.SetValue(strings.Repeat("needle", 40))
-	m.search.query.CursorEnd()
 	m.adoptSearchState()
 
 	atEnd := func(area inputArea) {

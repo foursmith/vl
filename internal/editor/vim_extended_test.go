@@ -26,7 +26,7 @@ func TestVimDelimitedObjects(t *testing.T) {
 		{"unmatched", `call(value`, 6, []string{"d", "a", "("}, `call(value`},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			d := &Document{Text: tt.text, Anchor: -1}
+			d := &Document{Buffer: Buffer{Text: tt.text, Anchor: -1}}
 			d.Cursor = tt.col
 			v := &Vim{}
 			vimKeys(d, v, tt.keys...)
@@ -41,7 +41,7 @@ func TestVimDelimitedObjects(t *testing.T) {
 			}
 		})
 	}
-	d := &Document{Text: `foo("hello")`, Cursor: 7, Anchor: -1}
+	d := &Document{Buffer: Buffer{Text: `foo("hello")`, Cursor: 7, Anchor: -1}}
 	v := &Vim{}
 	vimKeys(d, v, "v", "i", "\"")
 	if d.SelectedText() != "hello" {
@@ -71,7 +71,7 @@ func TestVimRepeatChanges(t *testing.T) {
 		{"unicode insert", "中", []string{"i", "👩‍💻", "esc", "l", "."}, "👩‍💻👩‍💻中"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			d := &Document{Text: tt.text, Anchor: -1}
+			d := &Document{Buffer: Buffer{Text: tt.text, Anchor: -1}}
 			v := &Vim{}
 			vimKeys(d, v, tt.keys...)
 			if d.Text != tt.want || v.InsertMode || v.VisualMode {
@@ -87,7 +87,7 @@ func TestVimRepeatChanges(t *testing.T) {
 }
 
 func TestVimRepeatInsertEditingAndSafety(t *testing.T) {
-	d := &Document{Text: "abc def", Cursor: 2, Anchor: -1}
+	d := &Document{Buffer: Buffer{Text: "abc def", Cursor: 2, Anchor: -1}}
 	v := &Vim{}
 	v.Handle(d, "i", "")
 	v.Handle(d, "backspace", "")
@@ -103,7 +103,7 @@ func TestVimRepeatInsertEditingAndSafety(t *testing.T) {
 	if d.Text != "aXc dXf" {
 		t.Fatal("backspace repeat:", d.Text)
 	}
-	d = &Document{Text: "abcdef", Anchor: -1}
+	d = &Document{Buffer: Buffer{Text: "abcdef", Anchor: -1}}
 	v = &Vim{}
 	vimKeys(d, v, "x", "i")
 	v.Handle(d, "left", "")
@@ -115,7 +115,7 @@ func TestVimRepeatInsertEditingAndSafety(t *testing.T) {
 	if d.Text != "bcdef" {
 		t.Fatal("unsafe insert replaced previous repeat:", d.Text)
 	}
-	d = &Document{Text: "abc", Anchor: -1}
+	d = &Document{Buffer: Buffer{Text: "abc", Anchor: -1}}
 	v = &Vim{}
 	v.Handle(d, "p", "X")
 	d.SetPosition(0, 3)
@@ -123,7 +123,7 @@ func TestVimRepeatInsertEditingAndSafety(t *testing.T) {
 	if d.Text != "aXbcX" {
 		t.Fatal("register repeat:", d.Text)
 	}
-	d = &Document{Text: `""`, Anchor: -1}
+	d = &Document{Buffer: Buffer{Text: `""`, Anchor: -1}}
 	v = &Vim{}
 	vimKeys(d, v, "v", "i", "\"")
 	if d.SelectedText() != "" {
@@ -132,7 +132,7 @@ func TestVimRepeatInsertEditingAndSafety(t *testing.T) {
 }
 func TestVimFlashOperatorsAndRepeat(t *testing.T) {
 	for _, tt := range []struct{ op, want string }{{"d", "b,c"}, {"c", "Xb,c"}, {"y", "a,b,c"}} {
-		d := &Document{Text: "a,b,c", Anchor: -1}
+		d := &Document{Buffer: Buffer{Text: "a,b,c", Anchor: -1}}
 		v := &Vim{}
 		copied := v.ApplyFlash(d, 1, ",", tt.op)
 		if tt.op == "c" {
@@ -155,14 +155,14 @@ func TestVimFlashOperatorsAndRepeat(t *testing.T) {
 			}
 		}
 	}
-	d := &Document{Text: "a👩‍💻b👩‍💻c", Anchor: -1}
+	d := &Document{Buffer: Buffer{Text: "a👩‍💻b👩‍💻c", Anchor: -1}}
 	v := &Vim{}
 	v.ApplyFlash(d, 1, "👩‍💻", "d")
 	vimKeys(d, v, ".")
 	if d.Text != "c" {
 		t.Fatal("Unicode Flash repeat:", d.Text)
 	}
-	d = &Document{Text: "a,b", Anchor: -1}
+	d = &Document{Buffer: Buffer{Text: "a,b", Anchor: -1}}
 	v = &Vim{}
 	vimKeys(d, v, "d")
 	if op, ok := v.FlashOperator(); !ok || op != "d" {
@@ -175,7 +175,7 @@ func TestVimFlashOperatorsAndRepeat(t *testing.T) {
 }
 
 func TestVimFlashChangeRepeatAndMissingTarget(t *testing.T) {
-	d := &Document{Text: "a,b,c", Anchor: -1}
+	d := &Document{Buffer: Buffer{Text: "a,b,c", Anchor: -1}}
 	v := &Vim{}
 	v.ApplyFlash(d, 1, ",", "c")
 	vimKeys(d, v, "X", "esc", "l", ".")
@@ -186,14 +186,14 @@ func TestVimFlashChangeRepeatAndMissingTarget(t *testing.T) {
 	if d.Text != "Xb,c" {
 		t.Fatal("Flash change repeat undo:", d.Text)
 	}
-	d = &Document{Text: "a,b", Anchor: -1}
+	d = &Document{Buffer: Buffer{Text: "a,b", Anchor: -1}}
 	v = &Vim{}
 	v.ApplyFlash(d, 1, ",", "d")
 	vimKeys(d, v, ".")
 	if d.Text != "b" || v.InsertMode {
 		t.Fatal("missing repeat target changed text:", d.Text)
 	}
-	d = &Document{Text: "é é", Anchor: -1}
+	d = &Document{Buffer: Buffer{Text: "é é", Anchor: -1}}
 	if len(flashTextPositions(d, "e")) != 0 || len(flashTextPositions(d, "é")) != 2 {
 		t.Fatal("Flash split a combining cluster")
 	}

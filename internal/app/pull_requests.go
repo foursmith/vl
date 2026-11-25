@@ -241,7 +241,8 @@ func (m *Model) openPullRequestFilter() tea.Cmd {
 		}
 		m.palette = append(m.palette, choice)
 	}
-	return m.prompt("pullRequestFilter", m.tr("Filter Pull Requests"), "")
+	m.prompt("pullRequestFilter", m.tr("Filter Pull Requests"), "")
+	return nil
 }
 
 func (m *Model) setPullRequestFilter(filter gitservice.PullRequestFilter) tea.Cmd {

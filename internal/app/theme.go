@@ -4,7 +4,6 @@ import (
 	"slices"
 	"strings"
 
-	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -100,16 +99,11 @@ func (m *Model) applyTheme(selected *theme.Theme) tea.Cmd {
 
 func (m *Model) styleInput() {
 	background := m.colors.Panel
-	state := textinput.StyleState{
-		Text:        theme.Style(m.colors.InputForeground, background),
-		Prompt:      theme.Style(m.colors.InputForeground, background),
-		Placeholder: theme.TextStyle(m.colors.InputPlaceholder, background),
-		Suggestion:  theme.TextStyle(m.colors.InputPlaceholder, background),
+	m.input.styles = inputStyles{
+		text:        theme.Style(m.colors.InputForeground, background),
+		placeholder: theme.TextStyle(m.colors.InputPlaceholder, background),
+		cursor:      tea.Cursor{Color: lipgloss.Color(theme.Composite(m.colors.InputForeground, background)), Shape: tea.CursorBar, Blink: true},
 	}
-	m.input.SetStyles(textinput.Styles{
-		Focused: state, Blurred: state,
-		Cursor: textinput.CursorStyle{Color: lipgloss.Color(theme.Composite(m.colors.InputForeground, background)), Shape: tea.CursorBar, Blink: true},
-	})
 }
 
 // Probe before enabling so the caller can restore only the mode we changed.
@@ -288,14 +282,14 @@ func (m *Model) openThemePicker() tea.Cmd {
 	restore := m.cancelThemePreview()
 	m.themeBeforePreview = m.colorTheme
 	m.palette = m.themeChoices()
-	cmd := m.prompt("themes", m.themePickerTitle(), "")
+	m.prompt("themes", m.themePickerTitle(), "")
 	for i, choice := range m.palette {
 		if choice.key == m.tr("Current") {
 			m.selectPickerIndex(i)
 			break
 		}
 	}
-	return tea.Batch(restore, cmd, m.loadImportedThemes())
+	return tea.Batch(restore, m.loadImportedThemes())
 }
 
 // Preferences remain unchanged until Enter; only presentation follows the

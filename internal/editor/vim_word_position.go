@@ -9,7 +9,7 @@ type wordPosition struct {
 }
 
 // Word commands initialize the line index before they inspect the text.
-func (d *Document) wordRuneAt(pos int) rune {
+func (d *Buffer) wordRuneAt(pos int) rune {
 	if pos >= d.runeCount {
 		return 0
 	}
@@ -17,7 +17,7 @@ func (d *Document) wordRuneAt(pos int) rune {
 	return r
 }
 
-func (d *Document) wordByteOffset(pos int) int {
+func (d *Buffer) wordByteOffset(pos int) int {
 	at := &d.wordPosition
 	distance := pos - at.runeOffset
 	// Distant jumps use the line index. Nearby accesses decode from the

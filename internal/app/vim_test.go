@@ -245,7 +245,7 @@ func TestVimUndoRedoShortcuts(t *testing.T) {
 
 func TestVimWorkbenchRouting(t *testing.T) {
 	m := newHoverRenderModel(t)
-	d := &editor.Document{Text: "one two\nthree", Anchor: -1}
+	d := &editor.Document{Buffer: editor.Buffer{Text: "one two\nthree", Anchor: -1}}
 	m.tabs = []tab{{doc: d}}
 	m.activeTab = 0
 	m.sidebar = false
@@ -289,7 +289,7 @@ func TestVimWorkbenchRouting(t *testing.T) {
 
 func TestVimVisualRenderingAndRouting(t *testing.T) {
 	m := newHoverRenderModel(t)
-	d := &editor.Document{Text: "abc\n\ndef", Anchor: -1}
+	d := &editor.Document{Buffer: editor.Buffer{Text: "abc\n\ndef", Anchor: -1}}
 	m.tabs = []tab{{doc: d}}
 	m.activeTab = 0
 	m.sidebar = false
@@ -327,7 +327,7 @@ func TestVimVisualRenderingAndRouting(t *testing.T) {
 
 func TestVimWordObjectsThroughWorkbench(t *testing.T) {
 	m := newHoverRenderModel(t)
-	d := &editor.Document{Text: "alpha beta gamma", Anchor: -1}
+	d := &editor.Document{Buffer: editor.Buffer{Text: "alpha beta gamma", Anchor: -1}}
 	d.SetPosition(0, 8)
 	m.tabs = []tab{{doc: d}}
 	m.activeTab = 0
@@ -404,7 +404,7 @@ func TestVimChineseWordsThroughWorkbench(t *testing.T) {
 	x, y = l.x+8, l.y+2
 	clickText(t, m, x, y)
 	clickText(t, m, x, y)
-	if start, end := m.input.selection(); start != 2 || end != 4 {
+	if start, end := m.input.buffer.Selection(); start != 2 || end != 4 {
 		t.Fatalf("input double-click selected [%d, %d)", start, end)
 	}
 }
@@ -451,7 +451,7 @@ func TestVimColonReusesQuickPosition(t *testing.T) {
 
 func TestVimFlashTargetsAndRepeatThroughWorkbench(t *testing.T) {
 	m := newHoverRenderModel(t)
-	d := &editor.Document{Text: "a:n/a:n", Anchor: -1}
+	d := &editor.Document{Buffer: editor.Buffer{Text: "a:n/a:n", Anchor: -1}}
 	m.tabs = []tab{{doc: d}}
 	m.activeTab = 0
 	m.sidebar = false

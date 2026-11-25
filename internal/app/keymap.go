@@ -4,7 +4,6 @@ import (
 	"slices"
 
 	"charm.land/bubbles/v2/key"
-	"charm.land/bubbles/v2/textinput"
 )
 
 func binding(display, description string, keys ...string) key.Binding {
@@ -36,6 +35,8 @@ var workbenchKeybindings = []workbenchShortcut{
 	{binding: binding("Ctrl+X", "Cut", "ctrl+x"), context: fromSearchFields, command: commandCut, when: (*Model).textEditFocused},
 	{binding: binding("Ctrl+V", "Paste", "ctrl+v"), context: fromSearchFields, command: commandPaste, when: (*Model).textEditFocused},
 	{binding: binding("Ctrl+A", "Select All", "ctrl+a"), context: fromSearchFields, command: commandSelectAll, when: (*Model).textEditFocused},
+	{binding: binding("Ctrl+Backspace", "Delete to Line Start", "ctrl+backspace"), context: fromSearchFields, command: commandDeleteToLineStart, when: (*Model).textEditFocused},
+	{binding: binding("Ctrl+Delete", "Delete to Line End", "ctrl+delete"), context: fromSearchFields, command: commandDeleteToLineEnd, when: (*Model).textEditFocused},
 	{binding: binding("Ctrl+Z", "Undo", "ctrl+z"), context: fromSearchFields, command: commandUndo, when: (*Model).textEditFocused},
 	{binding: binding("Ctrl+Shift+Z", "Redo", "ctrl+shift+z", "ctrl+shift+Z"), context: fromSearchFields, command: commandRedo, when: (*Model).textEditFocused},
 	{binding: binding("Ctrl+G", "Go to File", "ctrl+g"), context: fromSearch, command: commandFiles},
@@ -61,19 +62,6 @@ var workbenchKeybindings = []workbenchShortcut{
 	{command: commandCloseAll},
 	{binding: binding("Ctrl+F", "Find", "ctrl+f"), context: fromSearchFields, command: commandFind},
 	{binding: binding("F7", "Context menu", "f7"), context: fromSearchFields, command: commandContextMenu},
-}
-
-var inputKeys = textinput.KeyMap{
-	CharacterBackward:       key.NewBinding(key.WithKeys(leftArrow)),
-	CharacterForward:        key.NewBinding(key.WithKeys(rightArrow)),
-	WordBackward:            key.NewBinding(key.WithKeys("ctrl+left")),
-	WordForward:             key.NewBinding(key.WithKeys("ctrl+right")),
-	LineStart:               key.NewBinding(key.WithKeys("home")),
-	LineEnd:                 key.NewBinding(key.WithKeys("end")),
-	DeleteCharacterBackward: key.NewBinding(key.WithKeys("backspace")),
-	DeleteCharacterForward:  key.NewBinding(key.WithKeys("delete")),
-	DeleteWordBackward:      key.NewBinding(key.WithKeys("ctrl+backspace")),
-	DeleteWordForward:       key.NewBinding(key.WithKeys("ctrl+delete")),
 }
 
 var searchKeys = struct {

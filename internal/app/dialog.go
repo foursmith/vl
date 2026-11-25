@@ -233,10 +233,10 @@ func (m *Model) gitMessageLayout() dialogLayout {
 	subtitle := ansi.Truncate(safe(destination), max(0, inner-4), "…")
 	blank := paint("", m.colors.PopupForeground)
 	input := m.input
-	styles := input.Styles()
-	styles.Focused.Text = theme.TextStyle(m.colors.InputForeground, field)
-	styles.Focused.Placeholder = theme.TextStyle(m.colors.InputPlaceholder, field)
-	input.SetStyles(styles)
+	if input.Focused() {
+		input.styles.text = theme.TextStyle(m.colors.InputForeground, field)
+		input.styles.placeholder = theme.TextStyle(m.colors.InputPlaceholder, field)
+	}
 	message := row(" "+m.inputView(input, l.input), inner-4, m.colors.InputForeground, field)
 	l.content = []string{
 		paint("  "+title, m.colors.PopupForeground),

@@ -8,7 +8,7 @@ import (
 )
 
 func BenchmarkCursorMove(b *testing.B) {
-	d := &Document{Text: strings.Repeat("一二三四五六七八九十 abcdefghijklmn\n", 20000), Anchor: -1}
+	d := &Document{Buffer: Buffer{Text: strings.Repeat("一二三四五六七八九十 abcdefghijklmn\n", 20000), Anchor: -1}}
 	d.SetPosition(10000, 5)
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -19,7 +19,7 @@ func BenchmarkCursorMove(b *testing.B) {
 }
 
 func BenchmarkInsertUndo(b *testing.B) {
-	d := &Document{Text: strings.Repeat("一二三四五六七八九十 abcdefghijklmn\n", 20000), Anchor: -1}
+	d := &Document{Buffer: Buffer{Text: strings.Repeat("一二三四五六七八九十 abcdefghijklmn\n", 20000), Anchor: -1}}
 	d.SetPosition(10000, 5)
 	b.ReportAllocs()
 	b.ResetTimer()

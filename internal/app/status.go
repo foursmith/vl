@@ -39,7 +39,8 @@ func (m *Model) openStatusBarStylePicker() tea.Cmd {
 			return m.savePreferences()
 		}})
 	}
-	return m.prompt("statusBarStyles", m.tr("Status Bar Style"), "")
+	m.prompt("statusBarStyles", m.tr("Status Bar Style"), "")
+	return nil
 }
 
 func (m *Model) gitStatusSegments() []statusSegment {
@@ -259,7 +260,7 @@ func fitStatusHints(hints []string, width int) string {
 
 func (m *Model) statusEditor() (*editor.Document, *editor.Vim) {
 	if m.diffOpen && m.diffLoading && m.patch.Raw == "" && !m.isImageDiff() {
-		d := &editor.Document{Path: filepath.Join(m.repo.Root, m.diffPath), ReadOnly: true}
+		d := &editor.Document{Buffer: editor.Buffer{ReadOnly: true}, Path: filepath.Join(m.repo.Root, m.diffPath)}
 		if m.vimDisabled {
 			return d, nil
 		}

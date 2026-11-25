@@ -178,6 +178,7 @@ type Model struct {
 	resizingSidebar         bool
 	textDrag                *editor.Document
 	diffDrag                *diffState
+	inputDrag               *inputDrag
 	snapshot                gitservice.Snapshot
 	gitUnavailable          bool
 	stickyItems             []item
@@ -521,6 +522,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		}()
 	case tea.KeyPressMsg, tea.PasteMsg, tea.BlurMsg, tea.MouseWheelMsg, tea.WindowSizeMsg:
 		m.textClick = textClick{}
+		m.inputDrag = nil
 	}
 	// Normalize the Vim escape chord before any input handler sees it.
 	if key, ok := msg.(tea.KeyPressMsg); ok && key.Mod.Contains(tea.ModCtrl) && key.String() == "ctrl+[" {
@@ -533,7 +535,8 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		beforeText = beforeDocument.Text
 	}
 	_, motion := msg.(tea.MouseMotionMsg)
-	m.hoverOnly = motion && !m.resizingSidebar && !m.welcomeOrbit.dragging && m.textDrag == nil && m.diffDrag == nil && m.imagePan == nil
+	m.hoverOnly = motion && !m.resizingSidebar && !m.welcomeOrbit.dragging &&
+		m.textDrag == nil && m.diffDrag == nil && m.inputDrag == nil && m.imagePan == nil
 	_, wheel := msg.(tea.MouseWheelMsg)
 	var scrolled scrollRegion
 	var timelineContent []string

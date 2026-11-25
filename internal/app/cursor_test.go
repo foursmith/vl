@@ -11,7 +11,7 @@ import (
 
 func TestEditorCursorModePositionAndVisibility(t *testing.T) {
 	m := newHoverRenderModel(t)
-	d := &editor.Document{Text: "a\t中e\u0301", Anchor: -1}
+	d := &editor.Document{Buffer: editor.Buffer{Text: "a\t中e\u0301", Anchor: -1}}
 	m.tabs = []tab{{doc: d}}
 	m.activeTab, m.sidebar = 0, false
 	d.SetPosition(0, 5)
@@ -66,13 +66,12 @@ func TestSearchInputsUseNativeBarCursor(t *testing.T) {
 			t.Fatalf("search focus %d: %+v", tt.focus, c)
 		}
 	}
-	m.tabs = []tab{{doc: &editor.Document{Text: "text", Anchor: -1}}}
+	m.tabs = []tab{{doc: &editor.Document{Buffer: editor.Buffer{Text: "text", Anchor: -1}}}}
 	m.activeTab = 0
 	m.openFileFind()
 	for _, focus := range []int{0, 1} {
 		m.focusFileFind(focus)
 		m.searchField(focus).SetValue("中a")
-		m.searchField(focus).CursorEnd()
 		row := fileFindQueryRow
 		if focus == 1 {
 			row = fileReplaceRow
@@ -98,7 +97,6 @@ func TestInputCursorTracksScrolledUnicode(t *testing.T) {
 		x    int
 	}{{"", 11}, {"中a", 14}, {"abcdef", 15}, {"中中中", 15}, {"e\u0301abc", 15}} {
 		m.input.SetValue(tt.text)
-		m.input.CursorEnd()
 		view := m.inputView(m.input, inputArea{x: 10, y: 2, width: 4})
 		if c := m.inputCaret; c == nil || c.Shape != tea.CursorBar || c.X != tt.x || c.Y != 2 {
 			t.Fatalf("%q: %+v", tt.text, c)

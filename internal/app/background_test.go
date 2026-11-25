@@ -55,7 +55,7 @@ func TestRowPaintsBackgroundAfterNestedStyleResets(t *testing.T) {
 
 func TestEditorCanvasAndCurrentLineBackgrounds(t *testing.T) {
 	m := New(context.Background(), &gitservice.Repository{Root: "/tmp/repo"}, false)
-	m.tabs = []tab{{doc: &editor.Document{Path: "/tmp/repo/test.go", Text: "package main\n\n// comment\n", Anchor: -1}}}
+	m.tabs = []tab{{doc: &editor.Document{Buffer: editor.Buffer{Text: "package main\n\n// comment\n", Anchor: -1}, Path: "/tmp/repo/test.go"}}}
 	m.activeTab = 0
 	m.sidebar = true
 	m.ensureEditor()
@@ -76,7 +76,7 @@ func TestEditorCanvasAndCurrentLineBackgrounds(t *testing.T) {
 func TestEditorCurrentLineBorderUsesAdjacentRows(t *testing.T) {
 	m := New(context.Background(), &gitservice.Repository{Root: "/tmp/repo"}, false)
 	m.colors = theme.Builtin("hc_black").Palette()
-	doc := &editor.Document{Path: "/tmp/repo/test.txt", Text: "above\n当前\nbelow", Anchor: -1}
+	doc := &editor.Document{Buffer: editor.Buffer{Text: "above\n当前\nbelow", Anchor: -1}, Path: "/tmp/repo/test.txt"}
 	m.tabs = []tab{{doc: doc}}
 	m.activeTab = 0
 	m.ensureEditor()
@@ -102,7 +102,7 @@ func TestEditorCurrentLineHighlightYieldsToSelection(t *testing.T) {
 		t.Run(id, func(t *testing.T) {
 			m := New(context.Background(), &gitservice.Repository{Root: "/tmp/repo"}, false)
 			m.colors = theme.Builtin(id).Palette()
-			doc := &editor.Document{Path: "/tmp/repo/test.txt", Text: "above\ncurrent\nbelow", Anchor: -1}
+			doc := &editor.Document{Buffer: editor.Buffer{Text: "above\ncurrent\nbelow", Anchor: -1}, Path: "/tmp/repo/test.txt"}
 			m.tabs = []tab{{doc: doc}}
 			m.activeTab = 0
 			m.ensureEditor()
@@ -167,7 +167,7 @@ func TestRowPreservesExplicitHighlightBackgrounds(t *testing.T) {
 
 func TestEditorRunsKeepSyntaxSelectionCursorAndFocus(t *testing.T) {
 	m := New(context.Background(), &gitservice.Repository{Root: "/tmp/repo"}, false)
-	d := &editor.Document{Path: "/tmp/repo/test.go", Text: "ab\t中\nsecond", Cursor: 2, Anchor: 0}
+	d := &editor.Document{Buffer: editor.Buffer{Text: "ab\t中\nsecond", Cursor: 2, Anchor: 0}, Path: "/tmp/repo/test.go"}
 	m.tabs = []tab{{doc: d}}
 	m.activeTab = 0
 	m.sidebar = false

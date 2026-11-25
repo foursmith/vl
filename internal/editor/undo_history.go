@@ -110,48 +110,41 @@ func undoFileHeader(disk []byte) [undoFileHeaderSize]byte {
 	return header
 }
 
-func (d *Document) loadUndoHistory() {
-	// Leave file previews and watcher reads on the normal file-open path.
-	if d.undoHistoryLoaded {
-		return
-	}
-	d.undoHistoryLoaded = true
-	if d.Path == "" {
-		return
-	}
-	path, err := config.UndoHistoryPath(d.Path)
+func readUndoHistory(filename string, saved []byte, base string) ([]editState, []editState) {
+	path, err := config.UndoHistoryPath(filename)
 	if err != nil {
-		return
+		return nil, nil
 	}
 	file, err := os.Open(path)
 	if err != nil {
-		return
+		return nil, nil
 	}
 	defer file.Close()
-	expected := undoFileHeader(d.saved)
+	expected := undoFileHeader(saved)
 	var header [undoFileHeaderSize]byte
 	if _, err := io.ReadFull(file, header[:]); err != nil || header != expected {
-		return
+		return nil, nil
 	}
 	data, err := io.ReadAll(io.LimitReader(file, maxUndoPayloadBytes+1))
 	if err != nil || len(data) < undoStackCountsSize+crc32.Size || len(data) > maxUndoPayloadBytes {
-		return
+		return nil, nil
 	}
 	payload, checksum := data[:len(data)-crc32.Size], data[len(data)-crc32.Size:]
 	undoCount, redoCount := int(payload[0]), int(payload[1])
 	if undoCount+redoCount > maxUndoSteps || crc32.ChecksumIEEE(payload) != binary.LittleEndian.Uint32(checksum) {
-		return
+		return nil, nil
 	}
 	payload = payload[undoStackCountsSize:]
 	budget := maxUndoHistoryBytes
-	undo, ok := readUndoStack(&payload, d.savedText, undoCount, &budget)
+	undo, ok := readUndoStack(&payload, base, undoCount, &budget)
 	if !ok {
-		return
+		return nil, nil
 	}
-	redo, ok := readUndoStack(&payload, d.savedText, redoCount, &budget)
-	if ok && len(payload) == 0 {
-		d.undo, d.redo = undo, redo
+	redo, ok := readUndoStack(&payload, base, redoCount, &budget)
+	if !ok || len(payload) != 0 {
+		return nil, nil
 	}
+	return undo, redo
 }
 
 func (d *Document) saveUndoHistory() {

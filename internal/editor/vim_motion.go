@@ -75,7 +75,7 @@ func (v *Vim) motion(d *Document, key string, n int) bool {
 
 func (v *Vim) moveWord(d *Document, key string, count int) {
 	end := wordMotionEnd(d)
-	class := v.wordClassifier(d, false)
+	class := d.wordClassifier(v.HanDictionary, false)
 	for range count {
 		before := d.Cursor
 		moveOneWord(d, key, end, class)
@@ -87,11 +87,11 @@ func (v *Vim) moveWord(d *Document, key string, count int) {
 	}
 }
 
-func (v *Vim) wordClassifier(d *Document, bigWord bool) func(int) int {
+func (d *Buffer) wordClassifier(dictionary func() *HanDictionary, bigWord bool) func(int) int {
 	return func(pos int) int {
 		r := d.wordRuneAt(pos)
-		if v.HanDictionary != nil && !bigWord && unicode.Is(unicode.Han, r) {
-			if dict := v.HanDictionary(); dict != nil {
+		if dictionary != nil && !bigWord && unicode.Is(unicode.Han, r) {
+			if dict := dictionary(); dict != nil {
 				return d.hanWordRun.class(dict, d.Text, pos, d.wordByteOffset(pos))
 			}
 		}

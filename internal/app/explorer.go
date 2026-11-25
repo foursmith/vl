@@ -220,7 +220,8 @@ func (m *Model) newEntry(directory bool) tea.Cmd {
 	if directory {
 		kind, title = "newFolder", m.tr("New Folder")
 	}
-	return m.prompt(kind, title, path)
+	m.prompt(kind, title, path)
+	return nil
 }
 
 func (m *Model) createEntry(path string, directory bool) tea.Cmd {
@@ -319,7 +320,8 @@ func (m *Model) pasteEntryPrompt() tea.Cmd {
 	if destination == filepath.FromSlash(m.explorerYankPath) {
 		destination = filepath.Join(parent, name+"-copy")
 	}
-	return m.prompt("pasteFile", m.tr("Copy to"), filepath.ToSlash(destination))
+	m.prompt("pasteFile", m.tr("Copy to"), filepath.ToSlash(destination))
+	return nil
 }
 
 func (m *Model) pasteEntry(destination string) tea.Cmd {

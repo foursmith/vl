@@ -23,7 +23,8 @@ func (m *Model) stash(target string) tea.Cmd {
 
 func (m *Model) stashWithOptions(target, title, option string) tea.Cmd {
 	m.stashRepository, m.stashOption = target, option
-	return m.prompt("stash", m.tr(title), "")
+	m.prompt("stash", m.tr(title), "")
+	return nil
 }
 
 func (m *Model) openStashModes(target string) tea.Cmd {
@@ -38,7 +39,8 @@ func (m *Model) openStashModes(target string) tea.Cmd {
 			return m.stashWithOptions(target, mode.title, mode.option)
 		}})
 	}
-	return m.prompt("stashPicker", m.tr("New Stash")+" · "+m.repositoryName(target), "")
+	m.prompt("stashPicker", m.tr("New Stash")+" · "+m.repositoryName(target), "")
+	return nil
 }
 
 func (m *Model) loadStashPicker(target string, stash gitservice.Stash) tea.Cmd {
@@ -50,8 +52,8 @@ func (m *Model) loadStashPicker(target string, stash gitservice.Stash) tea.Cmd {
 	seq := m.stashPickerSeq
 	ctx, workspace := m.ctx, m.repo
 	m.palette = []action{{label: m.tr("Loading stash…")}}
-	focus := m.prompt("stashLoading", m.tr("Stashes")+" · "+m.repositoryName(target), "")
-	load := func() tea.Msg {
+	m.prompt("stashLoading", m.tr("Stashes")+" · "+m.repositoryName(target), "")
+	return func() tea.Msg {
 		msg := stashPickerMsg{seq: seq, target: target, stash: stash}
 		repo, err := workspace.RepositoryAt(ctx, target)
 		if err != nil {
@@ -65,7 +67,6 @@ func (m *Model) loadStashPicker(target string, stash gitservice.Stash) tea.Cmd {
 		}
 		return msg
 	}
-	return tea.Batch(focus, load)
 }
 
 func (m *Model) openStashes(target string) tea.Cmd {
@@ -93,7 +94,8 @@ func (m *Model) finishStashPicker(msg stashPickerMsg) tea.Cmd {
 			m.palette = append(m.palette, action{label: m.tr("No stashes in this repository")})
 		}
 		m.palette = append(m.palette, action{label: m.tr("New Stash…"), run: func() tea.Cmd { return m.openStashModes(target) }})
-		return m.prompt("stashPicker", m.tr("Stashes")+" · "+repoName, "")
+		m.prompt("stashPicker", m.tr("Stashes")+" · "+repoName, "")
+		return nil
 	}
 	for _, file := range msg.files {
 		detail := string(file.Index)
@@ -122,7 +124,8 @@ func (m *Model) finishStashPicker(msg stashPickerMsg) tea.Cmd {
 		return m.openStashActions(target, msg.stash)
 	}})
 	m.palette = append(m.palette, action{label: m.tr("Back to Stashes"), run: func() tea.Cmd { return m.openStashes(target) }})
-	return m.prompt("stashPicker", msg.stash.Ref()+" · "+repoName+" · "+msg.stash.Subject, "")
+	m.prompt("stashPicker", msg.stash.Ref()+" · "+repoName+" · "+msg.stash.Subject, "")
+	return nil
 }
 
 func (m *Model) openStashActions(target string, stash gitservice.Stash) tea.Cmd {
@@ -144,7 +147,8 @@ func (m *Model) openStashActions(target string, stash gitservice.Stash) tea.Cmd 
 	m.palette = append(m.palette, action{label: m.tr("Back to Stashed Files"), run: func() tea.Cmd {
 		return m.loadStashPicker(target, stash)
 	}})
-	return m.prompt("stashPicker", stash.Ref()+" · "+m.repositoryName(target)+" · "+stash.Subject, "")
+	m.prompt("stashPicker", stash.Ref()+" · "+m.repositoryName(target)+" · "+stash.Subject, "")
+	return nil
 }
 
 func (m *Model) useStash(target string, stash gitservice.Stash, action string, index bool) tea.Cmd {

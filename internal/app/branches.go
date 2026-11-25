@@ -24,7 +24,8 @@ func (m *Model) openBranchPicker(repoPath, mode string) tea.Cmd {
 			action{id: "branch.create", label: m.symbol(symbolAdd) + m.tr(" Create Branch…"), run: func() tea.Cmd {
 				m.branchStart = ""
 				m.branchRepository = repoPath
-				return m.prompt("branch", m.tr("New branch name")+suffix, "")
+				m.prompt("branch", m.tr("New branch name")+suffix, "")
+				return nil
 			}},
 			action{id: "branch.createFrom", label: m.symbol(symbolAdd) + m.tr(" Create Branch From…"), run: func() tea.Cmd { return m.openBranchPicker(repoPath, "base") }},
 			action{id: "branch.detach", label: m.tr("Checkout to (Detached)…"), run: func() tea.Cmd { return m.openBranchPicker(repoPath, "detach") }})
@@ -50,7 +51,8 @@ func (m *Model) openBranchPicker(repoPath, mode string) tea.Cmd {
 			if mode == "base" {
 				m.branchStart = ref.OID
 				m.branchRepository = repoPath
-				return m.prompt("branch", m.tr("New branch name · Based on %s", ref.Name)+suffix, "")
+				m.prompt("branch", m.tr("New branch name · Based on %s", ref.Name)+suffix, "")
+				return nil
 			}
 			return m.checkout(repoPath, ref, mode == "detach")
 		}})
@@ -63,9 +65,9 @@ func (m *Model) openBranchPicker(repoPath, mode string) tea.Cmd {
 		title = m.tr("Select a ref to check out with detached HEAD")
 	}
 	title += suffix
-	cmd := m.prompt("refs", title, "")
+	m.prompt("refs", title, "")
 	m.input.Placeholder = title + m.tr(" · Enter a name or commit ID")
-	return cmd
+	return nil
 }
 
 func shortOID(oid string) string { return oid[:min(7, len(oid))] }
@@ -156,7 +158,8 @@ func (m *Model) publishBranchInRepository(target string) tea.Cmd {
 			return publish(remote.Name)
 		}})
 	}
-	return m.prompt("remotes", m.tr("Select a remote to publish the branch"), "")
+	m.prompt("remotes", m.tr("Select a remote to publish the branch"), "")
+	return nil
 }
 
 func (m *Model) publishInRepository(target string, publish func(*gitservice.Repository) (string, error)) tea.Cmd {

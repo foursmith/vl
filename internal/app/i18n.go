@@ -51,5 +51,6 @@ func (m *Model) openLanguagePicker() tea.Cmd {
 			return m.savePreferences()
 		}})
 	}
-	return m.prompt("languages", m.tr("Configure Display Language"), "")
+	m.prompt("languages", m.tr("Configure Display Language"), "")
+	return nil
 }

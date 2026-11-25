@@ -54,7 +54,7 @@ func (m *Model) showSearchOptions(filter string, index int) tea.Cmd {
 			return m.showSearchOptions(value, index)
 		}})
 	}
-	cmd := m.prompt("searchOptions", searchText("Search options · Enter / Space to toggle"), filter)
+	m.prompt("searchOptions", searchText("Search options · Enter / Space to toggle"), filter)
 	m.selectPickerIndex(index)
-	return cmd
+	return nil
 }

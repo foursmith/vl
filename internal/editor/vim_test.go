@@ -51,7 +51,7 @@ func TestVimBasicEdits(t *testing.T) {
 		{"combining delete", "é中", []string{"x"}, "中"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			d := &Document{Text: tt.text, Anchor: -1}
+			d := &Document{Buffer: Buffer{Text: tt.text, Anchor: -1}}
 			v := &Vim{}
 			vimKeys(d, v, tt.keys...)
 			if d.Text != tt.want {
@@ -73,7 +73,7 @@ func TestVimMotions(t *testing.T) {
 		{[]string{"G"}, 2, 0}, {[]string{"2", "G"}, 1, 0}, {[]string{"G", "g", "g"}, 0, 0},
 		{[]string{"9", "l"}, 0, 9},
 	} {
-		d := &Document{Text: "  one two!!\nshort\nlast", Anchor: -1}
+		d := &Document{Buffer: Buffer{Text: "  one two!!\nshort\nlast", Anchor: -1}}
 		v := &Vim{}
 		vimKeys(d, v, tt.keys...)
 		row, col := d.Position()
@@ -116,7 +116,7 @@ func TestVimWordMotionMatchesDefaultVim(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			d := &Document{Text: tt.text, Anchor: -1}
+			d := &Document{Buffer: Buffer{Text: tt.text, Anchor: -1}}
 			v := &Vim{}
 			for i, key := range tt.keys {
 				vimKeys(d, v, key)
@@ -130,7 +130,7 @@ func TestVimWordMotionMatchesDefaultVim(t *testing.T) {
 
 func TestVimUndoGroups(t *testing.T) {
 	for _, keys := range [][]string{{"i", "a", "b", "esc"}, {"c", "e", "a", "b", "esc"}, {"o", "a", "b", "esc"}, {"d", "d"}, {"x"}} {
-		d := &Document{Text: "one two\nthree", Anchor: -1}
+		d := &Document{Buffer: Buffer{Text: "one two\nthree", Anchor: -1}}
 		v := &Vim{}
 		vimKeys(d, v, keys...)
 		changed := d.Text
@@ -145,7 +145,7 @@ func TestVimUndoGroups(t *testing.T) {
 	}
 }
 func TestVimResetAndIndependentSessions(t *testing.T) {
-	d := &Document{Text: "one", Anchor: -1}
+	d := &Document{Buffer: Buffer{Text: "one", Anchor: -1}}
 	v := &Vim{}
 	vimKeys(d, v, "i", "A", "esc", "i", "B", "esc", "u")
 	if d.Text != "Aone" {
@@ -161,13 +161,13 @@ func TestVimResetAndIndependentSessions(t *testing.T) {
 }
 
 func TestVimRegisterAcrossEditors(t *testing.T) {
-	a := &Document{Text: "one\ntwo", Anchor: -1}
+	a := &Document{Buffer: Buffer{Text: "one\ntwo", Anchor: -1}}
 	av := &Vim{}
 	text := vimKeys(a, av, "l", "y", "y")
 	if a.Cursor != 1 || text != "one\n" {
 		t.Fatal("line copy moved cursor or omitted register text")
 	}
-	b := &Document{Text: "other", Anchor: -1}
+	b := &Document{Buffer: Buffer{Text: "other", Anchor: -1}}
 	bv := &Vim{}
 	bv.Handle(b, "p", text)
 	if b.Text != "other\none" {

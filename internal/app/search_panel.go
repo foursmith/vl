@@ -83,21 +83,22 @@ func (m *Model) searchPanelControls(w int) []searchPanelControl {
 	}
 	return slices.DeleteFunc(controls, func(c searchPanelControl) bool { return c.y >= m.bodyHeight() })
 }
-func (m *Model) toggleSearchDetails() tea.Cmd {
+func (m *Model) toggleSearchDetails() {
 	m.search.details = !m.search.details
 	if !m.search.details && m.search.focus > 2 {
 		m.focusSearch(0)
 	}
 	m.clampSearch()
-	return nil
 }
 func (m *Model) searchControlAction(id string) tea.Cmd {
 	s := &m.search
 	switch id {
 	case "replaceToggle":
-		return m.toggleSearchReplace()
+		m.toggleSearchReplace()
+		return nil
 	case "details":
-		return m.toggleSearchDetails()
+		m.toggleSearchDetails()
+		return nil
 	case "case":
 		s.options.Case = !s.options.Case
 	case "word":
@@ -225,13 +226,14 @@ func (m *Model) clickSearch(x, y int) tea.Cmd {
 		}
 	}
 	if focus >= 0 {
-		cmd := m.focusSearch(focus)
+		m.focusSearch(focus)
 		area := searchInputArea(m.sideX(), y, searchFieldEnd(controls, y, w), w-1)
 		m.clickInput(m.searchField(focus), area, m.sideX()+x, y)
-		return cmd
+		return nil
 	}
 	if y >= headerHeight && y < l.details {
-		return m.focusSearch(0)
+		m.focusSearch(0)
+		return nil
 	}
 	index := m.sidebarRowAt(y)
 	if index < 0 {

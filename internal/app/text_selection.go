@@ -32,9 +32,8 @@ func (m *Model) countTextClick(target any, x, y int) int {
 	return count
 }
 
-func (m *Model) mouseWordRange(d *editor.Document, offset int) (start, end int) {
-	vim := editor.Vim{HanDictionary: m.vimHanDictionary}
-	return vim.InnerWordRange(d, offset)
+func (m *Model) mouseWordRange(d *editor.Buffer, offset int) (start, end int) {
+	return d.InnerWordRange(offset, m.vimHanDictionary)
 }
 
 // Mouse columns are terminal cells; selection columns are source rune offsets.
@@ -171,11 +170,16 @@ func (m *Model) diffSelectedText() string {
 func (m *Model) stopTextDrag() {
 	m.textDrag = nil
 	m.diffDrag = nil
+	m.inputDrag = nil
 }
 
 func (m *Model) dragText(x, y int) {
-	if (m.textDrag != nil || m.diffDrag != nil) && (x != m.textClick.x || y != m.textClick.y) {
+	if (m.textDrag != nil || m.diffDrag != nil || m.inputDrag != nil) && (x != m.textClick.x || y != m.textClick.y) {
 		m.textClick = textClick{}
+	}
+	if m.inputDrag != nil {
+		m.dragInput(x)
+		return
 	}
 	if m.modal != "" {
 		m.stopTextDrag()
@@ -203,7 +207,7 @@ func (m *Model) beginTextDrag(msg tea.MouseClickMsg) {
 		if msg.Mod == 0 {
 			switch m.countTextClick(d, msg.X, msg.Y) {
 			case 2:
-				from, to := m.mouseWordRange(d, d.Cursor)
+				from, to := m.mouseWordRange(&d.Buffer, d.Cursor)
 				d.SelectRange(from, to)
 				m.ensureEditor()
 				return
@@ -227,7 +231,7 @@ func (m *Model) beginTextDrag(msg tea.MouseClickMsg) {
 			line := codeLine(m.selectionLine(s.cursor.row, s.right))
 			switch m.countTextClick(m.diffState, msg.X, msg.Y) {
 			case 2:
-				s.anchor.col, s.cursor.col = m.mouseWordRange(&editor.Document{Text: line}, s.cursor.col)
+				s.anchor.col, s.cursor.col = m.mouseWordRange(&editor.Buffer{Text: line}, s.cursor.col)
 				m.syncReviewMouse()
 				return
 			case 3:

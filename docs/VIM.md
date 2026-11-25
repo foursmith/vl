@@ -171,6 +171,7 @@ Parentheses, square brackets, and braces can nest and span lines.
 | `PageUp` / `PageDown` | Move up / down a page |
 | `Ctrl+U` / `Ctrl+D` | Scroll up / down half a screen |
 | `Backspace` / `Delete` | Delete the selection or the character before / after the cursor |
+| `Ctrl+Backspace` / `Ctrl+Delete` | Delete from the cursor to the start / end of the current line |
 | `Enter` / `Tab` | Insert a newline / tab |
 
 Type `./` or `../` to complete a path relative to the current file. Pick a

@@ -181,7 +181,7 @@ func (m *Model) restoreSession() tea.Cmd {
 		}
 	}
 	if m.section == search {
-		commands = append(commands, m.focusSearch(m.search.focus))
+		m.focusSearch(m.search.focus)
 	}
 	return tea.Batch(commands...)
 }

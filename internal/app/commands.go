@@ -89,7 +89,8 @@ func (m *Model) actions() []action {
 		{"git.branch", m.tr("Git: Create Branch…"), "", "", func() tea.Cmd {
 			m.branchStart = ""
 			m.branchRepository = ""
-			return m.prompt("branch", m.tr("Create and switch to branch"), "")
+			m.prompt("branch", m.tr("Create and switch to branch"), "")
+			return nil
 		}},
 		{"git.checkout", m.tr("Git: Checkout to…"), "", "", func() tea.Cmd { return m.openBranchPicker("", "") }},
 		{"git.sync", m.tr("Git: Sync"), "", "", m.syncRepository},
@@ -259,27 +260,25 @@ func (m *Model) matchQuickFiles(query string) []action {
 	return rows
 }
 
-func (m *Model) prompt(kind, title, value string) tea.Cmd {
+func (m *Model) prompt(kind, title, value string) {
 	m.showDialog(kind, title)
 	m.input.SetValue(value)
-	m.input.Placeholder = ""
-	m.input.Prompt = "> "
-	switch kind {
-	case "commit":
+	m.input.Prompt = ""
+	switch {
+	case kind == "commit":
 		m.input.Placeholder = m.tr("Commit message")
-		m.input.Prompt = ""
-	case "stash":
+	case kind == "stash":
 		m.input.Placeholder = m.tr("Optional message")
-		m.input.Prompt = ""
-	}
-	if m.isPicker() {
-		m.input.Prompt = ""
+	case m.isPicker():
 		m.input.Placeholder = title
+	default:
+		m.input.Prompt = "> "
+		m.input.Placeholder = ""
 	}
-	m.input.CursorEnd()
 	m.pickerIndex = 0
+	m.input.Focus()
+	m.syncQuickPicker()
 	m.syncPicker()
-	return m.input.Focus()
 }
 
 func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {

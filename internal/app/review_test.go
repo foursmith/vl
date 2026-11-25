@@ -30,7 +30,7 @@ func TestReadOnlyDiffSharesVimMotionsSelectionAndSearch(t *testing.T) {
 		editable := tabWorkspace(t, 1)
 		defer editable.Close()
 		editable.openFile("file0.go")
-		editable.tabs[editable.activeTab].doc = &editor.Document{Text: original, Anchor: -1}
+		editable.tabs[editable.activeTab].doc = &editor.Document{Buffer: editor.Buffer{Text: original, Anchor: -1}}
 		for _, k := range []string{"w", "e", "b", "2", "j", "G", "g", "g", "v", "w", "l"} {
 			press(m, k)
 			press(editable, k)
@@ -138,7 +138,7 @@ func TestSharedLeaderCancelsAcrossDialogsAndBlur(t *testing.T) {
 	for _, readOnly := range []bool{false, true} {
 		m := reviewWorkspace(t, false)
 		if !readOnly {
-			m.tabs = append(m.tabs, tab{doc: &editor.Document{Text: "text", Anchor: -1}})
+			m.tabs = append(m.tabs, tab{doc: &editor.Document{Buffer: editor.Buffer{Text: "text", Anchor: -1}}})
 			m.activateTab(len(m.tabs) - 1)
 		}
 		count := len(m.tabs)

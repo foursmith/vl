@@ -9,7 +9,7 @@ import (
 
 // Rune offsets remain the document/highlighter contract. Only editing positions
 // are snapped to extended grapheme boundaries; no Unicode normalization occurs.
-func (d *Document) boundaries(line int) []int {
+func (d *Buffer) boundaries(line int) []int {
 	text := d.Lines()[line]
 	if len(text) == d.LineRuneCount(line) {
 		return nil
@@ -30,7 +30,7 @@ func (d *Document) boundaries(line int) []int {
 	d.graphemes[line] = b
 	return b
 }
-func (d *Document) snap(cursor int, forward bool) int {
+func (d *Buffer) snap(cursor int, forward bool) int {
 	d.Lines()
 	cursor = min(max(0, cursor), d.runeCount)
 	line := sort.Search(len(d.lineOffsets), func(i int) bool { return d.lineOffsets[i] > cursor }) - 1
@@ -49,13 +49,13 @@ func (d *Document) snap(cursor int, forward bool) int {
 	}
 	return start + b[i-1]
 }
-func (d *Document) previous(cursor int) int {
+func (d *Buffer) previous(cursor int) int {
 	if cursor <= 0 {
 		return 0
 	}
 	return d.snap(cursor-1, false)
 }
-func (d *Document) next(cursor int) int {
+func (d *Buffer) next(cursor int) int {
 	d.Lines()
 	if cursor >= d.runeCount {
 		return d.runeCount
@@ -78,7 +78,7 @@ func knownBoundary(text string, offset int) bool {
 }
 
 // SelectRange expands a rune range so selection never cuts a grapheme in half.
-func (d *Document) SelectRange(start, end int) {
+func (d *Buffer) SelectRange(start, end int) {
 	d.selectionKind = 0
 	if start == end {
 		d.Cursor = d.snap(start, false)

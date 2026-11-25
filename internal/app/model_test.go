@@ -163,7 +163,7 @@ func TestFrameGeometryAndControlCharacters(t *testing.T) {
 	m := New(context.Background(), &gitservice.Repository{Root: "/tmp/中文-repo"}, true)
 	m.items = []item{{label: "CHANGES", header: true}, {label: "file\n\x1b[31m.go", key: "file", file: "file.go"}}
 	m.selected = 1
-	m.tabs = []tab{{doc: &editor.Document{Path: "/tmp/file.go", Text: "package main\n\t// 中文🙂\n", Anchor: -1}}}
+	m.tabs = []tab{{doc: &editor.Document{Buffer: editor.Buffer{Text: "package main\n\t// 中文🙂\n", Anchor: -1}, Path: "/tmp/file.go"}}}
 	m.activeTab = 0
 	for _, width := range []int{30, 48, 70, 80, 120} {
 		for _, height := range []int{8, 14, 36} {
@@ -202,7 +202,7 @@ func TestStaleResultsAndDirtyQuit(t *testing.T) {
 	if m.snapshot.Branch != "" {
 		t.Fatal("stale snapshot applied")
 	}
-	m.tabs = []tab{{doc: &editor.Document{Path: "/tmp/a", Text: "unsaved", Anchor: -1}}}
+	m.tabs = []tab{{doc: &editor.Document{Buffer: editor.Buffer{Text: "unsaved", Anchor: -1}, Path: "/tmp/a"}}}
 	m.activeTab = 0
 	if cmd := m.quit(); cmd != nil || !hasSaveConfirmation(m) {
 		t.Fatal("unsaved changes were not guarded")
@@ -231,7 +231,7 @@ func TestDiffRefreshPreservesScrollAndTypedKeys(t *testing.T) {
 	if m.viewport.YOffset() != 12 {
 		t.Fatal("refresh reset scroll")
 	}
-	m.tabs = []tab{{doc: &editor.Document{Path: "/tmp/a.go", Text: "\t中文\n", Anchor: -1}}}
+	m.tabs = []tab{{doc: &editor.Document{Buffer: editor.Buffer{Text: "\t中文\n", Anchor: -1}, Path: "/tmp/a.go"}}}
 	m.activeTab = 0
 	press(m, "i")
 	press(m, "s")

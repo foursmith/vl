@@ -77,7 +77,7 @@ func TestDiffMouseSelectsWordThenLine(t *testing.T) {
 	}
 }
 
-func TestInputMouseSelectsWordThenEntireField(t *testing.T) {
+func TestInputMouseSelection(t *testing.T) {
 	const value = "猫 éclair.word"
 	for _, name := range []string{"picker", "dialog", "commit", "query", "replacement", "include", "exclude", "find", "file replacement"} {
 		t.Run(name, func(t *testing.T) {
@@ -133,12 +133,25 @@ func TestInputMouseSelectsWordThenEntireField(t *testing.T) {
 				t.Fatalf("single click positioned caret at %d", input.Position())
 			}
 			clickText(t, m, x, y)
-			if start, end := input.selection(); start != 2 || end != 9 {
+			if start, end := input.buffer.Selection(); start != 2 || end != 9 {
 				t.Fatalf("double click selected [%d, %d)", start, end)
 			}
 			clickText(t, m, x, y)
-			if start, end := input.selection(); start != 0 || end != 14 {
+			if start, end := input.buffer.Selection(); start != 0 || end != 14 {
 				t.Fatalf("triple click selected [%d, %d)", start, end)
+			}
+			m.Update(tea.MouseClickMsg{X: x, Y: y, Button: tea.MouseLeft})
+			m.Update(tea.MouseMotionMsg{X: x - 3, Y: y, Button: tea.MouseLeft})
+			if got := input.buffer.SelectedText(); got != "猫 " || m.hoverOnly {
+				t.Fatalf("drag left selected %q with hover-only rendering %v", got, m.hoverOnly)
+			}
+			m.Update(tea.MouseReleaseMsg{X: x + 3, Y: y, Button: tea.MouseLeft})
+			if got := input.buffer.SelectedText(); got != "écl" || m.inputDrag != nil {
+				t.Fatalf("release selected %q with drag still active %v", got, m.inputDrag != nil)
+			}
+			press(m, "x")
+			if got := input.Value(); got != "猫 xair.word" {
+				t.Fatalf("typing over the mouse selection produced %q", got)
 			}
 		})
 	}
@@ -150,11 +163,17 @@ func TestMouseSelectionUsesHorizontallyScrolledInput(t *testing.T) {
 	area := m.dialogLayout().input
 	prefix := strings.Repeat("x", area.width) + " "
 	m.input.SetValue(prefix + "second")
-	m.input.CursorEnd()
 	x := area.x + ansi.StringWidth(m.input.Prompt) + area.width - 3
 	clickText(t, m, x, area.y)
 	clickText(t, m, x, area.y)
-	if start, end := m.input.selection(); start != len(prefix) || end != len(prefix)+len("second") {
+	if start, end := m.input.buffer.Selection(); start != len(prefix) || end != len(prefix)+len("second") {
 		t.Fatalf("double-click in scrolled input selected [%d, %d)", start, end)
+	}
+	left, _ := m.input.viewport(area.width)
+	x = area.x + ansi.StringWidth(m.input.Prompt)
+	m.Update(tea.MouseClickMsg{X: x, Y: area.y, Button: tea.MouseLeft})
+	m.Update(tea.MouseReleaseMsg{X: x - 2, Y: area.y, Button: tea.MouseLeft})
+	if start, end := m.input.buffer.Selection(); start != left-2 || end != left {
+		t.Fatalf("drag beyond the left edge selected [%d, %d) from viewport offset %d", start, end, left)
 	}
 }

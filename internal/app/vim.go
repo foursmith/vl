@@ -103,7 +103,8 @@ func (m *Model) vimKey(k string) (bool, tea.Cmd) {
 			return true, m.openQuickPicker(":")
 		}
 		if k == "/" {
-			return true, m.openFileFind()
+			m.openFileFind()
+			return true, nil
 		}
 		return true, m.findNext()
 	}

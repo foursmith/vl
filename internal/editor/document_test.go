@@ -61,7 +61,7 @@ func TestSaveDetectsExternalEdits(t *testing.T) {
 }
 
 func TestSelectionMultilineAndCursor(t *testing.T) {
-	d := &Document{Text: "ab\n中文\nxyz", Anchor: -1}
+	d := &Document{Buffer: Buffer{Text: "ab\n中文\nxyz", Anchor: -1}}
 	d.SetPosition(1, 1)
 	d.Move("right", true)
 	if d.SelectedText() != "文" {
@@ -176,7 +176,7 @@ func TestLineIndexTracksUnicodeEditsUndoRedoAndSave(t *testing.T) {
 }
 
 func TestByteOffsetsAndWordMovementMatchRuneCoordinates(t *testing.T) {
-	d := &Document{Text: "ab 中🙂文\n  next\tword", Anchor: -1}
+	d := &Document{Buffer: Buffer{Text: "ab 中🙂文\n  next\tword", Anchor: -1}}
 	for cursor := 0; cursor <= utf8.RuneCountInString(d.Text); cursor++ {
 		want := len(string([]rune(d.Text)[:cursor]))
 		if got := d.ByteOffset(cursor); got != want {
@@ -205,7 +205,7 @@ func TestByteOffsetsAndWordMovementMatchRuneCoordinates(t *testing.T) {
 }
 
 func TestUndoHistoryStaysBoundedAndRedoSurvivesTrimming(t *testing.T) {
-	d := &Document{Anchor: -1}
+	d := &Document{Buffer: Buffer{Anchor: -1}}
 	for i := 0; i < 200; i++ {
 		d.Edit(fmt.Sprintf("edit %d", i))
 	}

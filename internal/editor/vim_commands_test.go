@@ -17,7 +17,7 @@ func TestVimJoinLines(t *testing.T) {
 		{"visual backwards", "one\n  two\n  three\nfour", "one two three\nfour", []string{"j", "j", "V", "2", "k", "J"}, 0, 7},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			d := &Document{Text: tc.source, Anchor: -1}
+			d := &Document{Buffer: Buffer{Text: tc.source, Anchor: -1}}
 			v := &Vim{}
 			if register := vimKeys(d, v, tc.keys...); register != "" {
 				t.Fatalf("join returned register text %q", register)
@@ -54,7 +54,7 @@ func TestVimUserMappings(t *testing.T) {
 		{"visual H L", "  abc", []string{"v", "L", "H"}, "  abc", 2, true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			d := &Document{Text: tt.text, Anchor: -1}
+			d := &Document{Buffer: Buffer{Text: tt.text, Anchor: -1}}
 			v := &Vim{}
 			vimKeys(d, v, tt.keys...)
 			if d.Text != tt.want || d.Cursor != tt.cursor || v.VisualMode != tt.visual {
@@ -76,7 +76,7 @@ func TestVimChangeWord(t *testing.T) {
 		{"grapheme", "e\u0301 two", " two", "e\u0301", 0, []string{"c", "w"}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			d := &Document{Text: tt.text, Anchor: -1}
+			d := &Document{Buffer: Buffer{Text: tt.text, Anchor: -1}}
 			d.SetPosition(0, tt.column)
 			v := &Vim{}
 			if copied := vimKeys(d, v, tt.keys...); copied != tt.register || !v.InsertMode || d.Text != tt.want || d.Cursor != tt.column {
@@ -101,7 +101,7 @@ func TestVimReplaceCharacter(t *testing.T) {
 		{"undo", "abc", "abc", []string{"2", "r", "X", "u"}, 0},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			d := &Document{Text: tt.text, Anchor: -1}
+			d := &Document{Buffer: Buffer{Text: tt.text, Anchor: -1}}
 			v := &Vim{}
 			if copied := vimKeys(d, v, tt.keys...); d.Text != tt.want || d.Cursor != tt.cursor || v.InsertMode || v.CommandPending() || copied != "" {
 				t.Fatalf("text %q cursor %d mode %s register %q", d.Text, d.Cursor, v.Label(), copied)
@@ -111,7 +111,7 @@ func TestVimReplaceCharacter(t *testing.T) {
 }
 
 func TestVimSubstituteCharacters(t *testing.T) {
-	d := &Document{Text: "e\u0301👩‍💻cd", Anchor: -1}
+	d := &Document{Buffer: Buffer{Text: "e\u0301👩‍💻cd", Anchor: -1}}
 	v := &Vim{}
 	if copied := vimKeys(d, v, "2", "s"); copied != "e\u0301👩‍💻" || d.Text != "cd" || !v.InsertMode {
 		t.Fatalf("text %q mode %s register %q", d.Text, v.Label(), copied)
@@ -131,7 +131,7 @@ func TestVimRegisterYank(t *testing.T) {
 		keys []string
 		want string
 	}{{[]string{"y", "y"}, "one two\n"}, {[]string{"y", "w"}, "one "}, {[]string{"v", "l", "y"}, "on"}} {
-		d := &Document{Text: "one two\nthree", Anchor: -1}
+		d := &Document{Buffer: Buffer{Text: "one two\nthree", Anchor: -1}}
 		v := &Vim{}
 		text := vimKeys(d, v, tt.keys...)
 		if text != tt.want || v.VisualMode || d.Text != "one two\nthree" {
@@ -143,7 +143,7 @@ func TestVimRegisterYank(t *testing.T) {
 	}
 }
 func TestVimRegisterPut(t *testing.T) {
-	d := &Document{Text: "abc", Anchor: -1}
+	d := &Document{Buffer: Buffer{Text: "abc", Anchor: -1}}
 	v := &Vim{}
 	v.Handle(d, "p", "👩‍💻")
 	if d.Text != "a👩‍💻bc" {
@@ -175,7 +175,7 @@ func TestVimEditsUpdateRegister(t *testing.T) {
 		{[]string{"x"}, "o"},
 		{[]string{"x", "."}, "n"},
 	} {
-		d := &Document{Text: "one two", Anchor: -1}
+		d := &Document{Buffer: Buffer{Text: "one two", Anchor: -1}}
 		v := &Vim{}
 		if copied := vimKeys(d, v, tt.keys...); copied != tt.want {
 			t.Fatalf("%v register = %q, want %q", tt.keys, copied, tt.want)
@@ -190,7 +190,7 @@ func TestVimLineBoundaryAliases(t *testing.T) {
 			modes := [2]*Vim{}
 			copied := [2]string{}
 			for i, key := range pair {
-				d := &Document{Text: "  abc\nnext", Anchor: -1}
+				d := &Document{Buffer: Buffer{Text: "  abc\nnext", Anchor: -1}}
 				d.SetPosition(0, 3)
 				v := &Vim{}
 				keys := append(append([]string(nil), prefix...), key)
@@ -209,7 +209,7 @@ func TestVimLineBoundaryAliases(t *testing.T) {
 		key string
 		col int
 	}{{"0", 0}, {"H", 2}, {"^", 2}, {"L", 4}, {"$", 4}} {
-		d := &Document{Text: "  abc", Anchor: -1}
+		d := &Document{Buffer: Buffer{Text: "  abc", Anchor: -1}}
 		d.SetPosition(0, 3)
 		v := &Vim{}
 		vimKeys(d, v, tt.key)

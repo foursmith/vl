@@ -142,6 +142,7 @@ vl 实现了 Vim 的一部分功能，包括可视模式下按字符和按行选
 | 方向键、`Home` / `End` | 移动光标 |
 | `Ctrl+Left` / `Ctrl+Right` | 按词移动 |
 | `Ctrl+Home` / `Ctrl+End` | 跳到文件开头 / 末尾 |
+| `Ctrl+Backspace` / `Ctrl+Delete` | 从光标删到当前行的行首 / 行尾 |
 | `Shift` 加上上述任一移动键 | 扩展选区 |
 | `PageUp` / `PageDown` | 向上 / 向下翻页 |
 | `Ctrl+U` / `Ctrl+D` | 向上 / 向下滚动半屏 |

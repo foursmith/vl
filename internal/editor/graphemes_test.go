@@ -6,12 +6,38 @@ import (
 	"unicode/utf8"
 )
 
+func TestDeleteToLineBoundaryPreservesGraphemesAndNewlines(t *testing.T) {
+	const text = "a\n👩‍💻e\u0301\nb"
+	for _, test := range []struct {
+		name     string
+		backward bool
+		cursor   int
+		want     string
+	}{
+		{"to start", true, 5, "a\ne\u0301\nb"},
+		{"to end", false, 5, "a\n👩‍💻\nb"},
+		{"at start", true, 2, text},
+		{"at end", false, 7, text},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			buffer := Buffer{Text: text, Cursor: test.cursor, Anchor: -1}
+			if changed := buffer.DeleteToLineBoundary(test.backward); changed != (test.want != text) || buffer.Text != test.want {
+				t.Fatalf("delete returned %v and left %q, want %q", changed, buffer.Text, test.want)
+			}
+			buffer.Undo()
+			if buffer.Text != text || buffer.Cursor != test.cursor {
+				t.Fatalf("undo restored %q at %d, want %q at %d", buffer.Text, buffer.Cursor, text, test.cursor)
+			}
+		})
+	}
+}
+
 func TestEditingNeverSplitsGraphemeClusters(t *testing.T) {
 	for _, cluster := range []string{"中", "e\u0301", "👍🏽", "👨‍👩‍👧‍👦", "🇨🇳", "🏳️‍🌈", "1️⃣", "가", "क्\u200dष"} {
 		t.Run(cluster, func(t *testing.T) {
 			length := utf8.RuneCountInString(cluster)
 			original := "a" + cluster + "b"
-			d := &Document{Text: original, Anchor: -1}
+			d := &Document{Buffer: Buffer{Text: original, Anchor: -1}}
 			d.Move("right", false)
 			d.Move("right", false)
 			if d.Cursor != 1+length {
@@ -58,7 +84,7 @@ func TestEditingNeverSplitsGraphemeClusters(t *testing.T) {
 	}
 }
 func TestInsertAndDeleteCanMergeAdjacentClusters(t *testing.T) {
-	d := &Document{Text: "eX", Cursor: 1, Anchor: -1}
+	d := &Document{Buffer: Buffer{Text: "eX", Cursor: 1, Anchor: -1}}
 	d.Insert("\u0301")
 	if d.Text != "e\u0301X" || d.Cursor != 2 {
 		t.Fatal("combining insertion did not join base")
@@ -67,7 +93,7 @@ func TestInsertAndDeleteCanMergeAdjacentClusters(t *testing.T) {
 	if d.Text != "X" {
 		t.Fatal("backspace left partial accent")
 	}
-	d = &Document{Text: "👩👩", Cursor: 1, Anchor: -1}
+	d = &Document{Buffer: Buffer{Text: "👩👩", Cursor: 1, Anchor: -1}}
 	d.Insert("\u200d")
 	if d.Cursor != 3 {
 		t.Fatal("cursor stayed inside joined emoji")
@@ -76,14 +102,14 @@ func TestInsertAndDeleteCanMergeAdjacentClusters(t *testing.T) {
 	if d.Text != "" {
 		t.Fatal("joined emoji not deleted together")
 	}
-	d = &Document{Text: "🇨x🇳", Cursor: 1, Anchor: -1}
+	d = &Document{Buffer: Buffer{Text: "🇨x🇳", Cursor: 1, Anchor: -1}}
 	d.Delete(false)
 	if d.Text != "🇨🇳" || d.Cursor != 0 {
 		t.Fatal("delete left cursor inside merged flag")
 	}
 }
 func TestSelectionVerticalMotionAndNewlinesUseBoundaries(t *testing.T) {
-	d := &Document{Text: "xx\ne\u0301z\n🇨🇳", Anchor: -1}
+	d := &Document{Buffer: Buffer{Text: "xx\ne\u0301z\n🇨🇳", Anchor: -1}}
 	d.SetPosition(0, 1)
 	d.Move("down", false)
 	if d.Cursor != 3 {
@@ -109,7 +135,7 @@ func TestSelectionVerticalMotionAndNewlinesUseBoundaries(t *testing.T) {
 	}
 }
 func TestBoundaryCacheIsBoundedAndInvalidatesOnUndo(t *testing.T) {
-	d := &Document{Text: strings.Repeat("e\u0301\n", 200), Anchor: -1}
+	d := &Document{Buffer: Buffer{Text: strings.Repeat("e\u0301\n", 200), Anchor: -1}}
 	for row := 0; row < 200; row++ {
 		d.SetPosition(row, 1)
 	}
