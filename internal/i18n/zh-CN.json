@@ -113,6 +113,7 @@
   "Delete to Line End": "删除到行尾",
   "Undo": "撤销",
   "Redo": "重做",
+  "Toggle Comment": "切换注释",
   "Find…": "查找…",
   "Toggle Inline View": "切换内联视图",
   "Fit to Window": "适应窗口",

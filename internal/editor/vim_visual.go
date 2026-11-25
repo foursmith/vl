@@ -103,6 +103,11 @@ func (v *Vim) handleVisualPending(d *Document, key string) {
 	case "g":
 		if key == "g" {
 			d.SetPosition(count-1, 0)
+		} else if key == "c" {
+			d.ToggleComments()
+			v.VisualMode, v.VisualLine = false, false
+			v.syncCursor(d)
+			return
 		}
 	case "i", "a":
 		if start, end, ok := v.textObject(d, key, pending == "i", count); ok {

@@ -151,7 +151,7 @@ func (v *Vim) Handle(d *Document, key, register string) (bool, string) {
 			v.record.selection = v.repeatSelection(d)
 		}
 	}
-	if key == "J" && v.VisualMode && d.Anchor >= 0 && !v.CommandPending() {
+	if (key == "J" || key == "g") && v.VisualMode && d.Anchor >= 0 && !v.CommandPending() {
 		first, last := v.visualLineRange(d)
 		v.record.selection = &vimSelection{linewise: true, size: last - first + 1}
 	}
@@ -216,7 +216,7 @@ func (v *Vim) handleNormal(d *Document, key string) (bool, string) {
 	}
 	switch key {
 	case "d", "c", "y", "g", "z", "r":
-		v.beginPending(key, max(1, v.count))
+		v.beginPending(key, v.count)
 		return true, ""
 	}
 
@@ -293,15 +293,28 @@ func (v *Vim) handleNormal(d *Document, key string) (bool, string) {
 
 func (v *Vim) handleNormalPending(d *Document, key string) string {
 	op, count := v.pending, v.pendingCount()
+	hadCount := v.prefixCount > 0 || v.count > 0
 	v.clearPending()
 	switch op {
 	case "r":
 		replaceCharacter(d, key, count)
 		return ""
 	case "g":
-		if key == "g" {
+		switch key {
+		case "g":
 			d.SetPosition(count-1, 0)
+		case "c":
+			if !hadCount {
+				count = 0
+			}
+			v.beginPending("gc", count)
 		}
+		return ""
+	case "gc":
+		v.commentMotion(d, key, count, hadCount)
+		return ""
+	case "gcg", "gca", "gci":
+		v.commentTarget(d, op, key, count)
 		return ""
 	case "z":
 		switch key {

@@ -11,7 +11,7 @@ type textEditAction struct{ command commandID }
 
 func isTextEditCommand(id commandID) bool {
 	switch id {
-	case commandCopy, commandCut, commandPaste, commandSelectAll, commandDeleteToLineStart, commandDeleteToLineEnd, commandUndo, commandRedo:
+	case commandCopy, commandCut, commandPaste, commandSelectAll, commandDeleteToLineStart, commandDeleteToLineEnd, commandUndo, commandRedo, commandToggleComment:
 		return true
 	default:
 		return false
@@ -20,6 +20,11 @@ func isTextEditCommand(id commandID) bool {
 
 func (m *Model) textEditFocused() bool {
 	return m.focusedInput() != nil || m.modal == "" && !m.sidebar && !m.fileFindFocused() && m.editorDocument() != nil
+}
+
+func (m *Model) commentFocused() bool {
+	d := m.document()
+	return d != nil && !d.ReadOnly && m.modal == "" && !m.sidebar && !m.fileFindFocused()
 }
 
 func (m *Model) executeTextEdit(command commandID) tea.Cmd {
@@ -69,6 +74,14 @@ func (m *Model) executeTextEdit(command commandID) tea.Cmd {
 		d.Undo()
 	case commandRedo:
 		d.Redo()
+	case commandToggleComment:
+		d.EndEditGroup()
+		d.ToggleComments()
+		if v.VisualMode {
+			v.Reset(d)
+		} else {
+			d.ClearSelection()
+		}
 	}
 	if v.VisualMode {
 		v.SyncVisual(d)
@@ -108,6 +121,7 @@ func (m *Model) textEditorActions() []action {
 		m.commandAction(commandDeleteToLineEnd, "Delete to Line End", "", ""),
 		m.commandAction(commandUndo, "Undo", "", ""),
 		m.commandAction(commandRedo, "Redo", "", ""),
+		m.commandAction(commandToggleComment, "Toggle Comment", "", ""),
 	)
 }
 

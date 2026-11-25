@@ -122,6 +122,7 @@ These shortcuts apply to the focused text editor or input in any Vim mode. Text 
 | `Ctrl+A` | Select all. |
 | `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copy / cut / paste using the system clipboard. |
 | `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo. |
+| `Ctrl+/` | Toggle comments on the current line or selected lines in the editor. |
 | `Ctrl+Backspace` / `Ctrl+Delete` | Delete to the start / end of the line. |
 
 In Insert mode or with Vim disabled, `Home` / `End` go to the start / end of the line, and `Ctrl+←` / `Ctrl+→` move by word. In the editor, `Ctrl+Home` / `Ctrl+End` go to the start / end of the file, and the same paging keys work as in lists. Hold `Shift` while moving to extend the selection. Drag to select text, double-click to select a word, or triple-click to select a line.
@@ -170,6 +171,7 @@ Run **Preferences: Open Keyboard Shortcuts File** from the command palette to ed
   {"command": "edit.paste", "keys": "Ctrl+V"},
   {"command": "edit.redo", "keys": "Ctrl+Shift+Z"},
   {"command": "edit.selectAll", "keys": "Ctrl+A"},
+  {"command": "edit.toggleComment", "keys": "Ctrl+/"},
   {"command": "edit.undo", "keys": "Ctrl+Z"},
   {"command": "editor.closeAllTabs", "keys": []},
   {"command": "editor.closeOtherTabs", "keys": "Ctrl+Shift+W"},

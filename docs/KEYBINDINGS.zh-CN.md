@@ -122,6 +122,7 @@
 | `Ctrl+A` | 全选。 |
 | `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | 复制 / 剪切 / 粘贴系统剪贴板里的文本。 |
 | `Ctrl+Z` / `Ctrl+Shift+Z` | 撤销 / 重做。 |
+| `Ctrl+/` | 切换编辑器中当前行或选中行的注释。 |
 | `Ctrl+Backspace` / `Ctrl+Delete` | 删除到行首 / 行尾。 |
 
 在 Insert 模式或关闭 Vim 时，`Home` / `End` 跳到行首 / 行尾，`Ctrl+←` / `Ctrl+→` 按词移动。正文中，`Ctrl+Home` / `Ctrl+End` 跳到文件首尾，翻屏键与列表相同。按住 `Shift` 移动光标可扩展选区。鼠标拖动选取文本，双击选词，三击选行。
@@ -170,6 +171,7 @@
   {"command": "edit.paste", "keys": "Ctrl+V"},
   {"command": "edit.redo", "keys": "Ctrl+Shift+Z"},
   {"command": "edit.selectAll", "keys": "Ctrl+A"},
+  {"command": "edit.toggleComment", "keys": "Ctrl+/"},
   {"command": "edit.undo", "keys": "Ctrl+Z"},
   {"command": "editor.closeAllTabs", "keys": []},
   {"command": "editor.closeOtherTabs", "keys": "Ctrl+Shift+W"},

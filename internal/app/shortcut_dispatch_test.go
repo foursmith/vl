@@ -68,6 +68,9 @@ func TestWorkbenchShortcutActions(t *testing.T) {
 		{commandRedo, false, []tea.KeyPressMsg{ctrlShift('z'), ctrlShift('Z')}, func(m *Model, _ tea.Cmd) bool {
 			return m.document().Dirty()
 		}},
+		{commandToggleComment, false, []tea.KeyPressMsg{ctrl('/')}, func(m *Model, _ tea.Cmd) bool {
+			return m.document().Text == "// first\nsecond"
+		}},
 		{commandFiles, false, []tea.KeyPressMsg{ctrl('g')}, func(m *Model, _ tea.Cmd) bool {
 			return m.modal == "quick" && !m.commandPicker()
 		}},
@@ -165,6 +168,9 @@ func TestWorkbenchShortcutActions(t *testing.T) {
 		case commandDeleteToLineStart, commandDeleteToLineEnd:
 			m.document().Edit("first\n删除整行\nlast")
 			m.document().Cursor = 8
+		case commandToggleComment:
+			m.document().Edit("first\nsecond")
+			m.document().SetPosition(0, 0)
 		case commandUndo, commandRedo:
 			m.document().Insert("unsaved")
 			if test.command == commandRedo {

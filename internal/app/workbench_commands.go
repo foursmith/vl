@@ -20,6 +20,7 @@ const (
 
 	commandUndo            commandID = "edit.undo"
 	commandRedo            commandID = "edit.redo"
+	commandToggleComment   commandID = "edit.toggleComment"
 	commandFiles           commandID = "workbench.goToFile"
 	commandRecent          commandID = "workspace.openRecent"
 	commandPalette         commandID = "workbench.openCommandPalette"

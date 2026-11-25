@@ -18,6 +18,158 @@ func typeVimCommand(m *Model, command string) {
 	}
 }
 
+func TestVimToggleComments(t *testing.T) {
+	for _, tc := range []struct {
+		name, original, keys, commented string
+	}{
+		{"file.go", "\t你好()\n  \n\tworld()\n", "3gcc", "\t/* 你好()\n  \n\tworld() */\n"},
+		{"script", "#!/bin/sh\necho hello\n", "2gcc", "#!/bin/sh\n# echo hello\n"},
+		{"site.css", "  color: red;  \n", "gcc", "  /* color: red; */  \n"},
+		{"page.vue", "<template>hello</template>\n", "gcc", "<!-- <template>hello</template> -->\n"},
+		{"page.jinja", "{{ title }}\n", "gcc", "{# {{ title }} #}\n"},
+		{"block.go", "\n  first()\n\tsecond()  \n", "3gcc", "\n  /* first()\n\tsecond() */  \n"},
+		{"block.py", "print('hello')\nprint('world')\n", "2gcc", "# print('hello')\n# print('world')\n"},
+		{"script.cmd", "REMARK\n", "gcc", "REM REMARK\n"},
+		{"script.bat", "echo one & echo two\n", "gcc", "echo one & echo two\n"},
+		{"script.vim", "vim9script\necho 'hello'\n", "gcc", "# vim9script\necho 'hello'\n"},
+		{"legacy.vim", "echo 'hello'\n", "gcc", "\" echo 'hello'\n"},
+		{"shader.wgsl", "var counter: u32;\n", "gcc", "// var counter: u32;\n"},
+		{"go.work", "go 1.27.3\n", "gcc", "// go 1.27.3\n"},
+		{"go.sum", "example.org/pkg v1.0.0 h1:abc\n", "gcc", "example.org/pkg v1.0.0 h1:abc\n"},
+		{"file.json", "{}\n", "gcc", "// {}\n"},
+		{"file.jsonc", "{}\n", "gcc", "// {}\n"},
+		{"file.txt", "text\n", "gcc", "text\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), tc.name)
+			if err := os.WriteFile(path, []byte(tc.original), 0600); err != nil {
+				t.Fatal(err)
+			}
+			m, err := NewEditor(context.Background(), path, false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer m.Close()
+			doc := m.document()
+			m.vimRegister = "keep clipboard"
+			for _, key := range tc.keys {
+				press(m, string(key))
+			}
+			if doc.Text != tc.commented {
+				t.Fatalf("commented text = %q, want %q", doc.Text, tc.commented)
+			}
+			if tc.commented == tc.original {
+				if doc.Dirty() {
+					t.Fatal("unsupported file became dirty")
+				}
+				return
+			}
+			press(m, "u")
+			if doc.Text != tc.original {
+				t.Fatalf("undo = %q, want %q", doc.Text, tc.original)
+			}
+			press(m, ".")
+			if doc.Text != tc.commented {
+				t.Fatalf("repeat = %q, want %q", doc.Text, tc.commented)
+			}
+			for _, key := range tc.keys {
+				press(m, string(key))
+			}
+			if doc.Text != tc.original || m.vimRegister != "keep clipboard" {
+				t.Fatalf("uncomment = %q, register = %q", doc.Text, m.vimRegister)
+			}
+		})
+	}
+}
+
+func TestVimCommentaryRanges(t *testing.T) {
+	for _, tc := range []struct {
+		original, keys, want string
+		row                  int
+	}{
+		{"\tfirst()\n\t\tsecond()\nlast()\n", "gcj", "\t/* first()\n\t\tsecond() */\nlast()\n", 0},
+		{"first()\n//second()\nlast()\n", "Vkgc", "/* first()\n//second() */\nlast()\n", 1},
+		{"first()\nsecond()\n\nlast()\n", "gcap", "/* first()\nsecond() */\n\nlast()\n", 1},
+		{"//first()\n// second()\nlast()\n", "gcu", "first()\nsecond()\nlast()\n", 1},
+		{"//first()\n// second()\nlast()\n", "gcgc", "first()\nsecond()\nlast()\n", 1},
+		{"first()\nsecond()\nlast()\n", "Vjgc", "/* first()\nsecond() */\nlast()\n", 0},
+		{"/* first() */\nsecond()\n", "gcc", "first()\nsecond()\n", 0},
+		{"/*\nfirst()\n*/\nsecond()\n", "gcc", "\nfirst()\n\nsecond()\n", 1},
+		{"/*\nfirst()\n*/\nsecond()\n", "gcc", "\nfirst()\n\nsecond()\n", 2},
+		{"/* first() */\n// second()\n", "2gcc", "first()\nsecond()\n", 0},
+		{"/* first() */ second()\n", "gcc", "// /* first() */ second()\n", 0},
+		{"first()\nsecond()\nlast()\n", "gc1G", "/* first()\nsecond() */\nlast()\n", 1},
+		{"first()\nsecond()\nlast()\n", "gcG", "first()\n/* second()\nlast() */\n", 1},
+	} {
+		t.Run(tc.keys, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "test.go")
+			if err := os.WriteFile(path, []byte(tc.original), 0600); err != nil {
+				t.Fatal(err)
+			}
+			m, err := NewEditor(context.Background(), path, false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer m.Close()
+			doc := m.document()
+			doc.SetPosition(tc.row, 0)
+			for _, key := range tc.keys {
+				press(m, string(key))
+			}
+			if doc.Text != tc.want || m.tabs[m.activeTab].vim.VisualMode {
+				t.Fatalf("text = %q, want %q, visual = %t", doc.Text, tc.want, m.tabs[m.activeTab].vim.VisualMode)
+			}
+			press(m, "u")
+			if doc.Text != tc.original {
+				t.Fatalf("undo = %q, want %q", doc.Text, tc.original)
+			}
+		})
+	}
+}
+
+func TestCommentShortcut(t *testing.T) {
+	for _, mode := range []string{"normal", "visual", "insert", "plain"} {
+		t.Run(mode, func(t *testing.T) {
+			const original = "first()\nsecond()\n"
+			path := filepath.Join(t.TempDir(), "test.go")
+			if err := os.WriteFile(path, []byte(original), 0600); err != nil {
+				t.Fatal(err)
+			}
+			m, err := NewEditor(context.Background(), path, false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer m.Close()
+			doc := m.document()
+			want := "// first()\nsecond()\n"
+			switch mode {
+			case "visual":
+				press(m, "V")
+				press(m, "j")
+				want = "/* first()\nsecond() */\n"
+			case "insert":
+				press(m, "i")
+			case "plain":
+				m.setVimDisabled(true)
+				doc.SelectRange(0, doc.LineOffset(1))
+			}
+			press(m, "ctrl+/")
+			vim := &m.tabs[m.activeTab].vim
+			if doc.Text != want || vim.VisualMode || vim.InsertMode != (mode == "insert") {
+				t.Fatalf("text = %q, want %q, mode = %s", doc.Text, want, vim.Label())
+			}
+			press(m, "ctrl+_")
+			if doc.Text != want {
+				t.Fatalf("Ctrl+_ changed text to %q", doc.Text)
+			}
+			press(m, "ctrl+/")
+			if doc.Text != original {
+				t.Fatalf("uncomment = %q, want %q", doc.Text, original)
+			}
+		})
+	}
+}
+
 func TestVimSaveAndQuitCommands(t *testing.T) {
 	for _, tc := range []struct {
 		command string

@@ -39,6 +39,7 @@ var workbenchKeybindings = []workbenchShortcut{
 	{binding: binding("Ctrl+Delete", "Delete to Line End", "ctrl+delete"), context: fromSearchFields, command: commandDeleteToLineEnd, when: (*Model).textEditFocused},
 	{binding: binding("Ctrl+Z", "Undo", "ctrl+z"), context: fromSearchFields, command: commandUndo, when: (*Model).textEditFocused},
 	{binding: binding("Ctrl+Shift+Z", "Redo", "ctrl+shift+z", "ctrl+shift+Z"), context: fromSearchFields, command: commandRedo, when: (*Model).textEditFocused},
+	{binding: binding("Ctrl+/", "Toggle Comment", "ctrl+/"), command: commandToggleComment, when: (*Model).commentFocused},
 	{binding: binding("Ctrl+G", "Go to File", "ctrl+g"), context: fromSearch, command: commandFiles},
 	{binding: binding("Ctrl+R", "Open Recent Workspace", "ctrl+r"), context: workspaceOnly | fromSearch, command: commandRecent},
 	{binding: binding("Ctrl+P", "Commands", "ctrl+p"), context: fromSearch, command: commandPalette},

@@ -86,12 +86,17 @@ For unknown-word recognition, also download [CppJieba's `hmm_model.utf8`](https:
 | `x` / `s` | Delete the character / substitute it and enter Insert. Both take a count. |
 | `r{char}` | Replace a character in place. `3rX` writes `XXX`. |
 | `dd` / `cc` / `yy` | Delete / change / yank a line |
+| `gcc` / `3gcc` | Toggle comments on the current line / three lines starting at the cursor |
+| `gc{motion}` / `gcap` | Toggle comments on lines covered by a motion or text object |
+| `gcu` / `gcgc` | Remove the current block comment or adjacent line comments |
 | `D` / `C` | Delete / change to end of line |
 | `J` | Join the current line with the next. `3J` joins three lines. |
 | `p` / `P` | Put after / before the cursor. Linewise text goes below / above. |
 | `u` / `U` | Undo / redo. Both take a count. |
 | `.` / `3.` | Repeat the last change once / three times |
 | `Tab` / `Shift+Tab` | Indent / outdent the current line |
+
+A single line uses a line comment and multiple lines use one block comment when the language supports it. For languages with only one comment style, both use that style.
 
 An Insert session groups typing into one undo step. Dot repeat covers ordinary
 edits, completed Insert sessions, Visual edits, puts, indentation, case
@@ -139,6 +144,7 @@ Parentheses, square brackets, and braces can nest and span lines.
 | `c` | Change the selection and enter Insert |
 | `p` / `P` | Replace the selection with text from the unnamed register |
 | `J` | Join the selected lines, at least two, and exit Visual |
+| `gc` | Toggle comments on the selected lines and exit Visual |
 | `Tab` / `Shift+Tab` | Indent / outdent and keep the selection |
 | `>` / `<` | Indent / outdent and exit Visual |
 | `S{delimiter}` | Surround the selection |
