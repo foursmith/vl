@@ -1,8 +1,8 @@
-# Vim keys in vl
-
 <p align="center">
   English · <a href="VIM.zh-CN.md">简体中文</a>
 </p>
+
+# Vim keys in vl
 
 Vim mode is enabled by default. Press `Ctrl+P` and choose **Preferences: Toggle Vim Mode** to switch immediately, or set `features.vimMode` to `false` in `~/.config/vl/vl.config.json`.
 

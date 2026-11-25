@@ -1,8 +1,8 @@
-# 键盘快捷键
-
 <p align="center">
   <a href="KEYBINDINGS.md">English</a> · 简体中文
 </p>
+
+# 键盘快捷键
 
 | 想做什么 | 按键 |
 | --- | --- |
@@ -27,61 +27,6 @@
 | 查看当前位置能做什么 | `F7` 或鼠标右键打开上下文菜单。 |
 
 关闭标签、切换工作区或退出时，如有未保存的修改会提示。单文件模式下仍可用 `Ctrl+G` 打开同目录的文件，关闭最后一个标签会退出。欢迎页图形可见且主区域有焦点时，方向键可以旋转图形。
-
-### 自定义工作台快捷键
-
-从命令面板执行「首选项：打开快捷键文件」，编辑 `~/.config/vl/keybindings.json`。可直接复制下面的 JSON，里面列出了所有可自定义的快捷键及其默认键位。
-
-```json
-[
-  {"command": "app.quit", "keys": "Ctrl+Q"},
-  {"command": "diff.discardFile", "keys": "Shift+D"},
-  {"command": "diff.discardSelectionOrHunk", "keys": "d"},
-  {"command": "diff.nextHunk", "keys": "]"},
-  {"command": "diff.previousHunk", "keys": "["},
-  {"command": "diff.toggleContextLines", "keys": "Enter"},
-  {"command": "diff.toggleLayout", "keys": []},
-  {"command": "diff.toggleStageFile", "keys": "Shift+S"},
-  {"command": "diff.toggleStageSelectionOrHunk", "keys": "s"},
-  {"command": "edit.copy", "keys": "Ctrl+C"},
-  {"command": "edit.cut", "keys": "Ctrl+X"},
-  {"command": "edit.deleteToLineEnd", "keys": "Ctrl+Delete"},
-  {"command": "edit.deleteToLineStart", "keys": "Ctrl+Backspace"},
-  {"command": "edit.findInFile", "keys": "Ctrl+F"},
-  {"command": "edit.paste", "keys": "Ctrl+V"},
-  {"command": "edit.redo", "keys": "Ctrl+Shift+Z"},
-  {"command": "edit.selectAll", "keys": "Ctrl+A"},
-  {"command": "edit.undo", "keys": "Ctrl+Z"},
-  {"command": "editor.closeAllTabs", "keys": []},
-  {"command": "editor.closeOtherTabs", "keys": "Ctrl+Shift+W"},
-  {"command": "editor.closeTab", "keys": "Ctrl+W"},
-  {"command": "editor.nextTab", "keys": "Ctrl+T"},
-  {"command": "editor.previousTab", "keys": "Ctrl+Shift+T"},
-  {"command": "file.save", "keys": "Ctrl+S"},
-  {"command": "preferences.openConfig", "keys": "Ctrl+,"},
-  {"command": "preferences.openKeybindings", "keys": []},
-  {"command": "sidebar.refresh", "keys": ["r", "Shift+R"]},
-  {"command": "sidebar.showChanges", "keys": "Ctrl+3"},
-  {"command": "sidebar.showCommitHistory", "keys": "Ctrl+4"},
-  {"command": "sidebar.showExplorer", "keys": "Ctrl+1"},
-  {"command": "sidebar.showPullRequests", "keys": "Ctrl+5"},
-  {"command": "sidebar.showSearch", "keys": "Ctrl+2"},
-  {"command": "sidebar.toggleFocus", "keys": "F2"},
-  {"command": "sidebar.toggleVisibility", "keys": "F12"},
-  {"command": "workbench.goToFile", "keys": "Ctrl+G"},
-  {"command": "workbench.openCommandPalette", "keys": "Ctrl+P"},
-  {"command": "workbench.openContextMenu", "keys": "F7"},
-  {"command": "workbench.refresh", "keys": "F5"},
-  {"command": "workspace.findInFiles", "keys": "Ctrl+Shift+F"},
-  {"command": "workspace.openRecent", "keys": "Ctrl+R"}
-]
-```
-
-保存后，在命令面板执行「重新加载 VL」。
-
-省略配置项时使用默认键位。`keys` 可以填写单键、组合键或多个键位组成的数组。设为 `[]` 时，该操作没有快捷键。键名不区分大小写，按住 Shift 的组合键须写成 `Shift+S` 这样的形式。
-
-快捷键沿用对应操作的焦点规则。遇到未知命令、无效键位或自定义 `when` 条件，vl 会提示并跳过该条配置。
 
 ### 用空格切标签、保存和关闭
 
@@ -183,6 +128,10 @@
 
 从命令面板运行「切换 Vim 模式」可启用或关闭 Vim。更多操作见 [Vim 指南](VIM.zh-CN.md)。
 
+### Markdown 编辑
+
+在列表项、任务项或引用的行尾按 `Enter` 可续写。编号自动递增，新任务默认未勾选。在空列表项或空引用上再按一次 `Enter` 可退出。
+
 ## 菜单和对话框
 
 | 场景 | 移动 | 执行和退出 |
@@ -197,3 +146,58 @@
 ## 终端兼容性
 
 终端可能拦截 `Ctrl+Shift+T`、`Ctrl+Shift+F` 或无法区分 `Ctrl+1` 到 `Ctrl+5`。可从命令面板按名称执行、点击侧栏图标，或在侧栏用 `Tab` / `Shift+Tab` 切换。部分终端会直接复制终端选区，或将 `Ctrl+V` 转为粘贴事件。需要复制 vl 的选区时，也可用编辑器菜单。
+
+## 目前支持以下快捷键自定义
+
+从命令面板执行「首选项：打开快捷键文件」，编辑 `~/.config/vl/keybindings.json`。可直接复制下面的 JSON，里面列出了所有可自定义的快捷键及其默认键位。
+
+```json
+[
+  {"command": "app.quit", "keys": "Ctrl+Q"},
+  {"command": "diff.discardFile", "keys": "Shift+D"},
+  {"command": "diff.discardSelectionOrHunk", "keys": "d"},
+  {"command": "diff.nextHunk", "keys": "]"},
+  {"command": "diff.previousHunk", "keys": "["},
+  {"command": "diff.toggleContextLines", "keys": "Enter"},
+  {"command": "diff.toggleLayout", "keys": []},
+  {"command": "diff.toggleStageFile", "keys": "Shift+S"},
+  {"command": "diff.toggleStageSelectionOrHunk", "keys": "s"},
+  {"command": "edit.copy", "keys": "Ctrl+C"},
+  {"command": "edit.cut", "keys": "Ctrl+X"},
+  {"command": "edit.deleteToLineEnd", "keys": "Ctrl+Delete"},
+  {"command": "edit.deleteToLineStart", "keys": "Ctrl+Backspace"},
+  {"command": "edit.findInFile", "keys": "Ctrl+F"},
+  {"command": "edit.paste", "keys": "Ctrl+V"},
+  {"command": "edit.redo", "keys": "Ctrl+Shift+Z"},
+  {"command": "edit.selectAll", "keys": "Ctrl+A"},
+  {"command": "edit.undo", "keys": "Ctrl+Z"},
+  {"command": "editor.closeAllTabs", "keys": []},
+  {"command": "editor.closeOtherTabs", "keys": "Ctrl+Shift+W"},
+  {"command": "editor.closeTab", "keys": "Ctrl+W"},
+  {"command": "editor.nextTab", "keys": "Ctrl+T"},
+  {"command": "editor.previousTab", "keys": "Ctrl+Shift+T"},
+  {"command": "file.save", "keys": "Ctrl+S"},
+  {"command": "preferences.openConfig", "keys": "Ctrl+,"},
+  {"command": "preferences.openKeybindings", "keys": []},
+  {"command": "sidebar.refresh", "keys": ["r", "Shift+R"]},
+  {"command": "sidebar.showChanges", "keys": "Ctrl+3"},
+  {"command": "sidebar.showCommitHistory", "keys": "Ctrl+4"},
+  {"command": "sidebar.showExplorer", "keys": "Ctrl+1"},
+  {"command": "sidebar.showPullRequests", "keys": "Ctrl+5"},
+  {"command": "sidebar.showSearch", "keys": "Ctrl+2"},
+  {"command": "sidebar.toggleFocus", "keys": "F2"},
+  {"command": "sidebar.toggleVisibility", "keys": "F12"},
+  {"command": "workbench.goToFile", "keys": "Ctrl+G"},
+  {"command": "workbench.openCommandPalette", "keys": "Ctrl+P"},
+  {"command": "workbench.openContextMenu", "keys": "F7"},
+  {"command": "workbench.refresh", "keys": "F5"},
+  {"command": "workspace.findInFiles", "keys": "Ctrl+Shift+F"},
+  {"command": "workspace.openRecent", "keys": "Ctrl+R"}
+]
+```
+
+保存后，在命令面板执行「重新加载 VL」。
+
+省略配置项时使用默认键位。`keys` 可以填写单键、组合键或多个键位组成的数组。设为 `[]` 时，该操作没有快捷键。键名不区分大小写，按住 Shift 的组合键须写成 `Shift+S` 这样的形式。
+
+快捷键沿用对应操作的焦点规则。遇到未知命令、无效键位或自定义 `when` 条件，vl 会提示并跳过该条配置。

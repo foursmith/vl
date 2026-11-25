@@ -14,31 +14,15 @@
   English · <a href="README.zh-CN.md">简体中文</a>
 </p>
 
-A **V**SCode-**l**ike terminal workbench with **V**im-**l**ike keybindings.
-Browse code, review diffs, and make quick edits.
+**Read code, review Git diffs, and make quick edits right in your terminal, just like in VS Code.**
 
-![](./assets/workbench.webp)
+![vl's file tree, editor tabs, and side-by-side diffs in dark and light themes](./assets/workbench.webp)
 
-Agents write all my code now. I still review their diffs before they commit.
-VS Code with the Vim extension has been my go-to for years, so I built vl around
-the bits I actually use. One ~10 MB binary, ready to run.
 
-- **Omitted VS Code features**
-  - Language server integration
-    - Code completion
-    - Diagnostics
-    - Go to Definition
-  - Debugging
-  - Integrated terminal
-  - Build and test tasks
-  - Extension runtime and marketplace
-- **Omitted Vim features**
-  - Visual block mode
-  - Macros
-  - Named registers
-  - Marks and mark jumps
-  - Ex commands
-  - Vimscript configuration and plugins
+## Features
+
+
+
 
 
 ## Install
@@ -108,7 +92,7 @@ from the command palette. The choice is saved per file and also applies to
 `vl preview`. **Auto Detect** uses the filename or shebang. **Plain Text**
 disables highlighting.
 
-See the [Keyboard shortcuts](docs/KEYBINDINGS.md).
+To remap workbench shortcuts, run **Preferences: Open Keyboard Shortcuts File** from the command palette. [Default shortcuts and configuration example](docs/KEYBINDINGS.md)
 
 ### Auto Switch IM
 

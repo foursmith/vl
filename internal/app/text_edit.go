@@ -181,7 +181,9 @@ func (m *Model) editDocument(d *editor.Document, msg tea.KeyPressMsg, k string, 
 		d.ClearSelection()
 	case editBufferKey(&d.Buffer, k, m.hanDictionary):
 	case matchesShortcut(k, pickerKeys.Accept):
-		d.Insert("\n")
+		if !continueMarkdownLine(d) {
+			d.Insert("\n")
+		}
 	case k == "tab":
 		d.Insert("\t")
 	case k == "pgup", k == "pgdown":

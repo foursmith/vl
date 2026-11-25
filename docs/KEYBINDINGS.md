@@ -1,8 +1,8 @@
-# Keyboard shortcuts
-
 <p align="center">
   English · <a href="KEYBINDINGS.zh-CN.md">简体中文</a>
 </p>
+
+# Keyboard shortcuts
 
 | To find | Press |
 | --- | --- |
@@ -27,61 +27,6 @@ Press keys joined with `+` together. Press sequences such as `gg` and `Space w` 
 | Find actions for the current item | `F7` or right-click to open the context menu. |
 
 Closing tabs, switching workspaces, and quitting prompt when there are unsaved changes. In single-file mode, `Ctrl+G` lists files in the current file's directory, and closing the last tab quits. The arrow keys rotate the welcome artwork when it is visible and the main area has focus.
-
-### Customize workbench shortcuts
-
-Run **Preferences: Open Keyboard Shortcuts File** from the command palette to edit `~/.config/vl/keybindings.json`. Copy the example below to start with every configurable shortcut and its default keys.
-
-```json
-[
-  {"command": "app.quit", "keys": "Ctrl+Q"},
-  {"command": "diff.discardFile", "keys": "Shift+D"},
-  {"command": "diff.discardSelectionOrHunk", "keys": "d"},
-  {"command": "diff.nextHunk", "keys": "]"},
-  {"command": "diff.previousHunk", "keys": "["},
-  {"command": "diff.toggleContextLines", "keys": "Enter"},
-  {"command": "diff.toggleLayout", "keys": []},
-  {"command": "diff.toggleStageFile", "keys": "Shift+S"},
-  {"command": "diff.toggleStageSelectionOrHunk", "keys": "s"},
-  {"command": "edit.copy", "keys": "Ctrl+C"},
-  {"command": "edit.cut", "keys": "Ctrl+X"},
-  {"command": "edit.deleteToLineEnd", "keys": "Ctrl+Delete"},
-  {"command": "edit.deleteToLineStart", "keys": "Ctrl+Backspace"},
-  {"command": "edit.findInFile", "keys": "Ctrl+F"},
-  {"command": "edit.paste", "keys": "Ctrl+V"},
-  {"command": "edit.redo", "keys": "Ctrl+Shift+Z"},
-  {"command": "edit.selectAll", "keys": "Ctrl+A"},
-  {"command": "edit.undo", "keys": "Ctrl+Z"},
-  {"command": "editor.closeAllTabs", "keys": []},
-  {"command": "editor.closeOtherTabs", "keys": "Ctrl+Shift+W"},
-  {"command": "editor.closeTab", "keys": "Ctrl+W"},
-  {"command": "editor.nextTab", "keys": "Ctrl+T"},
-  {"command": "editor.previousTab", "keys": "Ctrl+Shift+T"},
-  {"command": "file.save", "keys": "Ctrl+S"},
-  {"command": "preferences.openConfig", "keys": "Ctrl+,"},
-  {"command": "preferences.openKeybindings", "keys": []},
-  {"command": "sidebar.refresh", "keys": ["r", "Shift+R"]},
-  {"command": "sidebar.showChanges", "keys": "Ctrl+3"},
-  {"command": "sidebar.showCommitHistory", "keys": "Ctrl+4"},
-  {"command": "sidebar.showExplorer", "keys": "Ctrl+1"},
-  {"command": "sidebar.showPullRequests", "keys": "Ctrl+5"},
-  {"command": "sidebar.showSearch", "keys": "Ctrl+2"},
-  {"command": "sidebar.toggleFocus", "keys": "F2"},
-  {"command": "sidebar.toggleVisibility", "keys": "F12"},
-  {"command": "workbench.goToFile", "keys": "Ctrl+G"},
-  {"command": "workbench.openCommandPalette", "keys": "Ctrl+P"},
-  {"command": "workbench.openContextMenu", "keys": "F7"},
-  {"command": "workbench.refresh", "keys": "F5"},
-  {"command": "workspace.findInFiles", "keys": "Ctrl+Shift+F"},
-  {"command": "workspace.openRecent", "keys": "Ctrl+R"}
-]
-```
-
-After editing and saving the file, run **Reload VL** from the command palette.
-
-Omit an entry to use its default. Set `keys` to a shortcut such as `F8` or `Alt+1`, an array of alternative shortcuts, or `[]` to leave the action without a shortcut. Key names are case-insensitive. Write `Shift+S` for the shifted key.
-
-Bindings use the action's built-in focus rules. vl reports and skips entries with unknown commands, invalid keys, or a custom `when` condition.
 
 ### Use Space for tabs, saving, and closing
 
@@ -183,6 +128,10 @@ In Insert mode or with Vim disabled, `Home` / `End` go to the start / end of the
 
 Use **Toggle Vim Mode** in the command palette to enable or disable Vim. See the [Vim guide](VIM.md) for more commands.
 
+### Markdown editing
+
+At the end of a list item, task item, or blockquote, press `Enter` to continue it. Ordered lists increment the number, and new tasks start unchecked. Press `Enter` again on an empty item or quote to exit it.
+
 ## Menus and dialogs
 
 | Where | Move | Run or exit |
@@ -197,3 +146,58 @@ Pickers and context menus also accept `Ctrl+G`, `Ctrl+P`, `Ctrl+R` (workspace on
 ## Terminal compatibility
 
 Your terminal may intercept `Ctrl+Shift+T` or `Ctrl+Shift+F`, or fail to distinguish `Ctrl+1` through `Ctrl+5`. Use the named action in the command palette, click a sidebar icon, or cycle sidebar views with `Tab` / `Shift+Tab` while the sidebar has focus. Some terminals copy their own selection or send `Ctrl+V` as a paste event. Use the editor menu to copy a vl selection when needed.
+
+## Shortcuts you can currently customize
+
+Run **Preferences: Open Keyboard Shortcuts File** from the command palette to edit `~/.config/vl/keybindings.json`. Copy the example below to start with every configurable shortcut and its default keys.
+
+```json
+[
+  {"command": "app.quit", "keys": "Ctrl+Q"},
+  {"command": "diff.discardFile", "keys": "Shift+D"},
+  {"command": "diff.discardSelectionOrHunk", "keys": "d"},
+  {"command": "diff.nextHunk", "keys": "]"},
+  {"command": "diff.previousHunk", "keys": "["},
+  {"command": "diff.toggleContextLines", "keys": "Enter"},
+  {"command": "diff.toggleLayout", "keys": []},
+  {"command": "diff.toggleStageFile", "keys": "Shift+S"},
+  {"command": "diff.toggleStageSelectionOrHunk", "keys": "s"},
+  {"command": "edit.copy", "keys": "Ctrl+C"},
+  {"command": "edit.cut", "keys": "Ctrl+X"},
+  {"command": "edit.deleteToLineEnd", "keys": "Ctrl+Delete"},
+  {"command": "edit.deleteToLineStart", "keys": "Ctrl+Backspace"},
+  {"command": "edit.findInFile", "keys": "Ctrl+F"},
+  {"command": "edit.paste", "keys": "Ctrl+V"},
+  {"command": "edit.redo", "keys": "Ctrl+Shift+Z"},
+  {"command": "edit.selectAll", "keys": "Ctrl+A"},
+  {"command": "edit.undo", "keys": "Ctrl+Z"},
+  {"command": "editor.closeAllTabs", "keys": []},
+  {"command": "editor.closeOtherTabs", "keys": "Ctrl+Shift+W"},
+  {"command": "editor.closeTab", "keys": "Ctrl+W"},
+  {"command": "editor.nextTab", "keys": "Ctrl+T"},
+  {"command": "editor.previousTab", "keys": "Ctrl+Shift+T"},
+  {"command": "file.save", "keys": "Ctrl+S"},
+  {"command": "preferences.openConfig", "keys": "Ctrl+,"},
+  {"command": "preferences.openKeybindings", "keys": []},
+  {"command": "sidebar.refresh", "keys": ["r", "Shift+R"]},
+  {"command": "sidebar.showChanges", "keys": "Ctrl+3"},
+  {"command": "sidebar.showCommitHistory", "keys": "Ctrl+4"},
+  {"command": "sidebar.showExplorer", "keys": "Ctrl+1"},
+  {"command": "sidebar.showPullRequests", "keys": "Ctrl+5"},
+  {"command": "sidebar.showSearch", "keys": "Ctrl+2"},
+  {"command": "sidebar.toggleFocus", "keys": "F2"},
+  {"command": "sidebar.toggleVisibility", "keys": "F12"},
+  {"command": "workbench.goToFile", "keys": "Ctrl+G"},
+  {"command": "workbench.openCommandPalette", "keys": "Ctrl+P"},
+  {"command": "workbench.openContextMenu", "keys": "F7"},
+  {"command": "workbench.refresh", "keys": "F5"},
+  {"command": "workspace.findInFiles", "keys": "Ctrl+Shift+F"},
+  {"command": "workspace.openRecent", "keys": "Ctrl+R"}
+]
+```
+
+After editing and saving the file, run **Reload VL** from the command palette.
+
+Omit an entry to use its default. Set `keys` to a shortcut such as `F8` or `Alt+1`, an array of alternative shortcuts, or `[]` to leave the action without a shortcut. Key names are case-insensitive. Write `Shift+S` for the shifted key.
+
+Bindings use the action's built-in focus rules. vl reports and skips entries with unknown commands, invalid keys, or a custom `when` condition.
