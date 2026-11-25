@@ -73,9 +73,9 @@ func TestSearchDetailsInlineFieldsAndFocus(t *testing.T) {
 	if line := plain(m.searchLines(nil, 36)[layout.include]); !strings.HasPrefix(line, "│+ *.go") {
 		t.Fatalf("filter symbol needs a space before the input: %q", line)
 	}
-	m.searchKey(tea.KeyPressMsg{Code: tea.KeyTab})
+	m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	if m.search.focus != 4 {
-		t.Fatal("Tab must move from include to exclude")
+		t.Fatal("Down must move from include to exclude")
 	}
 	m.toggleSearchDetails()
 	if m.search.focus != 0 || m.search.include.Value() != "*.go" {
@@ -128,7 +128,9 @@ func TestCompleteSearchPanelScopesAndPreserveCase(t *testing.T) {
 		t.Fatal("changed scope failed")
 	}
 	clickSearchControl(t, m, "preserve")
-	drain(t, m, clickSearchControl(t, m, "replaceAll"))
+	clickSearchControl(t, m, "replaceAll")
+	press(m, "h")
+	drain(t, m, press(m, "enter"))
 	if m.document().Text != "NEW New new\n" || !m.search.options.PreserveCase {
 		t.Fatal("preserve case replace all failed", m.document().Text)
 	}

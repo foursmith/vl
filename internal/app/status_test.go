@@ -145,7 +145,7 @@ func TestStatusHintsFollowGitScopeAndSelection(t *testing.T) {
 	m.diffPath, m.diffChange = change.Path, &change
 	m.patch = diff.Parse("@@ -1 +1 @@\n-old\n+new\n")
 	showDiffFixture(m)
-	want := "s Stage Hunk · S Stage File · d Discard Hunk · D Discard File"
+	want := "s Stage Hunk · d Discard Hunk · S Stage File · D Discard File"
 	if got := statusPart(t, m, "notice").text; got != want {
 		t.Fatalf("diff hint = %q", got)
 	}
@@ -159,7 +159,7 @@ func TestStatusHintsFollowGitScopeAndSelection(t *testing.T) {
 	m.diffLoading = false
 	m.notice = ""
 	m.diffSelection = diffSelection{active: true, right: m.diffLayout.split, anchor: textPoint{0, 0}, cursor: textPoint{0, 3}}
-	if got := statusPart(t, m, "notice").text; !strings.HasPrefix(got, "s Stage Selected Ranges · S Stage File") {
+	if got := statusPart(t, m, "notice").text; !strings.HasPrefix(got, "s Stage Selected Ranges · d Discard Selected Ranges · S Stage File") {
 		t.Fatalf("selection hint = %q", got)
 	}
 	m.diffStaged = true

@@ -40,7 +40,7 @@ var workbenchKeybindings = []workbenchShortcut{
 	{binding: binding("Ctrl+Z", "Undo", "ctrl+z"), context: fromSearchFields, command: commandUndo, when: (*Model).textEditFocused},
 	{binding: binding("Ctrl+Shift+Z", "Redo", "ctrl+shift+z", "ctrl+shift+Z"), context: fromSearchFields, command: commandRedo, when: (*Model).textEditFocused},
 	{binding: binding("Ctrl+G", "Go to File", "ctrl+g"), context: fromSearch, command: commandFiles},
-	{binding: binding("Ctrl+R", "Open Recent Workspace", "ctrl+r"), context: workspaceOnly | fromSidebarSearch, command: commandRecent},
+	{binding: binding("Ctrl+R", "Open Recent Workspace", "ctrl+r"), context: workspaceOnly | fromSearch, command: commandRecent},
 	{binding: binding("Ctrl+P", "Commands", "ctrl+p"), context: fromSearch, command: commandPalette},
 	{binding: binding("Ctrl+,", "Open Configuration File", "ctrl+,"), context: fromSearch, command: commandOpenConfig},
 	{binding: binding("Ctrl+Shift+F", "Search", "ctrl+shift+f", "ctrl+shift+F"), context: workspaceOnly | fromSearch, command: commandSearch},
@@ -57,10 +57,10 @@ var workbenchKeybindings = []workbenchShortcut{
 	}},
 	{context: workspaceOnly, command: commandDiffLayout},
 	{binding: binding("Ctrl+S", "Save", "ctrl+s"), context: fromSearchFields, command: commandSave},
-	{binding: binding("Ctrl+W", "Close Editor", "ctrl+w"), context: fromSidebarSearch, command: commandClose, when: func(m *Model) bool {
-		return !m.sidebar || m.section != search || m.searchField(m.search.focus) == nil
-	}},
+	{binding: binding("Ctrl+W", "Close Editor", "ctrl+w"), context: fromSearchFields, command: commandClose},
 	{binding: binding("Ctrl+Shift+W", "Close Other Editors", "ctrl+shift+w", "ctrl+shift+W"), context: beforeInput, command: commandCloseOthers},
+	{binding: binding("Ctrl+Shift+T", "Previous Editor", "ctrl+shift+t", "ctrl+shift+T"), context: fromSearchFields, command: commandPreviousTab},
+	{binding: binding("Ctrl+T", "Next Editor", "ctrl+t"), context: fromSearchFields, command: commandNextTab},
 	{command: commandCloseAll},
 	{binding: binding("Ctrl+F", "Find", "ctrl+f"), context: fromSearchFields, command: commandFind},
 	{binding: binding("F7", "Context menu", "f7"), context: fromSearchFields, command: commandContextMenu},

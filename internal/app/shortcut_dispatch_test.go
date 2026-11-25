@@ -96,6 +96,12 @@ func TestDefaultWorkbenchShortcutActions(t *testing.T) {
 			return err == nil && !m.document().Dirty() && string(data) == m.document().Text
 		}},
 		{commandClose, false, []tea.KeyPressMsg{ctrl('w')}, tabs(1)},
+		{commandPreviousTab, false, []tea.KeyPressMsg{ctrlShift('t'), ctrlShift('T')}, func(m *Model, _ tea.Cmd) bool {
+			return m.activeTab == 1
+		}},
+		{commandNextTab, false, []tea.KeyPressMsg{ctrl('t')}, func(m *Model, _ tea.Cmd) bool {
+			return m.activeTab == 0
+		}},
 		{commandCloseOthers, false, []tea.KeyPressMsg{ctrlShift('w'), ctrlShift('W')}, tabs(1)},
 		{commandFind, false, []tea.KeyPressMsg{ctrl('f')}, func(m *Model, _ tea.Cmd) bool { return m.fileFindFocused() }},
 		{commandContextMenu, false, []tea.KeyPressMsg{keypress(tea.KeyF7)}, func(m *Model, _ tea.Cmd) bool {
@@ -117,6 +123,11 @@ func TestDefaultWorkbenchShortcutActions(t *testing.T) {
 				m.openFile("file1.go")
 				m.sidebar = test.sidebar
 				switch test.command {
+				case commandNextTab:
+					m.setVimDisabled(true)
+				case commandPreviousTab:
+					m.activateTab(0)
+					press(m, "i")
 				case commandOpenConfig:
 					m.SetPreferencesStore(config.NewPreferencesStore(filepath.Join(t.TempDir(), "vl", "vl.config.json")))
 				case commandQuit:
@@ -322,46 +333,42 @@ func TestWorkbenchShortcutUsesLastMatchingContext(t *testing.T) {
 }
 
 func TestWorkbenchShortcutsWithFocusedSearchInputs(t *testing.T) {
-	m := tabWorkspace(t, 2)
-	defer m.Close()
-	m.openFile("file0.go")
-	m.openFile("file1.go")
-	active := m.document()
-
-	press(m, "ctrl+f")
-	press(m, "x")
-	press(m, "ctrl+w")
-	if !m.fileFindFocused() || m.findWidget.query.Value() != "x" || len(m.tabs) != 2 {
-		t.Fatal("Ctrl+W changed file find or closed an editor")
-	}
-	press(m, "ctrl+p")
-	if !m.commandPicker() || m.fileFindFocused() {
-		t.Fatal("Ctrl+P must leave file find and open the command palette")
-	}
-	press(m, "help")
-	press(m, "ctrl+w")
-	if m.input.Value() != ">help" || !m.commandPicker() || len(m.tabs) != 2 {
-		t.Fatal("Ctrl+W changed the command palette or closed an editor")
-	}
-	press(m, "esc")
-
-	press(m, "ctrl+2")
-	press(m, "S")
-	if !m.sidebar || m.section != search || m.search.query.Value() != "S" {
-		t.Fatal("workspace search must receive printable Git keys as text")
-	}
-	press(m, "ctrl+w")
-	if m.search.query.Value() != "S" || len(m.tabs) != 2 {
-		t.Fatal("Ctrl+W changed the workspace query or closed an editor")
-	}
-	m.Update(tea.KeyPressMsg{Code: 'w', Mod: tea.ModCtrl | tea.ModShift})
-	if len(m.tabs) != 1 || m.document() != active {
-		t.Fatal("Ctrl+Shift+W must close other tabs with workspace search focused")
-	}
-	press(m, "esc")
-	press(m, "ctrl+w")
-	if len(m.tabs) != 0 {
-		t.Fatal("Ctrl+W did not close the editor from the workspace results")
+	for _, focus := range []string{"ctrl+f", "ctrl+2"} {
+		t.Run(focus, func(t *testing.T) {
+			m := tabWorkspace(t, 3)
+			defer m.Close()
+			m.openFile("file0.go")
+			m.openFile("file1.go")
+			m.openFile("file2.go")
+			press(m, focus)
+			press(m, "x")
+			press(m, "ctrl+w")
+			if len(m.tabs) != 2 {
+				t.Fatal("Ctrl+W did not close the active editor from search")
+			}
+			press(m, focus)
+			m.Update(tea.KeyPressMsg{Code: 'w', Mod: tea.ModCtrl | tea.ModShift})
+			if len(m.tabs) != 1 {
+				t.Fatal("Ctrl+Shift+W did not close the other editor from search")
+			}
+			press(m, focus)
+			press(m, "ctrl+r")
+			if m.modal != "recent" {
+				t.Fatal("Ctrl+R did not open recent workspaces from search")
+			}
+			press(m, "ctrl+p")
+			if !m.commandPicker() || m.fileFindFocused() {
+				t.Fatal("Ctrl+P did not switch pickers")
+			}
+			press(m, "ctrl+w")
+			if !m.commandPicker() || len(m.tabs) != 1 {
+				t.Fatal("Ctrl+W escaped the command palette")
+			}
+			press(m, "ctrl+r")
+			if m.modal != "recent" {
+				t.Fatal("Ctrl+R did not switch pickers")
+			}
+		})
 	}
 }
 

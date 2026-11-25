@@ -155,6 +155,13 @@ func (m *Model) activateTab(index int) {
 	m.focusEditor()
 }
 
+func (m *Model) selectAdjacentTab(step int) {
+	count := len(m.tabs)
+	if count > 1 && m.activeTab >= 0 && m.activeTab < count {
+		m.activateTab((m.activeTab + step + count) % count)
+	}
+}
+
 func (m *Model) focusEditor() {
 	m.blurFileHistory()
 	m.sidebar = false

@@ -249,10 +249,12 @@ func TestDiffLeaderSelectsTabsWithoutSpacePaging(t *testing.T) {
 		key  rune
 		want int
 	}{
-		{tea.KeyLeft, 0},
+		{tea.KeyLeft, 2},
+		{tea.KeyRight, 0},
 		{tea.KeyRight, 1},
 		{tea.KeyRight, 2},
-		{tea.KeyRight, 2},
+		{tea.KeyRight, 0},
+		{tea.KeyLeft, 2},
 		{tea.KeyLeft, 1},
 	} {
 		press(m, " ")

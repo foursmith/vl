@@ -10,7 +10,7 @@ import (
 	"github.com/foursmith/vl/internal/config"
 )
 
-func TestSidebarTabKeysCycleViewsAndKeepLocalInputFocus(t *testing.T) {
+func TestSidebarTabKeysCycleViewsFromSearchFieldsAndResults(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	defer m.Close()
 	m.openFile("file0.go")
@@ -42,19 +42,18 @@ func TestSidebarTabKeysCycleViewsAndKeepLocalInputFocus(t *testing.T) {
 	}
 
 	m.openReplace()
-	m.focusSearch(0)
-	m.Update(tabKey)
-	if m.section != search || m.search.focus != 1 {
-		t.Fatal("Tab did not move from the Search query to Replace")
-	}
-	m.Update(backTab)
-	if m.section != search || m.search.focus != 0 {
-		t.Fatal("Shift+Tab did not return to the Search query")
-	}
-	press(m, "esc")
-	m.Update(tabKey)
-	if m.section != changes {
-		t.Fatal("Tab did not advance from Search results to Changes")
+	m.toggleSearchDetails()
+	for _, focus := range []int{0, 1, 2, 3, 4} {
+		m.openSearchAt(focus)
+		m.Update(tabKey)
+		if !m.sidebar || m.section != changes {
+			t.Fatalf("Tab did not go to Changes from search focus %d", focus)
+		}
+		m.openSearchAt(focus)
+		m.Update(backTab)
+		if !m.sidebar || m.section != explorer {
+			t.Fatalf("Shift+Tab did not go to Explorer from search focus %d", focus)
+		}
 	}
 }
 

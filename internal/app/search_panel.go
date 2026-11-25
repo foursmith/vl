@@ -61,7 +61,7 @@ func (m *Model) searchPanelControls(w int) []searchPanelControl {
 			if x < 8 {
 				break
 			}
-			disabled := id == "replaceAll" && (m.search.loading || m.search.err != "" || m.search.result.Count == 0)
+			disabled := id == "replaceAll" && !m.search.canReplaceAll()
 			controls = append(controls, searchPanelControl{id: id, label: labels[index], hint: hints[index], x: x, y: y, width: width, disabled: disabled, embedded: true})
 			right = x - 1
 			if id == "replaceAll" {
@@ -100,7 +100,7 @@ func (m *Model) searchControlAction(id string) tea.Cmd {
 		m.toggleSearchDetails()
 		return nil
 	case "replaceAll":
-		return m.replaceAllSearchResults()
+		return m.confirmReplaceAllSearchResults()
 	}
 	value := searchOption(&s.options, id)
 	if value == nil || id == "changed" && !m.repo.HasRepository() {

@@ -119,9 +119,9 @@ func (m *Model) executeCommand(id commandID, tabKey string) tea.Cmd {
 	case commandContextMenu:
 		return m.openFocusedContextMenu()
 	case commandPreviousTab:
-		m.selectShortcutTab(m.activeTab - 1)
+		m.selectAdjacentTab(-1)
 	case commandNextTab:
-		m.selectShortcutTab(m.activeTab + 1)
+		m.selectAdjacentTab(1)
 	case commandSaveAndClose:
 		if m.editing() {
 			return m.saveEditor(true)

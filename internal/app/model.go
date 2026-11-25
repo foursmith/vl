@@ -1182,6 +1182,15 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	if handled, cmd := m.leaderKey(k); handled {
 		return cmd
 	}
+	if matchesShortcut(k, dismissKey) && !m.sidebar && m.fileFindHeight() > 0 {
+		vim := &m.tabs[m.activeTab].vim
+		if m.vimDisabled || !vim.InsertMode && !vim.VisualMode && !vim.CommandPending() {
+			vim.CancelPending()
+			m.editorDocument().ClearSelection()
+			m.closeFileFind()
+			return nil
+		}
+	}
 	if m.rotateWelcomeArt(k) {
 		return nil
 	}

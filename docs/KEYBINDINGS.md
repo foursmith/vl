@@ -13,7 +13,7 @@
 | `Ctrl+Shift+F` | Search across files |
 | `F2` | Switch focus between the sidebar and the editor |
 | `Ctrl+S` | Save the current file |
-| `Ctrl+W` | Close the current editor from the editor or a sidebar list. Prompts for unsaved changes. |
+| `Ctrl+W` | Close the current editor from the editor, sidebar, or a search field. Prompts for unsaved changes. |
 | `Esc` | Cancel the current mode, menu, or input |
 
 Files open in Normal mode by default. Use **Preferences: Toggle Vim Mode**
@@ -42,9 +42,10 @@ In confirmation dialogs, use `←`/`→` or `Tab` to select a button, `Enter` to
 | `Ctrl+R` | Open Recent Workspace. Prompts if there are unsaved changes. |
 | `Ctrl+1` … `Ctrl+5` | Focus a sidebar tab by position |
 | `F12` | Toggle Sidebar Visibility |
+| `Ctrl+T` / `Ctrl+Shift+T` | Cycle to the next / previous editor tab in any editing mode |
 | `Ctrl+Shift+W` | Close the other tabs. Prompts for unsaved changes. |
 | `Space 1` … `Space 9` | Switch to a tab by number from a focused editor with Vim mode on and outside Insert mode |
-| `Space ←` / `Space →` | Switch to the adjacent tab from a focused editor with Vim mode on and outside Insert mode |
+| `Space ←` / `Space →` | Cycle to the previous / next tab from a focused editor with Vim mode on and outside Insert mode |
 | `F5` | Refresh the active view. In the editor, check for disk changes and keep any unsaved edits. |
 | `F7` / right-click | Open the context menu |
 | `Ctrl+Q` | Quit. Prompts if there are unsaved changes. |
@@ -87,7 +88,14 @@ Hold `Shift` with a movement key to extend the selection.
 Some terminals use legacy input encoding for `Ctrl+1` through `Ctrl+5`. If
 these shortcuts are unavailable, use the sidebar icons or open the Command
 Palette with `Ctrl+P` and choose the view by name. For workspace search, choose
-**Search: Find in Files**.
+**Search: Find in Files**. With the sidebar focused, `Tab` and `Shift+Tab`
+also cycle through its views.
+
+Windows Terminal and GNOME Terminal use `Ctrl+Shift+T` to open a terminal tab
+by default. Some terminals also send it as `Ctrl+T`. In these
+cases, use the Previous Editor command in the palette or `Space ←` where Leader
+keys are available. For other intercepted shortcuts, use the corresponding
+named command in the palette.
 
 Windows Terminal can handle `Ctrl+V` itself. The editor accepts the text sent
 by the terminal as a bracketed paste. If the terminal has its own text
@@ -98,7 +106,7 @@ copy the selection inside vl.
 
 | Shortcut | Action |
 | --- | --- |
-| `Tab` / `Shift+Tab` | Cycle to the next / previous sidebar tab |
+| `Tab` / `Shift+Tab` | Cycle to the next / previous sidebar view, including from Search |
 | `j` / `k` or `Down` / `Up` | Select and preview the next / previous item |
 | `gg` / `G` | Select the first / last item |
 | `3j`, `5gg`, `5G` | Move down three items or jump to the fifth item |
@@ -195,7 +203,8 @@ or right-click the search form, and choose **Search Options**.
 | Shortcut | Action |
 | --- | --- |
 | `Ctrl+Shift+F` | Find in Files |
-| `Tab` / `Shift+Tab` from a field | Move through the visible fields and into the results |
+| `Down` / `Up` from a field | Move to the next / previous visible field. Down from the last field enters the list when it has results |
+| `Up` on the first result | Return to the last visible search field |
 | `Enter` in the search field | Run the search and focus the results |
 | `Esc` from a field | Focus the results |
 | `Ctrl+J` / `Ctrl+K` from a field | Select the next / previous result while keeping focus in the field |
@@ -204,7 +213,7 @@ or right-click the search form, and choose **Search Options**.
 | `h` / `l` in the results | Select the parent file group / expand it or open the selected result |
 | `Enter` in the results | Open the selected file or match and keep the tab |
 | `dd` / `Delete` in the results | Remove a result row or file group from the list. This leaves the file alone. |
-| `Enter` in Replace | Replace all matches still in the results |
+| `Enter` in Replace | Review the match and file counts before confirming Replace All |
 
 Search updates as you type and includes unsaved edits. Open a result to jump to
 its match. In the editor, `n` uses the query from File Find.
@@ -224,7 +233,8 @@ override an ignore rule. To enter an ignored directory this way, include the
 directory itself, for example `./dist`.
 
 Open the Replace field with the chevron. Press `Enter` in that field or click
-**Replace All** to apply the replacement. Dismiss result rows or file groups
+**Replace All** to review the scope. The confirmation defaults to Cancel.
+Choose **Replace All** in the dialog to save the changes to disk. Dismiss result rows or file groups
 with `dd`, `Delete`, or the row's remove button to skip them.
 
 ## Diff editor
@@ -277,10 +287,12 @@ Click the image or its tab to keep the preview open.
 | --- | --- |
 | `k` / `j`, `Up` / `Down`, `Shift+Tab` / `Tab` | Select the previous / next menu item |
 | `Home` / `End` | Select the first / last menu item |
-| `l` / `Enter` / `Space` | Run the selected action |
-| `h` / `Esc` / `F7` | Close the context menu |
+| `l` / `→` / `Enter` / `Space` | Run the selected action |
+| `h` / `←` / `Esc` / `F7` | Close the context menu |
 
 Press the shortcut shown beside a context menu action to run it directly.
+Pickers and context menus also accept `Ctrl+G`, `Ctrl+P`, `Ctrl+R`, `Ctrl+,`
+and `Ctrl+Q`.
 
 In Changes, History, and Pull Requests, right-click a repository row or select
 it and press `F7` to switch branches. The Changes and History menus also offer

@@ -340,13 +340,13 @@ func (m *Model) reviewActionsForKey(pressed string, checkRefresh bool) []action 
 		stage := func(run func() tea.Cmd) func() tea.Cmd { return bind("Diff changed; refresh before staging", run) }
 		partialReason := m.partialStageReason(reverse, checkRefresh)
 		discardReason := m.partialDiscardReason(checkRefresh)
-		addDiscard := func(id, label, prompt string, shortcut key.Binding, selected func(*diff.Line) bool) {
+		addDiscard := func(id, label string, shortcut key.Binding, selected func(*diff.Line) bool, prompt string, args ...any) {
 			if reverse {
 				return
 			}
 			add(action{id: id, label: m.tr(label), disabled: discardReason,
 				run: bind("Diff changed; refresh before discarding", func() tea.Cmd {
-					return m.discardDiffLines(m.tr(prompt, m.diffPath), selected)
+					return m.discardDiffLines(m.tr(prompt, args...), selected)
 				}),
 			}, shortcut)
 		}
@@ -360,14 +360,16 @@ func (m *Model) reviewActionsForKey(pressed string, checkRefresh bool) []action 
 			add(action{id: prefix + "Ranges", label: m.tr(ranges), disabled: partialReason, run: stage(func() tea.Cmd {
 				return m.stageDiffLines(reverse, ranges, inRange)
 			})}, gitKeys.Stage)
-			addDiscard("diff.discardRanges", "Discard Selected Ranges", "Permanently discard the selected edits to %s?", gitKeys.Discard, inRange)
+			addDiscard("diff.discardRanges", "Discard Selected Ranges", gitKeys.Discard, inRange,
+				"Permanently discard %d selected changed lines in %s?", len(selected), m.diffPath)
 		}
 		if index := m.diffHunk; index >= 0 && index < len(m.patch.Hunks) {
 			inHunk := func(line *diff.Line) bool { return line.Hunk == index }
 			add(action{id: prefix + "Hunk", label: m.tr(hunk), disabled: partialReason, run: stage(func() tea.Cmd {
 				return m.stageDiffLines(reverse, hunk, inHunk)
 			})}, hunkStageKey)
-			addDiscard("diff.discardHunk", "Discard Hunk", "Permanently discard this hunk in %s?", hunkDiscardKey, inHunk)
+			addDiscard("diff.discardHunk", "Discard Hunk", hunkDiscardKey, inHunk,
+				"Permanently discard hunk %d of %d in %s?", index+1, len(m.patch.Hunks), m.diffPath)
 		}
 		fileReason := sourceReason
 		if fileReason == "" {

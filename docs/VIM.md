@@ -267,6 +267,6 @@ sequence. `Esc` cancels a pending sequence.
 | Key | Action |
 | --- | --- |
 | `Space 1` … `Space 9` | Go to a tab by its position from the left |
-| `Space ←` / `Space →` | Go to the adjacent tab on the left or right |
+| `Space ←` / `Space →` | Cycle to the previous / next tab |
 
 Tab navigation also works from diffs and image previews.

@@ -322,7 +322,10 @@ func TestEditorInsideRepositoryNeedsNoGitState(t *testing.T) {
 	m.openPalette()
 	refreshAvailable, deleteToStartAvailable, deleteToEndAvailable := false, false, false
 	for _, a := range m.filteredActions() {
-		if strings.HasPrefix(a.id, "git.") || strings.HasPrefix(a.id, "github.") || strings.HasPrefix(a.id, "view.") || a.id == "file.closeOthers" || a.id == "file.keepOpen" {
+		if a.id == string(commandPreviousTab) || a.id == string(commandNextTab) {
+			continue
+		}
+		if strings.HasPrefix(a.id, "git.") || strings.HasPrefix(a.id, "github.") || strings.HasPrefix(a.id, "view.") || a.id == "file.keepOpen" {
 			t.Fatalf("non-editor command exposed: %s", a.id)
 		}
 		if a.id == string(commandRefresh) {

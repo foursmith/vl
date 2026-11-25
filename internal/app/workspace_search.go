@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"path/filepath"
+	"slices"
 	"time"
 	"unicode/utf8"
 
@@ -268,32 +269,47 @@ func (m *Model) selectedSearchRow() (searchRow, bool) {
 	return searchRow{}, false
 }
 
+func (m *Model) moveSearchFocus(direction string) bool {
+	s := &m.search
+	layout, height := m.searchPanelLayout(), m.bodyHeight()
+	hasResults := len(s.result.Files) > 0 && layout.results < height
+	if s.focus == 2 && hasResults && (direction == downArrow || s.selected > 0) {
+		return false
+	}
+
+	fields := []int{0}
+	for _, field := range [...]struct{ focus, row int }{
+		{1, layout.replacement},
+		{3, layout.include},
+		{4, layout.exclude},
+	} {
+		if field.row >= 0 && field.row < height {
+			fields = append(fields, field.focus)
+		}
+	}
+	if s.focus == 2 {
+		m.focusSearch(fields[len(fields)-1])
+		return true
+	}
+	if hasResults {
+		fields = append(fields, 2)
+	}
+	step := 1
+	if direction == upArrow {
+		step = -1
+	}
+	index := slices.Index(fields, s.focus)
+	if target := fields[min(max(0, index+step), len(fields)-1)]; target != s.focus {
+		m.focusSearch(target)
+	}
+	return true
+}
+
 func (m *Model) searchKey(msg tea.KeyPressMsg) tea.Cmd {
 	s := &m.search
 	k := msg.String()
 	switch {
-	case key.Matches(msg, searchKeys.NextField, searchKeys.PreviousField):
-		order := []int{0}
-		if s.replace {
-			order = append(order, 1)
-		}
-		if s.details {
-			order = append(order, 3, 4)
-		}
-
-		order = append(order, 2)
-		index := 0
-		for i, v := range order {
-			if v == s.focus {
-				index = i
-				break
-			}
-		}
-		step := 1
-		if key.Matches(msg, searchKeys.PreviousField) {
-			step = -1
-		}
-		m.focusSearch(order[(index+step+len(order))%len(order)])
+	case (k == upArrow || k == downArrow) && m.moveSearchFocus(k):
 		return nil
 	case key.Matches(msg, dismissKey):
 		m.focusSearch(2)
@@ -307,19 +323,13 @@ func (m *Model) searchKey(msg tea.KeyPressMsg) tea.Cmd {
 			return m.openSelected()
 		}
 		if s.focus == 1 {
-			return m.replaceAllSearchResults()
+			return m.confirmReplaceAllSearchResults()
 		}
 		m.focusSearch(2)
 		return m.runSearch()
-	case key.Matches(msg, pickerKeys.Down, pickerKeys.Up):
-		if s.focus != 2 {
-			if msg.Mod.Contains(tea.ModCtrl) {
-				_, cmd := m.sidebarNavigationKey(msg)
-				return cmd
-			}
-			m.focusSearch(2)
-			return nil
-		}
+	case s.focus != 2 && key.Matches(msg, pickerKeys.Down, pickerKeys.Up):
+		_, cmd := m.sidebarNavigationKey(msg)
+		return cmd
 	}
 	if s.focus != 2 {
 		return m.searchInput(msg)

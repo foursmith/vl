@@ -12,16 +12,12 @@ type shortcutContext uint8
 
 const (
 	workspaceOnly shortcutContext = 1 << iota
-	fromSidebarSearch
-	fromFileFind
+	fromSearchFields
 	blurFileFind
 	beforeInput
 )
 
-const (
-	fromSearchFields = fromSidebarSearch | fromFileFind
-	fromSearch       = fromSearchFields | blurFileFind
-)
+const fromSearch = fromSearchFields | blurFileFind
 
 type workbenchShortcut struct {
 	id      string
@@ -110,14 +106,10 @@ func (m *Model) activeWorkbenchKeymap() *workbenchKeymap {
 
 func (m *Model) resolveWorkbenchShortcut(name string) workbenchShortcut {
 	return m.resolveWorkbenchRule(name, func(rule workbenchShortcut) bool {
-		if m.editorOnly && rule.has(workspaceOnly) {
-			return false
-		}
 		if rule.has(beforeInput) {
 			return true
 		}
-		if m.fileFindFocused() && !rule.has(fromFileFind) ||
-			m.sidebar && m.section == search && !rule.has(fromSidebarSearch) {
+		if !rule.has(fromSearchFields) && (m.fileFindFocused() || m.sidebar && m.section == search) {
 			return false
 		}
 		if m.sidebar {
@@ -150,8 +142,25 @@ func (m *Model) widgetWorkbenchCommand(name string, accepted ...commandID) comma
 	}).command
 }
 
+func (m *Model) runOverlayWorkbenchShortcut(name string) (tea.Cmd, bool) {
+	command := m.widgetWorkbenchCommand(name, commandFiles, commandPalette, commandRecent, commandOpenConfig, commandQuit)
+	if command == "" {
+		return nil, false
+	}
+	restore := m.cancelThemePreview()
+	m.contextMenu = nil
+	if m.isPicker() {
+		m.dismissDialog()
+	}
+	m.blurFileFind()
+	return tea.Batch(restore, m.executeCommand(command, "")), true
+}
+
 func (m *Model) resolveWorkbenchRule(name string, accepts func(workbenchShortcut) bool) workbenchShortcut {
 	for _, rule := range slices.Backward(m.activeWorkbenchKeymap().byKey[name]) {
+		if m.editorOnly && rule.has(workspaceOnly) {
+			continue
+		}
 		if rule.applies(m) && (accepts == nil || accepts(rule)) {
 			return rule
 		}

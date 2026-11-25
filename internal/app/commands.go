@@ -100,7 +100,6 @@ func (m *Model) actions() []action {
 		{"git.stashList", m.tr("Git: Manage Stashes…") + suffix, "", "", func() tea.Cmd { return m.openStashes(target) }},
 		{"git.stashModes", m.tr("Git: New Stash…") + suffix, "", "", func() tea.Cmd { return m.openStashModes(target) }},
 		{"file.keepOpen", m.tr("View: Keep Editor"), "", tabReason, m.keepTab},
-		m.commandAction(commandCloseOthers, "View: Close Other Editors", "", ""),
 		m.commandAction(commandCloseAll, "View: Close All Editors", "", ""),
 	}
 	if m.snapshot.NoRepository {
@@ -296,8 +295,8 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 		return m.updateConfirmation(k)
 	}
 	if m.isPicker() {
-		if command := m.widgetWorkbenchCommand(k, commandFiles, commandPalette); command != "" {
-			return m.executeCommand(command, "")
+		if cmd, handled := m.runOverlayWorkbenchShortcut(k); handled {
+			return cmd
 		}
 	}
 	if key.Matches(msg, dismissKey) {

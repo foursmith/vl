@@ -8,10 +8,32 @@ import (
 	searchservice "github.com/foursmith/vl/internal/search"
 )
 
+func (s *searchState) canReplaceAll() bool {
+	return !s.loading && s.err == "" && s.result.Count > 0 && len(s.result.Files) > 0
+}
+
+func (m *Model) confirmReplaceAllSearchResults() tea.Cmd {
+	s := &m.search
+	if !s.canReplaceAll() {
+		return nil
+	}
+	seq := s.seq
+	title := m.tr("Replace %d matches in %d files and save the changes?", s.result.Count, len(s.result.Files))
+	cmd := m.ask(title, m.tr("Replace All"), func() tea.Cmd {
+		if m.search.seq != seq {
+			m.notice = searchText("Search result changed; search again before replacing")
+			return nil
+		}
+		return m.replaceAllSearchResults()
+	})
+	m.confirmationButton = 1
+	return cmd
+}
+
 // Validate all targets before writing.
 func (m *Model) replaceAllSearchResults() tea.Cmd {
 	s := &m.search
-	if s.loading || s.err != "" || len(s.result.Files) == 0 {
+	if !s.canReplaceAll() {
 		return nil
 	}
 	if m.busy {

@@ -152,7 +152,7 @@ func TestWorkspaceReplaceChecksEncodedSizeBeforeWriting(t *testing.T) {
 	}
 }
 
-func TestWorkspaceReplaceEnterAppliesRegexToAllRetainedResults(t *testing.T) {
+func TestWorkspaceReplaceEnterConfirmsRegexReplacementOfRetainedResults(t *testing.T) {
 	m := replacementWorkspace(t)
 	for name, content := range map[string]string{
 		"file0.go": "skip old old\nkeep old\n",
@@ -175,6 +175,14 @@ func TestWorkspaceReplaceEnterAppliesRegexToAllRetainedResults(t *testing.T) {
 	m.openReplace()
 	m.search.replacement.SetValue("$2$1")
 	m.search.selected = 0
+	press(m, "enter")
+	if !m.confirmationDialog() || !strings.Contains(m.modalTitle, "3 matches in 2 files") {
+		t.Fatalf("workspace replacement did not show its scope: %q", m.modalTitle)
+	}
+	press(m, "enter")
+	assertReplacementFile(t, m, "file0.go", "skip old old\nkeep old\n")
+	press(m, "enter")
+	press(m, "h")
 	drain(t, m, press(m, "enter"))
 	assertReplacementFile(t, m, "file0.go", "skip old old\nkeep ldo\n")
 	assertReplacementFile(t, m, "file1.go", "猫 ldo ldo\n")
@@ -224,16 +232,31 @@ func TestWorkspaceReplaceControlsAndLayout(t *testing.T) {
 			}
 		}
 	}
-	for _, focus := range []int{2, 0, 1} {
-		m.searchKey(tea.KeyPressMsg{Code: tea.KeyTab})
-		if m.search.focus != focus {
-			t.Fatalf("Tab focus=%d, want %d", m.search.focus, focus)
+	for _, test := range []struct {
+		key  rune
+		want int
+	}{
+		{tea.KeyUp, 0}, {tea.KeyUp, 0}, {tea.KeyDown, 1},
+		{tea.KeyDown, 2},
+	} {
+		m.Update(tea.KeyPressMsg{Code: test.key})
+		if m.section != search || m.search.focus != test.want {
+			t.Fatalf("%s focus=%d, want %d", (tea.KeyPressMsg{Code: test.key}).String(), m.search.focus, test.want)
 		}
+	}
+	press(m, "/")
+	if m.search.focus != 0 {
+		t.Fatal("slash did not return focus from results to the query")
 	}
 	// Click the replace-all button using its rendered geometry.
 	for _, c := range m.searchPanelControls(m.sidebarContentWidth()) {
 		if c.id == "replaceAll" {
-			drain(t, m, m.clickSearch(c.x, c.y))
+			m.clickSearch(c.x, c.y)
+			if !m.confirmationDialog() {
+				t.Fatal("replace all button skipped confirmation")
+			}
+			press(m, "h")
+			drain(t, m, press(m, "enter"))
 			break
 		}
 	}

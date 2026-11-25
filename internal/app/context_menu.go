@@ -50,7 +50,8 @@ func (m *Model) contextMenuInput(msg tea.Msg) (tea.Cmd, bool) {
 		if cmd, handled := m.runContextMenuShortcut(k); handled {
 			return cmd, true
 		}
-		if k != navigationLeftLetter && k != navigationRightLetter {
+		left, right := matchesShortcut(k, navigationKeys.Left), matchesShortcut(k, navigationKeys.Right)
+		if !left && !right {
 			action, count, handled := menu.navigation.key(fmt.Sprintf("menu:%d", menu.selected), k)
 			if handled {
 				switch action {
@@ -80,17 +81,17 @@ func (m *Model) contextMenuInput(msg tea.Msg) (tea.Cmd, bool) {
 			menu.navigation = navigationState{}
 		}
 		switch {
-		case matchesShortcut(k, dismissKey), m.matchWorkbenchCommand(k, commandContextMenu), k == navigationLeftLetter:
+		case matchesShortcut(k, dismissKey), left, m.matchWorkbenchCommand(k, commandContextMenu):
 			m.contextMenu = nil
-		case m.matchWorkbenchCommand(k, commandQuit):
-			m.contextMenu = nil
-			return m.executeCommand(commandQuit, ""), true
 		case matchesShortcut(k, searchKeys.NextField):
 			m.moveContextMenu(1)
 		case matchesShortcut(k, searchKeys.PreviousField):
 			m.moveContextMenu(-1)
-		case matchesShortcut(k, dialogKeys.Accept), k == navigationRightLetter:
+		case matchesShortcut(k, dialogKeys.Accept), right:
 			return m.runContextMenu(), true
+		}
+		if cmd, handled := m.runOverlayWorkbenchShortcut(k); handled {
+			return cmd, true
 		}
 		return nil, true
 	case tea.MouseClickMsg:

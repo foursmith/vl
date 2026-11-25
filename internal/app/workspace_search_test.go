@@ -65,6 +65,54 @@ func TestWorkspaceSearchSecondTabAndNavigation(t *testing.T) {
 	}
 }
 
+func TestWorkspaceSearchArrowsMoveBetweenVisibleFieldsAndResults(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	defer m.Close()
+	up := tea.KeyPressMsg{Code: tea.KeyUp}
+	down := tea.KeyPressMsg{Code: tea.KeyDown}
+	m.openSearch()
+	m.Update(down)
+	m.Update(down)
+	if m.search.focus != 0 || !m.search.query.Focused() {
+		t.Fatal("Down left the query with no search results")
+	}
+
+	m.openReplace()
+	m.toggleSearchDetails()
+	m.search.query.SetValue("no matching phrase")
+	drain(t, m, m.runSearch())
+	m.Update(down)
+	m.Update(down)
+	m.Update(down)
+	if m.search.focus != 4 || !m.search.exclude.Focused() {
+		t.Fatal("Down did not stop at the last visible field with no results")
+	}
+
+	m.search.query.SetValue("package main")
+	drain(t, m, m.runSearch())
+	m.Update(down)
+	if m.search.focus != 2 || m.search.selected != 0 {
+		t.Fatal("Down did not reach the first result from the last field")
+	}
+	m.Update(down)
+	m.Update(up)
+	if m.search.focus != 2 || m.search.selected != 0 {
+		t.Fatal("Up from a later result did not select the first result")
+	}
+	m.Update(up)
+	if m.search.focus != 4 || !m.search.exclude.Focused() {
+		t.Fatal("Up from the first result did not return to the last visible field")
+	}
+
+	m.setSearchReplace(false)
+	m.toggleSearchDetails()
+	m.Update(down)
+	m.Update(up)
+	if m.search.focus != 0 || !m.search.query.Focused() {
+		t.Fatal("Up from the first result did not return to the query")
+	}
+}
+
 func TestWorkspaceSearchCancelsStaleRepliesAndIncludesBuffers(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	m.openFile("file0.go")

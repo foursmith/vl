@@ -182,21 +182,16 @@ func (m *Model) statusHints() []string {
 	}
 	if !m.busy && !m.editing() && m.diffOpen && m.diffChange != nil && m.patch.Raw != "" &&
 		m.activeTab >= 0 && !m.tabs[m.activeTab].vim.CommandPending() {
-		var stage, discard []string
+		var hints []string
 		// A background refresh keeps showing the previous patch. Keep its
 		// shortcuts visible while the action handlers wait for fresh data.
 		for _, action := range m.reviewActionsForKey("", false) {
 			if action.key == "" || action.disabled != "" {
 				continue
 			}
-			hint := action.key + " " + action.label
-			if strings.HasPrefix(action.id, "diff.discard") {
-				discard = append(discard, hint)
-			} else {
-				stage = append(stage, hint)
-			}
+			hints = append(hints, action.key+" "+action.label)
 		}
-		return append(stage, discard...)
+		return hints
 	}
 	return nil
 }
@@ -367,7 +362,7 @@ func (m *Model) statusLayout() []statusSegment {
 	if notice == "" {
 		notice = fitStatusHints(hints, rightX-x-2)
 		if m.sidebar && m.section == search && m.search.focus != 2 && notice == "" {
-			notice = m.tr("%s: fields/results", searchKeys.NextField.Help().Key)
+			notice = m.tr("%s: fields/results", "↑/↓")
 			if m.search.replace && m.search.focus == 1 {
 				notice = m.tr("%s: replace all", sidebarKeys.Open.Help().Key)
 			}

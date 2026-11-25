@@ -12,6 +12,35 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
+func TestEscapeClosesVisibleFindAfterReturningToEditor(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	defer m.Close()
+	m.openFile("file0.go")
+
+	press(m, "ctrl+f")
+	press(m, "package")
+	press(m, "enter")
+	if m.fileFindFocused() || !m.findWidget.visible || m.document().SelectedText() != "package" {
+		t.Fatal("Enter did not leave the match and visible Find in the editor")
+	}
+	press(m, "esc")
+	if m.findWidget.visible || !m.findHidden || m.document().SelectedText() != "" {
+		t.Fatal("Escape did not close Find and clear the match selection")
+	}
+
+	press(m, "ctrl+f")
+	press(m, "enter")
+	press(m, "i")
+	press(m, "esc")
+	if m.tabs[m.activeTab].vim.InsertMode || !m.findWidget.visible {
+		t.Fatal("Escape should leave Insert mode before closing Find")
+	}
+	press(m, "esc")
+	if m.findWidget.visible {
+		t.Fatal("Escape did not close Find after leaving Insert mode")
+	}
+}
+
 func TestSharedFindComponentEntriesCountAndInput(t *testing.T) {
 	m := replacementWorkspace(t)
 	m.clickSearch(7, m.searchResultY())
@@ -293,8 +322,9 @@ func TestSharedFindGeometryAndMouseOffsets(t *testing.T) {
 		t.Fatal("click did not focus shared query")
 	}
 	before := m.document().Text
-	press(m, "ctrl+w")
-	if len(m.tabs) != 1 || m.document().Text != before {
+	press(m, "ctrl+a")
+	press(m, "needle")
+	if len(m.tabs) != 1 || m.document().Text != before || m.findWidget.query.Value() != "needle" {
 		t.Fatal("query editing closed or changed source")
 	}
 	m.click(tea.MouseClickMsg{X: m.mainX() + 7, Y: m.contentRow(), Button: tea.MouseLeft})

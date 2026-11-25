@@ -148,6 +148,34 @@ func TestContextMenuPreservesSelectionAndConsumesInput(t *testing.T) {
 	}
 }
 
+func TestContextMenuHorizontalAliasesAndWorkbenchLaunchers(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	defer m.Close()
+	m.openFile("file0.go")
+	calls := 0
+	open := func() {
+		m.contextMenu = &contextMenu{actions: []action{{label: "Test", run: func() tea.Cmd {
+			calls++
+			return nil
+		}}}}
+	}
+	open()
+	m.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
+	if calls != 0 || m.contextMenu != nil {
+		t.Fatal("Left did not close the context menu")
+	}
+	open()
+	m.Update(tea.KeyPressMsg{Code: tea.KeyRight})
+	if calls != 1 || m.contextMenu != nil {
+		t.Fatal("Right did not run the selected context-menu action")
+	}
+	open()
+	press(m, "ctrl+g")
+	if m.contextMenu != nil || m.modal != "quick" || m.commandPicker() {
+		t.Fatal("Ctrl+G did not leave the context menu and open Go to File")
+	}
+}
+
 func TestContextMenuRunsDisplayedEditorShortcuts(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	defer m.Close()

@@ -58,7 +58,7 @@ func (m *Model) navigation() []navigationItem {
 }
 
 func (m *Model) sidebarTabKey(k string) (bool, tea.Cmd) {
-	if !m.sidebar || m.editorOnly || (m.section == search && m.search.focus != 2) {
+	if !m.sidebar || m.editorOnly {
 		return false, nil
 	}
 	var step int
