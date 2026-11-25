@@ -19,6 +19,7 @@ type Document struct {
 	Path                string
 	saved               []byte
 	savedText           string
+	indentation         string
 	savedCRLF, savedBOM bool
 	CRLF, BOM           bool
 }

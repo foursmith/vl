@@ -49,7 +49,12 @@ func TestVimUserMappings(t *testing.T) {
 		{"indent", "abc", []string{"tab"}, "\tabc", 1, false},
 		{"unindent tab", "\tabc", []string{"shift+tab"}, "abc", 0, false},
 		{"unindent spaces", "    abc", []string{"shift+tab"}, "abc", 0, false},
+		{"two spaces", "a\n  b\n    c\n  d", []string{"j", "j", "shift+tab"}, "a\n  b\n  c\n  d", 6, false},
+		{"four spaces", "a\n    b\n        c", []string{"tab"}, "    a\n    b\n        c", 4, false},
+		{"retain style after outdent", "  abc", []string{"shift+tab", "tab"}, "  abc", 2, false},
+		{"tabs with alignment", "\ta\n\t  b", []string{"j", "tab", "shift+tab"}, "\ta\n\t  b", 3, false},
 		{"visual indent", "a\nb", []string{"V", "j", "tab"}, "\ta\n\tb", 4, true},
+		{"visual two spaces", "a\n  b\n    c", []string{"V", "j", "tab", "tab", "shift+tab"}, "  a\n    b\n    c", 6, true},
 		{"visual repeat indent", "a\nb", []string{"V", "j", "tab", "tab", "shift+tab"}, "\ta\n\tb", 4, true},
 		{"visual H L", "  abc", []string{"v", "L", "H"}, "  abc", 2, true},
 	} {

@@ -199,7 +199,9 @@ func (m *Model) editDocument(d *editor.Document, msg tea.KeyPressMsg, k string, 
 			d.Insert("\n")
 		}
 	case k == "tab":
-		d.Insert("\t")
+		d.InsertIndent()
+	case k == "shift+tab":
+		d.Outdent()
 	case k == "pgup", k == "pgdown":
 		dir := "up"
 		if k == "pgdown" {

@@ -154,6 +154,8 @@ Parentheses, square brackets, and braces can nest and span lines.
 
 Press `Esc` / `Ctrl+[` to return to Normal. See [Text editing shortcuts](KEYBINDINGS.md#text-editing) for cursor movement, selection, and clipboard operations.
 
+`Tab` inserts one indentation level at the cursor. `Shift+Tab` outdents the current line. Indentation follows the file's existing tabs or space width in every mode.
+
 Type `./` or `../` to complete a path relative to the current file. Accepting a directory adds `/` and lists its contents. Quote paths containing spaces. [Selecting a completion](KEYBINDINGS.md#move-through-lists)
 
 ## Flash

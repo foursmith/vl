@@ -105,32 +105,30 @@ func (v *Vim) indent(d *Document, right, keepVisual bool) {
 		}
 	}
 	lines := append([]string(nil), d.Lines()...)
-	deltas := make(map[int]int, last-first+1)
+	unit := d.indentUnit()
+	var cursorDelta, anchorDelta int
 	for row := first; row <= last; row++ {
+		delta := len(unit)
 		if right {
-			lines[row] = "\t" + lines[row]
-			deltas[row] = 1
+			lines[row] = unit + lines[row]
 		} else {
-			removed := 0
-			if strings.HasPrefix(lines[row], "\t") {
-				removed = 1
-			} else {
-				for removed < len(lines[row]) && removed < 4 && lines[row][removed] == ' ' {
-					removed++
-				}
-			}
+			removed := outdentWidth(lines[row], unit)
 			lines[row] = lines[row][removed:]
-			deltas[row] = -removed
+			delta = -removed
+		}
+		if row == cursorRow {
+			cursorDelta = delta
+		}
+		if row == anchorRow {
+			anchorDelta = delta
 		}
 	}
 	d.ClearSelection()
-	d.BeginEditGroup()
 	d.Edit(strings.Join(lines, "\n"))
-	d.EndEditGroup()
-	d.SetPosition(cursorRow, max(0, cursorCol+deltas[cursorRow]))
+	d.SetPosition(cursorRow, cursorCol+cursorDelta)
 	if keepVisual {
 		savedCursor := d.Cursor
-		d.SetPosition(anchorRow, max(0, anchorCol+deltas[anchorRow]))
+		d.SetPosition(anchorRow, anchorCol+anchorDelta)
 		v.visualAnchor = d.Cursor
 		d.Cursor = savedCursor
 		v.SyncVisual(d)
