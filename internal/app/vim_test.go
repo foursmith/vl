@@ -83,12 +83,12 @@ func TestToggleVimModeFromCommandPalette(t *testing.T) {
 		drain(t, m, press(m, "enter"))
 	}
 	toggle()
-	if m.Preferences().Vim.Enabled() || m.wantsEnglishInput() || strings.Contains(plain(m.statusLine()), "VISUAL") {
+	if m.Preferences().Features.VimEnabled() || m.wantsEnglishInput() || strings.Contains(plain(m.statusLine()), "VISUAL") {
 		t.Fatal("disabling Vim left modal editor state active")
 	}
 	preferences, err := config.LoadPreferences(path)
-	if err != nil || preferences.Vim.Enabled() {
-		t.Fatalf("saved Vim preferences = %+v, %v", preferences.Vim, err)
+	if err != nil || preferences.Features.VimEnabled() {
+		t.Fatalf("saved Vim mode enabled = %t, %v", preferences.Features.VimEnabled(), err)
 	}
 	if cursor := m.View().Cursor; cursor == nil || cursor.Shape != tea.CursorBar {
 		t.Fatalf("direct editing cursor = %+v", cursor)
@@ -115,7 +115,7 @@ func TestToggleVimModeFromCommandPalette(t *testing.T) {
 		t.Fatal("Ctrl+A did not select all in direct editing")
 	}
 	toggle()
-	if !m.Preferences().Vim.Enabled() || !strings.Contains(plain(m.statusLine()), "NORMAL") {
+	if !m.Preferences().Features.VimEnabled() || !strings.Contains(plain(m.statusLine()), "NORMAL") {
 		t.Fatal("enabling Vim did not restore Normal mode")
 	}
 	press(m, "i")
@@ -126,7 +126,7 @@ func TestToggleVimModeFromCommandPalette(t *testing.T) {
 
 func TestVimDisabledReadOnlyDiffAndPathCompletion(t *testing.T) {
 	m := reviewWorkspace(t, false)
-	m.SetPreferences(config.Preferences{Vim: config.VimPreferences{Enable: new(false)}})
+	m.SetPreferences(config.Preferences{Features: config.Features{VimMode: new(false)}})
 	m.focusEditor()
 	original := m.review.Text
 	press(m, "ctrl+d")
@@ -152,7 +152,7 @@ func TestVimDisabledReadOnlyDiffAndPathCompletion(t *testing.T) {
 	}
 
 	m = flashModel(t, "")
-	m.SetPreferences(config.Preferences{Vim: config.VimPreferences{Enable: new(false)}})
+	m.SetPreferences(config.Preferences{Features: config.Features{VimMode: new(false)}})
 	m.focusEditor()
 	m.document().Path = filepath.Join(m.repo.Root, "example.go")
 	press(m, "./")
@@ -379,7 +379,7 @@ func TestVimChineseWordsThroughWorkbench(t *testing.T) {
 	if d.Cursor != 7 {
 		t.Fatalf("default word boundary at %d", d.Cursor)
 	}
-	m.SetPreferences(config.Preferences{Vim: config.VimPreferences{EnableJieba: true}})
+	m.SetPreferences(config.Preferences{Features: config.Features{ChineseWordSegmentation: true}})
 	d.SetPosition(0, 0)
 	press(m, "w")
 	if d.Cursor != 2 {

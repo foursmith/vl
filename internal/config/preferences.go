@@ -16,11 +16,18 @@ import (
 
 // Preferences stores user preferences independently of the current terminal size.
 type Preferences struct {
-	Language              string            `json:"language,omitempty"`
-	Appearance            Appearance        `json:"appearance,omitzero"`
-	Vim                   VimPreferences    `json:"vim,omitzero"`
-	AutoSwitchInputMethod InputMethodSwitch `json:"autoSwitchInputMethod,omitzero"`
+	Language   string     `json:"language,omitempty"`
+	Appearance Appearance `json:"appearance,omitzero"`
+	Features   Features   `json:"features,omitzero"`
 }
+
+type Features struct {
+	VimMode                 *bool             `json:"vimMode,omitempty"`
+	ChineseWordSegmentation bool              `json:"chineseWordSegmentation,omitempty"`
+	AutoSwitchInputMethod   InputMethodSwitch `json:"autoSwitchInputMethod,omitzero"`
+}
+
+func (f Features) VimEnabled() bool { return f.VimMode == nil || *f.VimMode }
 
 type Appearance struct {
 	Theme          ThemePreferences   `json:"theme,omitzero"`
@@ -38,13 +45,6 @@ type SidebarPreferences struct {
 	Width  int    `json:"width,omitempty"`
 	Hidden bool   `json:"hidden,omitempty"`
 }
-
-type VimPreferences struct {
-	Enable      *bool `json:"enable,omitempty"`
-	EnableJieba bool  `json:"enableJieba,omitempty"`
-}
-
-func (v VimPreferences) Enabled() bool { return v.Enable == nil || *v.Enable }
 
 type InputMethodSwitch struct {
 	Enable bool     `json:"enable"`
@@ -69,7 +69,7 @@ func LoadPreferences(path string) (Preferences, error) {
 	return decodePreferences(data)
 }
 
-const emptyPreferences = "{}\n"
+const emptyPreferences = "{\n}\n"
 
 // EnsurePreferencesFile creates a default configuration without replacing an existing file.
 func EnsurePreferencesFile(path string) error {
@@ -198,12 +198,7 @@ func (s *PreferencesStore) Prepare(preferences Preferences) func() error {
 			}
 			baseline = &loaded
 		}
-		data := current
-		if bytes.Equal(current, []byte(emptyPreferences)) {
-			data, err = encodeJSON(preferences)
-		} else {
-			data, err = updatePreferences(current, nil, reflect.ValueOf(*baseline), reflect.ValueOf(preferences))
-		}
+		data, err := updatePreferences(current, nil, reflect.ValueOf(*baseline), reflect.ValueOf(preferences))
 		if err != nil {
 			return err
 		}

@@ -4,7 +4,7 @@
   <a href="VIM.md">English</a> · 简体中文
 </p>
 
-Vim 模式默认开启。按 `Ctrl+P` 打开命令面板，选择**首选项：切换 Vim 模式**即可立即切换。也可以在 `~/.config/vl/vl.config.json` 中用 `"vim": {"enable": false}` 关闭。关闭后可以直接输入文字，按住 `Shift` 再按移动键可以选择文本。[文字编辑快捷键](KEYBINDINGS.zh-CN.md#文字编辑)仍然可用。
+Vim 模式默认开启。按 `Ctrl+P` 打开命令面板，选择**首选项：切换 Vim 模式**即可立即切换。也可以在 `~/.config/vl/vl.config.json` 中用 `"features": {"vimMode": false}` 关闭。关闭后可以直接输入文字，按住 `Shift` 再按移动键可以选择文本。[文字编辑快捷键](KEYBINDINGS.zh-CN.md#文字编辑)仍然可用。
 
 开启 Vim 模式时，文本文件打开后进入**普通模式**（Normal mode）。按 `i` 进入插入模式，按 `v` 进入可视模式，按 `Esc` 或 `Ctrl+[` 回到普通模式。只读的 diff 编辑器也支持相同的光标移动、选区、yank 和跳转操作。工作台的其他按键见[键盘快捷键](KEYBINDINGS.zh-CN.md)。
 
@@ -49,12 +49,12 @@ vl 实现了 Vim 的一部分功能，包括可视模式下按字符和按行选
 
 `w`、`b`、`e` 移动和 `iw`、`aw` 文本对象使用 Vim 默认的 UTF-8 字符类别。例如 `foo_中文かな。🙂` 会分成 `foo_`、`中文`、`かな`、`。` 和 `🙂`。 `w` 和 `b` 也会在空行停靠。
 
-要开启中文按词移动，在 `~/.config/vl/vl.config.json` 中设置 `vim.enableJieba`。
+在 `~/.config/vl/vl.config.json` 中开启 `features.chineseWordSegmentation` 后，Vim 按词移动和鼠标双击选词会使用中文分词。关闭 Vim 模式后，双击选词仍然可用。
 
 ```json
 {
-  "vim": {
-    "enableJieba": true
+  "features": {
+    "chineseWordSegmentation": true
   }
 }
 ```

@@ -112,9 +112,11 @@ make build
 
 ```json
 {
-  "autoSwitchInputMethod": {
-    "enable": true,
-    "cmd": ["im-select", "com.apple.keylayout.ABC"]
+  "features": {
+    "autoSwitchInputMethod": {
+      "enable": true,
+      "cmd": ["im-select", "com.apple.keylayout.ABC"]
+    }
   }
 }
 ```

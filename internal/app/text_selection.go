@@ -33,7 +33,7 @@ func (m *Model) countTextClick(target any, x, y int) int {
 }
 
 func (m *Model) mouseWordRange(d *editor.Buffer, offset int) (start, end int) {
-	return d.InnerWordRange(offset, m.vimHanDictionary)
+	return d.InnerWordRange(offset, m.hanDictionary)
 }
 
 // Mouse columns are terminal cells; selection columns are source rune offsets.

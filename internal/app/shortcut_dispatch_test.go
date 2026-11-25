@@ -68,7 +68,7 @@ func TestDefaultWorkbenchShortcutActions(t *testing.T) {
 		}},
 		{commandOpenConfig, true, []tea.KeyPressMsg{ctrl(',')}, func(m *Model, _ tea.Cmd) bool {
 			return m.document() != nil && filepath.Base(m.document().Path) == "vl.config.json" &&
-				m.document().Text == "{}\n" && !m.sidebar && !m.tabs[m.activeTab].preview
+				m.document().Text == "{\n}\n" && !m.sidebar && !m.tabs[m.activeTab].preview
 		}},
 		{commandSearch, false, []tea.KeyPressMsg{ctrlShift('f'), ctrlShift('F')}, sidebarSection(search)},
 		{sidebarTabCommands[0], false, []tea.KeyPressMsg{ctrl('1')}, sidebarSection(explorer)},

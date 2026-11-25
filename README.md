@@ -118,9 +118,11 @@ Add this field, save with `Ctrl+S`, and run **Reload VL** from the command palet
 
 ```json
 {
-  "autoSwitchInputMethod": {
-    "enable": true,
-    "cmd": ["im-select", "com.apple.keylayout.ABC"]
+  "features": {
+    "autoSwitchInputMethod": {
+      "enable": true,
+      "cmd": ["im-select", "com.apple.keylayout.ABC"]
+    }
   }
 }
 ```

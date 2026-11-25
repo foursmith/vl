@@ -110,7 +110,7 @@ func (m *Model) vimKey(k string) (bool, tea.Cmd) {
 	}
 	before, _ := d.Position()
 	vertical := !v.InsertMode && !v.CommandPending() && (k == "j" || k == "k" || k == "up" || k == "down")
-	v.HanDictionary = m.vimHanDictionary
+	v.HanDictionary = m.hanDictionary
 	handled, text := v.Handle(d, k, m.vimRegister)
 	if !handled {
 		return false, nil

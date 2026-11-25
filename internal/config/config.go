@@ -29,16 +29,11 @@ func loadJSON(path string, value any) error {
 }
 
 func saveJSON(path string, value any) error {
-	data, err := encodeJSON(value)
+	data, err := json.MarshalIndent(value, "", "  ")
 	if err != nil {
 		return err
 	}
-	return writeConfigFile(path, data)
-}
-
-func encodeJSON(value any) ([]byte, error) {
-	data, err := json.MarshalIndent(value, "", "  ")
-	return append(data, '\n'), err
+	return writeConfigFile(path, append(data, '\n'))
 }
 
 func writeConfigFile(path string, data []byte) error {

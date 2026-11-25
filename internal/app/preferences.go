@@ -29,24 +29,28 @@ func (m *Model) Preferences() config.Preferences {
 	if m.displayLanguage != i18n.English {
 		language = string(m.displayLanguage)
 	}
-	vim := config.VimPreferences{EnableJieba: m.vimHanDictionary != nil}
+	var vimMode *bool
 	if m.vimDisabled {
-		vim.Enable = new(false)
+		vimMode = new(false)
 	}
 	return config.Preferences{
-		Language:              language,
-		Appearance:            appearance,
-		Vim:                   vim,
-		AutoSwitchInputMethod: m.autoSwitchInputMethod,
+		Language:   language,
+		Appearance: appearance,
+		Features: config.Features{
+			VimMode:                 vimMode,
+			ChineseWordSegmentation: m.hanDictionary != nil,
+			AutoSwitchInputMethod:   m.autoSwitchInputMethod,
+		},
 	}
 }
 
 func (m *Model) SetPreferences(preferences config.Preferences) {
-	m.autoSwitchInputMethod = preferences.AutoSwitchInputMethod
-	m.setVimDisabled(!preferences.Vim.Enabled())
-	m.vimHanDictionary = nil
-	if preferences.Vim.EnableJieba {
-		m.vimHanDictionary = editor.NewInstalledHanDictionaryLoader()
+	features := preferences.Features
+	m.autoSwitchInputMethod = features.AutoSwitchInputMethod
+	m.setVimDisabled(!features.VimEnabled())
+	m.hanDictionary = nil
+	if features.ChineseWordSegmentation {
+		m.hanDictionary = editor.NewInstalledHanDictionaryLoader()
 	}
 	m.SetDisplayLanguage(preferences.Language)
 	m.statusBarStyle = statusBarStandard

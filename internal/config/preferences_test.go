@@ -20,17 +20,21 @@ func TestPreferencesPath(t *testing.T) {
 func TestPreferencesRoundTripAndInvalidFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vl", "vl.config.json")
 	got, err := LoadPreferences(path)
-	if err != nil || !got.Equal(Preferences{}) || !got.Vim.Enabled() {
+	if err != nil || !got.Equal(Preferences{}) || !got.Features.VimEnabled() {
 		t.Fatalf("missing preferences: %+v, %v", got, err)
 	}
-	want := Preferences{Appearance: Appearance{Theme: ThemePreferences{Dark: "dark_plus", Light: "light_plus"}, Sidebar: SidebarPreferences{Side: "right", Width: 52}}, Vim: VimPreferences{Enable: new(false), EnableJieba: true},
-		AutoSwitchInputMethod: InputMethodSwitch{Enable: true, Cmd: []string{"im-select", "com.apple.keylayout.ABC"}}}
+	want := Preferences{Appearance: Appearance{Theme: ThemePreferences{Dark: "dark_plus", Light: "light_plus"}, Sidebar: SidebarPreferences{Side: "right", Width: 52}},
+		Features: Features{
+			VimMode: new(false), ChineseWordSegmentation: true,
+			AutoSwitchInputMethod: InputMethodSwitch{Enable: true, Cmd: []string{"im-select", "com.apple.keylayout.ABC"}},
+		},
+	}
 	store := NewPreferencesStore(path)
 	if err := store.Prepare(want)(); err != nil {
 		t.Fatal(err)
 	}
 	got, err = LoadPreferences(path)
-	if err != nil || !got.Equal(want) || got.Vim.Enabled() {
+	if err != nil || !got.Equal(want) || got.Features.VimEnabled() {
 		t.Fatalf("loaded %+v, %v", got, err)
 	}
 	if err := store.Prepare(Preferences{})(); err != nil {
@@ -134,7 +138,7 @@ func TestPreferencesJSONCUpdatesKeepCommentsAndUnrelatedValues(t *testing.T) {
 }
 
 func TestPreferencesRejectMalformedJSONC(t *testing.T) {
-	for _, source := range []string{`{ /* unclosed`, `{ , }`, `{"vim": { "enable": false,, }}`, `{vim: 'false'}`} {
+	for _, source := range []string{`{ /* unclosed`, `{ , }`, `{"features": {"vimMode": false,, }}`, `{features: 'false'}`} {
 		if _, err := decodePreferences([]byte(source)); err == nil {
 			t.Errorf("accepted malformed JSONC %q", source)
 		}

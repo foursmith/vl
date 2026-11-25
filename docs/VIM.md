@@ -6,7 +6,7 @@
 
 Vim mode is enabled by default. Open the command palette with `Ctrl+P` and
 choose **Preferences: Toggle Vim Mode** to switch immediately. To turn it off
-in `~/.config/vl/vl.config.json`, set `"vim": {"enable": false}`. With Vim mode
+in `~/.config/vl/vl.config.json`, set `"features": {"vimMode": false}`. With Vim mode
 off, type directly in the editor and hold `Shift` with a movement key to select text.
 The [text editing shortcuts](KEYBINDINGS.md#text-editing) remain available.
 
@@ -67,12 +67,12 @@ like `3j` or `2w`.
 
 The `w`, `b`, and `e` motions and the `iw` and `aw` text objects use Vim's default UTF-8 word classes. For example, `foo_中文かな。🙂` has five words (`foo_`, `中文`, `かな`, `。`, and `🙂`). An empty line is a stop for `w` and `b`.
 
-To enable Chinese word motions, set `vim.enableJieba` in `~/.config/vl/vl.config.json`.
+Set `features.chineseWordSegmentation` in `~/.config/vl/vl.config.json` to use Chinese word boundaries for Vim word motions and double-click selection. Double-click selection also works with Vim mode off.
 
 ```json
 {
-  "vim": {
-    "enableJieba": true
+  "features": {
+    "chineseWordSegmentation": true
   }
 }
 ```
