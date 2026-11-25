@@ -4,16 +4,9 @@
   English · <a href="VIM.zh-CN.md">简体中文</a>
 </p>
 
-Vim mode is enabled by default. Open the command palette with `Ctrl+P` and
-choose **Preferences: Toggle Vim Mode** to switch immediately. To turn it off
-in `~/.config/vl/vl.config.json`, set `"features": {"vimMode": false}`. With Vim mode
-off, type directly in the editor and hold `Shift` with a movement key to select text.
-The [text editing shortcuts](KEYBINDINGS.md#text-editing) remain available.
+Vim mode is enabled by default. Press `Ctrl+P` and choose **Preferences: Toggle Vim Mode** to switch immediately, or set `features.vimMode` to `false` in `~/.config/vl/vl.config.json`.
 
-With Vim mode on, text files open in **Normal mode**. Use `i` to enter Insert mode, `v` to enter
-Visual mode, and `Esc` or `Ctrl+[` to get back to Normal. The diff editor is
-read-only and shares the motions, selections, yanks, and jumps. See
-[Keyboard shortcuts](KEYBINDINGS.md) for the rest of the workbench.
+In Vim mode, text files open in Normal. Press `i` for Insert, `v` for Visual, and `Esc` or `Ctrl+[` to return to Normal. Read-only diffs share the same motions, selections, yanks, and jumps. See [Keyboard shortcuts](KEYBINDINGS.md) for workbench controls.
 
 ## Where vl differs from Vim
 
@@ -36,17 +29,9 @@ For Vim's defaults, see [motions](https://vimhelp.org/motion.txt.html),
 [undo and redo](https://vimhelp.org/undo.txt.html), and the
 [command index](https://vimhelp.org/index.txt.html).
 
-**Know which clipboard you're using.** `y` yanks into vl's unnamed register.
-`d`, `c`, `x`, and `s` also put removed text there. `p` and `P` read that
-register, which is shared across editor tabs. For example, `ddp` moves a line
-down. The workbench's [text editing shortcuts](KEYBINDINGS.md#text-editing)
-use the system clipboard and work in every Vim mode. Copy and cut require a
-selection. Cut and paste require an editable text file. Explorer's `yy` and
-`p` have their own file clipboard.
+**Clipboard.** `y` yanks to the unnamed register. `d`, `c`, `x`, and `s` also store deleted text there. `p` / `P` paste from that register, which is shared across editor tabs. `Ctrl+C` / `Ctrl+X` / `Ctrl+V` use the [system clipboard](KEYBINDINGS.md#text-editing). Explorer's `yy` / `p` copy and paste files.
 
-vl supports a subset of Vim, including Visual characterwise and linewise
-selection and the save and quit commands below. Visual block, macros, named
-registers, other Ex commands, and mark jumps are unsupported.
+Visual block, macros, named registers, mark jumps, and Ex commands beyond those listed below are unsupported.
 
 ## Motions and search
 
@@ -67,6 +52,10 @@ like `3j` or `2w`.
 
 The `w`, `b`, and `e` motions and the `iw` and `aw` text objects use Vim's default UTF-8 word classes. For example, `foo_中文かな。🙂` has five words (`foo_`, `中文`, `かな`, `。`, and `🙂`). An empty line is a stop for `w` and `b`.
 
+In Normal mode, `/` opens Find and `n` jumps to the next match and restores hidden highlights. Jumping centers the match in the viewport. See [Find and Replace](KEYBINDINGS.md#find-and-replace) for more shortcuts.
+
+### Chinese word segmentation
+
 Set `features.chineseWordSegmentation` in `~/.config/vl/vl.config.json` to use Chinese word boundaries for Vim word motions, `Ctrl+Left` / `Ctrl+Right`, and double-click selection. The latter two also work with Vim mode off.
 
 ```json
@@ -86,11 +75,6 @@ Download one Jieba dictionary into `~/.config/vl/extra/` and reopen vl. If more 
 | [`dict.txt.big`](https://raw.githubusercontent.com/fxsjy/jieba/v0.42.1/extra_dict/dict.txt.big) | 8.19 MiB | The most entries, with broader coverage of Traditional Chinese. |
 
 For unknown-word recognition, also download [CppJieba's `hmm_model.utf8`](https://raw.githubusercontent.com/yanyiwu/cppjieba/v5.6.7/dict/hmm_model.utf8) into that directory.
-
-In Normal mode, `/` opens the same Find widget as `Ctrl+F`. Matches are
-highlighted and the current match is centered when you jump. `n` advances and
-brings back hidden highlights. See [Find and Replace](KEYBINDINGS.md#find-and-replace)
-for the full set of bindings.
 
 ## Editing in Normal mode
 
@@ -162,21 +146,9 @@ Parentheses, square brackets, and braces can nest and span lines.
 
 ## Insert mode
 
-| Key | Action |
-| --- | --- |
-| Arrow keys, `Home` / `End` | Move the cursor |
-| `Ctrl+Left` / `Ctrl+Right` | Move by word |
-| `Ctrl+Home` / `Ctrl+End` | Move to the start / end of the file |
-| `Shift` + a movement key above | Extend the selection |
-| `PageUp` / `PageDown` | Move up / down a page |
-| `Ctrl+U` / `Ctrl+D` | Scroll up / down half a screen |
-| `Backspace` / `Delete` | Delete the selection or the character before / after the cursor |
-| `Ctrl+Backspace` / `Ctrl+Delete` | Delete from the cursor to the start / end of the current line |
-| `Enter` / `Tab` | Insert a newline / tab |
+Press `Esc` / `Ctrl+[` to return to Normal. See [Text editing shortcuts](KEYBINDINGS.md#text-editing) for cursor movement, selection, and clipboard operations.
 
-Type `./` or `../` to complete a path relative to the current file. Pick a
-suggestion with `Up` / `Down` and accept it with `Tab`. Accepting a directory
-adds `/` and shows its contents. Quote paths that contain spaces.
+Type `./` or `../` to complete a path relative to the current file. Accepting a directory adds `/` and lists its contents. Quote paths containing spaces. [Selecting a completion](KEYBINDINGS.md#move-through-lists)
 
 ## Flash
 
@@ -232,9 +204,7 @@ block boundaries still match.
 
 ## Save and quit commands
 
-Use `Ctrl+S` to save or `Ctrl+W` to close the current editor. If you are used
-to Vim, you can also enter these commands in Normal mode. Press `:`, type
-the rest of the command, and press `Enter`.
+In Normal mode, press `:`, type the command, then press `Enter`.
 
 | Command | Action |
 | --- | --- |
@@ -243,30 +213,6 @@ the rest of the command, and press `Enter`.
 | `:q!` | Close the current editor and discard its unsaved changes |
 | `:wq` / `:wq!` | Save the current file and close its editor |
 
-In a workspace, closing the last editor returns to the workspace. When vl was
-opened for a single file, closing the last editor exits vl. The save commands
-respect read-only files and check for changes on disk, including with `!`.
-To open a file named after one of these commands, prefix its name with `./`.
+Save commands with `!` still check for read-only files and changes on disk. To open a file named after one of these commands, prefix its name with `./`. In single-file mode, closing the last tab exits vl.
 
-The following Leader sequences are also available outside Insert mode.
-
-| Sequence | Action |
-| --- | --- |
-| `Space w` | Save |
-| `Space q` | Close the editor, with a prompt for unsaved changes |
-| `Space z` | Save and close |
-
-`Space q` also works from diff and image tabs. Save commands apply to
-editable text files.
-
-## Leader and tabs
-
-`Space` is the Leader in editor tabs outside Insert mode. Press the keys in
-sequence. `Esc` cancels a pending sequence.
-
-| Key | Action |
-| --- | --- |
-| `Space 1` … `Space 9` | Go to a tab by its position from the left |
-| `Space ←` / `Space →` | Cycle to the previous / next tab |
-
-Tab navigation also works from diffs and image previews.
+Use `Space` sequences to switch tabs, save, and close. See [Workbench shortcuts](KEYBINDINGS.md#use-space-for-tabs-saving-and-closing).

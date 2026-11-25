@@ -4,325 +4,139 @@
   English · <a href="KEYBINDINGS.zh-CN.md">简体中文</a>
 </p>
 
-| Shortcut | Action |
+| To find | Press |
 | --- | --- |
-| `Ctrl+G` | Go to File |
-| `Ctrl+P` | Open the Command Palette |
-| `Ctrl+,` | Open `~/.config/vl/vl.config.json` in the editor |
-| `Ctrl+F` | Find in the current file |
-| `Ctrl+Shift+F` | Search across files |
-| `F2` | Switch focus between the sidebar and the editor |
-| `Ctrl+S` | Save the current file |
-| `Ctrl+W` | Close the current editor from the editor, sidebar, or a search field. Prompts for unsaved changes. |
-| `Esc` | Cancel the current mode, menu, or input |
+| A file by name or path | `Ctrl+G` for Go to File |
+| Text in the current file | `Ctrl+F` for Find |
+| Text across the workspace | `Ctrl+Shift+F` to widen the search |
+| An action | `Ctrl+P` for the command palette |
 
-Files open in Normal mode by default. Use **Preferences: Toggle Vim Mode**
-from the command palette to switch to direct text editing. The
-[Vim guide](VIM.md) covers motions and
-[save and quit compatibility shortcuts](VIM.md#save-and-quit-commands).
-
-Use `Ctrl+U` / `Ctrl+D` to scroll up / down by half the height of the active
-view. This works in text and diff editors with Vim mode on or off, as well as
-sidebar lists, pickers, menus, and scrollable confirmation details. In
-Search, the keys navigate the results. In Find, they scroll the document
-while keeping focus on the field. In a zoomed image preview, they pan vertically.
-
-With a list focused, use `j` / `k` to move down / up, `gg` / `G` to jump to
-the first / last row, and `PageUp` / `PageDown` to move by a page.
-
-Keys are case-sensitive. Press `Ctrl+G` together and type sequences such as `gg`
-one key at a time.
+Press keys joined with `+` together. Press sequences such as `gg` and `Space w` one key at a time. Letter keys are case-sensitive.
 
 ## Workbench
 
-In confirmation dialogs, use `←`/`→` or `Tab` to select a button, `Enter` to activate it, and `Esc` to cancel.
-
-| Shortcut | Action |
+| To | Press |
 | --- | --- |
-| `Ctrl+R` | Open Recent Workspace. Prompts if there are unsaved changes. |
-| `Ctrl+1` … `Ctrl+5` | Focus a sidebar tab by position |
-| `F12` | Toggle Sidebar Visibility |
-| `Ctrl+T` / `Ctrl+Shift+T` | Cycle to the next / previous editor tab in any editing mode |
-| `Ctrl+Shift+W` | Close the other tabs. Prompts for unsaved changes. |
-| `Space 1` … `Space 9` | Switch to a tab by number from a focused editor with Vim mode on and outside Insert mode |
-| `Space ←` / `Space →` | Cycle to the previous / next tab from a focused editor with Vim mode on and outside Insert mode |
-| `F5` | Refresh the active view. In the editor, check for disk changes and keep any unsaved edits. |
-| `F7` / right-click | Open the context menu |
-| `Ctrl+Q` | Quit. Prompts if there are unsaved changes. |
+| Switch sidebar views | `Ctrl+1` through `Ctrl+5` for Explorer, Search, Changes, History, and Pull Requests. With sidebar focus, `Tab` / `Shift+Tab` cycle through the same views. |
+| Move focus between sidebar and editor | `F2`. Focusing the editor keeps the current preview tab. |
+| Show or hide the sidebar | `F12` |
+| Cycle editor tabs | `Ctrl+T` for next, `Ctrl+Shift+T` for previous. |
+| Save or close | `Ctrl+S` saves, `Ctrl+W` closes the current tab, and `Ctrl+Shift+W` closes the other tabs. |
+| Switch workspace, open settings, or quit | `Ctrl+R` opens recent workspaces, `Ctrl+,` opens the configuration file, and `Ctrl+Q` quits. |
+| Refresh the current view | `F5`. In Search it reruns the query and keeps focus. In the editor it checks for changes on disk and keeps unsaved edits. |
+| Find actions for the current item | `F7` or right-click to open the context menu. |
 
-Go to File filters by filename or path and works without Git. Type
-`src/main.go:42:8` to open a file at line 42, column 8, or `:42` to jump within
-the current file. In a workspace, press `F4` or click the ignore icon beside
-the input to show ignored files. Prefix the input with `>` to find commands.
+Closing tabs, switching workspaces, and quitting prompt when there are unsaved changes. In single-file mode, `Ctrl+G` lists files in the current file's directory, and closing the last tab quits. The arrow keys rotate the welcome artwork when it is visible and the main area has focus.
 
-When vl opens a single file, Go to File lists files directly alongside the active file.
+### Use Space for tabs, saving, and closing
 
-In a picker, use `Down` / `Up` or `Ctrl+J` / `Ctrl+K` to select the next / previous
-result while typing. `PageUp` / `PageDown` move by a page, and `Home` / `End`
-jump to the first / last result. `Enter` accepts and `Esc` dismisses the picker.
-Path completion also supports arrow keys, `Ctrl+J` / `Ctrl+K`, and half- or
-full-page navigation. `Tab` inserts the selected path. See the [Vim guide](VIM.md#save-and-quit-commands) for save and quit commands.
+These sequences work in a focused editor in Vim Normal or Visual mode, and in image tabs.
 
-### Text editing
-
-These shortcuts act on the focused text editor or input field whether Vim
-mode is on or off. Read-only diffs support select all and copy.
-
-| Shortcut | Action |
+| Sequence | To |
 | --- | --- |
-| `Ctrl+A` | Select all |
-| `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copy / cut / paste using the system clipboard |
-| `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo |
-| `Ctrl+Backspace` / `Ctrl+Delete` | Delete from the cursor to the start / end of the current line |
+| `Space 1` through `Space 9` | Switch to a tab by its position from the left. |
+| `Space ←` / `Space →` | Switch to the previous / next tab. |
+| `Space w` / `Space q` / `Space z` | Save / close / save and close. Saving applies to editable files. |
+| `Space Esc` | Cancel the sequence. |
 
-Drag to select text in the editor or an input field.
-Double-click to select a word using the [Vim word boundaries](VIM.md#motions-and-search),
-even with Vim mode off. Triple-click to select a line or the whole value in a
-single-line input. In the editor and input fields, `Ctrl+Left` and `Ctrl+Right`
-move to the previous or next word start. They split at whitespace and honor
-[Chinese word segmentation](VIM.md#motions-and-search) when enabled.
-Hold `Shift` with a movement key to extend the selection.
+## Move through lists
 
-### Terminal compatibility
-
-Some terminals use legacy input encoding for `Ctrl+1` through `Ctrl+5`. If
-these shortcuts are unavailable, use the sidebar icons or open the Command
-Palette with `Ctrl+P` and choose the view by name. For workspace search, choose
-**Search: Find in Files**. With the sidebar focused, `Tab` and `Shift+Tab`
-also cycle through its views.
-
-Windows Terminal and GNOME Terminal use `Ctrl+Shift+T` to open a terminal tab
-by default. Some terminals also send it as `Ctrl+T`. In these
-cases, use the Previous Editor command in the palette or `Space ←` where Leader
-keys are available. For other intercepted shortcuts, use the corresponding
-named command in the palette.
-
-Windows Terminal can handle `Ctrl+V` itself. The editor accepts the text sent
-by the terminal as a bracketed paste. If the terminal has its own text
-selection, `Ctrl+C` may copy that selection. Use the editor's context menu to
-copy the selection inside vl.
-
-## Sidebar
-
-| Shortcut | Action |
+| How far | Press |
 | --- | --- |
-| `Tab` / `Shift+Tab` | Cycle to the next / previous sidebar view, including from Search |
-| `j` / `k` or `Down` / `Up` | Select and preview the next / previous item |
-| `gg` / `G` | Select the first / last item |
-| `3j`, `5gg`, `5G` | Move down three items or jump to the fifth item |
-| `PageUp` / `PageDown` | Move by a page |
-| `h` / `Left` | Select the visible parent. Keep the current fold state. |
-| `l` / `Right` / `Enter` | Expand or collapse a folder, or open the selected item |
-| `e` | Open the selected file for editing, where available |
-| `r` | Refresh the active view |
-| `o` (Pull Requests) | Open the selected PR in your browser |
+| One item | `↑` / `↓` or `Ctrl+K` / `Ctrl+J`. Sidebar lists and menus also accept `k` / `j`. |
+| Half a page / a full page | `Ctrl+U` / `Ctrl+D` move half a page up / down. `PageUp` / `PageDown` move a full page. |
+| First / last item | `Home` / `End`. Sidebar lists and menus also accept `gg` / `G`. |
+| A specific distance or position | Sidebar lists and menus accept counts. For example, `3j` moves down three items, and `5gg` or `5G` selects the fifth item. |
 
-Moving the selection or single-clicking a file reuses the preview tab and keeps
-focus in the sidebar. Opening the file with `Enter` or `l`, switching to the
-editor with `F2`, or clicking the editor or its tab keeps that tab open. Scrolling
-and image zoom leave it in preview. On narrow terminals, use `Enter` to open
-the item and `F2` to switch back to the sidebar.
+**Go to File** filters by file name or path without requiring Git. Type `src/main.go:42:8` to open a file at line 42, column 8, or `:42` to jump to line 42 in the current file. In workspace mode, `F4` toggles ignored files. Type `>` to switch to the command palette.
 
-Cycling follows the order of the sidebar icons and wraps at both ends.
-When cycling to Search, focus starts in the results. Press `/` to edit the query.
-
-### Explorer
-
-| Shortcut | Action |
-| --- | --- |
-| `o` | Switch focus between the file tree and Outline |
-| `t` | Switch focus between the file tree and Timeline |
-| `L` | Split the selected compact folder chain |
-| `dd` / `Delete` | Delete the selected file or folder after confirmation |
-| `yy` | Yank the selected file or folder into the Explorer's file clipboard |
-| `p` | Paste into the selected folder or next to the selected file. Confirm the destination path. |
-
-`dd` and `yy` act on one item at a time, including its children if it's a folder.
-Save edits to the source before copying. Paste stays within the current
-workspace, refuses symlinks and special files, and skips `.git` metadata.
-Existing paths are protected. Copying into the source's parent suggests a
-name ending in `-copy` if the default destination is the source itself.
-
-Outline appears for the active Markdown file. Use `j` / `k` to select a section and
-`Enter` to jump to it, or click the entry. Click the Outline heading to toggle
-it. From within Outline, press `Left` to collapse it and `Right` to reopen it.
-
-Outline and Timeline share one expandable area in Explorer. Opening either
-panel collapses the other. Timeline follows the active file. Click a commit or use `j` / `k`
-in Timeline to preview its file diff. Double-click or press `Enter` to keep
-the diff tab. Click the Timeline heading to collapse or expand it. **Show File
-History** in the file context menu or command palette also opens Timeline.
-
-### Changes
-
-| Shortcut | Action |
-| --- | --- |
-| `s` | Stage a working-tree row or unstage a staged row. Applies to the file, folder, or group selected. On the repository header, stages the repository. |
-| `Shift+S` | Stage all in the selected repository from a working-tree row, or unstage all from a staged row. On the repository header, stages first when there are stageable changes. |
-| `c` | Commit |
-| `d` | Open Discard Changes for the selected unstaged item. |
-| `Shift+D` | Discard all unstaged changes in the selected repository, with confirmation. Available from working-tree rows and repository headers. |
-| `t` | Open Stash Changes, including untracked files |
-| `f` | Fetch |
-| `p` / `P` | Pull (fast-forward only) / Push |
-
-The row buttons, context menu, and Command Palette use the same scope.
-Repository-wide actions include collapsed files and act on one Git index.
-
-Open **Manage Stashes…** from the Changes context menu or the Command Palette
-to inspect stashes in the selected repository. Select a stash to list its files,
-then select a file to view its diff. Use **Stash Actions…** in the file list to
-apply, pop, or drop the stash. Apply and Pop can also restore the staged state.
-Use **New Stash…** to choose what to save, including staged changes only,
-tracked changes only, or tracked changes while keeping staged changes in place.
+**Path completion** appears when you type `./` or `../` in the editor. Use the arrow keys, `Ctrl+K` / `Ctrl+J`, or the paging keys to choose a candidate. Press `Tab` to insert it.
 
 ## Find and Replace
 
-| Shortcut | Action |
+| To | In the current file | Across the workspace |
+| --- | --- | --- |
+| Start a search | `Ctrl+F`, or `/` in Normal mode. | `Ctrl+Shift+F` or `Ctrl+2`. Press `/` in the results to return to the query. |
+| Go to the previous / next match | In the input, use `↑` / `↓` or `Ctrl+K` / `Ctrl+J`. In Normal mode, `n` goes to the next match. | Use the list navigation keys. From an input, `Ctrl+K` / `Ctrl+J` select results while keeping focus in the input. |
+| Leave the query | `Enter` jumps to the match and returns focus to the editor. | `Enter` runs the search and focuses the results. In the list, `Enter` opens the selected result. |
+| Move between inputs | `Tab` / `Shift+Tab` switch between Find and Replace. If Replace is collapsed, focus returns to the editor. | `↑` / `↓` move between visible inputs and the results. |
+| Replace | In Replace, `Enter` replaces the current match in the editor buffer. | In Replace, `Enter` opens the Replace All confirmation. Use `dd` or `Delete` in the list to exclude a match or file group first. |
+| Cancel input | `Esc` closes Find and hides highlights. | `Esc` returns to the results. |
+
+Press `F7` in a search input and choose **Search Options** to set case sensitivity, whole-word matching, regular expressions, and other options. Use the disclosure arrow to show Replace. In file Find, `Ctrl+U` / `Ctrl+D` scroll the document while keeping focus in the input. In workspace search, paging keys move focus to the results and page through them.
+
+Workspace search includes unsaved edits. Expand **Search Details** to limit the scope to open or changed files, or enter include and exclude globs. For example, `*.go, **/*.{ts,tsx}` lists multiple patterns and `./src` limits the scope to the root-level `src` directory. Excludes take precedence. Search and Go to File apply ignore rules in order of precedence: `.rgignore`, `.ignore`, then `.gitignore`. In Search, turn off **Respect Ignore Rules** or name an ignored directory in the include field to search it. Replacement text can refer to regex captures with `$1` or `${name}`.
+
+## Sidebar
+
+Use `h` / `←` to select the parent without changing its fold state. Use `l` / `→` or `Enter` to expand, collapse, or open the selected item. Moving through items reuses the preview tab. Opening a file or pressing `F2` keeps the preview. Press `e` in Explorer or Changes to open the editable file. Sidebar views other than Search also accept `r` or `R` to refresh.
+
+### Explorer
+
+| Press | To |
 | --- | --- |
-| `Ctrl+F` / Normal mode `/` | Open Find in the editor |
-| Normal mode `n` | Find Next |
-| `↑` / `↓` or `Ctrl+K` / `Ctrl+J` in Find | Jump to the previous / next match |
-| `Enter` in Find | Jump to the match and return focus to the editor |
-| `Tab` / `Shift+Tab` | Switch between Find and Replace, or return to the editor when Replace is collapsed |
-| `Enter` in Replace | Replace the current match |
-| `Esc` | Close Find and hide highlights |
+| `yy`, then `p` | Copy the selected file or folder, then paste into the selected folder or the selected file's directory. Confirm the destination path before pasting. |
+| `dd` / `Delete` | Delete the selected item after confirmation. |
+| `L` | Split the selected compact folder path. |
+| `o` / `t` | Focus or leave the Markdown outline / file timeline. |
 
-Find opens as an overlay in the upper-right corner. File Find and workspace
-Search each keep their own query, replacement, and match options. Find Next and Find
-Previous wrap around. Use Match Case, Match Whole Word, or Use Regular
-Expression to change how the query matches. Replace also supports Preserve
-Case. Use the chevron to toggle the Replace field and the Replace All button to
-replace every match in the file. Replacement text can include capture groups
-like `$1` and `${name}`. In-file replacements stay in the buffer until you save.
-Read-only diffs support Find. Press `F7` with a Find or Search field focused,
-or right-click the search form, and choose **Search Options**.
+File operations act on one entry at a time, including its children if it is a folder. Save the source file before copying. Paste stays within the workspace, protects existing destinations, skips `.git`, and rejects symlinks and special files.
 
-### Search across files
+In the outline or timeline, `j` / `k` select a row, `Enter` / `l` / `→` jump to the heading or keep the history diff, `h` / `←` collapse the panel, and `Esc` returns focus to the tree. Expanding either panel collapses the other. The file menu and command palette also offer **View File History**.
 
-| Shortcut | Action |
+### Changes
+
+| Press | To |
 | --- | --- |
-| `Ctrl+Shift+F` | Find in Files |
-| `Down` / `Up` from a field | Move to the next / previous visible field. Down from the last field enters the list when it has results |
-| `Up` on the first result | Return to the last visible search field |
-| `Enter` in the search field | Run the search and focus the results |
-| `Esc` from a field | Focus the results |
-| `Ctrl+J` / `Ctrl+K` from a field | Select the next / previous result while keeping focus in the field |
-| `/` in the results | Focus the search field |
-| `j` / `k`, `gg` / `G`, `PageUp` / `PageDown` in the results | Move through matches and file groups |
-| `h` / `l` in the results | Select the parent file group / expand it or open the selected result |
-| `Enter` in the results | Open the selected file or match and keep the tab |
-| `dd` / `Delete` in the results | Remove a result row or file group from the list. This leaves the file alone. |
-| `Enter` in Replace | Review the match and file counts before confirming Replace All |
+| `s` / `S` | Stage or unstage the selected entry / repository. The selected row's worktree or staged section determines the direction. On a repository heading, staging takes priority when changes can be staged. |
+| `d` / `D` | Confirm discarding unstaged changes in the selected entry / repository. |
+| `c` / `t` | Commit / stash. The stash shortcut includes untracked files. |
+| `f` / `p` / `P` | Fetch / pull with fast-forward only / push. |
 
-Search updates as you type and includes unsaved edits. Open a result to jump to
-its match. In the editor, `n` uses the query from File Find.
-If the terminal intercepts `Ctrl+Shift+F` or sends it as `Ctrl+F`, click the
-Search icon or use its position shortcut (`Ctrl+2`). Ripgrep (`rg` on `PATH`) is
-optional. Only Changed Files requires a Git repository.
-
-Open **Search Details** to narrow the search to open tabs or changed files, or
-to set include and exclude filters. Separate globs with commas, as in
-`*.go, **/*.{ts,tsx}`. Use `./src` to scope a filter to the root-level `src`
-directory. Excludes take precedence over includes.
-
-Search and Go to File honor `.rgignore`, `.ignore`, and `.gitignore` within the
-workspace, in that order of precedence. To search ignored directories, turn off
-**Respect ignore rules** beside the exclude field. An explicit include can also
-override an ignore rule. To enter an ignored directory this way, include the
-directory itself, for example `./dist`.
-
-Open the Replace field with the chevron. Press `Enter` in that field or click
-**Replace All** to review the scope. The confirmation defaults to Cancel.
-Choose **Replace All** in the dialog to save the changes to disk. Dismiss result rows or file groups
-with `dd`, `Delete`, or the row's remove button to skip them.
+Use the context menu or command palette to switch branches, sync, publish, or manage stashes. In Pull Requests, press `o` to open the selected PR in the browser.
 
 ## Diff editor
 
-The diff editor is read-only. Use the same motions, Visual selections, yanks,
-Find, and Flash bindings as in a text tab.
-
-| Shortcut | Action |
+| Press | To |
 | --- | --- |
-| `[` / `]` in Normal mode | Previous / Next Hunk |
-| `s` | Stage or unstage selected changed lines, or the current hunk when there is no selection |
-| `Shift+S` | Stage or unstage the entire file |
-| `d` | Discard selected changes or the current hunk, with confirmation |
-| `Shift+D` | Discard all unstaged changes to this file, with confirmation |
-| `F7` / right-click | Open diff actions, including staging, unstaging, and discarding unstaged hunks or selected changes |
-| `Ctrl+C` | Copy selected source text to the system clipboard |
-| `Space 1` … `Space 9` | Switch tabs |
+| `[` / `]` | Jump to the previous / next hunk. |
+| `Enter` | Expand or collapse nearby unchanged context. |
+| `s` / `S` | Stage or unstage selected changed lines, or the current hunk when there is no selection. Uppercase applies to the whole file. |
+| `d` / `D` | Confirm discarding selected changed lines or the current hunk. Uppercase discards all unstaged changes in the file. |
+| `F7` | Open the diff menu, which also lets you switch between inline and split layouts. |
 
-Switch layouts from the diff toolbar or use **Toggle Inline View** in the
-Command Palette or diff context menu. In a side-by-side diff, keyboard navigation uses the right pane. You can
-select text with the mouse in either pane.
-Yanks and copies leave out line numbers and diff markers. Added or deleted
-files open inline, and side-by-side falls back to inline when space runs out.
-
-Hover a working-tree hunk to reveal `→` (discard, with confirmation) and
-`+` (stage). Hover a staged hunk to reveal `−` (unstage). If the hunk
-contains selected changes, its buttons act on those changes within the hunk.
-Use the whole-file action for binary diffs. History and pull request diffs
-are read-only.
-
-After staging or unstaging, a Diff tab follows the changes when its current
-side becomes empty. If both sides are open, the tab for the resulting side is
-reused.
+Text diffs share the editor's movement, find, selection, yank, and Flash keys. Use `[`, `]`, and `Enter` outside Visual mode. Git editing keys apply to working-tree and staged diffs. In split view, keyboard navigation uses the right pane and the mouse can select text in either pane. Copies omit line numbers and diff markers. Binary diffs use whole-file operations. History and PR diffs are for review.
 
 ## Image preview
 
-Click the image or its tab to keep the preview open.
+`+` or `=` zooms in, `-` zooms out, and `0` fits the image to the window. When zoomed in, use the arrow keys or `h j k l` to pan, with an optional count. `Ctrl+U` / `Ctrl+D` pan up / down by half a screen. Scroll the mouse wheel to zoom around the pointer, or drag to pan. Click the image or its tab to keep the preview.
 
-| Shortcut | Action |
+## Text editing
+
+These shortcuts apply to the focused text editor or input in any Vim mode. Text diffs support Select All and Copy.
+
+| Press | To |
 | --- | --- |
-| `+` / `=` / `-` | Zoom in / out around the viewport center |
-| Mouse wheel | Zoom around the pointer |
-| `h j k l` / arrow keys / drag | Pan. The keys take a count. |
-| `0` | Fit to window |
-| `Space 1` … `Space 9` | Switch tabs |
+| `Ctrl+A` | Select all. |
+| `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copy / cut / paste using the system clipboard. |
+| `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo. |
+| `Ctrl+Backspace` / `Ctrl+Delete` | Delete to the start / end of the line. |
+
+In Insert mode or with Vim disabled, `Home` / `End` go to the start / end of the line, and `Ctrl+←` / `Ctrl+→` move by word. In the editor, `Ctrl+Home` / `Ctrl+End` go to the start / end of the file, and the same paging keys work as in lists. Hold `Shift` while moving to extend the selection. Drag to select text, double-click to select a word, or triple-click to select a line.
+
+Use **Toggle Vim Mode** in the command palette to enable or disable Vim. See the [Vim guide](VIM.md) for more commands.
 
 ## Menus and dialogs
 
-| Shortcut | Action |
-| --- | --- |
-| `k` / `j`, `Up` / `Down`, `Shift+Tab` / `Tab` | Select the previous / next menu item |
-| `Home` / `End` | Select the first / last menu item |
-| `l` / `→` / `Enter` / `Space` | Run the selected action |
-| `h` / `←` / `Esc` / `F7` | Close the context menu |
+| Where | Move | Run or exit |
+| --- | --- | --- |
+| Picker | Use the list navigation keys. | `Enter` selects and `Esc` cancels. In Search Options, `Space` also toggles the selected option when the filter is empty. |
+| Context menu | Use the list navigation keys or `Tab` / `Shift+Tab`. | `Enter` / `Space` / `l` / `→` runs the action. A displayed shortcut runs its action directly. `Esc` / `F7` / `h` / `←` closes the menu. |
+| Confirmation | `←` / `→`, `h` / `l`, or `Tab` / `Shift+Tab` select a button. Vertical movement and paging keys scroll the details. | `Enter` / `Space` confirms and `Esc` cancels. In unsaved-changes prompts, `s` saves and `d` discards. |
+| Text dialog, such as a commit message | Use the text editing keys. | `Enter` submits and `Esc` cancels. |
 
-Press the shortcut shown beside a context menu action to run it directly.
-Pickers and context menus also accept `Ctrl+G`, `Ctrl+P`, `Ctrl+R`, `Ctrl+,`
-and `Ctrl+Q`.
+Pickers and context menus also accept `Ctrl+G`, `Ctrl+P`, `Ctrl+R` (workspace only), `Ctrl+,`, and `Ctrl+Q`. The app treats `Ctrl+[` as `Esc`.
 
-In Changes, History, and Pull Requests, right-click a repository row or select
-it and press `F7` to switch branches. The Changes and History menus also offer
-remote actions such as Sync, Pull, Push, or Publish.
+## Terminal compatibility
 
-Publish sets the upstream for the current branch. With one remote it pushes
-directly, and with multiple remotes it opens a picker. With no remotes, sign
-in with `gh auth login` to create a private or public GitHub repository from the
-publish picker.
-
-In confirmation dialogs, `h` / `l` switch buttons, `j` / `k` scroll the details,
-`Enter` activates the focused button, and `Esc` cancels.
-
-## Adding a binding in code
-
-Edit `workbenchKeybindings` in [keymap.go](../internal/app/keymap.go) to bind an
-existing workbench command. Each rule declares the command ID, its display
-label, the accepted key names, and any focus conditions. Add an alternative key
-to the same rule, or add a rule for the same command if it needs a different
-focus condition. The command palette and menus read their hints from this table.
-Define new operations in [workbench_commands.go](../internal/app/workbench_commands.go).
-
-The workbench compiles its default rules into a keymap shared by dispatch and
-shortcut hints. Rule IDs default to their command IDs. Give a rule an explicit
-ID when a command has more than one binding with different focus conditions.
-The keymap builder accepts ordered assignments, replacements, and removals by
-rule ID and preserves each rule's command and focus conditions. A rule with no
-default key still gives the user a target to bind.
-
-For a new list, use `listNavigationKey` when typing belongs to a text input,
-or `navigationState.key` when the list has focus and supports Vim sequences.
-Use `moveListSelection` for row and page movement, and keep component-specific
-behavior such as previews and non-selectable headings in the caller.
+Your terminal may intercept `Ctrl+Shift+T` or `Ctrl+Shift+F`, or fail to distinguish `Ctrl+1` through `Ctrl+5`. Use the named action in the command palette, click a sidebar icon, or cycle sidebar views with `Tab` / `Shift+Tab` while the sidebar has focus. Some terminals copy their own selection or send `Ctrl+V` as a paste event. Use the editor menu to copy a vl selection when needed.
