@@ -19,7 +19,6 @@ func TestWorkbenchFocusShortcutAndRemovedBindings(t *testing.T) {
 		{Code: 'p', Mod: tea.ModCtrl | tea.ModShift},
 		{Code: 'h', Mod: tea.ModCtrl},
 		{Code: tea.KeyF1},
-		{Code: 'f', Mod: tea.ModCtrl | tea.ModShift},
 		{Code: tea.KeyF10, Mod: tea.ModShift},
 		{Code: tea.KeyLeft, Mod: tea.ModAlt},
 		{Code: tea.KeyRight, Mod: tea.ModAlt},

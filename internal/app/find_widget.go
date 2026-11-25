@@ -4,7 +4,6 @@ import (
 	"slices"
 	"sort"
 	"strings"
-	"time"
 	"unicode/utf8"
 
 	"charm.land/bubbles/v2/key"
@@ -16,9 +15,21 @@ import (
 )
 
 type findWidgetState struct {
-	visible, focused bool
-	workspaceMatch   bool
-	anchor           int
+	searchForm
+	visible bool
+	focus   int
+	anchor  int
+}
+
+func (s *findWidgetState) matchOptions() searchservice.Options {
+	return searchservice.Options{Query: s.query.Value(), Case: s.options.Case, Word: s.options.Word, Regex: s.options.Regex}
+}
+
+func (s *findWidgetState) field() *textInput {
+	if s.focus == 1 {
+		return &s.replacement
+	}
+	return &s.query
 }
 
 const (
@@ -33,28 +44,18 @@ func (m *Model) fileFindHeight() int {
 	return min(m.fileFindFrameHeight(), max(0, m.bodyHeight()-m.contentRow()))
 }
 func (m *Model) fileFindFrameHeight() int {
-	if m.search.replace && m.editing() {
+	if m.findWidget.replace && m.editing() {
 		return fileReplaceRow + 2
 	}
 	return fileFindQueryRow + 2
 }
 func (m *Model) fileFindFocused() bool {
-	return m.findWidget.focused && !m.sidebar && m.fileFindHeight() > 0
-}
-func (m *Model) adoptSearchState() {
-	s := &m.search
-	options := searchservice.Options{Query: s.query.Value(), Case: s.options.Case, Word: s.options.Word, Regex: s.options.Regex}
-	if m.findOptions != options {
-		m.findHidden = false
-	}
-	m.findOptions = options
+	return !m.sidebar && m.findWidget.field().Focused() && m.fileFindHeight() > 0
 }
 func (m *Model) presentFileFind() {
 	if m.editorDocument() == nil {
 		return
 	}
-	m.adoptSearchState()
-	m.findWidget.workspaceMatch = false
 	m.findHidden = false
 	m.findWidget.visible = true
 }
@@ -72,23 +73,21 @@ func (m *Model) openFileReplace() tea.Cmd {
 		return nil
 	}
 	m.presentFileFind()
-	m.search.replace = true
+	m.findWidget.replace = true
 	m.findWidget.anchor = m.document().Cursor
 	m.focusFileFind(1)
 	return nil
 }
 func (m *Model) focusFileFind(focus int) {
 	m.focusEditor()
-	m.findWidget.focused = true
-	m.focusSearch(focus)
+	m.navigationState = navigationState{}
+	m.blurFileFind()
+	m.findWidget.focus = focus
+	m.findWidget.field().Focus()
 }
 func (m *Model) blurFileFind() {
-	m.findWidget.focused = false
-	if m.sidebar && m.section == search {
-		return
-	}
-	m.search.query.Blur()
-	m.search.replacement.Blur()
+	m.findWidget.query.Blur()
+	m.findWidget.replacement.Blur()
 }
 func (m *Model) closeFileFind() {
 	m.blurFileFind()
@@ -100,15 +99,15 @@ func (m *Model) fileFindCache() *findRangeCache {
 	if d == nil || m.activeTab < 0 {
 		return &findRangeCache{}
 	}
-	options := m.findOptions
+	options := m.findWidget.matchOptions()
 	cache := &m.tabs[m.activeTab].findRanges
 	if cache.text != d.Text || cache.options != options {
 		*cache = findRangeCache{text: d.Text, options: options}
 		matcher, err := options.Compile()
 		if err != nil {
 			cache.err = err.Error()
-		} else if m.findOptions.Query != "" {
-			cache.ranges = matchedSearchRanges(d.Text, m.findOptions.Query, matcher)
+		} else if options.Query != "" {
+			cache.ranges = matchedSearchRanges(d.Text, options.Query, matcher)
 		}
 	}
 	return cache
@@ -130,10 +129,10 @@ func (m *Model) fileFindIndex() int {
 	return -1
 }
 
-// All entry points use these same cached matches, selection and centering rules.
+// File Find navigates its cached matches independently of workspace search.
 func (m *Model) navigateFileFind(direction int) {
 	d := m.editorDocument()
-	if d == nil || m.findOptions.Query == "" {
+	if d == nil || m.findWidget.query.Value() == "" {
 		return
 	}
 	cache := m.fileFindCache()
@@ -170,48 +169,56 @@ func (m *Model) navigateFileFind(direction int) {
 	}
 	hit := matches[index]
 	m.notice = ""
-	d.SelectRange(hit[1], hit[0])
 	m.focusEditor()
 	m.findHidden = false
-	m.centerTextCursor()
+	m.revealSearchMatch(d, hit[0], hit[1])
 }
 func (m *Model) fileFindInput(msg tea.Msg) tea.Cmd {
-	field := m.searchField(m.search.focus)
-	if field == nil {
-		return nil
-	}
+	field := m.findWidget.field()
 	before := field.Value()
 	cmd := field.update(msg)
 	if before == field.Value() {
 		return cmd
 	}
-	m.adoptSearchState()
 	m.notice = ""
-	if m.search.focus == 0 {
+	if m.findWidget.focus == 0 {
+		m.findHidden = false
 		m.editorDocument().ClearSelection()
 		m.navigateFileFind(0)
-		return tea.Batch(cmd, m.refreshWorkspaceSearch())
 	}
 	return cmd
-}
-func (m *Model) refreshWorkspaceSearch() tea.Cmd {
-	m.search.workspaceDirty = true
-	if !m.editorOnly && m.section == search && m.sidebarVisible {
-		return m.scheduleSearch(150 * time.Millisecond)
-	}
-	return nil
 }
 func (m *Model) toggleFileReplacement() {
 	if !m.editing() {
 		return
 	}
-	m.search.replace = !m.search.replace
-	if m.search.replace {
+	m.findWidget.replace = !m.findWidget.replace
+	if m.findWidget.replace {
 		m.focusFileFind(1)
 	} else {
 		m.focusFileFind(0)
 	}
 }
+
+func (m *Model) toggleFileSearchOption(id string) {
+	d := m.editorDocument()
+	if d == nil {
+		return
+	}
+	state := &m.findWidget
+	value := searchOption(&state.options, id)
+	if value == nil {
+		return
+	}
+	*value = !*value
+	if id == "preserve" {
+		return
+	}
+	m.findHidden = false
+	state.anchor = d.Cursor
+	m.navigateFileFind(0)
+}
+
 func (m *Model) fileFindKey(msg tea.KeyPressMsg) tea.Cmd {
 	switch {
 	case key.Matches(msg, dismissKey):
@@ -227,19 +234,17 @@ func (m *Model) fileFindKey(msg tea.KeyPressMsg) tea.Cmd {
 		m.navigateFileFind(-1)
 		return nil
 	case key.Matches(msg, searchKeys.NextField, searchKeys.PreviousField):
-		if m.search.replace && m.editing() {
-			m.focusFileFind(1 - m.search.focus)
+		if m.findWidget.replace && m.editing() {
+			m.focusFileFind(1 - m.findWidget.focus)
 			return nil
 		}
 		m.blurFileFind()
 		return nil
 	case key.Matches(msg, pickerKeys.Accept):
-		if m.search.focus == 1 {
+		if m.findWidget.focus == 1 {
 			return m.replaceFileFind(false)
 		}
-		changed := m.findOptions.Query != m.search.query.Value()
-		m.adoptSearchState()
-		if changed || m.fileFindIndex() < 0 {
+		if m.fileFindIndex() < 0 {
 			m.navigateFileFind(0)
 		} else {
 			m.centerTextCursor()
@@ -283,12 +288,12 @@ func (m *Model) fileFindControls(w int) []searchPanelControl {
 	add(fileFindQueryRow, w-1, ids, labels, hints)
 	if m.editing() {
 		toggleRow := fileFindQueryRow
-		if m.search.replace {
+		if m.findWidget.replace {
 			toggleRow++
 		}
-		controls = append(controls, searchPanelControl{id: "replacement", label: m.treeChevron(m.search.replace), hint: "Toggle Replace", x: 1, y: toggleRow, width: 1, quiet: true})
+		controls = append(controls, searchPanelControl{id: "replacement", label: m.treeChevron(m.findWidget.replace), hint: "Toggle Replace", x: 1, y: toggleRow, width: 1, quiet: true})
 	}
-	if m.search.replace && m.editing() {
+	if m.findWidget.replace && m.editing() {
 		right := w - 1
 		for _, control := range controls {
 			if control.y == fileFindQueryRow && !control.embedded {
@@ -345,14 +350,14 @@ func (m *Model) searchFieldLine(input *textInput, active bool, textEnd, boxEnd i
 	text := ansi.Truncate(m.inputView(shown, area), max(0, textEnd-inset-1), "")
 	return row(label, inset, theme.Readable(m.colors.Muted, bg), bg) + row(text, boxEnd-inset, m.colors.InputForeground, bg)
 }
-func (m *Model) paintSearchControls(lines []string, w int, controls []searchPanelControl, originX, originY int, background string) {
+func (m *Model) paintSearchControls(lines []string, w int, controls []searchPanelControl, originX, originY int, options *searchservice.Options) {
+	background := m.colors.Panel
 	for _, c := range controls {
 		if c.y < 0 || c.y >= len(lines) {
 			continue
 		}
 		hovered := m.modal == "" && m.hoverY == originY+c.y && m.hoverX >= originX+c.x && m.hoverX < originX+c.x+c.width
-		selected := c.id == "case" && m.search.options.Case || c.id == "word" && m.search.options.Word || c.id == "regex" && m.search.options.Regex || c.id == "preserve" && m.search.options.PreserveCase
-		selected = selected || c.id == "changed" && m.search.options.ChangedOnly || c.id == "open" && m.search.options.OnlyOpen || c.id == "ignore" && !m.search.options.IncludeIgnored
+		selected := searchOptionSelected(options, c.id)
 		lines[c.y] = row(ansi.Cut(lines[c.y], 0, c.x), c.x, m.colors.SideForeground, background) +
 			m.searchControlView(c, background, selected, hovered) + ansi.Cut(lines[c.y], c.x+c.width, w)
 	}
@@ -381,7 +386,7 @@ func (m *Model) searchControlView(c searchPanelControl, background string, selec
 func (m *Model) fileFindStatus() string {
 	cache := m.fileFindCache()
 	title := ""
-	if m.findOptions.Query != "" {
+	if m.findWidget.query.Value() != "" {
 		if index := m.fileFindIndex(); index >= 0 {
 			title = searchText("%d of %d", index+1, len(cache.ranges))
 		} else {
@@ -405,13 +410,13 @@ func (m *Model) fileFindLines() []string {
 			return
 		}
 		end := searchFieldEnd(controls, line, w-1)
-		lines[line] = m.searchFieldLine(input, m.fileFindFocused() && m.search.focus == focus, end, w, placeholder, "", m.fileFindX(), m.contentRow()+line)
+		lines[line] = m.searchFieldLine(input, m.fileFindFocused() && m.findWidget.focus == focus, end, w, placeholder, "", m.fileFindX(), m.contentRow()+line)
 	}
-	field(&m.search.query, 0, fileFindQueryRow, "Find")
-	if m.search.replace && m.editing() {
-		field(&m.search.replacement, 1, fileReplaceRow, "Replace")
+	field(&m.findWidget.query, 0, fileFindQueryRow, "Find")
+	if m.findWidget.replace && m.editing() {
+		field(&m.findWidget.replacement, 1, fileReplaceRow, "Replace")
 	}
-	m.paintSearchControls(lines, w, controls, m.fileFindX(), m.contentRow(), m.colors.Panel)
+	m.paintSearchControls(lines, w, controls, m.fileFindX(), m.contentRow(), &m.findWidget.options)
 	m.frameSearchBox(lines, w, m.fileFindFrameHeight(), m.fileFindStatus())
 	return lines
 }
@@ -436,7 +441,7 @@ func (m *Model) clickFileFind(x, y int) tea.Cmd {
 			}
 			switch c.id {
 			case "case", "word", "regex", "preserve":
-				return m.searchControlAction(c.id)
+				m.toggleFileSearchOption(c.id)
 			case "close":
 				m.closeFileFind()
 			case "previous":
@@ -453,7 +458,7 @@ func (m *Model) clickFileFind(x, y int) tea.Cmd {
 		}
 	}
 	focus := 0
-	if y == fileReplaceRow && m.search.replace && m.editing() {
+	if y == fileReplaceRow && m.findWidget.replace && m.editing() {
 		focus = 1
 	}
 	if y >= 0 && y < m.fileFindHeight() {
@@ -461,25 +466,24 @@ func (m *Model) clickFileFind(x, y int) tea.Cmd {
 		if y == fileFindQueryRow || focus == 1 {
 			origin := m.fileFindX()
 			area := searchInputArea(origin, m.contentRow()+y, searchFieldEnd(controls, y, w-1), w)
-			m.clickInput(m.searchField(focus), area, origin+x, area.y)
+			m.clickInput(m.findWidget.field(), area, origin+x, area.y)
 		}
 	}
 	return nil
 }
 func (m *Model) replaceFileFind(all bool) tea.Cmd {
 	d := m.document()
-	if d == nil || d.ReadOnly || m.findOptions.Query == "" {
+	if d == nil || d.ReadOnly || m.findWidget.query.Value() == "" {
 		return nil
 	}
-	m.adoptSearchState()
 	// Replacement expansion and case preservation come from the same matcher as workspace replacement.
-	options := m.findOptions
-	options.PreserveCase = m.search.options.PreserveCase
+	options := m.findWidget.matchOptions()
+	options.PreserveCase = m.findWidget.options.PreserveCase
 	matcher, err := options.Compile()
 	if err != nil {
 		return nil
 	}
-	hits := matcher.Find(d.Text, m.search.replacement.Value())
+	hits := matcher.Find(d.Text, m.findWidget.replacement.Value())
 	if len(hits) == 0 {
 		return nil
 	}

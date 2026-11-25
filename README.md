@@ -99,7 +99,7 @@ Run `./bin/vl` from the checkout.
 
 ### Modes
 
-- `vl .` opens the workbench. Use `Ctrl+G` to find a file and `Ctrl+2` to search across files.
+- `vl .` opens the workbench. Use `Ctrl+G` to find a file and `Ctrl+Shift+F` to search across files.
 - `vl path/to/file` opens a single file in the editor.
 - `vl preview path/to/file` prints syntax-highlighted code.
 

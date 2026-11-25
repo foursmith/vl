@@ -31,8 +31,7 @@ func searchRanges(text, query string) [][2]int {
 	return ranges
 }
 
-func (m *Model) fileSearchMatcher() *searchservice.Matcher {
-	o := m.findOptions
+func (m *Model) fileSearchMatcher(o searchservice.Options) *searchservice.Matcher {
 	if o.Query == "" || o.Case && !o.Word && !o.Regex {
 		return nil
 	}
@@ -67,15 +66,21 @@ type findRangeCache struct {
 	err     string
 }
 
+func (m *Model) revealSearchMatch(d *editor.Document, start, end int) {
+	// Keep the cursor at the start while selecting the entire match.
+	d.SelectRange(end, start)
+	m.centerTextCursor()
+}
+
 // Ordinary literal searches scan only visible rows. Regex searches cache whole
 // document ranges so matches spanning lines use the same results as navigation.
 func (m *Model) fileSearchRowRanges(d *editor.Document, line int) [][2]int {
-	if m.findHidden || m.findOptions.Query == "" {
+	options := m.findWidget.matchOptions()
+	if m.findHidden || options.Query == "" {
 		return nil
 	}
-	options := m.findOptions
 	if !options.Regex {
-		return matchedSearchRanges(d.Lines()[line], m.findOptions.Query, m.fileSearchMatcher())
+		return matchedSearchRanges(d.Lines()[line], options.Query, m.fileSearchMatcher(options))
 	}
 	cache := m.fileFindCache()
 	start := d.LineOffset(line)

@@ -772,11 +772,8 @@ func (m *Model) quit() tea.Cmd {
 }
 
 func (m *Model) findNext() tea.Cmd {
-	m.findHidden = false
-	if m.findOptions.Query != "" {
-		if !m.findWidget.workspaceMatch {
-			m.presentFileFind()
-		}
+	if m.findWidget.query.Value() != "" {
+		m.presentFileFind()
 		m.navigateFileFind(1)
 	}
 	return nil

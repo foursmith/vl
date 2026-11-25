@@ -19,6 +19,11 @@ func TestWorkspaceSearchSecondTabAndNavigation(t *testing.T) {
 	if len(nav) != 5 || nav[1].section != search || nav[2].section != changes || nav[3].section != history || nav[4].section != pullRequests {
 		t.Fatal("unexpected sidebar order", nav)
 	}
+	if m.resolveWorkbenchShortcut("ctrl+2").command != sidebarTabCommands[1] ||
+		m.resolveWorkbenchShortcut("ctrl+shift+f").command != commandSearch ||
+		m.commandShortcutHint(commandSearch) != "Ctrl+Shift+F" {
+		t.Fatal("sidebar position and workspace search must have separate shortcuts")
+	}
 	press(m, "ctrl+2")
 	if m.section != search || !m.sidebar || m.document() != original {
 		t.Fatal("search must preserve current file")

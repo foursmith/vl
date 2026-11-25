@@ -89,7 +89,7 @@ func TestTextEditingShortcutsFollowInputFocus(t *testing.T) {
 				m.activeTab = 0
 				m.openFileReplace()
 				m.focusFileFind(test.focus)
-				input = m.searchField(test.focus)
+				input = m.findWidget.field()
 			default:
 				m.openSearchAt(test.focus)
 				m.search.replace, m.search.details = true, true
@@ -143,8 +143,11 @@ func TestTextEditingShortcutsFollowInputFocus(t *testing.T) {
 			expect("terminal paste")
 			press(m, "ctrl+z")
 			expect("x")
-			if test.modal == "" && test.focus == 0 && m.findOptions.Query != "x" {
-				t.Fatalf("search still uses %q after undo", m.findOptions.Query)
+			if test.find && test.focus == 0 && m.findWidget.query.Value() != "x" {
+				t.Fatalf("file search still uses %q after undo", m.findWidget.query.Value())
+			}
+			if test.modal == "" && !test.find && test.focus == 0 && m.search.options.Query != "x" {
+				t.Fatalf("workspace search still uses %q after undo", m.search.options.Query)
 			}
 		})
 	}

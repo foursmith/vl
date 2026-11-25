@@ -271,7 +271,7 @@ func TestVimWorkbenchRouting(t *testing.T) {
 		t.Fatal("search component did not open")
 	}
 	press(m, "word")
-	if d.Text != "Xone two\nthree" || !strings.Contains(m.search.query.Value(), "word") {
+	if d.Text != "Xone two\nthree" || !strings.Contains(m.findWidget.query.Value(), "word") {
 		t.Fatal("Vim intercepted modal input")
 	}
 	press(m, "esc")

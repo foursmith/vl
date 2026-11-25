@@ -20,7 +20,7 @@ func clickSearchControl(t *testing.T, m *Model, id string) tea.Cmd {
 			return m.clickSearch(c.x, c.y)
 		}
 	}
-	m.openSearchOptions()
+	m.openSearchOptions(false)
 	for i, a := range m.palette {
 		if a.id == "search.option."+id {
 			m.selectPickerIndex(i)
@@ -139,7 +139,7 @@ func TestCompleteSearchPanelScopesAndPreserveCase(t *testing.T) {
 	}
 	// Opening and closing options must retain the active scope.
 	m.updateModal(tea.KeyPressMsg{Code: tea.KeyEscape})
-	m.openSearchOptions()
+	m.openSearchOptions(false)
 	if m.modal != "searchOptions" || m.search.include.Value() != "*.go" {
 		t.Fatal("options did not retain filters")
 	}

@@ -106,7 +106,8 @@ func TestInputMouseSelection(t *testing.T) {
 				if name == "file replacement" {
 					focus, row = 1, fileReplaceRow
 				}
-				input = m.searchField(focus)
+				m.focusFileFind(focus)
+				input = m.findWidget.field()
 				x, y = m.fileFindX()+searchFieldInset, m.contentRow()+row
 			default:
 				m.sidebarVisible = true

@@ -631,7 +631,7 @@ func (m *Model) editorLines() []string {
 		bracket = guides.activeBracket(d.Cursor, m.colors)
 	}
 	sticky := m.editorStickyRows()
-	findOptions := m.findOptions
+	findOptions := m.findWidget.matchOptions()
 	if m.findHidden {
 		findOptions = searchservice.Options{}
 	}

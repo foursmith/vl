@@ -153,7 +153,7 @@ func TestVimMappedFocusAndClearSearch(t *testing.T) {
 	d.SelectRange(0, 3)
 	press(m, "ctrl+f")
 	press(m, "esc")
-	if !m.findHidden || m.findOptions.Query != "one" {
+	if !m.findHidden || m.findWidget.query.Value() != "one" {
 		t.Fatal("closing Find did not hide highlights and preserve the query")
 	}
 	d.SetPosition(0, 0)

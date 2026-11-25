@@ -99,32 +99,16 @@ func (m *Model) searchControlAction(id string) tea.Cmd {
 	case "details":
 		m.toggleSearchDetails()
 		return nil
-	case "case":
-		s.options.Case = !s.options.Case
-	case "word":
-		s.options.Word = !s.options.Word
-	case "regex":
-		s.options.Regex = !s.options.Regex
-	case "preserve":
-		s.options.PreserveCase = !s.options.PreserveCase
-		return nil
-	case "open":
-		s.options.OnlyOpen = !s.options.OnlyOpen
-	case "changed":
-		if !m.repo.HasRepository() {
-			return nil
-		}
-		s.options.ChangedOnly = !s.options.ChangedOnly
-	case "ignore":
-		s.options.IncludeIgnored = !s.options.IncludeIgnored
 	case "replaceAll":
 		return m.replaceAllSearchResults()
 	}
-	if m.fileFindHeight() > 0 && !m.sidebar {
-		m.adoptSearchState()
-		m.findWidget.anchor = m.editorDocument().Cursor
-		m.navigateFileFind(0)
-		return m.refreshWorkspaceSearch()
+	value := searchOption(&s.options, id)
+	if value == nil || id == "changed" && !m.repo.HasRepository() {
+		return nil
+	}
+	*value = !*value
+	if id == "preserve" {
+		return nil
 	}
 	return m.runSearch()
 }
@@ -179,7 +163,7 @@ func (m *Model) searchLines(nav []string, w int) []string {
 		}
 	}
 	lines[l.summary] = row(indent+ansi.Truncate(strings.TrimSpace(safe(summary)), max(0, w-sidebarSearchFieldInset-1), "…"), w, theme.Readable(m.colors.Muted, m.colors.Panel), m.colors.Panel)
-	m.paintSearchControls(lines, w, controls, m.sideX(), 0, m.colors.Panel)
+	m.paintSearchControls(lines, w, controls, m.sideX(), 0, &s.options)
 	searchBox := lines[headerHeight:l.details]
 	m.frameSearchBox(searchBox, w-1, len(searchBox), "")
 	if s.details {

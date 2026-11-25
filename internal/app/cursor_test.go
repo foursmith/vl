@@ -68,10 +68,10 @@ func TestSearchInputsUseNativeBarCursor(t *testing.T) {
 	}
 	m.tabs = []tab{{doc: &editor.Document{Buffer: editor.Buffer{Text: "text", Anchor: -1}}}}
 	m.activeTab = 0
-	m.openFileFind()
+	m.openFileReplace()
 	for _, focus := range []int{0, 1} {
 		m.focusFileFind(focus)
-		m.searchField(focus).SetValue("中a")
+		m.findWidget.field().SetValue("中a")
 		row := fileFindQueryRow
 		if focus == 1 {
 			row = fileReplaceRow

@@ -43,11 +43,21 @@ const (
 	commandSaveAndClose commandID = "file.saveAndClose"
 )
 
+var sidebarTabCommands = [...]commandID{
+	"view.sidebarTab.1", "view.sidebarTab.2", "view.sidebarTab.3", "view.sidebarTab.4", "view.sidebarTab.5",
+}
+
 // A workbench command can be invoked on the current selection or on an
 // explicit target supplied by a context menu. Tab identities survive reorder.
 func (m *Model) executeCommand(id commandID, tabKey string) tea.Cmd {
 	if isTextEditCommand(id) {
 		return m.executeTextEdit(id)
+	}
+	if index := slices.Index(sidebarTabCommands[:], id); index >= 0 {
+		if index >= len(sidebarTabs) {
+			return nil
+		}
+		id = sidebarTabs[index].command
 	}
 	switch id {
 	case commandQuit:
@@ -95,9 +105,7 @@ func (m *Model) executeCommand(id commandID, tabKey string) tea.Cmd {
 	case commandCloseAll:
 		return m.closeAllTabs()
 	case commandFind:
-		if m.sidebar && m.section == search {
-			m.focusSearch(0)
-		} else if m.fileFindFocused() {
+		if m.fileFindFocused() {
 			m.focusFileFind(0)
 		} else {
 			m.openFileFind()
@@ -139,6 +147,11 @@ func (m *Model) commandShortcutHint(id commandID) string {
 	for _, rule := range slices.Backward(m.activeWorkbenchKeymap().byCommand[id]) {
 		if m.resolveWorkbenchShortcut(rule.binding.Keys()[0]).ruleID() == rule.ruleID() {
 			return rule.binding.Help().Key
+		}
+	}
+	for index, tab := range sidebarTabs {
+		if tab.command == id && index < len(sidebarTabCommands) {
+			return m.commandShortcutHint(sidebarTabCommands[index])
 		}
 	}
 	return ""

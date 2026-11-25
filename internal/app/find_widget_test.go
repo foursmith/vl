@@ -17,16 +17,18 @@ func TestSharedFindComponentEntriesCountAndInput(t *testing.T) {
 	m.clickSearch(7, m.searchResultY())
 	d := m.document()
 	original := d.Text
-	if m.fileFindHeight() != 0 || m.findHidden || m.fileFindIndex() != 0 || len(m.fileFindCache().ranges) != 2 {
-		t.Fatal("workspace result must highlight matches without opening file find")
+	if m.findWidget.visible || len(m.fileFindCache().ranges) != 0 || d.SelectedText() != "old" {
+		t.Fatal("workspace result must select its match without starting file find")
 	}
 	press(m, "enter")
+	start, end := d.Selection()
 	press(m, "n")
-	if m.fileFindHeight() != 0 || m.fileFindIndex() != 1 {
-		t.Fatal("next workspace match must stay in the editor")
+	if a, b := d.Selection(); a != start || b != end || m.findWidget.visible {
+		t.Fatal("n used the workspace query without a file query")
 	}
+	d.SetPosition(0, 0)
 	press(m, "ctrl+f")
-	m.Update(tea.KeyPressMsg{Code: tea.KeyUp})
+	m.Update(tea.PasteMsg{Content: "old"})
 	if !strings.Contains(plain(m.fileFindLines()[0]), "1 of 2") {
 		t.Fatal("match counter missing")
 	}
@@ -39,7 +41,7 @@ func TestSharedFindComponentEntriesCountAndInput(t *testing.T) {
 		t.Fatal("previous did not share selection")
 	}
 	press(m, "ctrl+f")
-	if m.modal != "" || !m.fileFindFocused() || m.search.query.Value() != "old" {
+	if m.modal != "" || !m.fileFindFocused() || m.findWidget.query.Value() != "old" {
 		t.Fatal("Ctrl+F did not reuse component")
 	}
 	m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
@@ -48,10 +50,10 @@ func TestSharedFindComponentEntriesCountAndInput(t *testing.T) {
 		t.Fatal("accept reset explicit match navigation")
 	}
 	press(m, "ctrl+f")
-	m.search.query.SetValue("")
+	m.findWidget.query.SetValue("")
 	m.Update(tea.PasteMsg{Content: "猫"})
-	if m.findOptions.Query != "猫" || m.search.query.Value() != "猫" || len(m.fileFindCache().ranges) != 1 || d.Text != original {
-		t.Fatal("query input was not shared or edited source")
+	if m.findWidget.query.Value() != "猫" || m.search.query.Value() != "old" || len(m.fileFindCache().ranges) != 1 || d.Text != original {
+		t.Fatal("file query changed the workspace query or source")
 	}
 	press(m, "enter")
 	if m.fileFindFocused() || d.SelectedText() != "猫" {
@@ -59,7 +61,7 @@ func TestSharedFindComponentEntriesCountAndInput(t *testing.T) {
 	}
 	m.closeFileFind()
 	press(m, "/")
-	if !m.fileFindFocused() || m.search.query.Value() != "猫" {
+	if !m.fileFindFocused() || m.findWidget.query.Value() != "猫" {
 		t.Fatal("Vim search did not reopen same component")
 	}
 	press(m, "esc")
@@ -72,7 +74,7 @@ func TestSharedFindComponentEntriesCountAndInput(t *testing.T) {
 func TestSharedFindCompactRowsAndUnselectedCount(t *testing.T) {
 	m := replacementWorkspace(t)
 	m.clickSearch(7, m.searchResultY())
-	m.search.replace = false
+	m.findWidget.query.SetValue("old")
 	m.openFileFind()
 	if m.fileFindHeight() != 3 {
 		t.Fatal("find should include the count in its three rows")
@@ -104,20 +106,53 @@ func TestSharedFindCompactRowsAndUnselectedCount(t *testing.T) {
 	}
 }
 
+func TestFileFindKeepsWorkspaceReplacementScope(t *testing.T) {
+	m := replacementWorkspace(t)
+	drain(t, m, m.searchControlAction("word"))
+	m.dismissSearchResult(0)
+	m.clickSearch(7, m.searchResultY())
+	m.openReplace()
+	m.search.replacement.SetValue("workspace")
+	seq := m.search.seq
+
+	press(m, "ctrl+f")
+	if !m.fileFindFocused() || m.findWidget.replace || m.findWidget.query.Value() != "" ||
+		m.findWidget.replacement.Value() != "" || m.findWidget.options.Word {
+		t.Fatal("file find inherited the workspace form")
+	}
+	drain(t, m, m.fileFindInput(tea.PasteMsg{Content: "猫"}))
+	m.toggleFileSearchOption("case")
+	m.toggleFileReplacement()
+	drain(t, m, m.fileFindInput(tea.PasteMsg{Content: "local"}))
+
+	m.Update(tea.KeyPressMsg{Code: 'F', Mod: tea.ModCtrl | tea.ModShift})
+	if !m.sidebar || m.search.focus != 0 || m.search.seq != seq || m.search.result.Count != 2 ||
+		!m.search.replace || m.search.query.Value() != "old" || m.search.replacement.Value() != "workspace" ||
+		!m.search.options.Word || m.search.options.Case {
+		t.Fatal("file find changed the workspace search or restored dismissed results")
+	}
+	press(m, "ctrl+f")
+	if !m.fileFindFocused() || !m.findWidget.replace || m.findWidget.query.Value() != "猫" ||
+		m.findWidget.replacement.Value() != "local" || !m.findWidget.options.Case {
+		t.Fatal("file find did not restore its own form")
+	}
+}
+
 func TestSharedFindEnglishControlsAndInlineOptions(t *testing.T) {
 	m := replacementWorkspace(t)
 	m.SetDisplayLanguage("zh-CN")
 	m.clickSearch(7, m.searchResultY())
+	m.findWidget.query.SetValue("old")
 	m.openFileFind()
 	if !strings.Contains(plain(m.fileFindLines()[0]), "of") {
 		t.Fatal("search labels should remain English")
 	}
 	for _, control := range m.fileFindControls(m.fileFindWidth()) {
 		if control.id == "case" {
-			before := m.search.options.Case
+			before := m.findWidget.options.Case
 			m.clickFileFind(m.mainWidth()-m.fileFindWidth()+control.x, control.y)
-			if m.search.options.Case == before || m.findOptions.Case != m.search.options.Case {
-				t.Fatal("inline option did not update shared matcher")
+			if m.findWidget.options.Case == before || m.search.options.Case {
+				t.Fatal("inline option did not update only the file matcher")
 			}
 			return
 		}
@@ -132,9 +167,10 @@ func TestSharedFindReplacesOnlyCurrentFileWithUndo(t *testing.T) {
 	}
 	drain(t, m, m.runSearch())
 	m.clickSearch(7, m.searchResultY())
+	m.findWidget.query.SetValue("old")
 	m.openFileReplace()
-	m.search.replacement.SetValue("new")
-	m.search.options.PreserveCase = true
+	m.findWidget.replacement.SetValue("new")
+	m.findWidget.options.PreserveCase = true
 	drain(t, m, m.replaceFileFind(true))
 	d := m.document()
 	if d.Text != "NEW New new\n" || !d.Dirty() || len(m.tabs) != 1 {
@@ -150,7 +186,7 @@ func TestSharedFindReplacesOnlyCurrentFileWithUndo(t *testing.T) {
 	if d.Text != "OLD Old old\n" || len(m.fileFindCache().ranges) != 3 {
 		t.Fatal("undo did not restore counter and matches")
 	}
-	m.search.replacement.SetValue("")
+	m.findWidget.replacement.SetValue("")
 	m.findWidget.anchor = 0
 	m.navigateFileFind(0)
 	drain(t, m, m.replaceFileFind(false))
@@ -173,13 +209,12 @@ func TestSharedFindOptionsStayInEditorAndReadonlyDiff(t *testing.T) {
 		d := m.editorDocument()
 		original := d.Text
 		m.openFileFind()
-		m.search.query.SetValue("value")
-		m.adoptSearchState()
+		m.findWidget.query.SetValue("value")
 		m.navigateFileFind(0)
 		height := m.fileFindHeight()
 		press(m, "f7")
 		drain(t, m, chooseContextAction(t, m, "Search Options"))
-		if !m.fileSearchOptionsDialog || m.sidebar || m.modal != "searchOptions" {
+		if m.sidebar || m.modal != "searchOptions" {
 			t.Fatal("options escaped into workspace search")
 		}
 		for _, a := range m.palette {
@@ -194,14 +229,14 @@ func TestSharedFindOptionsStayInEditorAndReadonlyDiff(t *testing.T) {
 				break
 			}
 		}
-		if !m.search.options.Regex || !m.findOptions.Regex {
-			t.Fatal("options were not shared")
+		if !m.findWidget.options.Regex || m.search.options.Regex {
+			t.Fatal("file options did not stay local")
 		}
 		press(m, "esc")
 		if readonly {
-			m.search.replace = true
+			m.findWidget.replace = true
 			m.resize()
-			m.search.replacement.SetValue("MUTATED")
+			m.findWidget.replacement.SetValue("MUTATED")
 			m.replaceFileFind(true)
 			if d.Text != original || m.fileFindHeight() != height {
 				t.Fatal("read-only replacement was allowed")
@@ -212,6 +247,7 @@ func TestSharedFindOptionsStayInEditorAndReadonlyDiff(t *testing.T) {
 func TestSharedFindGeometryAndMouseOffsets(t *testing.T) {
 	m := replacementWorkspace(t)
 	m.clickSearch(7, m.searchResultY())
+	m.findWidget.query.SetValue("old")
 	m.openFileReplace()
 	for _, right := range []bool{false, true} {
 		m.SetSidebarLayout(36, right)
@@ -270,6 +306,7 @@ func TestSharedFindGeometryAndMouseOffsets(t *testing.T) {
 func TestSharedFindSwitchToNewDiffUpdatesViewportHeight(t *testing.T) {
 	m := replacementWorkspace(t)
 	m.clickSearch(7, m.searchResultY())
+	m.findWidget.query.SetValue("old")
 	m.openFileFind()
 	m.patch = benchmarkPatch()
 	m.diffPath = "file.go"
@@ -290,10 +327,10 @@ func TestSharedFindSwitchToNewDiffUpdatesViewportHeight(t *testing.T) {
 func TestSharedFindInputUsesFocusedSurfaceGeometry(t *testing.T) {
 	m := replacementWorkspace(t)
 	m.clickSearch(7, m.searchResultY())
+	m.findWidget.query.SetValue("old")
 	m.openFileFind()
 	m.Update(tea.WindowSizeMsg{Width: 160, Height: 24})
-	m.search.query.SetValue(strings.Repeat("needle", 40))
-	m.adoptSearchState()
+	m.findWidget.query.SetValue(strings.Repeat("needle", 40))
 
 	atEnd := func(area inputArea) {
 		t.Helper()
@@ -308,6 +345,7 @@ func TestSharedFindInputUsesFocusedSurfaceGeometry(t *testing.T) {
 
 	m.sidebar = true
 	m.focusSearch(0)
+	m.search.query.SetValue(strings.Repeat("needle", 40))
 	w = m.sidebarContentWidth()
 	row := m.searchPanelLayout().query
 	end = searchFieldEnd(m.searchPanelControls(w), row, w)
@@ -317,8 +355,9 @@ func TestSharedFindInputUsesFocusedSurfaceGeometry(t *testing.T) {
 func TestSharedFindUndoRefreshesWorkspaceResults(t *testing.T) {
 	m := replacementWorkspace(t)
 	m.clickSearch(7, m.searchResultY())
+	m.findWidget.query.SetValue("old")
 	m.openFileReplace()
-	m.search.replacement.SetValue("new")
+	m.findWidget.replacement.SetValue("new")
 	for _, control := range m.fileFindControls(m.fileFindWidth()) {
 		if control.id == "replaceAll" {
 			drain(t, m, m.clickFileFind(m.mainWidth()-m.fileFindWidth()+control.x, control.y))

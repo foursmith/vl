@@ -117,7 +117,9 @@ func (m *Model) focusedInput() *textInput {
 		if m.input.Focused() {
 			return &m.input
 		}
-	case m.fileFindFocused(), m.sidebar && m.section == search:
+	case m.fileFindFocused():
+		return m.findWidget.field()
+	case m.sidebar && m.section == search:
 		if field := m.searchField(m.search.focus); field != nil && field.Focused() {
 			return field
 		}

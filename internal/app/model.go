@@ -122,7 +122,6 @@ type tickMsg time.Time
 type Model struct {
 	workbenchKeymap                    *workbenchKeymap
 	findWidget                         findWidgetState
-	fileSearchOptionsDialog            bool
 	navigationState                    navigationState
 	leaderTarget                       string
 	explorerYankRoot, explorerYankPath string
@@ -235,7 +234,6 @@ type Model struct {
 	confirmationButton      int
 	dialogTop               int
 	search                  searchState
-	findOptions             searchservice.Options
 	findMatcherOptions      searchservice.Options
 	findMatcher             *searchservice.Matcher
 	findHidden              bool
@@ -290,6 +288,7 @@ func newModel(ctx context.Context, repo *gitservice.Repository, nerd, editorOnly
 		m.notice = ""
 	}
 	m.search = newSearch()
+	m.findWidget.searchForm = newSearchForm()
 	m.emptyDiff = m.diffState
 	m.styleInput()
 	m.resize()

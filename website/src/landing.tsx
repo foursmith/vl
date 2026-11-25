@@ -12,7 +12,7 @@ const workflows = [
       { keys: ["Ctrl+G"], action: { en: "Go to File", "zh-CN": "转到文件" } },
       { keys: ["j", "k"], action: { en: "Preview files from the sidebar", "zh-CN": "在侧边栏中预览文件" } },
       { keys: ["Enter"], action: { en: "Keep the preview tab open", "zh-CN": "保留预览标签页" } },
-      { keys: ["Ctrl+2"], action: { en: "Search across files", "zh-CN": "在文件中搜索" } },
+      { keys: ["Ctrl+Shift+F"], action: { en: "Search across files", "zh-CN": "在文件中搜索" } },
       { keys: ["Tab", "Shift+Tab"], action: { en: "Cycle sidebar tabs when focused", "zh-CN": "侧边栏获得焦点时循环切换标签" } },
       { keys: ["F12"], action: { en: "Toggle the sidebar", "zh-CN": "显示或隐藏侧边栏" } },
     ],

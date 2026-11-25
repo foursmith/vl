@@ -98,7 +98,7 @@ make build
 
 ### 运行模式
 
-- `vl .` 打开工作台。`Ctrl+G` 按名称或路径找文件，`Ctrl+2` 搜索文件内容。
+- `vl .` 打开工作台。`Ctrl+G` 按名称或路径找文件，`Ctrl+Shift+F` 搜索文件内容。
 - `vl path/to/file` 在编辑器中打开单个文件。
 - `vl preview path/to/file` 输出带语法高亮的代码。
 

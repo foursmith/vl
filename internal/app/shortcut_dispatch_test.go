@@ -64,11 +64,12 @@ func TestDefaultWorkbenchShortcutActions(t *testing.T) {
 		{commandPalette, false, []tea.KeyPressMsg{ctrl('p')}, func(m *Model, _ tea.Cmd) bool {
 			return m.commandPicker()
 		}},
-		{commandSearch, false, []tea.KeyPressMsg{ctrl('2')}, sidebarSection(search)},
-		{commandExplorer, false, []tea.KeyPressMsg{ctrl('1')}, sidebarSection(explorer)},
-		{commandChanges, false, []tea.KeyPressMsg{ctrl('3')}, sidebarSection(changes)},
-		{commandHistory, false, []tea.KeyPressMsg{ctrl('4')}, sidebarSection(history)},
-		{commandPullRequests, false, []tea.KeyPressMsg{ctrl('5')}, sidebarSection(pullRequests)},
+		{commandSearch, false, []tea.KeyPressMsg{ctrlShift('f'), ctrlShift('F')}, sidebarSection(search)},
+		{sidebarTabCommands[0], false, []tea.KeyPressMsg{ctrl('1')}, sidebarSection(explorer)},
+		{sidebarTabCommands[1], false, []tea.KeyPressMsg{ctrl('2')}, sidebarSection(search)},
+		{sidebarTabCommands[2], false, []tea.KeyPressMsg{ctrl('3')}, sidebarSection(changes)},
+		{sidebarTabCommands[3], false, []tea.KeyPressMsg{ctrl('4')}, sidebarSection(history)},
+		{sidebarTabCommands[4], false, []tea.KeyPressMsg{ctrl('5')}, sidebarSection(pullRequests)},
 		{commandSidebar, false, []tea.KeyPressMsg{keypress(tea.KeyF12)}, func(m *Model, _ tea.Cmd) bool {
 			if m.sidebarVisible {
 				return false
@@ -322,7 +323,7 @@ func TestWorkbenchShortcutsWithFocusedSearchInputs(t *testing.T) {
 	press(m, "ctrl+f")
 	press(m, "x")
 	press(m, "ctrl+w")
-	if !m.fileFindFocused() || m.search.query.Value() != "x" || len(m.tabs) != 2 {
+	if !m.fileFindFocused() || m.findWidget.query.Value() != "x" || len(m.tabs) != 2 {
 		t.Fatal("Ctrl+W changed file find or closed an editor")
 	}
 	press(m, "ctrl+p")
@@ -338,11 +339,11 @@ func TestWorkbenchShortcutsWithFocusedSearchInputs(t *testing.T) {
 
 	press(m, "ctrl+2")
 	press(m, "S")
-	if !m.sidebar || m.section != search || m.search.query.Value() != "xS" {
+	if !m.sidebar || m.section != search || m.search.query.Value() != "S" {
 		t.Fatal("workspace search must receive printable Git keys as text")
 	}
 	press(m, "ctrl+w")
-	if m.search.query.Value() != "xS" || len(m.tabs) != 2 {
+	if m.search.query.Value() != "S" || len(m.tabs) != 2 {
 		t.Fatal("Ctrl+W changed the workspace query or closed an editor")
 	}
 	m.Update(tea.KeyPressMsg{Code: 'w', Mod: tea.ModCtrl | tea.ModShift})
@@ -375,8 +376,15 @@ func TestWorkspaceSearchWorkbenchShortcutsFollowFocus(t *testing.T) {
 		}
 	}
 	press(m, "ctrl+f")
-	if m.search.focus != 0 || !m.sidebar || m.fileFindFocused() {
-		t.Fatal("Ctrl+F did not focus the workspace query")
+	if m.search.focus != 2 || m.sidebar || !m.fileFindFocused() || m.findWidget.query.Value() != "" {
+		t.Fatal("Ctrl+F did not open independent file find from workspace results")
+	}
+	for _, code := range []rune{'f', 'F'} {
+		m.Update(tea.KeyPressMsg{Code: code, Mod: tea.ModCtrl | tea.ModShift})
+		if m.search.focus != 0 || !m.sidebar || !m.findWidget.visible || m.fileFindFocused() || m.search.query.Value() != "package" {
+			t.Fatal("Ctrl+Shift+F did not focus the workspace query")
+		}
+		press(m, "ctrl+f")
 	}
 }
 
@@ -394,8 +402,8 @@ func TestWorkspaceRefreshReloadsFileAndKeepsFindFocused(t *testing.T) {
 	_, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyF5})
 	drain(t, m, cmd)
 	if m.refreshSeq != previous+1 || m.document().Text != updated ||
-		!m.fileFindFocused() || !m.search.query.Focused() ||
-		m.search.query.Value() != "package" {
+		!m.fileFindFocused() || !m.findWidget.query.Focused() ||
+		m.findWidget.query.Value() != "package" {
 		t.Fatal("F5 did not refresh the workspace and file while keeping focus and query in file find")
 	}
 }

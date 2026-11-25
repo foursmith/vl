@@ -16,6 +16,18 @@ type navigationItem struct {
 	section  section
 }
 
+var sidebarTabs = [...]struct {
+	section section
+	icon    uiSymbol
+	command commandID
+}{
+	{explorer, symbolExplorer, commandExplorer},
+	{search, symbolSearch, commandSearch},
+	{changes, symbolBranch, commandChanges},
+	{history, symbolHistory, commandHistory},
+	{pullRequests, symbolPullRequest, commandPullRequests},
+}
+
 const (
 	headerHeight           = 2
 	sidebarNavigationWidth = 4
@@ -38,13 +50,11 @@ func (m *Model) sidebarAt(x int) bool {
 }
 
 func (m *Model) navigation() []navigationItem {
-	return []navigationItem{
-		{0, sidebarNavigationWidth, m.symbol(symbolExplorer), explorer},
-		{sidebarNavigationWidth, sidebarNavigationWidth, m.symbol(symbolSearch), search},
-		{2 * sidebarNavigationWidth, sidebarNavigationWidth, m.symbol(symbolBranch), changes},
-		{3 * sidebarNavigationWidth, sidebarNavigationWidth, m.symbol(symbolHistory), history},
-		{4 * sidebarNavigationWidth, sidebarNavigationWidth, m.symbol(symbolPullRequest), pullRequests},
+	items := make([]navigationItem, len(sidebarTabs))
+	for index, tab := range sidebarTabs {
+		items[index] = navigationItem{index * sidebarNavigationWidth, sidebarNavigationWidth, m.symbol(tab.icon), tab.section}
 	}
+	return items
 }
 
 func (m *Model) sidebarTabKey(k string) (bool, tea.Cmd) {
@@ -60,7 +70,7 @@ func (m *Model) sidebarTabKey(k string) (bool, tea.Cmd) {
 	default:
 		return false, nil
 	}
-	tabs := m.navigation()
+	tabs := sidebarTabs
 	for index, tab := range tabs {
 		if tab.section != m.section {
 			continue

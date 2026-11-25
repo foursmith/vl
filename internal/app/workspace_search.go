@@ -11,22 +11,30 @@ import (
 	searchservice "github.com/foursmith/vl/internal/search"
 )
 
-type searchState struct {
+type searchForm struct {
 	query, replacement textInput
-	include, exclude   textInput
 	replace            bool
-	details            bool
 	options            searchservice.Options
-	result             searchservice.Result
-	rows               []searchRow
-	seq                int
-	cancel             context.CancelFunc
-	loading            bool
-	workspaceDirty     bool
-	focus              int // 0 query, 1 replacement, 2 results, 3 include, 4 exclude
-	selected, top      int
-	folded             map[string]bool
-	err                string
+}
+
+func newSearchForm() searchForm {
+	return searchForm{query: newInput(), replacement: newInput()}
+}
+
+type searchState struct {
+	searchForm
+	include, exclude textInput
+	details          bool
+	result           searchservice.Result
+	rows             []searchRow
+	seq              int
+	cancel           context.CancelFunc
+	loading          bool
+	workspaceDirty   bool
+	focus            int // 0 query, 1 replacement, 2 results, 3 include, 4 exclude
+	selected, top    int
+	folded           map[string]bool
+	err              string
 }
 type searchMsg struct {
 	seq    int
@@ -38,7 +46,7 @@ type searchRow struct{ file, match int }
 
 func newSearch() searchState {
 	return searchState{
-		query: newInput(), replacement: newInput(), include: newInput(), exclude: newInput(),
+		searchForm: newSearchForm(), include: newInput(), exclude: newInput(),
 		folded: map[string]bool{},
 	}
 }
@@ -48,10 +56,7 @@ func (m *Model) openSearch() tea.Cmd {
 
 func (m *Model) openSearchAt(focus int) tea.Cmd {
 	m.notice = ""
-	if m.findWidget.visible {
-		m.closeFileFind()
-	}
-	m.findWidget.focused = false
+	m.blurFileFind()
 	m.selectSection(search)
 	m.focusSearch(focus)
 	if m.search.workspaceDirty {
@@ -84,22 +89,28 @@ func (m *Model) searchField(focus int) *textInput {
 }
 
 func (m *Model) openReplace() tea.Cmd {
-	m.notice = ""
-	m.selectSection(search)
-	m.setSearchReplace(true)
-	return nil
+	m.search.replace = true
+	return m.openSearchAt(1)
 }
 
 func (m *Model) setSearchReplace(visible bool) {
 	m.search.replace = visible
 	m.resize()
-	m.clampSearch()
 	if visible {
 		m.focusSearch(1)
 	} else {
 		m.focusSearch(0)
 	}
 }
+
+func (m *Model) refreshWorkspaceSearch() tea.Cmd {
+	m.search.workspaceDirty = true
+	if !m.editorOnly && m.section == search && m.sidebarVisible {
+		return m.scheduleSearch(150 * time.Millisecond)
+	}
+	return nil
+}
+
 func (m *Model) runSearch() tea.Cmd { return m.scheduleSearch(0) }
 func (m *Model) scheduleSearch(delay time.Duration) tea.Cmd {
 	s := &m.search
@@ -108,7 +119,6 @@ func (m *Model) scheduleSearch(delay time.Duration) tea.Cmd {
 		s.cancel()
 	}
 	s.seq++
-	m.adoptSearchState()
 	s.options.Query = s.query.Value()
 	s.options.Include = s.include.Value()
 	s.options.Exclude = s.exclude.Value()
@@ -375,22 +385,16 @@ func (m *Model) loadSearchResult() (tea.Cmd, bool) {
 			m.sidebar = true
 			return m.runSearch(), false
 		}
-		if m.findWidget.visible {
-			m.closeFileFind()
-		}
-		m.findWidget.workspaceMatch = true
-		m.adoptSearchState()
-		m.findHidden = false
 		hit := matches[r.match]
 		start := utf8.RuneCountInString(d.Text[:hit.Start])
+		end := start + utf8.RuneCountInString(d.Text[hit.Start:hit.End])
 		if !m.vimDisabled {
 			vim := &m.tabs[m.activeTab].vim
 			vim.Reset(d)
 			vim.JumpTo(d, start)
 			start = d.Cursor
 		}
-		d.SelectRange(utf8.RuneCountInString(d.Text[:hit.End]), start)
-		m.centerTextCursor()
+		m.revealSearchMatch(d, start, end)
 		return nil, true
 	}
 	return nil, false

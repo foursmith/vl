@@ -1,6 +1,7 @@
 package app
 
 import (
+	tea "charm.land/bubbletea/v2"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -26,9 +27,9 @@ func hasFindBackground(p theme.Palette, cell uv.Cell) bool {
 }
 
 func setTestFind(m *Model, query string) {
-	m.search.query.SetValue(query)
-	m.search.options.Case = true
-	m.adoptSearchState()
+	m.findWidget.query.SetValue(query)
+	m.findWidget.options.Case = true
+	m.findHidden = false
 }
 
 func TestSearchRanges(t *testing.T) {
@@ -107,13 +108,13 @@ func TestLocalSearchCentersCtrlFSlashAndNext(t *testing.T) {
 		}
 	}
 	press(m, "ctrl+f")
-	m.search.query.SetValue("needle")
+	m.findWidget.query.SetValue("needle")
 	press(m, "enter")
 	check(45)
 	press(m, "n")
 	check(75)
 	press(m, "/")
-	m.search.query.SetValue("needle")
+	m.findWidget.query.SetValue("needle")
 	press(m, "enter")
 	check(75)
 	press(m, "n")
@@ -160,7 +161,7 @@ func TestLocalSearchCentersDiffRows(t *testing.T) {
 			setTestFind(m, "new value 19")
 		}
 		m.findNext()
-		if m.review.SelectedText() != m.findOptions.Query {
+		if m.review.SelectedText() != m.findWidget.query.Value() {
 			t.Fatal("diff search did not find source text")
 		}
 		line, _ := m.review.Position()
@@ -171,80 +172,54 @@ func TestLocalSearchCentersDiffRows(t *testing.T) {
 	}
 }
 
-func TestWorkspaceResultReusesFileSearchHighlightsAndNavigation(t *testing.T) {
-	for _, tc := range []struct {
-		query, text string
-		word, regex bool
-		cells       int
-		next        string
+func TestWorkspaceResultKeepsFileFindIndependent(t *testing.T) {
+	for _, test := range []struct {
+		query, text, match string
+		word, regex        bool
 	}{
-		{"needle", "needle NEEDLE needleX needle", true, false, 18, "NEEDLE"},
-		{`id\d+`, "id1 ID22 idX", false, true, 7, "ID22"},
-		{`id1\nID22`, "id1\nID22\nidX", false, true, 7, "id1\nID22"},
+		{"needle", "needle NEEDLE needleX", "needle", true, false},
+		{`id\d+`, "id1 ID22 idX", "id1", false, true},
+		{`id1\nID22`, "id1\nID22\nidX", "id1\nID22", false, true},
 	} {
 		m := tabWorkspace(t, 1)
 		t.Cleanup(m.Close)
-		if err := os.WriteFile(filepath.Join(m.repo.Root, "file0.go"), []byte(tc.text), 0644); err != nil {
+		if err := os.WriteFile(filepath.Join(m.repo.Root, "file0.go"), []byte(test.text+"\nlocal local"), 0644); err != nil {
 			t.Fatal(err)
 		}
-		m.openSearch()
-		m.search.query.SetValue(tc.query)
-		m.search.options.Word = tc.word
-		m.search.options.Regex = tc.regex
-		drain(t, m, m.runSearch())
-		m.findHidden = true
-		m.clickSearch(5, m.searchResultY()+1)
-		count := func() int {
-			t.Helper()
-			total := 0
-			for _, line := range m.editorLines() {
-				for _, cells := range uv.NewStyledString(line).Lines(ansi.GraphemeWidth) {
-					for _, cell := range cells {
-						if hasFindBackground(m.colors, cell) {
-							total++
-						}
-					}
-				}
-			}
-			return total
-		}
-		if m.findOptions.Query != tc.query || m.findHidden || count() != tc.cells {
-			t.Fatalf("%q: file search was not seeded, highlights=%d want=%d", tc.query, count(), tc.cells)
-		}
-		press(m, "enter")
-		press(m, "n")
-		if m.document().SelectedText() != tc.next {
-			t.Fatalf("%q: n selected %q, want %q", tc.query, m.document().SelectedText(), tc.next)
-		}
-		press(m, "ctrl+f")
+		m.openFile("file0.go")
+		m.openFileFind()
+		m.Update(tea.PasteMsg{Content: "local"})
 		press(m, "esc")
-		if count() != 0 {
-			t.Fatal("clear highlight did not use shared state")
+
+		m.openSearch()
+		m.search.query.SetValue(test.query)
+		m.search.options.Word = test.word
+		m.search.options.Regex = test.regex
+		drain(t, m, m.runSearch())
+		m.clickSearch(5, m.searchResultY()+1)
+		press(m, "enter")
+		if m.document().SelectedText() != test.match || !m.findHidden || m.findWidget.visible ||
+			m.findWidget.query.Value() != "local" || m.findWidget.options.Word || m.findWidget.options.Regex {
+			t.Fatal("opening a workspace result changed file find")
 		}
 		press(m, "n")
-		if count() != tc.cells {
-			t.Fatal("n did not restore all highlights")
-		}
-		press(m, "ctrl+f")
-		m.search.query.SetValue("idX")
-		press(m, "enter")
-		if m.findOptions.Regex != tc.regex || m.findOptions.Word != tc.word {
-			t.Fatal("local find did not preserve shared options")
+		if m.document().SelectedText() != "local" || m.findHidden || !m.findWidget.visible {
+			t.Fatal("n did not use the file query")
 		}
 	}
 }
 
-func TestWorkspaceSearchNextVisitsAdjacentMatches(t *testing.T) {
+func TestLocalSearchNextVisitsAdjacentMatches(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	t.Cleanup(m.Close)
 	if err := os.WriteFile(filepath.Join(m.repo.Root, "file0.go"), []byte("id1ID22id3"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	m.openSearch()
-	m.search.query.SetValue(`id\d+`)
-	m.search.options.Regex = true
-	drain(t, m, m.runSearch())
-	m.clickSearch(5, m.searchResultY()+1)
+	m.openFile("file0.go")
+	m.openFileFind()
+	m.toggleFileSearchOption("regex")
+	m.findWidget.anchor = 0
+	m.Update(tea.PasteMsg{Content: `id\d+`})
 	press(m, "enter")
 	for _, want := range []string{"ID22", "id3", "id1"} {
 		press(m, "n")
@@ -265,8 +240,8 @@ func TestSearchFileNameOpensFileAndChevronOnlyFolds(t *testing.T) {
 		t.Fatal("chevron opened a file instead of folding")
 	}
 	m.clickSearch(2, m.searchResultY())
-	if m.document() == nil || !m.sidebar || m.findOptions.Query != "package" || m.document().SelectedText() != "package" {
-		t.Fatal("file name did not activate file search")
+	if m.document() == nil || !m.sidebar || m.findWidget.query.Value() != "" || m.document().SelectedText() != "package" {
+		t.Fatal("file name did not select its result independently")
 	}
 	if len(m.searchRows()) != 1 {
 		t.Fatal("file name changed the group fold state")

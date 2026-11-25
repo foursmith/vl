@@ -232,10 +232,10 @@ func (m *Model) openContextMenu(x, y int) tea.Cmd {
 	}
 	if m.fileFindAt(x, y) {
 		m.focusEditor()
-		add(m.tr("Search Options"), "", m.openSearchOptions)
+		add(m.tr("Search Options"), "", func() tea.Cmd { return m.openSearchOptions(true) })
 	} else if m.section == search && m.sidebarAt(x) && y >= headerHeight && y < min(m.bodyHeight(), m.searchPanelLayout().results) {
 		m.sidebar = true
-		add(m.tr("Search Options"), "", m.openSearchOptions)
+		add(m.tr("Search Options"), "", func() tea.Cmd { return m.openSearchOptions(false) })
 	} else if m.sidebarAt(x) && y >= headerHeight && y < m.bodyHeight() {
 		if m.section == explorer && y >= headerHeight+m.treeList().height {
 			return nil

@@ -9,6 +9,7 @@
 | `Ctrl+G` | Go to File |
 | `Ctrl+P` | Open the Command Palette |
 | `Ctrl+F` | Find in the current file |
+| `Ctrl+Shift+F` | Search across files |
 | `F2` | Switch focus between the sidebar and the editor |
 | `Ctrl+S` | Save the current file |
 | `Ctrl+W` | Close the current editor from the editor or a sidebar list. Prompts for unsaved changes. |
@@ -38,7 +39,7 @@ In confirmation dialogs, use `←`/`→` or `Tab` to select a button, `Enter` to
 | Shortcut | Action |
 | --- | --- |
 | `Ctrl+R` | Open Recent Workspace. Prompts if there are unsaved changes. |
-| `Ctrl+1` / `Ctrl+2` / `Ctrl+3` / `Ctrl+4` / `Ctrl+5` | Focus Explorer / Search / Changes / History / Pull Requests |
+| `Ctrl+1` … `Ctrl+5` | Focus a sidebar tab by position |
 | `F12` | Toggle Sidebar Visibility |
 | `Ctrl+Shift+W` | Close the other tabs. Prompts for unsaved changes. |
 | `Space 1` … `Space 9` | Switch to a tab by number from a focused editor with Vim mode on and outside Insert mode |
@@ -177,8 +178,8 @@ tracked changes only, or tracked changes while keeping staged changes in place.
 | `Enter` in Replace | Replace the current match |
 | `Esc` | Close Find and hide highlights |
 
-Find opens as an overlay in the upper-right corner. It shares the query,
-replacement, and match options with workspace Search. Find Next and Find
+Find opens as an overlay in the upper-right corner. File Find and workspace
+Search each keep their own query, replacement, and match options. Find Next and Find
 Previous wrap around. Use Match Case, Match Whole Word, or Use Regular
 Expression to change how the query matches. Replace also supports Preserve
 Case. Use the chevron to toggle the Replace field and the Replace All button to
@@ -191,12 +192,12 @@ or right-click the search form, and choose **Search Options**.
 
 | Shortcut | Action |
 | --- | --- |
-| `Ctrl+2` | Find in Files |
+| `Ctrl+Shift+F` | Find in Files |
 | `Tab` / `Shift+Tab` from a field | Move through the visible fields and into the results |
 | `Enter` in the search field | Run the search and focus the results |
 | `Esc` from a field | Focus the results |
 | `Ctrl+J` / `Ctrl+K` from a field | Select the next / previous result while keeping focus in the field |
-| `/` / `Ctrl+F` in the results | Focus the search field |
+| `/` in the results | Focus the search field |
 | `j` / `k`, `gg` / `G`, `PageUp` / `PageDown` in the results | Move through matches and file groups |
 | `h` / `l` in the results | Select the parent file group / expand it or open the selected result |
 | `Enter` in the results | Open the selected file or match and keep the tab |
@@ -204,7 +205,9 @@ or right-click the search form, and choose **Search Options**.
 | `Enter` in Replace | Replace all matches still in the results |
 
 Search updates as you type and includes unsaved edits. Open a result to jump to
-its match, then press `n` to continue in that file. Ripgrep (`rg` on `PATH`) is
+its match. In the editor, `n` uses the query from File Find.
+If the terminal intercepts `Ctrl+Shift+F` or sends it as `Ctrl+F`, click the
+Search icon or use its position shortcut (`Ctrl+2`). Ripgrep (`rg` on `PATH`) is
 optional. Only Changed Files requires a Git repository.
 
 Open **Search Details** to narrow the search to open tabs or changed files, or
