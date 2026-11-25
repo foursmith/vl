@@ -18,7 +18,7 @@ func matchesShortcut(name string, binding key.Binding) bool {
 // App-level bindings are grouped by the surface that owns the input.
 // Commands, menus and hints use the same binding for their display.
 const (
-	sidebarRefreshRuleID = "git.refresh.sidebar"
+	sidebarRefreshRuleID = "sidebar.refresh"
 	leftArrow            = "left"
 	rightArrow           = "right"
 	upArrow              = "up"
@@ -43,6 +43,7 @@ var workbenchKeybindings = []workbenchShortcut{
 	{binding: binding("Ctrl+R", "Open Recent Workspace", "ctrl+r"), context: workspaceOnly | fromSearch, command: commandRecent},
 	{binding: binding("Ctrl+P", "Commands", "ctrl+p"), context: fromSearch, command: commandPalette},
 	{binding: binding("Ctrl+,", "Open Configuration File", "ctrl+,"), context: fromSearch, command: commandOpenConfig},
+	{context: fromSearch, command: commandOpenKeybindings},
 	{binding: binding("Ctrl+Shift+F", "Search", "ctrl+shift+f", "ctrl+shift+F"), context: workspaceOnly | fromSearch, command: commandSearch},
 	{binding: binding("Ctrl+1", "First sidebar tab", "ctrl+1"), context: workspaceOnly | fromSearch, command: sidebarTabCommands[0]},
 	{binding: binding("Ctrl+2", "Second sidebar tab", "ctrl+2"), context: workspaceOnly | fromSearch, command: sidebarTabCommands[1]},
@@ -64,6 +65,13 @@ var workbenchKeybindings = []workbenchShortcut{
 	{command: commandCloseAll},
 	{binding: binding("Ctrl+F", "Find", "ctrl+f"), context: fromSearchFields, command: commandFind},
 	{binding: binding("F7", "Context menu", "f7"), context: fromSearchFields, command: commandContextMenu},
+	{binding: binding("[", "Previous Hunk", "["), context: diffInput, command: commandPreviousHunk, when: (*Model).diffNavigationFocused},
+	{binding: binding("]", "Next Hunk", "]"), context: diffInput, command: commandNextHunk, when: (*Model).diffNavigationFocused},
+	{binding: binding("Enter", "Toggle Context Lines", "enter"), context: diffInput, command: commandToggleDiffContext, when: (*Model).diffNavigationFocused},
+	{binding: gitKeys.Stage, context: diffInput, command: commandToggleDiffStage, when: (*Model).diffChangesFocused},
+	{binding: gitKeys.StageScope, context: diffInput, command: commandToggleDiffFileStage, when: (*Model).diffChangesFocused},
+	{binding: gitKeys.Discard, context: diffInput, command: commandDiscardDiffChanges, when: (*Model).diffChangesFocused},
+	{binding: gitKeys.DiscardScope, context: diffInput, command: commandDiscardDiffFile, when: (*Model).diffChangesFocused},
 }
 
 var searchKeys = struct {
@@ -161,15 +169,6 @@ var gitKeys = struct {
 	Fetch:        binding("f", "Fetch", "f"),
 	Pull:         binding("p", "Pull", "p"),
 	Push:         binding("P", "Push", "P", "shift+p"),
-}
-
-func isDiffGitShortcut(name string) bool {
-	for _, shortcut := range [...]key.Binding{gitKeys.Stage, gitKeys.StageScope, gitKeys.Discard, gitKeys.DiscardScope} {
-		if matchesShortcut(name, shortcut) {
-			return true
-		}
-	}
-	return false
 }
 
 var leaderKeys = struct {

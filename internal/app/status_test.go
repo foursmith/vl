@@ -153,7 +153,7 @@ func TestStatusHintsFollowGitScopeAndSelection(t *testing.T) {
 	if got := statusPart(t, m, "notice").text; got != want {
 		t.Fatalf("diff hint changed while refreshing the displayed patch: %q", got)
 	}
-	if handled, cmd := m.diffChangeShortcut("s"); !handled || cmd != nil || m.notice != "Wait for the diff to finish refreshing" {
+	if cmd := press(m, "s"); cmd != nil || m.notice != "Wait for the diff to finish refreshing" {
 		t.Fatal("status hint let a staging shortcut act on a refreshing diff")
 	}
 	m.diffLoading = false

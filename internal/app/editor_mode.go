@@ -40,6 +40,7 @@ func (m *Model) editorActions() []action {
 	}
 	actions := []action{
 		m.commandAction(commandOpenConfig, "Preferences: Open Configuration File", "", ""),
+		m.commandAction(commandOpenKeybindings, "Preferences: Open Keyboard Shortcuts File", "", ""),
 		{"theme.select", m.tr("Appearance: Color Theme"), "", "", m.openThemePicker},
 		{"statusBar.style", m.tr("Appearance: Status Bar Style"), "", "", m.openStatusBarStylePicker},
 		{"editor.toggleVim", m.tr("Preferences: Toggle Vim Mode"), "", "", func() tea.Cmd {

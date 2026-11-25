@@ -73,6 +73,10 @@ const emptyPreferences = "{\n}\n"
 
 // EnsurePreferencesFile creates a default configuration without replacing an existing file.
 func EnsurePreferencesFile(path string) error {
+	return ensureConfigFile(path, emptyPreferences)
+}
+
+func ensureConfigFile(path, contents string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		return err
 	}
@@ -83,7 +87,7 @@ func EnsurePreferencesFile(path string) error {
 	if err != nil {
 		return err
 	}
-	_, err = file.WriteString(emptyPreferences)
+	_, err = file.WriteString(contents)
 	return errors.Join(err, file.Close())
 }
 

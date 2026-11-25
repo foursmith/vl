@@ -17,6 +17,18 @@ func Dir() (string, error) {
 	return filepath.Join(home, ".config", "vl"), nil
 }
 
+func KeybindingsPath() (string, error) {
+	dir, err := Dir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "keybindings.json"), nil
+}
+
+func EnsureKeybindingsFile(path string) error {
+	return ensureConfigFile(path, "[\n]\n")
+}
+
 func loadJSON(path string, value any) error {
 	data, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {

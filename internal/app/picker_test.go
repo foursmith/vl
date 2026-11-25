@@ -241,25 +241,25 @@ func TestCommandPaletteAlphabeticalOrderAndLastUsed(t *testing.T) {
 	checkSorted(m.filteredActions())
 	m.input.SetValue(">Appearance: Toggle Sidebar Visibility")
 	m.selectPickerChoice()
-	if m.lastCommand != "view.sidebar" {
+	if m.lastCommand != string(commandSidebar) {
 		t.Fatalf("executed command was not remembered: %q", m.lastCommand)
 	}
 	m.openPalette()
 	rows := m.filteredActions()
-	if rows[0].id != "view.sidebar" {
+	if rows[0].id != string(commandSidebar) {
 		t.Fatalf("last command not first: %q", rows[0].id)
 	}
 	checkSorted(rows[1:])
 	m.input.SetValue(">file.save")
 	m.selectPickerChoice()
-	if m.lastCommand != "view.sidebar" {
+	if m.lastCommand != string(commandSidebar) {
 		t.Fatal("disabled command replaced last used command")
 	}
 	m.snapshot.Files = []string{"file0.go"}
 	m.openQuickFiles()
 	m.input.SetValue("file0.go")
 	m.selectPickerChoice()
-	if m.lastCommand != "view.sidebar" {
+	if m.lastCommand != string(commandSidebar) {
 		t.Fatal("file picker selection replaced last used command")
 	}
 }
@@ -289,16 +289,16 @@ func TestQuickPickerSwitchesWithEditableCommandPrefix(t *testing.T) {
 		t.Fatal("typing > did not switch to commands")
 	}
 	m.Update(tea.PasteMsg{Content: "Appearance: Toggle Sidebar Visibility"})
-	if rows := m.filteredActions(); len(rows) != 1 || rows[0].id != "view.sidebar" {
+	if rows := m.filteredActions(); len(rows) != 1 || rows[0].id != string(commandSidebar) {
 		t.Fatal("command prefix was included in the search query")
 	}
 	drain(t, m, press(m, "enter"))
-	if m.lastCommand != "view.sidebar" {
+	if m.lastCommand != string(commandSidebar) {
 		t.Fatal("command selection did not update history")
 	}
 	m.openQuickFiles()
 	m.Update(tea.PasteMsg{Content: ">Appearance: Toggle Sidebar Visibility"})
-	if rows := m.filteredActions(); !m.commandPicker() || len(rows) != 1 || rows[0].id != "view.sidebar" {
+	if rows := m.filteredActions(); !m.commandPicker() || len(rows) != 1 || rows[0].id != string(commandSidebar) {
 		t.Fatal("pasting > did not switch modes")
 	}
 	press(m, "ctrl+g")

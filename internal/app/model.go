@@ -1194,10 +1194,7 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	if m.rotateWelcomeArt(k) {
 		return nil
 	}
-	if handled, cmd := m.diffChangeShortcut(k); handled {
-		return cmd
-	}
-	if route.command == commandSave {
+	if route.has(diffInput) || route.command == commandSave {
 		return m.executeCommand(route.command, "")
 	}
 	if d := m.editorDocument(); !m.sidebar && d != nil {
@@ -1207,11 +1204,6 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		}
 		if matchesShortcut(k, pickerKeys.Accept) {
 			if cmd, handled := m.enterMarkdownRemoteImage(); handled {
-				return cmd
-			}
-		}
-		if d.ReadOnly {
-			if handled, cmd := m.reviewKey(k); handled {
 				return cmd
 			}
 		}

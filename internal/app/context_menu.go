@@ -145,7 +145,11 @@ func (m *Model) runContextMenuShortcut(name string) (tea.Cmd, bool) {
 		if a.key == "" {
 			continue
 		}
-		if menuShortcutMatches(name, a.key) || a.id != "" && m.matchWorkbenchCommand(name, commandID(a.id)) {
+		matches := a.id != "" && m.matchWorkbenchCommand(name, commandID(a.id))
+		if !matches && !m.activeWorkbenchKeymap().byID[a.id].has(diffInput) {
+			matches = menuShortcutMatches(name, a.key)
+		}
+		if matches {
 			menu.selected = i
 			return m.runContextMenu(), true
 		}

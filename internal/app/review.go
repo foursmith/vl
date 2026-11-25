@@ -5,7 +5,6 @@ import (
 	"sort"
 	"strings"
 
-	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -304,14 +303,15 @@ func (m *Model) selectedDiffChanges() map[*diff.Line]bool {
 }
 
 func (m *Model) reviewActions() []action {
-	return m.reviewActionsForKey("", true)
+	return m.reviewActionsForCommand("", true)
 }
 
-func (m *Model) reviewActionsForKey(pressed string, checkRefresh bool) []action {
+func (m *Model) reviewActionsForCommand(pressed commandID, checkRefresh bool) []action {
 	var actions []action
-	add := func(a action, shortcut key.Binding) {
-		if pressed == "" || matchesShortcut(pressed, shortcut) {
-			a.key = shortcut.Help().Key
+	add := func(a action, shortcut commandID) {
+		if pressed == "" || pressed == shortcut {
+			a.id = string(shortcut)
+			a.key = m.commandShortcutHint(shortcut)
 			actions = append(actions, a)
 		}
 	}
@@ -323,9 +323,9 @@ func (m *Model) reviewActionsForKey(pressed string, checkRefresh bool) []action 
 	}
 	if m.diffChange != nil {
 		reverse := m.diffStaged
-		prefix, file, hunk, ranges := "diff.stage", "Stage File", "Stage Hunk", "Stage Selected Ranges"
+		file, hunk, ranges := "Stage File", "Stage Hunk", "Stage Selected Ranges"
 		if reverse {
-			prefix, file, hunk, ranges = "diff.unstage", "Unstage File", "Unstage Hunk", "Unstage Selected Ranges"
+			file, hunk, ranges = "Unstage File", "Unstage Hunk", "Unstage Selected Ranges"
 		}
 		target, raw := m.diffState, m.patch.Raw
 		bind := func(stale string, run func() tea.Cmd) func() tea.Cmd {
@@ -340,44 +340,44 @@ func (m *Model) reviewActionsForKey(pressed string, checkRefresh bool) []action 
 		stage := func(run func() tea.Cmd) func() tea.Cmd { return bind("Diff changed; refresh before staging", run) }
 		partialReason := m.partialStageReason(reverse, checkRefresh)
 		discardReason := m.partialDiscardReason(checkRefresh)
-		addDiscard := func(id, label string, shortcut key.Binding, selected func(*diff.Line) bool, prompt string, args ...any) {
+		addDiscard := func(label string, shortcut commandID, selected func(*diff.Line) bool, prompt string, args ...any) {
 			if reverse {
 				return
 			}
-			add(action{id: id, label: m.tr(label), disabled: discardReason,
+			add(action{label: m.tr(label), disabled: discardReason,
 				run: bind("Diff changed; refresh before discarding", func() tea.Cmd {
 					return m.discardDiffLines(m.tr(prompt, args...), selected)
 				}),
 			}, shortcut)
 		}
 		selected := m.selectedDiffChanges()
-		hunkStageKey, hunkDiscardKey := gitKeys.Stage, gitKeys.Discard
+		hunkStageKey, hunkDiscardKey := commandToggleDiffStage, commandDiscardDiffChanges
 		if start, end := m.diffSelection.bounds(); m.diffSelection.active && start != end {
-			hunkStageKey, hunkDiscardKey = key.Binding{}, key.Binding{}
+			hunkStageKey, hunkDiscardKey = "", ""
 		}
 		if len(selected) != 0 {
 			inRange := func(line *diff.Line) bool { return selected[line] }
-			add(action{id: prefix + "Ranges", label: m.tr(ranges), disabled: partialReason, run: stage(func() tea.Cmd {
+			add(action{label: m.tr(ranges), disabled: partialReason, run: stage(func() tea.Cmd {
 				return m.stageDiffLines(reverse, ranges, inRange)
-			})}, gitKeys.Stage)
-			addDiscard("diff.discardRanges", "Discard Selected Ranges", gitKeys.Discard, inRange,
+			})}, commandToggleDiffStage)
+			addDiscard("Discard Selected Ranges", commandDiscardDiffChanges, inRange,
 				"Permanently discard %d selected changed lines in %s?", len(selected), m.diffPath)
 		}
 		if index := m.diffHunk; index >= 0 && index < len(m.patch.Hunks) {
 			inHunk := func(line *diff.Line) bool { return line.Hunk == index }
-			add(action{id: prefix + "Hunk", label: m.tr(hunk), disabled: partialReason, run: stage(func() tea.Cmd {
+			add(action{label: m.tr(hunk), disabled: partialReason, run: stage(func() tea.Cmd {
 				return m.stageDiffLines(reverse, hunk, inHunk)
 			})}, hunkStageKey)
-			addDiscard("diff.discardHunk", "Discard Hunk", hunkDiscardKey, inHunk,
+			addDiscard("Discard Hunk", hunkDiscardKey, inHunk,
 				"Permanently discard hunk %d of %d in %s?", index+1, len(m.patch.Hunks), m.diffPath)
 		}
 		fileReason := sourceReason
 		if fileReason == "" {
 			fileReason = m.stageFileReason(*m.diffChange, reverse)
 		}
-		add(action{id: prefix + "File", label: m.tr(file), disabled: fileReason, run: stage(func() tea.Cmd {
+		add(action{label: m.tr(file), disabled: fileReason, run: stage(func() tea.Cmd {
 			return m.stageFile(*m.diffChange, reverse)
-		})}, gitKeys.StageScope)
+		})}, commandToggleDiffFileStage)
 		if !reverse {
 			reason := sourceReason
 			if reason == "" && raw == "" {
@@ -386,62 +386,59 @@ func (m *Model) reviewActionsForKey(pressed string, checkRefresh bool) []action 
 			if reason == "" {
 				reason = m.discardFileReason(*m.diffChange)
 			}
-			add(action{id: "diff.discardFile", label: m.tr("Discard File"), disabled: reason,
-				run: bind("Diff changed; refresh before discarding", func() tea.Cmd { return m.discardFile(*m.diffChange, raw) })}, gitKeys.DiscardScope)
+			add(action{label: m.tr("Discard File"), disabled: reason,
+				run: bind("Diff changed; refresh before discarding", func() tea.Cmd { return m.discardFile(*m.diffChange, raw) })}, commandDiscardDiffFile)
 		}
 	}
-	add(action{id: "diff.edit", label: m.tr("Open Working Tree File"), disabled: sourceReason, run: m.editDiff}, key.Binding{})
+	add(action{label: m.tr("Open Working Tree File"), disabled: sourceReason, run: m.editDiff}, "")
 	return actions
 }
 
-func (m *Model) reviewKey(k string) (bool, tea.Cmd) {
-	v := &m.tabs[m.activeTab].vim
-	if v.CommandPending() || v.VisualMode {
-		return false, nil
-	}
-	switch k {
-	case "enter":
-		return m.toggleNearestDiffFold()
-	case "[":
-		m.nextHunk(-1)
-	case "]":
-		m.nextHunk(1)
-	default:
-		return false, nil
-	}
-	return true, nil
+func (m *Model) diffFocused() bool {
+	return m.modal == "" && m.flash == nil && !m.sidebar && m.diffOpen && m.activeTab >= 0 &&
+		!m.tabs[m.activeTab].vim.CommandPending()
 }
 
-func (m *Model) diffChangeShortcut(k string) (bool, tea.Cmd) {
-	if m.sidebar || !m.diffOpen || m.diffChange == nil {
-		return false, nil
-	}
-	if !isDiffGitShortcut(k) {
-		return false, nil
-	}
-	if m.tabs[m.activeTab].vim.CommandPending() {
-		return false, nil
-	}
-	if actions := m.reviewActionsForKey(k, true); len(actions) != 0 {
+func (m *Model) diffNavigationFocused() bool {
+	return m.diffFocused() && m.editorDocument() != nil && !m.tabs[m.activeTab].vim.VisualMode
+}
+
+func (m *Model) diffChangesFocused() bool {
+	return m.diffFocused() && m.diffChange != nil
+}
+
+func (m *Model) applyDiffChangeShortcut(command commandID) tea.Cmd {
+	if actions := m.reviewActionsForCommand(command, true); len(actions) != 0 {
 		action := actions[0]
 		if action.disabled != "" {
 			m.notice = action.disabled
-			return true, nil
+			return nil
 		}
-		return true, action.run()
+		return action.run()
 	}
-	if matchesShortcut(k, gitKeys.Discard) || matchesShortcut(k, gitKeys.DiscardScope) {
+	if command == commandDiscardDiffChanges || command == commandDiscardDiffFile {
 		if m.diffStaged {
 			m.notice = m.tr("Open a working-tree diff first")
 		} else if start, end := m.diffSelection.bounds(); m.diffSelection.active && start != end {
 			m.notice = m.tr("Select changed lines to discard")
 		} else {
-			m.notice = m.tr("Use %s to discard changes to the whole file", gitKeys.DiscardScope.Help().Key)
+			m.notice = m.tr("Use %s to discard changes to the whole file", m.diffFileActionHint(commandDiscardDiffFile, "Discard File"))
 		}
 	} else if start, end := m.diffSelection.bounds(); m.diffSelection.active && start != end {
 		m.notice = m.tr("Select changed lines to stage or unstage")
 	} else {
-		m.notice = m.tr("Use %s to stage or unstage the whole file", gitKeys.StageScope.Help().Key)
+		label := "Stage File"
+		if m.diffStaged {
+			label = "Unstage File"
+		}
+		m.notice = m.tr("Use %s to stage or unstage the whole file", m.diffFileActionHint(commandToggleDiffFileStage, label))
 	}
-	return true, nil
+	return nil
+}
+
+func (m *Model) diffFileActionHint(id commandID, label string) string {
+	if hint := m.commandShortcutHint(id); hint != "" {
+		return hint
+	}
+	return m.tr(label)
 }

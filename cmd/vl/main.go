@@ -144,6 +144,7 @@ func runSession(path string, icons bool, displayLanguage string, selectedTheme *
 		m.SetStartupTheme(selectedTheme)
 	}
 
+	keybindingsErr := m.LoadKeybindings()
 	positionStore, positionErr := config.NewFilePositionStore()
 	if positionErr != nil {
 		fmt.Fprintln(os.Stderr, "Load file positions:", positionErr)
@@ -173,6 +174,9 @@ func runSession(path string, icons bool, displayLanguage string, selectedTheme *
 	}
 	m.Close()
 
+	if keybindingsErr != nil {
+		fmt.Fprintln(os.Stderr, "Load keybindings:", keybindingsErr)
+	}
 	if preferencesErr != nil {
 		fmt.Fprintln(os.Stderr, "Load configuration:", preferencesErr)
 	} else if preferencesStore != nil {

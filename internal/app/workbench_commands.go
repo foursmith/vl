@@ -18,35 +18,44 @@ const (
 	commandDeleteToLineStart commandID = "edit.deleteToLineStart"
 	commandDeleteToLineEnd   commandID = "edit.deleteToLineEnd"
 
-	commandUndo         commandID = "edit.undo"
-	commandRedo         commandID = "edit.redo"
-	commandFiles        commandID = "workspace.quickOpen"
-	commandRecent       commandID = "workspace.openRecent"
-	commandPalette      commandID = "workbench.commandPalette"
-	commandOpenConfig   commandID = "preferences.openConfig"
-	commandReload       commandID = "app.reload"
-	commandSearch       commandID = "view.search"
-	commandExplorer     commandID = "view.explorer"
-	commandChanges      commandID = "view.changes"
-	commandHistory      commandID = "view.history"
-	commandPullRequests commandID = "view.pullRequests"
-	commandSidebar      commandID = "view.sidebar"
-	commandFocus        commandID = "view.toggleFocus"
-	commandRefresh      commandID = "workbench.refresh"
-	commandDiffLayout   commandID = "view.diff"
-	commandSave         commandID = "file.save"
-	commandClose        commandID = "file.close"
-	commandCloseOthers  commandID = "file.closeOthers"
-	commandCloseAll     commandID = "file.closeAll"
-	commandFind         commandID = "edit.find"
-	commandContextMenu  commandID = "workbench.contextMenu"
-	commandPreviousTab  commandID = "view.previousEditor"
-	commandNextTab      commandID = "view.nextEditor"
-	commandSaveAndClose commandID = "file.saveAndClose"
+	commandUndo            commandID = "edit.undo"
+	commandRedo            commandID = "edit.redo"
+	commandFiles           commandID = "workbench.goToFile"
+	commandRecent          commandID = "workspace.openRecent"
+	commandPalette         commandID = "workbench.openCommandPalette"
+	commandOpenConfig      commandID = "preferences.openConfig"
+	commandOpenKeybindings commandID = "preferences.openKeybindings"
+	commandReload          commandID = "app.reload"
+	commandSearch          commandID = "workspace.findInFiles"
+	commandExplorer        commandID = "view.explorer"
+	commandChanges         commandID = "view.changes"
+	commandHistory         commandID = "view.history"
+	commandPullRequests    commandID = "view.pullRequests"
+	commandSidebar         commandID = "sidebar.toggleVisibility"
+	commandFocus           commandID = "sidebar.toggleFocus"
+	commandRefresh         commandID = "workbench.refresh"
+	commandDiffLayout      commandID = "diff.toggleLayout"
+	commandSave            commandID = "file.save"
+	commandClose           commandID = "editor.closeTab"
+	commandCloseOthers     commandID = "editor.closeOtherTabs"
+	commandCloseAll        commandID = "editor.closeAllTabs"
+	commandFind            commandID = "edit.findInFile"
+	commandContextMenu     commandID = "workbench.openContextMenu"
+	commandPreviousTab     commandID = "editor.previousTab"
+	commandNextTab         commandID = "editor.nextTab"
+	commandSaveAndClose    commandID = "file.saveAndClose"
+
+	commandPreviousHunk        commandID = "diff.previousHunk"
+	commandNextHunk            commandID = "diff.nextHunk"
+	commandToggleDiffContext   commandID = "diff.toggleContextLines"
+	commandToggleDiffStage     commandID = "diff.toggleStageSelectionOrHunk"
+	commandToggleDiffFileStage commandID = "diff.toggleStageFile"
+	commandDiscardDiffChanges  commandID = "diff.discardSelectionOrHunk"
+	commandDiscardDiffFile     commandID = "diff.discardFile"
 )
 
 var sidebarTabCommands = [...]commandID{
-	"view.sidebarTab.1", "view.sidebarTab.2", "view.sidebarTab.3", "view.sidebarTab.4", "view.sidebarTab.5",
+	"sidebar.showExplorer", "sidebar.showSearch", "sidebar.showChanges", "sidebar.showCommitHistory", "sidebar.showPullRequests",
 }
 
 // A workbench command can be invoked on the current selection or on an
@@ -74,6 +83,8 @@ func (m *Model) executeCommand(id commandID, tabKey string) tea.Cmd {
 		return m.openPalette()
 	case commandOpenConfig:
 		return m.openConfig()
+	case commandOpenKeybindings:
+		return m.openKeybindings()
 	case commandSearch:
 		return m.openSearch()
 	case commandExplorer:
@@ -93,6 +104,14 @@ func (m *Model) executeCommand(id commandID, tabKey string) tea.Cmd {
 	case commandDiffLayout:
 		m.split = !m.split
 		m.renderDiff()
+	case commandPreviousHunk:
+		m.nextHunk(-1)
+	case commandNextHunk:
+		m.nextHunk(1)
+	case commandToggleDiffContext:
+		return m.toggleNearestDiffFold()
+	case commandToggleDiffStage, commandToggleDiffFileStage, commandDiscardDiffChanges, commandDiscardDiffFile:
+		return m.applyDiffChangeShortcut(id)
 	case commandSave:
 		if m.editing() {
 			if v := &m.tabs[m.activeTab].vim; !v.InsertMode {

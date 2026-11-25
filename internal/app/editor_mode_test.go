@@ -172,7 +172,7 @@ func TestEditorModeIsolatedAndFullWidth(t *testing.T) {
 		}
 	}
 	for _, a := range m.actions() {
-		if strings.HasPrefix(a.id, "git.") || a.id == "workspace.openRecent" || strings.HasPrefix(a.id, "view.sidebar") {
+		if strings.HasPrefix(a.id, "git.") || a.id == "workspace.openRecent" || (strings.HasPrefix(a.id, "sidebar.") || strings.HasPrefix(a.id, "view.sidebar")) {
 			t.Fatalf("workspace action exposed: %s", a.id)
 		}
 	}
@@ -208,13 +208,7 @@ func TestEditorModeStatusHintsAdvertiseQuitAndCommands(t *testing.T) {
 		t.Fatalf("clean editor hint = %q", got)
 	}
 
-	keymap, err := buildWorkbenchKeymap([]workbenchKeyOverride{
-		{id: string(commandQuit), binding: binding("F8", "", "f8")},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	m.workbenchKeymap = keymap
+	m.workbenchKeymap = testKeybindings(t, []byte(`[{"command": "app.quit", "keys": "F8"}]`))
 	m.document().Insert("edited ")
 	if got := statusPart(t, m, "notice").text; got != "F8 Quit · Ctrl+P Show All Commands" {
 		t.Fatalf("modified editor hint = %q", got)

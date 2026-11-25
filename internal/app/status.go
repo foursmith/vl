@@ -185,7 +185,7 @@ func (m *Model) statusHints() []string {
 		var hints []string
 		// A background refresh keeps showing the previous patch. Keep its
 		// shortcuts visible while the action handlers wait for fresh data.
-		for _, action := range m.reviewActionsForKey("", false) {
+		for _, action := range m.reviewActionsForCommand("", false) {
 			if action.key == "" || action.disabled != "" {
 				continue
 			}

@@ -11,7 +11,7 @@
 | Text across the workspace | `Ctrl+Shift+F` to widen the search |
 | An action | `Ctrl+P` for the command palette |
 
-Press keys joined with `+` together. Press sequences such as `gg` and `Space w` one key at a time. Letter keys are case-sensitive.
+Press keys joined with `+` together. Press sequences such as `gg` and `Space w` one key at a time.
 
 ## Workbench
 
@@ -27,6 +27,61 @@ Press keys joined with `+` together. Press sequences such as `gg` and `Space w` 
 | Find actions for the current item | `F7` or right-click to open the context menu. |
 
 Closing tabs, switching workspaces, and quitting prompt when there are unsaved changes. In single-file mode, `Ctrl+G` lists files in the current file's directory, and closing the last tab quits. The arrow keys rotate the welcome artwork when it is visible and the main area has focus.
+
+### Customize workbench shortcuts
+
+Run **Preferences: Open Keyboard Shortcuts File** from the command palette to edit `~/.config/vl/keybindings.json`. Copy the example below to start with every configurable shortcut and its default keys.
+
+```json
+[
+  {"command": "app.quit", "keys": "Ctrl+Q"},
+  {"command": "diff.discardFile", "keys": "Shift+D"},
+  {"command": "diff.discardSelectionOrHunk", "keys": "d"},
+  {"command": "diff.nextHunk", "keys": "]"},
+  {"command": "diff.previousHunk", "keys": "["},
+  {"command": "diff.toggleContextLines", "keys": "Enter"},
+  {"command": "diff.toggleLayout", "keys": []},
+  {"command": "diff.toggleStageFile", "keys": "Shift+S"},
+  {"command": "diff.toggleStageSelectionOrHunk", "keys": "s"},
+  {"command": "edit.copy", "keys": "Ctrl+C"},
+  {"command": "edit.cut", "keys": "Ctrl+X"},
+  {"command": "edit.deleteToLineEnd", "keys": "Ctrl+Delete"},
+  {"command": "edit.deleteToLineStart", "keys": "Ctrl+Backspace"},
+  {"command": "edit.findInFile", "keys": "Ctrl+F"},
+  {"command": "edit.paste", "keys": "Ctrl+V"},
+  {"command": "edit.redo", "keys": "Ctrl+Shift+Z"},
+  {"command": "edit.selectAll", "keys": "Ctrl+A"},
+  {"command": "edit.undo", "keys": "Ctrl+Z"},
+  {"command": "editor.closeAllTabs", "keys": []},
+  {"command": "editor.closeOtherTabs", "keys": "Ctrl+Shift+W"},
+  {"command": "editor.closeTab", "keys": "Ctrl+W"},
+  {"command": "editor.nextTab", "keys": "Ctrl+T"},
+  {"command": "editor.previousTab", "keys": "Ctrl+Shift+T"},
+  {"command": "file.save", "keys": "Ctrl+S"},
+  {"command": "preferences.openConfig", "keys": "Ctrl+,"},
+  {"command": "preferences.openKeybindings", "keys": []},
+  {"command": "sidebar.refresh", "keys": ["r", "Shift+R"]},
+  {"command": "sidebar.showChanges", "keys": "Ctrl+3"},
+  {"command": "sidebar.showCommitHistory", "keys": "Ctrl+4"},
+  {"command": "sidebar.showExplorer", "keys": "Ctrl+1"},
+  {"command": "sidebar.showPullRequests", "keys": "Ctrl+5"},
+  {"command": "sidebar.showSearch", "keys": "Ctrl+2"},
+  {"command": "sidebar.toggleFocus", "keys": "F2"},
+  {"command": "sidebar.toggleVisibility", "keys": "F12"},
+  {"command": "workbench.goToFile", "keys": "Ctrl+G"},
+  {"command": "workbench.openCommandPalette", "keys": "Ctrl+P"},
+  {"command": "workbench.openContextMenu", "keys": "F7"},
+  {"command": "workbench.refresh", "keys": "F5"},
+  {"command": "workspace.findInFiles", "keys": "Ctrl+Shift+F"},
+  {"command": "workspace.openRecent", "keys": "Ctrl+R"}
+]
+```
+
+After editing and saving the file, run **Reload VL** from the command palette.
+
+Omit an entry to use its default. Set `keys` to a shortcut such as `F8` or `Alt+1`, an array of alternative shortcuts, or `[]` to leave the action without a shortcut. Key names are case-insensitive. Write `Shift+S` for the shifted key.
+
+Bindings use the action's built-in focus rules. vl reports and skips entries with unknown commands, invalid keys, or a custom `when` condition.
 
 ### Use Space for tabs, saving, and closing
 
@@ -46,7 +101,7 @@ These sequences work in a focused editor in Vim Normal or Visual mode, and in im
 | One item | `↑` / `↓` or `Ctrl+K` / `Ctrl+J`. Sidebar lists and menus also accept `k` / `j`. |
 | Half a page / a full page | `Ctrl+U` / `Ctrl+D` move half a page up / down. `PageUp` / `PageDown` move a full page. |
 | First / last item | `Home` / `End`. Sidebar lists and menus also accept `gg` / `G`. |
-| A specific distance or position | Sidebar lists and menus accept counts. For example, `3j` moves down three items, and `5gg` or `5G` selects the fifth item. |
+| A specific distance or position | Sidebar lists and menus accept counts. `3j` moves down three items. `5gg` or `5G` selects the fifth item. |
 
 **Go to File** filters by file name or path without requiring Git. Type `src/main.go:42:8` to open a file at line 42, column 8, or `:42` to jump to line 42 in the current file. In workspace mode, `F4` toggles ignored files. Type `>` to switch to the command palette.
 
@@ -101,8 +156,10 @@ Use the context menu or command palette to switch branches, sync, publish, or ma
 | --- | --- |
 | `[` / `]` | Jump to the previous / next hunk. |
 | `Enter` | Expand or collapse nearby unchanged context. |
-| `s` / `S` | Stage or unstage selected changed lines, or the current hunk when there is no selection. Uppercase applies to the whole file. |
-| `d` / `D` | Confirm discarding selected changed lines or the current hunk. Uppercase discards all unstaged changes in the file. |
+| `s` | Stage or unstage selected changed lines, or the current hunk when there is no selection. |
+| `S` | Stage or unstage the whole file. |
+| `d` | Confirm discarding selected changed lines or the current hunk. |
+| `D` | Confirm discarding all unstaged changes in the file. |
 | `F7` | Open the diff menu, which also lets you switch between inline and split layouts. |
 
 Text diffs share the editor's movement, find, selection, yank, and Flash keys. Use `[`, `]`, and `Enter` outside Visual mode. Git editing keys apply to working-tree and staged diffs. In split view, keyboard navigation uses the right pane and the mouse can select text in either pane. Copies omit line numbers and diff markers. Binary diffs use whole-file operations. History and PR diffs are for review.

@@ -147,9 +147,9 @@ func (m *Model) clickDiffFold(msg tea.MouseClickMsg) (tea.Cmd, bool) {
 	return m.toggleDiffFold(fold, false), true
 }
 
-func (m *Model) toggleNearestDiffFold() (bool, tea.Cmd) {
+func (m *Model) toggleNearestDiffFold() tea.Cmd {
 	if len(m.contextFolds) == 0 || len(m.reviewRows) == 0 {
-		return false, nil
+		return nil
 	}
 	cursor, _ := m.review.Position()
 	row := m.reviewRows[cursor]
@@ -162,7 +162,7 @@ func (m *Model) toggleNearestDiffFold() (bool, tea.Cmd) {
 		}
 		delta := row - fold.start
 		if delta >= 0 && delta < len(fold.lines) {
-			return true, m.toggleDiffFold(fold, true)
+			return m.toggleDiffFold(fold, true)
 		}
 		if delta >= 0 {
 			delta -= len(fold.lines)
@@ -173,7 +173,7 @@ func (m *Model) toggleNearestDiffFold() (bool, tea.Cmd) {
 		}
 	}
 	if nearest == nil {
-		return false, nil
+		return nil
 	}
-	return true, m.toggleDiffFold(nearest, true)
+	return m.toggleDiffFold(nearest, true)
 }

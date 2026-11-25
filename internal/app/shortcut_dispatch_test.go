@@ -1,17 +1,22 @@
 package app
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 
-	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"github.com/foursmith/vl/internal/config"
+	"github.com/foursmith/vl/internal/diff"
 	gitservice "github.com/foursmith/vl/internal/git"
 )
 
-func TestDefaultWorkbenchShortcutActions(t *testing.T) {
+func TestWorkbenchShortcutActions(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("USERPROFILE", os.Getenv("HOME"))
 	ctrl := func(code rune) tea.KeyPressMsg {
 		return tea.KeyPressMsg{Code: code, Mod: tea.ModCtrl}
 	}
@@ -19,6 +24,9 @@ func TestDefaultWorkbenchShortcutActions(t *testing.T) {
 		return tea.KeyPressMsg{Code: code, Mod: tea.ModCtrl | tea.ModShift}
 	}
 	keypress := func(code rune) tea.KeyPressMsg { return tea.KeyPressMsg{Code: code} }
+	shift := func(code rune) tea.KeyPressMsg { return tea.KeyPressMsg{Code: code, Mod: tea.ModShift} }
+	startsOperation := func(_ *Model, cmd tea.Cmd) bool { return cmd != nil }
+	confirmsDiscard := func(m *Model, _ tea.Cmd) bool { return m.confirmationDialog() }
 	isQuit := func(m *Model, _ tea.Cmd) bool {
 		return hasSaveConfirmation(m)
 	}
@@ -32,12 +40,13 @@ func TestDefaultWorkbenchShortcutActions(t *testing.T) {
 		drain(t, m, cmd)
 		return len(m.snapshot.Changes) == 2
 	}
-	cases := []struct {
+	type shortcutCase struct {
 		command commandID
 		sidebar bool
 		keys    []tea.KeyPressMsg
 		check   func(*Model, tea.Cmd) bool
-	}{
+	}
+	cases := []shortcutCase{
 		{commandQuit, false, []tea.KeyPressMsg{ctrl('q')}, isQuit},
 		{commandCopy, false, []tea.KeyPressMsg{ctrl('c')}, func(m *Model, cmd tea.Cmd) bool {
 			return cmd != nil && m.modal == "" && m.document().SelectedText() != ""
@@ -69,6 +78,10 @@ func TestDefaultWorkbenchShortcutActions(t *testing.T) {
 		{commandOpenConfig, true, []tea.KeyPressMsg{ctrl(',')}, func(m *Model, _ tea.Cmd) bool {
 			return m.document() != nil && filepath.Base(m.document().Path) == "vl.config.json" &&
 				m.document().Text == "{\n}\n" && !m.sidebar && !m.tabs[m.activeTab].preview
+		}},
+		{commandOpenKeybindings, true, nil, func(m *Model, _ tea.Cmd) bool {
+			return m.document() != nil && filepath.Base(m.document().Path) == "keybindings.json" &&
+				m.document().Text == "[\n]\n" && !m.sidebar && !m.tabs[m.activeTab].preview
 		}},
 		{commandSearch, false, []tea.KeyPressMsg{ctrlShift('f'), ctrlShift('F')}, sidebarSection(search)},
 		{sidebarTabCommands[0], false, []tea.KeyPressMsg{ctrl('1')}, sidebarSection(explorer)},
@@ -103,12 +116,111 @@ func TestDefaultWorkbenchShortcutActions(t *testing.T) {
 			return m.activeTab == 0
 		}},
 		{commandCloseOthers, false, []tea.KeyPressMsg{ctrlShift('w'), ctrlShift('W')}, tabs(1)},
+		{commandCloseAll, false, nil, tabs(0)},
 		{commandFind, false, []tea.KeyPressMsg{ctrl('f')}, func(m *Model, _ tea.Cmd) bool { return m.fileFindFocused() }},
 		{commandContextMenu, false, []tea.KeyPressMsg{keypress(tea.KeyF7)}, func(m *Model, _ tea.Cmd) bool {
 			return m.contextMenu != nil
 		}},
+		{commandPreviousHunk, false, []tea.KeyPressMsg{keypress('[')}, func(m *Model, _ tea.Cmd) bool { return m.diffHunk == 0 }},
+		{commandNextHunk, false, []tea.KeyPressMsg{keypress(']')}, func(m *Model, _ tea.Cmd) bool { return m.diffHunk == 1 }},
+		{commandToggleDiffContext, false, []tea.KeyPressMsg{keypress(tea.KeyEnter)}, func(m *Model, _ tea.Cmd) bool {
+			return len(m.contextFolds[0].lines) != 0
+		}},
+		{commandToggleDiffStage, false, []tea.KeyPressMsg{keypress('s')}, startsOperation},
+		{commandToggleDiffFileStage, false, []tea.KeyPressMsg{keypress('S'), shift('s')}, startsOperation},
+		{commandDiscardDiffChanges, false, []tea.KeyPressMsg{keypress('d')}, confirmsDiscard},
+		{commandDiscardDiffFile, false, []tea.KeyPressMsg{keypress('D'), shift('d')}, confirmsDiscard},
+		{commandDiffLayout, false, nil, func(m *Model, _ tea.Cmd) bool { return m.split && m.diffLayout.split }},
 	}
 	covered := make(map[commandID]map[string]bool)
+	customCovered := make(map[string]bool)
+	run := func(t *testing.T, test shortcutCase, msg tea.KeyPressMsg, custom bool) {
+		t.Helper()
+		m := tabWorkspace(t, 2)
+		defer m.Close()
+		m.openFile("file0.go")
+		m.openFile("file1.go")
+		m.sidebar = test.sidebar
+		if defaultWorkbenchKeymap.byID[string(test.command)].has(diffInput) || test.command == commandDiffLayout {
+			showShortcutTestDiff(m)
+		}
+		switch test.command {
+		case commandDiffLayout:
+			m.split = false
+			m.Update(tea.WindowSizeMsg{Width: 180, Height: 40})
+		case commandPreviousHunk:
+			m.nextHunk(1)
+		case commandNextTab:
+			m.setVimDisabled(true)
+		case commandPreviousTab:
+			m.activateTab(0)
+			press(m, "i")
+		case commandOpenConfig:
+			m.SetPreferencesStore(config.NewPreferencesStore(filepath.Join(t.TempDir(), "vl", "vl.config.json")))
+		case commandQuit:
+			m.document().Insert("unsaved")
+		case commandCopy, commandCut:
+			m.document().Insert("unsaved")
+			m.document().SelectAll()
+		case commandDeleteToLineStart, commandDeleteToLineEnd:
+			m.document().Edit("first\n删除整行\nlast")
+			m.document().Cursor = 8
+		case commandUndo, commandRedo:
+			m.document().Insert("unsaved")
+			if test.command == commandRedo {
+				m.document().Undo()
+			}
+		case commandSave:
+			m.document().Insert("saved")
+			// Save should reach the workbench while a Vim operator is pending.
+			press(m, "d")
+		}
+		name := msg.String()
+		if custom {
+			id := string(test.command)
+			if len(test.keys) != 0 {
+				original := m.resolveWorkbenchShortcut(name)
+				if original.command != test.command {
+					t.Fatalf("%s resolved to %q before overriding, want %q", name, original.command, test.command)
+				}
+				id = original.ruleID()
+			}
+			customCovered[id] = true
+			load := func(keys []string) {
+				t.Helper()
+				data, err := json.Marshal([]struct {
+					Command string   `json:"command"`
+					Keys    []string `json:"keys"`
+				}{{Command: id, Keys: keys}})
+				if err != nil {
+					t.Fatal(err)
+				}
+				m.workbenchKeymap = testKeybindings(t, data)
+			}
+			load([]string{})
+			if m.activeWorkbenchKeymap().byID[id].binding.Enabled() {
+				t.Fatalf("%s remained bound after disabling it", id)
+			}
+			load([]string{"F8", "F9"})
+			for _, original := range test.keys {
+				if m.resolveWorkbenchShortcut(original.String()).ruleID() == id {
+					t.Errorf("%s still uses its old key %s", id, original.String())
+				}
+			}
+			if got := m.resolveWorkbenchShortcut("f9").ruleID(); got != id {
+				t.Fatalf("alternate key resolved to %q, want %q", got, id)
+			}
+			msg = keypress(tea.KeyF8)
+			name = msg.String()
+		}
+		if got := m.resolveWorkbenchShortcut(name).command; got != test.command {
+			t.Fatalf("resolved to %q instead of %q", got, test.command)
+		}
+		_, cmd := m.Update(msg)
+		if !test.check(m, cmd) {
+			t.Fatalf("%s did not produce the expected action", name)
+		}
+	}
 	for _, test := range cases {
 		for _, msg := range test.keys {
 			name := msg.String()
@@ -116,54 +228,96 @@ func TestDefaultWorkbenchShortcutActions(t *testing.T) {
 				covered[test.command] = make(map[string]bool)
 			}
 			covered[test.command][name] = true
-			t.Run(string(test.command)+"/"+name, func(t *testing.T) {
-				m := tabWorkspace(t, 2)
-				defer m.Close()
-				m.openFile("file0.go")
-				m.openFile("file1.go")
-				m.sidebar = test.sidebar
-				switch test.command {
-				case commandNextTab:
-					m.setVimDisabled(true)
-				case commandPreviousTab:
-					m.activateTab(0)
-					press(m, "i")
-				case commandOpenConfig:
-					m.SetPreferencesStore(config.NewPreferencesStore(filepath.Join(t.TempDir(), "vl", "vl.config.json")))
-				case commandQuit:
-					m.document().Insert("unsaved")
-				case commandCopy, commandCut:
-					m.document().Insert("unsaved")
-					m.document().SelectAll()
-				case commandDeleteToLineStart, commandDeleteToLineEnd:
-					m.document().Edit("first\n删除整行\nlast")
-					m.document().Cursor = 8
-				case commandUndo, commandRedo:
-					m.document().Insert("unsaved")
-					if test.command == commandRedo {
-						m.document().Undo()
-					}
-				case commandSave:
-					m.document().Insert("saved")
-					// Save should reach the workbench while a Vim operator is pending.
-					press(m, "d")
-				}
-				if got := m.resolveWorkbenchShortcut(name).command; got != test.command {
-					t.Fatalf("resolved to %q instead of %q", got, test.command)
-				}
-				_, cmd := m.Update(msg)
-				if !test.check(m, cmd) {
-					t.Fatalf("%s did not produce the expected action", name)
-				}
+			t.Run("default/"+string(test.command)+"/"+name, func(t *testing.T) {
+				run(t, test, msg, false)
 			})
 		}
+		var original tea.KeyPressMsg
+		name := "unbound"
+		if len(test.keys) != 0 {
+			original = test.keys[0]
+			name = original.String()
+		}
+		t.Run("custom/"+string(test.command)+"/"+name, func(t *testing.T) {
+			run(t, test, original, true)
+		})
 	}
 	for _, rule := range workbenchKeybindings {
+		if !customCovered[rule.ruleID()] {
+			t.Errorf("custom binding %s has no action test", rule.ruleID())
+		}
 		for _, name := range rule.binding.Keys() {
 			if !covered[rule.command][name] {
 				t.Errorf("default binding %q for %s has no action test", name, rule.ruleID())
 			}
 		}
+	}
+}
+
+func testKeybindings(t *testing.T, data []byte) *workbenchKeymap {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "keybindings.json")
+	if err := os.WriteFile(path, data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	keymap, err := loadWorkbenchKeymap(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return keymap
+}
+
+func showShortcutTestDiff(m *Model) {
+	m.diffPath = "file0.go"
+	m.diffChange = &gitservice.Change{Path: m.diffPath, Worktree: 'M'}
+	m.patch = diff.Parse("diff --git a/file0.go b/file0.go\n--- a/file0.go\n+++ b/file0.go\n@@ -2 +2 @@\n-old\n+new\n@@ -5 +5 @@\n-old again\n+new again\n")
+	m.initContextFolds("first\nold\nthird\nfourth\nold again\nlast\n")
+	showDiffFixture(m)
+	m.renderDiff()
+	m.nextHunk(0)
+}
+
+func TestConfiguredDiffShortcutsUseFocusedDiffAndMenuTarget(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	defer m.Close()
+	m.workbenchKeymap = testKeybindings(t, []byte(`[
+		{"command": "diff.nextHunk", "keys": "F8"},
+		{"command": "diff.toggleStageSelectionOrHunk", "keys": "S"},
+		{"command": "diff.toggleStageFile", "keys": "sHiFt+s"},
+		{"command": "diff.discardSelectionOrHunk", "keys": ["F9", "F10"]}
+	]`))
+	showShortcutTestDiff(m)
+	if m.resolveWorkbenchShortcut("s").command != commandToggleDiffStage || m.commandShortcutHint(commandToggleDiffStage) != "s" {
+		t.Fatal("a capital letter in the config changed the unmodified binding")
+	}
+	for _, name := range []string{"S", "shift+s", "shift+S"} {
+		if m.resolveWorkbenchShortcut(name).command != commandToggleDiffFileStage {
+			t.Fatalf("explicit Shift binding did not match terminal event %q", name)
+		}
+	}
+	press(m, "]")
+	if m.diffHunk != 0 {
+		t.Fatal("replaced default key still moved to the next hunk")
+	}
+	m.openFileFind()
+	m.Update(tea.KeyPressMsg{Code: tea.KeyF8})
+	if m.diffHunk != 0 || !m.fileFindFocused() {
+		t.Fatal("diff shortcut intercepted input in Find")
+	}
+	m.closeFileFind()
+	m.Update(tea.KeyPressMsg{Code: tea.KeyF8})
+	if m.diffHunk != 1 {
+		t.Fatal("configured shortcut did not move to the next hunk")
+	}
+	m.contextMenu = &contextMenu{actions: m.reviewActions()}
+	for _, action := range m.contextMenu.actions {
+		if action.id == string(commandDiscardDiffChanges) && action.key != "F9" {
+			t.Fatalf("discard action displays %q instead of F9", action.key)
+		}
+	}
+	m.Update(tea.KeyPressMsg{Code: tea.KeyF10})
+	if !m.confirmationDialog() || m.contextMenu != nil {
+		t.Fatal("alternate shortcut did not open the menu target's discard confirmation")
 	}
 }
 
@@ -242,16 +396,12 @@ func TestWorkbenchKeymapOverridesShareDispatchAndHints(t *testing.T) {
 	m.openFile("file0.go")
 	m.openFile("file1.go")
 	active := m.document()
-	configured, err := buildWorkbenchKeymap([]workbenchKeyOverride{
-		{id: string(commandCopy), binding: binding("F8", "", "f8")},
-		{id: string(commandCloseOthers), binding: binding("F8", "", "f8")},
-		{id: string(commandFind), binding: key.Binding{}},
-		{id: string(commandCloseAll), binding: binding("F9", "", "f9")},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	m.workbenchKeymap = configured
+	m.workbenchKeymap = testKeybindings(t, []byte(`[
+		{"command": "edit.copy", "keys": "F8"},
+		{"command": "editor.closeOtherTabs", "keys": "F8"},
+		{"command": "edit.findInFile", "keys": []},
+		{"command": "editor.closeAllTabs", "keys": "F9"}
+	]`))
 
 	for _, old := range []string{"ctrl+c", "ctrl+f", "ctrl+shift+w"} {
 		if got := m.resolveWorkbenchShortcut(old).command; got != "" {
@@ -455,18 +605,148 @@ func TestWorkbenchShortcutHintRespectsSidebarNavigation(t *testing.T) {
 	defer m.Close()
 	m.openFile("file0.go")
 	m.sidebar = true
-	keymap, err := buildWorkbenchKeymap([]workbenchKeyOverride{
-		{id: string(commandPalette), binding: binding("j", "", "j")},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	m.workbenchKeymap = keymap
+	m.workbenchKeymap = testKeybindings(t, []byte(`[{"command": "workbench.openCommandPalette", "keys": "j"}]`))
 	if hint := m.commandShortcutHint(commandPalette); hint != "" {
 		t.Fatalf("command palette advertises sidebar navigation key %q", hint)
 	}
 	press(m, "j")
 	if m.commandPicker() {
 		t.Fatal("j opened the command palette from the sidebar")
+	}
+}
+
+func TestConfiguredSidebarTabShortcuts(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("USERPROFILE", os.Getenv("HOME"))
+	m := tabWorkspace(t, 1)
+	defer m.Close()
+	path, err := config.KeybindingsPath()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := config.EnsureKeybindingsFile(path); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(`[
+		{"command": "sidebar.showExplorer", "keys": "Alt+1"},
+		{"command": "sidebar.showSearch", "keys": ["F8", "Alt+2"]},
+		{"command": "sidebar.showChanges", "keys": []},
+		{"command": "sidebar.showPullRequests", "keys": "Shift+Ctrl+P"},
+	]`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.LoadKeybindings(); err != nil {
+		t.Fatal(err)
+	}
+	m.openFile("file0.go")
+	m.Update(tea.KeyPressMsg{Code: tea.KeyF8})
+	if m.section != search || !m.sidebar || m.search.focus != 0 {
+		t.Fatal("F8 did not open Search with query focus")
+	}
+	for _, k := range []string{"ctrl+2", "ctrl+3", "ctrl+5"} {
+		if cmd := m.resolveWorkbenchShortcut(k).command; cmd != "" {
+			t.Fatalf("replaced shortcut %s still resolves to %s", k, cmd)
+		}
+	}
+	m.Update(tea.KeyPressMsg{Code: '1', Mod: tea.ModAlt})
+	if m.section != explorer || !m.sidebar {
+		t.Fatal("Alt+1 did not switch from the search field to Explorer")
+	}
+	m.Update(tea.KeyPressMsg{Code: '2', Mod: tea.ModAlt})
+	if m.section != search {
+		t.Fatal("alternate shortcut Alt+2 did not open Search")
+	}
+	press(m, "ctrl+4")
+	if m.section != history {
+		t.Fatal("unspecified sidebar binding lost its default")
+	}
+	for _, code := range []rune{'p', 'P'} {
+		m.Update(tea.KeyPressMsg{Code: code, Mod: tea.ModShift | tea.ModCtrl})
+		if m.section != pullRequests {
+			t.Fatalf("configured chord with key code %q did not switch to Pull Requests", code)
+		}
+		press(m, "ctrl+4")
+	}
+	press(m, "ctrl+p")
+	for _, action := range m.filteredActions() {
+		if action.id == string(commandExplorer) && action.key == "Alt+1" {
+			return
+		}
+	}
+	t.Fatal("command palette did not advertise Alt+1 for Explorer")
+}
+
+func TestKeybindingsExampleMatchesDefaults(t *testing.T) {
+	var example string
+	for _, name := range []string{"KEYBINDINGS.md", "KEYBINDINGS.zh-CN.md"} {
+		doc, err := os.ReadFile(filepath.Join("..", "..", "docs", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, rest, start := strings.Cut(string(doc), "```json\n")
+		data, _, end := strings.Cut(rest, "\n```")
+		if !start || !end || data == "" {
+			t.Fatalf("%s is missing the JSON example", name)
+		}
+		if example != "" && data != example {
+			t.Fatalf("%s has a different JSON example", name)
+		}
+		example = data
+	}
+	var entries []struct {
+		Command string `json:"command"`
+	}
+	if err := json.Unmarshal([]byte(example), &entries); err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != len(workbenchKeybindings) {
+		t.Fatalf("example has %d bindings, want %d", len(entries), len(workbenchKeybindings))
+	}
+	keymap := testKeybindings(t, []byte(example))
+	rules := slices.Clone(workbenchKeybindings)
+	slices.SortFunc(rules, func(a, b workbenchShortcut) int {
+		return strings.Compare(a.ruleID(), b.ruleID())
+	})
+	for i, rule := range rules {
+		id := rule.ruleID()
+		if entries[i].Command != id {
+			t.Errorf("example entry %d is %q, want %q", i+1, entries[i].Command, id)
+		}
+		binding := keymap.byID[id].binding
+		if binding.Enabled() != rule.binding.Enabled() {
+			t.Errorf("example changed the default shortcut for %q", id)
+		}
+		for _, name := range rule.binding.Keys() {
+			if !slices.Contains(binding.Keys(), name) {
+				t.Errorf("example omitted default key %q for %q", name, id)
+			}
+		}
+	}
+}
+
+func TestInvalidConfiguredKeybindingsKeepValidOverrides(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	defer m.Close()
+	path := filepath.Join(t.TempDir(), "keybindings.json")
+	if err := os.WriteFile(path, []byte(`[
+		{"command": "sidebar.showUnknown", "keys": "F8"},
+		{"command": "sidebar.showExplorer", "keys": "Alt+"},
+		{"command": "sidebar.showSearch", "keys": "F8"},
+		{"command": "sidebar.showSearch", "keys": "F9"},
+		{"command": "sidebar.showChanges", "keys": "F10", "when": "sidebarFocus"}
+	]`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	keymap, err := loadWorkbenchKeymap(path)
+	if err == nil || !strings.Contains(err.Error(), "skipped 4 entries") {
+		t.Fatalf("expected invalid entries to be reported, got %v", err)
+	}
+	m.workbenchKeymap = keymap
+	if m.resolveWorkbenchShortcut("ctrl+1").command != sidebarTabCommands[0] ||
+		m.resolveWorkbenchShortcut("f8").command != sidebarTabCommands[1] ||
+		m.resolveWorkbenchShortcut("ctrl+3").command != sidebarTabCommands[2] ||
+		m.resolveWorkbenchShortcut("f9").command != "" ||
+		m.resolveWorkbenchShortcut("f10").command != "" {
+		t.Fatal("invalid entries interfered with defaults or valid overrides")
 	}
 }

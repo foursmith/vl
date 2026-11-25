@@ -97,13 +97,7 @@ func TestRuntimeSwitchKeepsAlternateScreen(t *testing.T) {
 	t.Setenv("XDG_STATE_HOME", "")
 	first, second := t.TempDir(), t.TempDir()
 	m := New(t.Context(), &gitservice.Repository{Root: first}, false)
-	keymap, err := buildWorkbenchKeymap([]workbenchKeyOverride{
-		{id: string(commandPalette), binding: binding("F8", "", "f8")},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	m.workbenchKeymap = keymap
+	m.workbenchKeymap = testKeybindings(t, []byte(`[{"command": "workbench.openCommandPalette", "keys": "F8"}]`))
 	m.themeNotifications, m.themeNotificationsOwned = true, true
 	m.Update(tea.WindowSizeMsg{Width: 92, Height: 28})
 	r := NewRuntime(m, func(old *Model, repo *gitservice.Repository) *Model {

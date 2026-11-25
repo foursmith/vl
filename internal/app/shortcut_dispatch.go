@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	"slices"
 
 	"charm.land/bubbles/v2/key"
@@ -15,6 +14,7 @@ const (
 	fromSearchFields
 	blurFileFind
 	beforeInput
+	diffInput
 )
 
 const fromSearch = fromSearchFields | blurFileFind
@@ -37,34 +37,7 @@ type workbenchKeymap struct {
 	byID      map[string]workbenchShortcut
 }
 
-type workbenchKeyOverride struct {
-	id      string
-	binding key.Binding // An empty binding removes this rule.
-}
-
 var defaultWorkbenchKeymap = compileWorkbenchKeymap(workbenchKeybindings)
-
-// User overrides can assign, replace or remove keys by stable rule ID.
-// They keep the command and focus conditions and run after the defaults.
-func buildWorkbenchKeymap(overrides []workbenchKeyOverride) (*workbenchKeymap, error) {
-	rules := slices.Clone(workbenchKeybindings)
-	remaining := make(map[string]int, len(rules))
-	for i, rule := range rules {
-		remaining[rule.ruleID()] = i
-	}
-	for _, override := range overrides {
-		index, known := remaining[override.id]
-		if !known {
-			return nil, fmt.Errorf("unknown or repeated keybinding %q", override.id)
-		}
-		delete(remaining, override.id)
-		rule := rules[index]
-		rules[index].binding = key.Binding{}
-		rule.binding = override.binding
-		rules = append(rules, rule)
-	}
-	return compileWorkbenchKeymap(rules), nil
-}
 
 func (s workbenchShortcut) ruleID() string {
 	if s.id != "" {
@@ -143,7 +116,7 @@ func (m *Model) widgetWorkbenchCommand(name string, accepted ...commandID) comma
 }
 
 func (m *Model) runOverlayWorkbenchShortcut(name string) (tea.Cmd, bool) {
-	command := m.widgetWorkbenchCommand(name, commandFiles, commandPalette, commandRecent, commandOpenConfig, commandQuit)
+	command := m.widgetWorkbenchCommand(name, commandFiles, commandPalette, commandRecent, commandOpenConfig, commandOpenKeybindings, commandQuit)
 	if command == "" {
 		return nil, false
 	}

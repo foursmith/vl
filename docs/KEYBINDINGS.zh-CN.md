@@ -11,7 +11,7 @@
 | 找工作区里的文字 | `Ctrl+Shift+F`，扩大查找范围 |
 | 找操作 | `Ctrl+P`，命令面板 |
 
-带 `+` 的键同时按，`gg` 和 `Space w` 等序列依次按。字母键区分大小写。
+带 `+` 的键同时按，`gg` 和 `Space w` 等序列依次按。
 
 ## 工作台
 
@@ -27,6 +27,61 @@
 | 查看当前位置能做什么 | `F7` 或鼠标右键打开上下文菜单。 |
 
 关闭标签、切换工作区或退出时，如有未保存的修改会提示。单文件模式下仍可用 `Ctrl+G` 打开同目录的文件，关闭最后一个标签会退出。欢迎页图形可见且主区域有焦点时，方向键可以旋转图形。
+
+### 自定义工作台快捷键
+
+从命令面板执行「首选项：打开快捷键文件」，编辑 `~/.config/vl/keybindings.json`。可直接复制下面的 JSON，里面列出了所有可自定义的快捷键及其默认键位。
+
+```json
+[
+  {"command": "app.quit", "keys": "Ctrl+Q"},
+  {"command": "diff.discardFile", "keys": "Shift+D"},
+  {"command": "diff.discardSelectionOrHunk", "keys": "d"},
+  {"command": "diff.nextHunk", "keys": "]"},
+  {"command": "diff.previousHunk", "keys": "["},
+  {"command": "diff.toggleContextLines", "keys": "Enter"},
+  {"command": "diff.toggleLayout", "keys": []},
+  {"command": "diff.toggleStageFile", "keys": "Shift+S"},
+  {"command": "diff.toggleStageSelectionOrHunk", "keys": "s"},
+  {"command": "edit.copy", "keys": "Ctrl+C"},
+  {"command": "edit.cut", "keys": "Ctrl+X"},
+  {"command": "edit.deleteToLineEnd", "keys": "Ctrl+Delete"},
+  {"command": "edit.deleteToLineStart", "keys": "Ctrl+Backspace"},
+  {"command": "edit.findInFile", "keys": "Ctrl+F"},
+  {"command": "edit.paste", "keys": "Ctrl+V"},
+  {"command": "edit.redo", "keys": "Ctrl+Shift+Z"},
+  {"command": "edit.selectAll", "keys": "Ctrl+A"},
+  {"command": "edit.undo", "keys": "Ctrl+Z"},
+  {"command": "editor.closeAllTabs", "keys": []},
+  {"command": "editor.closeOtherTabs", "keys": "Ctrl+Shift+W"},
+  {"command": "editor.closeTab", "keys": "Ctrl+W"},
+  {"command": "editor.nextTab", "keys": "Ctrl+T"},
+  {"command": "editor.previousTab", "keys": "Ctrl+Shift+T"},
+  {"command": "file.save", "keys": "Ctrl+S"},
+  {"command": "preferences.openConfig", "keys": "Ctrl+,"},
+  {"command": "preferences.openKeybindings", "keys": []},
+  {"command": "sidebar.refresh", "keys": ["r", "Shift+R"]},
+  {"command": "sidebar.showChanges", "keys": "Ctrl+3"},
+  {"command": "sidebar.showCommitHistory", "keys": "Ctrl+4"},
+  {"command": "sidebar.showExplorer", "keys": "Ctrl+1"},
+  {"command": "sidebar.showPullRequests", "keys": "Ctrl+5"},
+  {"command": "sidebar.showSearch", "keys": "Ctrl+2"},
+  {"command": "sidebar.toggleFocus", "keys": "F2"},
+  {"command": "sidebar.toggleVisibility", "keys": "F12"},
+  {"command": "workbench.goToFile", "keys": "Ctrl+G"},
+  {"command": "workbench.openCommandPalette", "keys": "Ctrl+P"},
+  {"command": "workbench.openContextMenu", "keys": "F7"},
+  {"command": "workbench.refresh", "keys": "F5"},
+  {"command": "workspace.findInFiles", "keys": "Ctrl+Shift+F"},
+  {"command": "workspace.openRecent", "keys": "Ctrl+R"}
+]
+```
+
+保存后，在命令面板执行「重新加载 VL」。
+
+省略配置项时使用默认键位。`keys` 可以填写单键、组合键或多个键位组成的数组。设为 `[]` 时，该操作没有快捷键。键名不区分大小写，按住 Shift 的组合键须写成 `Shift+S` 这样的形式。
+
+快捷键沿用对应操作的焦点规则。遇到未知命令、无效键位或自定义 `when` 条件，vl 会提示并跳过该条配置。
 
 ### 用空格切标签、保存和关闭
 
@@ -46,7 +101,7 @@
 | 一项 | `↑` / `↓` 或 `Ctrl+K` / `Ctrl+J`。侧栏和菜单也可用 `k` / `j`。 |
 | 半页 / 整页 | `Ctrl+U` / `Ctrl+D` 向上 / 向下半页，`PageUp` / `PageDown` 翻整页。 |
 | 第一项 / 最后一项 | `Home` / `End`。侧栏和菜单也可用 `gg` / `G`。 |
-| 指定距离或位置 | 侧栏和菜单支持数字前缀，例如 `3j` 下移三项，`5gg` 或 `5G` 跳到第五项。 |
+| 指定距离或位置 | 侧栏和菜单支持数字前缀。`3j` 下移三项，`5gg` 或 `5G` 跳到第五项。 |
 
 **转到文件**按文件名或路径筛选，不需要 Git。输入 `src/main.go:42:8` 打开文件并定位到第 42 行第 8 列，输入 `:42` 跳到当前文件的第 42 行。工作区中按 `F4` 切换是否显示被忽略的文件，输入 `>` 进入命令面板。
 
@@ -101,8 +156,10 @@
 | --- | --- |
 | `[` / `]` | 上一个 / 下一个修改块。 |
 | `Enter` | 展开或折叠附近的上下文。 |
-| `s` / `S` | 暂存或取消暂存选中的更改行，无选区时操作当前修改块。大写操作整个文件。 |
-| `d` / `D` | 确认后放弃选中的更改行或当前修改块。大写操作整个文件的未暂存更改。 |
+| `s` | 暂存或取消暂存选中的更改行，无选区时操作当前修改块。 |
+| `S` | 暂存或取消暂存整个文件。 |
+| `d` | 确认后放弃选中的更改行或当前修改块。 |
+| `D` | 确认后放弃整个文件的未暂存更改。 |
 | `F7` | 打开 Diff 操作菜单，也可切换内联与并排布局。 |
 
 文本 Diff 沿用文本编辑器的移动、查找、选区、yank 和 Flash。`[`、`]` 和折叠操作在可视模式之外使用。Git 修改键适用于工作区和暂存区 Diff。并排布局中键盘在右侧导航，鼠标可在两侧选取文本。复制会去掉行号与 Diff 标记。二进制 Diff 按整文件操作，历史和 PR Diff 供查看。
