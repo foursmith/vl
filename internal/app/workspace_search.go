@@ -86,17 +86,15 @@ func (m *Model) searchField(focus int) *textInput {
 func (m *Model) openReplace() tea.Cmd {
 	m.notice = ""
 	m.selectSection(search)
-	m.search.replace = true
-	m.resize()
-	m.clampSearch()
-	m.focusSearch(1)
+	m.setSearchReplace(true)
 	return nil
 }
-func (m *Model) toggleSearchReplace() {
-	m.search.replace = !m.search.replace
+
+func (m *Model) setSearchReplace(visible bool) {
+	m.search.replace = visible
 	m.resize()
 	m.clampSearch()
-	if m.search.replace {
+	if visible {
 		m.focusSearch(1)
 	} else {
 		m.focusSearch(0)
@@ -299,7 +297,7 @@ func (m *Model) searchKey(msg tea.KeyPressMsg) tea.Cmd {
 			return m.openSelected()
 		}
 		if s.focus == 1 {
-			return m.replaceSearch(false)
+			return m.replaceAllSearchResults()
 		}
 		m.focusSearch(2)
 		return m.runSearch()

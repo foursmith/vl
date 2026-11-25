@@ -369,7 +369,7 @@ func (m *Model) statusLayout() []statusSegment {
 		if m.sidebar && m.section == search && m.search.focus != 2 && notice == "" {
 			notice = m.tr("%s: fields/results", searchKeys.NextField.Help().Key)
 			if m.search.replace && m.search.focus == 1 {
-				notice = m.tr("%s: replace", sidebarKeys.Open.Help().Key)
+				notice = m.tr("%s: replace all", sidebarKeys.Open.Help().Key)
 			}
 		}
 		if m.sidebar && m.sidebarVisible && m.modal == "" && m.contextMenu == nil && (m.section == history || m.section == pullRequests) {

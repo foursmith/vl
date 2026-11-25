@@ -200,8 +200,8 @@ or right-click the search form, and choose **Search Options**.
 | `j` / `k`, `gg` / `G`, `PageUp` / `PageDown` in the results | Move through matches and file groups |
 | `h` / `l` in the results | Select the parent file group / expand it or open the selected result |
 | `Enter` in the results | Open the selected file or match and keep the tab |
-| `dd` / `Delete` in the results | Remove a match or file group from the results. This leaves the file alone. |
-| `Enter` in Replace | Replace the selected match, or all retained matches in the selected file group |
+| `dd` / `Delete` in the results | Remove a result row or file group from the list. This leaves the file alone. |
+| `Enter` in Replace | Replace all matches still in the results |
 
 Search updates as you type and includes unsaved edits. Open a result to jump to
 its match, then press `n` to continue in that file. Ripgrep (`rg` on `PATH`) is
@@ -218,8 +218,9 @@ workspace, in that order of precedence. To search ignored directories, turn off
 override an ignore rule. To enter an ignored directory this way, include the
 directory itself, for example `./dist`.
 
-Open the Replace field with the chevron. **Replace All** applies to the results
-still in the list, so use `dd` or `Delete` to skip specific matches or files.
+Open the Replace field with the chevron. Press `Enter` in that field or click
+**Replace All** to apply the replacement. Dismiss result rows or file groups
+with `dd`, `Delete`, or the row's remove button to skip them.
 
 ## Diff editor
 

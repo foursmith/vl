@@ -56,7 +56,7 @@ func TestWorkspaceReplaceSavesAffectedFiles(t *testing.T) {
 	drain(t, m, m.runSearch())
 	m.openReplace()
 	m.search.replacement.SetValue("新")
-	drain(t, m, m.replaceSearch(true))
+	drain(t, m, m.replaceAllSearchResults())
 	if len(m.tabs) != 3 || m.document() != dirty || !strings.Contains(m.statusNotice(), "6 matches; saved 3 files") {
 		t.Fatal("unexpected tabs or replacement notice", m.notice)
 	}
@@ -101,7 +101,7 @@ func TestWorkspaceReplaceReportsWriteFailures(t *testing.T) {
 	m.openFile("file0.go")
 	m.openReplace()
 	m.search.replacement.SetValue("new")
-	drain(t, m, m.replaceSearch(true))
+	drain(t, m, m.replaceAllSearchResults())
 	if len(m.tabs) != 1 || m.document().Dirty() || m.document().Text != "猫 old old\n" ||
 		m.search.result.Count != 2 || !strings.Contains(m.notice, "saved 1 files") ||
 		!strings.Contains(m.notice, "file0.go") {
@@ -122,7 +122,7 @@ func TestWorkspaceReplacePreservesExternalEdits(t *testing.T) {
 	}
 	m.openReplace()
 	m.search.replacement.SetValue("new")
-	drain(t, m, m.replaceSearch(true))
+	drain(t, m, m.replaceAllSearchResults())
 	assertReplacementFile(t, m, "file0.go", "external\n")
 	assertReplacementFile(t, m, "file1.go", "猫 new new\n")
 	if d.Text != "pending old\n" || !d.Dirty() || !strings.Contains(m.statusNotice(), "file changed on disk") {
@@ -144,7 +144,7 @@ func TestWorkspaceReplaceChecksEncodedSizeBeforeWriting(t *testing.T) {
 	m.openReplace()
 	// Bypass the input length limit to exercise the file-size check.
 	m.search.replacement.buffer.Text = strings.Repeat("x", editor.MaxFileSize-1)
-	m.replaceSearch(true)
+	m.replaceAllSearchResults()
 	assertReplacementFile(t, m, "file0.go", "old\n")
 	assertReplacementFile(t, m, "file1.go", "\ufeffold\r\n")
 	if !strings.Contains(m.notice, "size limit") {
@@ -152,33 +152,43 @@ func TestWorkspaceReplaceChecksEncodedSizeBeforeWriting(t *testing.T) {
 	}
 }
 
-func TestWorkspaceReplaceSelectedRegexDismissAndStale(t *testing.T) {
+func TestWorkspaceReplaceEnterAppliesRegexToAllRetainedResults(t *testing.T) {
 	m := replacementWorkspace(t)
-	m.openReplace()
-	m.search.replacement.SetValue("")
-	m.search.selected = 1
-	drain(t, m, m.replaceSearch(false))
-	if len(m.tabs) != 0 || m.search.result.Count != 3 {
-		t.Fatal("single or empty replacement failed", m.notice)
+	for name, content := range map[string]string{
+		"file0.go": "skip old old\nkeep old\n",
+		"file2.go": "old\n",
+	} {
+		if err := os.WriteFile(filepath.Join(m.repo.Root, name), []byte(content), 0644); err != nil {
+			t.Fatal(err)
+		}
 	}
-	assertReplacementFile(t, m, "file0.go", "猫  old\n")
 	m.search.query.SetValue("(o)(ld)")
 	m.search.options.Regex = true
 	drain(t, m, m.runSearch())
+	for index := len(m.searchRows()) - 1; index >= 0; index-- {
+		row := m.searchRows()[index]
+		name := filepath.Base(m.search.result.Files[row.file].Path)
+		if name == "file0.go" && row.match == 0 || name == "file2.go" && row.match < 0 {
+			m.dismissSearchResult(index)
+		}
+	}
+	m.openReplace()
 	m.search.replacement.SetValue("$2$1")
-	// Removing a file excludes it from bulk replacement.
-	m.dismissSearchResult(0)
-	drain(t, m, m.replaceSearch(true))
-	assertReplacementFile(t, m, "file0.go", "猫  old\n")
+	m.search.selected = 0
+	drain(t, m, press(m, "enter"))
+	assertReplacementFile(t, m, "file0.go", "skip old old\nkeep ldo\n")
 	assertReplacementFile(t, m, "file1.go", "猫 ldo ldo\n")
+	assertReplacementFile(t, m, "file2.go", "old\n")
+}
 
+func TestWorkspaceReplaceRejectsStaleResultsBeforeWriting(t *testing.T) {
 	stale := replacementWorkspace(t)
 	stale.openReplace()
 	stale.search.replacement.SetValue("new")
 	if err := os.WriteFile(filepath.Join(stale.repo.Root, "file1.go"), []byte("external"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	drain(t, stale, stale.replaceSearch(true))
+	drain(t, stale, stale.replaceAllSearchResults())
 	if len(stale.tabs) != 0 || !strings.Contains(stale.notice, "changed") {
 		t.Fatal("stale bulk replacement partially applied")
 	}

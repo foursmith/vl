@@ -181,7 +181,7 @@ func TestWorkspaceSearchReportsSelectableResultsBeforeCompletion(t *testing.T) {
 	default:
 		t.Fatalf("unexpected early result %q", first)
 	}
-	if cmd := m.replaceSearch(true); cmd != nil {
+	if cmd := m.replaceAllSearchResults(); cmd != nil {
 		t.Fatal("replace all was available during the scan")
 	}
 	m.dismissSearchResult(0)

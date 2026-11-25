@@ -448,6 +448,6 @@
   "Search: Replace in Files": "搜索：在文件中替换",
   "Search Options": "搜索选项",
   "%s: fields/results": "%s：输入框/结果",
-  "%s: replace": "%s：替换",
+  "%s: replace all": "%s：全部替换",
   "Find: Replace Current View": "查找：替换当前文件"
 }

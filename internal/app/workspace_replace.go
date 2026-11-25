@@ -9,7 +9,7 @@ import (
 )
 
 // Validate all targets before writing.
-func (m *Model) replaceSearch(all bool) tea.Cmd {
+func (m *Model) replaceAllSearchResults() tea.Cmd {
 	s := &m.search
 	if s.loading || s.err != "" || len(s.result.Files) == 0 {
 		return nil
@@ -18,16 +18,7 @@ func (m *Model) replaceSearch(all bool) tea.Cmd {
 		m.notice = searchText("Wait for the current Git operation before replacing")
 		return nil
 	}
-	files, selectedMatch := s.result.Files, -1
-	if !all {
-		selected, ok := m.selectedSearchRow()
-		if !ok {
-			return nil
-		}
-		files = files[selected.file : selected.file+1]
-		selectedMatch = selected.match
-	}
-	if s.result.Unreadable > 0 && selectedMatch < 0 {
+	if s.result.Unreadable > 0 {
 		m.notice = searchText("Search is incomplete; resolve unreadable files before bulk replacement")
 		return nil
 	}
@@ -43,8 +34,8 @@ func (m *Model) replaceSearch(all bool) tea.Cmd {
 		matches int
 	}
 	replacement := s.replacement.Value()
-	edits := make([]edit, 0, len(files))
-	for _, f := range files {
+	edits := make([]edit, 0, len(s.result.Files))
+	for _, f := range s.result.Files {
 		var d *editor.Document
 		tabIndex := -1
 		for i, t := range m.tabs {
@@ -72,9 +63,6 @@ func (m *Model) replaceSearch(all bool) tea.Cmd {
 			return m.runSearch()
 		}
 		matches := matcher.Find(d.Text, replacement)
-		if selectedMatch >= 0 {
-			targets = targets[selectedMatch : selectedMatch+1]
-		}
 		retained := matches[:0]
 		next := 0
 		for _, match := range matches {

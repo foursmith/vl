@@ -94,7 +94,7 @@ func (m *Model) searchControlAction(id string) tea.Cmd {
 	s := &m.search
 	switch id {
 	case "replaceToggle":
-		m.toggleSearchReplace()
+		m.setSearchReplace(!s.replace)
 		return nil
 	case "details":
 		m.toggleSearchDetails()
@@ -118,7 +118,7 @@ func (m *Model) searchControlAction(id string) tea.Cmd {
 	case "ignore":
 		s.options.IncludeIgnored = !s.options.IncludeIgnored
 	case "replaceAll":
-		return m.replaceSearch(true)
+		return m.replaceAllSearchResults()
 	}
 	if m.fileFindHeight() > 0 && !m.sidebar {
 		m.adoptSearchState()
