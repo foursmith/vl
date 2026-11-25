@@ -68,19 +68,10 @@ func main() {
 		fmt.Println("vl", buildVersion)
 		return
 	}
-	language, validLanguage := i18n.Parse(*displayLanguage)
+	_, validLanguage := i18n.Parse(*displayLanguage)
 	if !validLanguage {
 		fmt.Fprintln(os.Stderr, "Unsupported display language. Use --lang en or --lang zh-CN.")
 		os.Exit(2)
-	}
-	var selectedTheme *theme.Theme
-	if *colorTheme != "" {
-		var err error
-		selectedTheme, err = theme.Load(*colorTheme)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "Load theme:", err)
-			os.Exit(2)
-		}
 	}
 	if flags.NArg() > 1 {
 		flags.Usage()
@@ -91,23 +82,50 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	for path != "" {
+		var selectedTheme *theme.Theme
+		if *colorTheme != "" {
+			selectedTheme, err = theme.Load(*colorTheme)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "Load theme:", err)
+				os.Exit(2)
+			}
+		}
+		path, err = runSession(path, *icons, *displayLanguage, selectedTheme)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+	}
+}
+
+// Reload uses the same bootstrap and teardown as a regular session.
+func runSession(path string, icons bool, displayLanguage string, selectedTheme *theme.Theme) (string, error) {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM)
 	defer cancel()
-	m, repo, editorOnly, err := startupModel(ctx, path, *icons)
+	m, repo, editorOnly, err := startupModel(ctx, path, icons)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return "", err
 	}
 	configureMemory(editorOnly)
-	layoutPath, layoutErr := config.LayoutPath()
-	var layout config.Layout
-	if layoutErr == nil {
-		layout, layoutErr = config.LoadLayout(layoutPath)
+	preferencesPath, preferencesErr := config.PreferencesPath()
+	var preferencesStore *config.PreferencesStore
+	var preferences config.Preferences
+	if preferencesErr == nil {
+		preferencesStore = config.NewPreferencesStore(preferencesPath)
+		preferences, preferencesErr = preferencesStore.Load()
+		if preferencesErr != nil {
+			preferencesErr = fmt.Errorf("%s: %w", preferencesPath, preferencesErr)
+			preferencesStore = nil
+		}
 	}
-	if layoutErr == nil {
-		m.SetLayout(layout)
+	if preferencesErr == nil {
+		m.SetPreferences(preferences)
 	}
-	initialLayout := m.Layout()
+	if preferencesStore != nil {
+		preferencesStore.SetBaseline(m.Preferences())
+		m.SetPreferencesStore(preferencesStore)
+	}
 
 	statePath, stateErr := config.CommandStatePath()
 	var commandState config.CommandState
@@ -119,18 +137,13 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Load command state:", stateErr)
 	}
 
-	if *displayLanguage != "" {
-		m.SetDisplayLanguage(string(language))
+	if displayLanguage != "" {
+		m.SetDisplayLanguage(displayLanguage)
 	}
 	if selectedTheme != nil {
 		m.SetStartupTheme(selectedTheme)
 	}
 
-	var layoutStore *config.LayoutStore
-	if layoutErr == nil {
-		layoutStore = config.NewLayoutStore(layoutPath)
-		m.SetLayoutStore(layoutStore)
-	}
 	positionStore, positionErr := config.NewFilePositionStore()
 	if positionErr != nil {
 		fmt.Fprintln(os.Stderr, "Load file positions:", positionErr)
@@ -148,25 +161,23 @@ func main() {
 		sessionPath := loadWorkspace(m, repo)
 		m, err = runProgram(ctx, m, func(old *app.Model, next *git.Repository) *app.Model {
 			saveWorkspace(old, sessionPath)
-			updated := app.New(ctx, next, *icons)
+			updated := app.New(ctx, next, icons)
 			updated.SetFilePositionStore(positionStore)
-			updated.SetLayout(old.Layout())
-			updated.SetLayoutStore(layoutStore)
+			updated.SetPreferences(old.Preferences())
+			updated.SetPreferencesStore(preferencesStore)
 			sessionPath = loadWorkspace(updated, next)
+			repo = next
 			return updated
 		})
 		saveWorkspace(m, sessionPath)
 	}
 	m.Close()
 
-	if layoutErr != nil {
-		fmt.Fprintln(os.Stderr, "Load layout preferences:", layoutErr)
-	} else if layoutStore != nil {
-		updated := m.Layout()
-		if layoutStore.HasPreparedWrite() || !updated.Equal(initialLayout) {
-			if saveErr := layoutStore.Prepare(updated)(); saveErr != nil {
-				fmt.Fprintln(os.Stderr, "Save layout preferences:", saveErr)
-			}
+	if preferencesErr != nil {
+		fmt.Fprintln(os.Stderr, "Load configuration:", preferencesErr)
+	} else if preferencesStore != nil {
+		if saveErr := preferencesStore.Prepare(m.Preferences())(); saveErr != nil {
+			fmt.Fprintf(os.Stderr, "Save configuration %s: %v\n", preferencesPath, saveErr)
 		}
 	}
 	if stateErr == nil && m.LastCommand() != commandState.LastCommand {
@@ -174,10 +185,15 @@ func main() {
 			fmt.Fprintln(os.Stderr, "Save command state:", saveErr)
 		}
 	}
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+	if err != nil || !m.ReloadRequested() {
+		return "", err
 	}
+	if repo != nil {
+		return repo.Root, nil
+	}
+	// Drop the original CLI position so the next session restores the saved cursor.
+	file, _, _, err := startupLocation(path)
+	return file, err
 }
 
 // The caller validates that there is at most one positional argument.

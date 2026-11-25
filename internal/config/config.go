@@ -29,10 +29,19 @@ func loadJSON(path string, value any) error {
 }
 
 func saveJSON(path string, value any) error {
-	data, err := json.MarshalIndent(value, "", "  ")
+	data, err := encodeJSON(value)
 	if err != nil {
 		return err
 	}
+	return writeConfigFile(path, data)
+}
+
+func encodeJSON(value any) ([]byte, error) {
+	data, err := json.MarshalIndent(value, "", "  ")
+	return append(data, '\n'), err
+}
+
+func writeConfigFile(path string, data []byte) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		return err
 	}
@@ -41,7 +50,7 @@ func saveJSON(path string, value any) error {
 		return err
 	}
 	defer os.Remove(file.Name())
-	if _, err := file.Write(append(data, '\n')); err != nil {
+	if _, err := file.Write(data); err != nil {
 		file.Close()
 		return err
 	}

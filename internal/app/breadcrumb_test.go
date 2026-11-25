@@ -72,6 +72,38 @@ func TestBreadcrumbTruncatesAncestorsBeforeFile(t *testing.T) {
 	}
 }
 
+func TestHomeConfigurationBreadcrumb(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	defer m.Close()
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	realHome, err := filepath.EvalSymlinks(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(realHome, ".config", "vl", "vl.config.json")
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("{}\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	m.Update(tea.WindowSizeMsg{Width: 120, Height: 24})
+	m.openFile(path)
+	prefix := strings.Join([]string{"~", ".config", "vl", ""}, " "+m.symbol(symbolRight)+" ")
+	if rendered := plain(m.contentToolbar()); !strings.HasPrefix(rendered, " "+prefix) ||
+		!strings.Contains(rendered, "vl.config.json") {
+		t.Fatalf("configuration breadcrumb = %q", rendered)
+	}
+	for _, x := range []int{1, 1 + ansi.StringWidth(prefix) + 2} {
+		m.Update(tea.MouseClickMsg{X: m.mainX() + x, Y: m.contentRow() - 1, Button: tea.MouseLeft})
+		if m.modal != "" || m.document() == nil || m.document().Path != path {
+			t.Fatalf("external breadcrumb click at column %d changed the current view", x)
+		}
+	}
+}
+
 func TestBreadcrumbOpensQuickPickerAtParentDirectory(t *testing.T) {
 	m := tabWorkspace(t, 0)
 	defer m.Close()

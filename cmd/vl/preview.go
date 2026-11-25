@@ -125,11 +125,11 @@ func loadPreviewTheme(override string) (*theme.Theme, error) {
 	if light {
 		fallback = theme.DefaultLightID
 	}
-	if path, err := config.LayoutPath(); err == nil {
-		if layout, err := config.LoadLayout(path); err == nil {
-			id := layout.Appearance.Theme.Dark
+	if path, err := config.PreferencesPath(); err == nil {
+		if preferences, err := config.LoadPreferences(path); err == nil {
+			id := preferences.Appearance.Theme.Dark
 			if light {
-				id = layout.Appearance.Theme.Light
+				id = preferences.Appearance.Theme.Light
 			}
 			if id != "" {
 				if selected, err := theme.Load(id); err == nil {

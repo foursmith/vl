@@ -1,6 +1,7 @@
 package app
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -16,6 +17,9 @@ type breadcrumbLayout struct {
 }
 
 func (b breadcrumbLayout) parentDirectoryAt(x int) (string, bool) {
+	if b.dir == "" {
+		return "", false
+	}
 	if x >= b.fileStart && x < b.fileEnd {
 		return b.dir, true
 	}
@@ -44,8 +48,23 @@ func (m *Model) layoutBreadcrumb(path string, width int) breadcrumbLayout {
 		return breadcrumbLayout{}
 	}
 	if filepath.IsAbs(path) {
-		if relative, err := filepath.Rel(m.repo.Root, path); err == nil {
+		if relative, err := filepath.Rel(m.repo.Root, path); err == nil && filepath.IsLocal(relative) {
 			path = relative
+		}
+	}
+	dir := filepath.ToSlash(filepath.Dir(path))
+	displayDir := dir
+	if filepath.IsAbs(path) {
+		// Go to File cannot resolve directory queries outside its base.
+		dir = ""
+		if home, err := os.UserHomeDir(); err == nil {
+			// Open documents use canonical paths, including symlinked homes.
+			if real, err := filepath.EvalSymlinks(home); err == nil {
+				home = real
+			}
+			if relative, err := filepath.Rel(home, path); err == nil && filepath.IsLocal(relative) {
+				displayDir = filepath.ToSlash(filepath.Join("~", filepath.Dir(relative)))
+			}
 		}
 	}
 	path = filepath.ToSlash(path)
@@ -58,10 +77,16 @@ func (m *Model) layoutBreadcrumb(path string, width int) breadcrumbLayout {
 	iconText := row(icon.Glyph, 2, icon.Color, bg)
 	name := safe(filepath.Base(path))
 	tail := iconText + name
-	dir := filepath.ToSlash(filepath.Dir(path))
 	prefix := ""
-	if dir != "." {
-		prefix = strings.Join(strings.Split(safe(dir), "/"), separator)
+	if displayDir != "." {
+		if rest, absolute := strings.CutPrefix(displayDir, "/"); absolute {
+			prefix = "/"
+			if rest != "" {
+				prefix += separator + strings.Join(strings.Split(safe(rest), "/"), separator)
+			}
+		} else {
+			prefix = strings.Join(strings.Split(safe(displayDir), "/"), separator)
+		}
 	}
 	content := tail
 	prefixWidth := ansi.StringWidth(prefix)

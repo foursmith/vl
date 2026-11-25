@@ -211,7 +211,7 @@ func TestSidebarRightGeometryAndMouseTargets(t *testing.T) {
 func TestSidebarLayoutPaletteAndDragCancellation(t *testing.T) {
 	m := tabWorkspace(t, 0)
 	path := filepath.Join(t.TempDir(), "vl.config.json")
-	m.SetLayoutStore(config.NewLayoutStore(path))
+	m.SetPreferencesStore(config.NewPreferencesStore(path))
 	m.SetSidebarLayout(45, false)
 	for _, step := range []struct {
 		label   string
@@ -230,10 +230,10 @@ func TestSidebarLayoutPaletteAndDragCancellation(t *testing.T) {
 		if m.modal != "" {
 			t.Fatal("command did not dismiss palette")
 		}
-		if got := m.Layout().Appearance.Sidebar; got != step.sidebar {
+		if got := m.Preferences().Appearance.Sidebar; got != step.sidebar {
 			t.Fatalf("%s sidebar = %+v, want %+v", step.label, got, step.sidebar)
 		}
-		saved, err := config.LoadLayout(path)
+		saved, err := config.LoadPreferences(path)
 		if err != nil || saved.Appearance.Sidebar != step.sidebar {
 			t.Fatalf("%s did not save sidebar preferences: %+v, %v", step.label, saved, err)
 		}
@@ -244,27 +244,27 @@ func TestSidebarLayoutPaletteAndDragCancellation(t *testing.T) {
 	if m.modal != "" || m.sidebarVisible || m.sidebar {
 		t.Fatal("toggle command did not dismiss the palette and hide the sidebar")
 	}
-	hidden, err := config.LoadLayout(path)
+	hidden, err := config.LoadPreferences(path)
 	if err != nil || !hidden.Appearance.Sidebar.Hidden {
 		t.Fatalf("hidden sidebar was not saved: %+v, %v", hidden, err)
 	}
 	reopened := tabWorkspace(t, 0)
-	reopened.SetLayout(hidden)
+	reopened.SetPreferences(hidden)
 	if reopened.sidebar || reopened.sidebarVisible || reopened.sideShown() {
 		t.Fatal("reopened workbench did not restore the hidden sidebar")
 	}
 	editor := newModel(m.ctx, m.repo, false, true)
 	defer editor.Close()
-	editor.SetLayout(hidden)
-	if editor.sidebarVisible || !editor.Layout().Appearance.Sidebar.Hidden {
+	editor.SetPreferences(hidden)
+	if editor.sidebarVisible || !editor.Preferences().Appearance.Sidebar.Hidden {
 		t.Fatal("single-file editor lost the workbench sidebar preference")
 	}
 	drain(t, m, m.executeCommand(commandSidebar, ""))
-	shown, err := config.LoadLayout(path)
+	shown, err := config.LoadPreferences(path)
 	if err != nil || shown.Appearance.Sidebar.Hidden {
 		t.Fatalf("visible sidebar was not saved: %+v, %v", shown, err)
 	}
-	reopened.SetLayout(shown)
+	reopened.SetPreferences(shown)
 	if !reopened.sidebarVisible || !reopened.sideShown() {
 		t.Fatal("reopened workbench did not restore the visible sidebar")
 	}
@@ -283,23 +283,23 @@ func TestSidebarLayoutPaletteAndDragCancellation(t *testing.T) {
 
 func TestLayoutRestoresPreferencesAcrossWorkspaces(t *testing.T) {
 	m := newHoverRenderModel(t)
-	want := config.Layout{Appearance: config.Appearance{Theme: config.ThemePreferences{Dark: "light_modern"}, Sidebar: config.SidebarPreferences{Side: "right", Width: 45}}, Vim: config.VimPreferences{EnableJieba: true},
+	want := config.Preferences{Appearance: config.Appearance{Theme: config.ThemePreferences{Dark: "light_modern"}, Sidebar: config.SidebarPreferences{Side: "right", Width: 45}}, Vim: config.VimPreferences{EnableJieba: true},
 		AutoSwitchInputMethod: config.InputMethodSwitch{Enable: true, Cmd: []string{"im-select", "com.apple.keylayout.ABC"}}}
-	m.SetLayout(want)
-	want = m.Layout()
+	m.SetPreferences(want)
+	want = m.Preferences()
 	m.Update(tea.WindowSizeMsg{Width: 30, Height: 12})
 	path := filepath.Join(t.TempDir(), "layout.json")
-	if err := config.SaveLayout(path, m.Layout()); err != nil {
+	if err := config.NewPreferencesStore(path).Prepare(want)(); err != nil {
 		t.Fatal(err)
 	}
-	saved, err := config.LoadLayout(path)
+	saved, err := config.LoadPreferences(path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	next := newHoverRenderModel(t)
 	next.workspaces = []string{next.repo.Root}
-	next.SetLayout(saved)
-	if got := next.Layout(); !got.Equal(want) || !next.colorTheme.IsLight() {
+	next.SetPreferences(saved)
+	if got := next.Preferences(); !got.Equal(want) || !next.colorTheme.IsLight() {
 		t.Fatalf("restored layout: %+v", got)
 	}
 }

@@ -23,6 +23,8 @@ const (
 	commandFiles        commandID = "workspace.quickOpen"
 	commandRecent       commandID = "workspace.openRecent"
 	commandPalette      commandID = "workbench.commandPalette"
+	commandOpenConfig   commandID = "preferences.openConfig"
+	commandReload       commandID = "app.reload"
 	commandSearch       commandID = "view.search"
 	commandExplorer     commandID = "view.explorer"
 	commandChanges      commandID = "view.changes"
@@ -62,12 +64,16 @@ func (m *Model) executeCommand(id commandID, tabKey string) tea.Cmd {
 	switch id {
 	case commandQuit:
 		return m.quit()
+	case commandReload:
+		return m.leaveSession(true)
 	case commandFiles:
 		return m.openQuickFiles()
 	case commandRecent:
 		return m.openRecentWorkspaces()
 	case commandPalette:
 		return m.openPalette()
+	case commandOpenConfig:
+		return m.openConfig()
 	case commandSearch:
 		return m.openSearch()
 	case commandExplorer:

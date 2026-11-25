@@ -8,6 +8,7 @@
 | --- | --- |
 | `Ctrl+G` | 转到文件 |
 | `Ctrl+P` | 打开命令面板 |
+| `Ctrl+,` | 在编辑器中打开 `~/.config/vl/vl.config.json` |
 | `Ctrl+F` | 在当前文件中查找 |
 | `Ctrl+Shift+F` | 在工作区中搜索 |
 | `F2` | 在侧边栏和编辑器之间切换焦点 |

@@ -242,7 +242,7 @@ func TestWheelAtBoundaryReusesWholeFrame(t *testing.T) {
 	}
 	assertFreshHoverFrame(t, m)
 
-	m.Update(layoutSavedMsg{err: fmt.Errorf("boundary test")})
+	m.Update(preferencesSavedMsg{err: fmt.Errorf("boundary test")})
 	m.Update(up)
 	if got := m.View(); !strings.Contains(plain(got.Content), "boundary test") {
 		t.Fatal("wheel hid the result of an asynchronous update")

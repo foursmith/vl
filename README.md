@@ -112,7 +112,9 @@ See the [Keyboard shortcuts](docs/KEYBINDINGS.md).
 
 ### Auto Switch IM
 
-Add this field to `~/.config/vl/vl.config.json` and restart vl.
+Press `Ctrl+,` or choose **Preferences: Open Configuration File** from the
+command palette. The configuration accepts JSONC comments and trailing commas.
+Add this field, save with `Ctrl+S`, and run **Reload VL** from the command palette.
 
 ```json
 {

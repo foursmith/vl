@@ -8,6 +8,7 @@
 | --- | --- |
 | `Ctrl+G` | Go to File |
 | `Ctrl+P` | Open the Command Palette |
+| `Ctrl+,` | Open `~/.config/vl/vl.config.json` in the editor |
 | `Ctrl+F` | Find in the current file |
 | `Ctrl+Shift+F` | Search across files |
 | `F2` | Switch focus between the sidebar and the editor |

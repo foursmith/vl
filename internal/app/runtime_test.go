@@ -108,7 +108,7 @@ func TestRuntimeSwitchKeepsAlternateScreen(t *testing.T) {
 	m.Update(tea.WindowSizeMsg{Width: 92, Height: 28})
 	r := NewRuntime(m, func(old *Model, repo *gitservice.Repository) *Model {
 		updated := New(t.Context(), repo, false)
-		updated.SetLayout(old.Layout())
+		updated.SetPreferences(old.Preferences())
 		return updated
 	})
 	defer func() { r.Current().Close() }()

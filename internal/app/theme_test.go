@@ -103,19 +103,19 @@ func TestLightThemePickerAndDiffSurfaces(t *testing.T) {
 func TestThemeSelectionFollowsExternalAppearanceAndSurvivesRestart(t *testing.T) {
 	m := tabWorkspace(t, 0)
 	path := filepath.Join(t.TempDir(), "vl.config.json")
-	m.SetLayoutStore(config.NewLayoutStore(path))
+	m.SetPreferencesStore(config.NewPreferencesStore(path))
 	m.Update(uv.LightColorSchemeEvent{})
 	drain(t, m, m.setTestTheme("dark_vs"))
 	m.Update(uv.DarkColorSchemeEvent{})
 	drain(t, m, m.setTestTheme("light_plus"))
-	saved, err := config.LoadLayout(path)
+	saved, err := config.LoadPreferences(path)
 	if err != nil || saved.Appearance.Theme != (config.ThemePreferences{Dark: "light_plus", Light: "dark_vs"}) {
 		t.Fatalf("reverse selections saved in wrong slots: %+v, %v", saved, err)
 	}
 
 	next := tabWorkspace(t, 0)
-	next.SetLayout(saved)
-	next.SetLayoutStore(config.NewLayoutStore(path))
+	next.SetPreferences(saved)
+	next.SetPreferencesStore(config.NewPreferencesStore(path))
 	before, err := os.Stat(path)
 	if err != nil {
 		t.Fatal(err)
@@ -254,7 +254,7 @@ func TestImportedThemeRestoresTypeAndPalette(t *testing.T) {
 		t.Fatal("imported syntax not applied")
 	}
 	next := tabWorkspace(t, 0)
-	next.SetLayout(m.Layout())
+	next.SetPreferences(m.Preferences())
 	if !next.colorTheme.IsLight() || next.committedTheme().ID != selected.ID || next.colors != m.colors {
 		t.Fatal("imported theme or extension type lost on restore")
 	}
@@ -310,14 +310,14 @@ func TestThemeArrowPreviewCancelsAndConfirms(t *testing.T) {
 	m.setTestTheme("dark_plus")
 	m.openFile("file0.go")
 	old := m.scheduleHighlight()().(highlightStartMsg).request
-	original, preference := m.colorTheme, m.Layout()
+	original, preference := m.colorTheme, m.Preferences()
 	text, cursor := m.document().Text, m.document().Cursor
 	m.openThemePicker()
 	drain(t, m, m.updateModal(tea.KeyPressMsg{Code: tea.KeyDown}))
 	if !m.colorTheme.IsLight() || m.colorTheme == original || m.modal != "themes" {
 		t.Fatal("arrow did not preview the highlighted theme")
 	}
-	if !m.Layout().Equal(preference) || m.committedTheme().ID != "dark_plus" {
+	if !m.Preferences().Equal(preference) || m.committedTheme().ID != "dark_plus" {
 		t.Fatal("preview changed the saved preference")
 	}
 	if old.ctx.Err() == nil || m.startHighlight(old) != nil {
@@ -328,13 +328,13 @@ func TestThemeArrowPreviewCancelsAndConfirms(t *testing.T) {
 	}
 	preview := m.colorTheme
 	drain(t, m, m.updateModal(tea.KeyPressMsg{Code: tea.KeyEscape}))
-	if m.colorTheme != original || !m.Layout().Equal(preference) || m.themeBeforePreview != nil {
+	if m.colorTheme != original || !m.Preferences().Equal(preference) || m.themeBeforePreview != nil {
 		t.Fatal("Escape did not restore the original theme")
 	}
 	m.openThemePicker()
 	drain(t, m, m.updateModal(tea.KeyPressMsg{Code: tea.KeyDown}))
 	drain(t, m, m.updateModal(tea.KeyPressMsg{Code: tea.KeyEnter}))
-	if m.themeBeforePreview != nil || m.modal != "" || m.colorTheme != preview || m.committedTheme().ID != preview.ID || m.Layout().Appearance.Theme.Dark != preview.ID {
+	if m.themeBeforePreview != nil || m.modal != "" || m.colorTheme != preview || m.committedTheme().ID != preview.ID || m.Preferences().Appearance.Theme.Dark != preview.ID {
 		t.Fatal("Enter did not commit the preview")
 	}
 }
@@ -418,7 +418,7 @@ func TestThemePreviewKeepsSlotsAndTracksCommittedAppearance(t *testing.T) {
 	if !strings.Contains(m.View().Content, "Select Color Theme for Light Appearance") {
 		t.Fatal("picker did not show the new light appearance target")
 	}
-	if m.colorTheme != preview || m.committedTheme().ID != "light_plus" || m.Layout().Appearance.Theme.Light != "light_plus" {
+	if m.colorTheme != preview || m.committedTheme().ID != "light_plus" || m.Preferences().Appearance.Theme.Light != "light_plus" {
 		t.Fatal("appearance change replaced preview or corrupted committed preference")
 	}
 	drain(t, m, m.openPalette())
@@ -429,7 +429,7 @@ func TestThemePreviewKeepsSlotsAndTracksCommittedAppearance(t *testing.T) {
 	drain(t, m, m.updateModal(tea.KeyPressMsg{Code: tea.KeyHome}))
 	drain(t, m, m.updateModal(tea.KeyPressMsg{Code: tea.KeyDown}))
 	drain(t, m, m.updateModal(tea.KeyPressMsg{Code: tea.KeyEnter}))
-	if m.Layout().Appearance.Theme.Dark != "dark_plus" || m.Layout().Appearance.Theme.Light != m.committedTheme().ID {
+	if m.Preferences().Appearance.Theme.Dark != "dark_plus" || m.Preferences().Appearance.Theme.Light != m.committedTheme().ID {
 		t.Fatal("Enter did not remember only the chosen appearance")
 	}
 }
@@ -497,7 +497,7 @@ func TestRememberedImportedThemeAndMissingFile(t *testing.T) {
 	m.Update(uv.DarkColorSchemeEvent{})
 	m.setTestTheme("dark_plus")
 	next := tabWorkspace(t, 0)
-	next.SetLayout(m.Layout())
+	next.SetPreferences(m.Preferences())
 	next.Update(uv.DarkColorSchemeEvent{})
 	next.Update(uv.LightColorSchemeEvent{})
 	if !next.colorTheme.IsLight() || next.colorTheme.Type != "vs" || next.colors.Background != "#F0E0D0" {
@@ -507,7 +507,7 @@ func TestRememberedImportedThemeAndMissingFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	missing := tabWorkspace(t, 0)
-	missing.SetLayout(m.Layout())
+	missing.SetPreferences(m.Preferences())
 	missing.Update(uv.DarkColorSchemeEvent{})
 	missing.Update(uv.LightColorSchemeEvent{})
 	if missing.committedTheme().ID != "light_modern" || !strings.Contains(missing.notice, "Load remembered theme") {
@@ -516,9 +516,9 @@ func TestRememberedImportedThemeAndMissingFile(t *testing.T) {
 }
 
 func TestUnsupportedTerminalSavesConfirmedThemeBeforeExit(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "layout.json")
+	path := filepath.Join(t.TempDir(), "vl.config.json")
 	m := tabWorkspace(t, 0)
-	m.SetLayoutStore(config.NewLayoutStore(path))
+	m.SetPreferencesStore(config.NewPreferencesStore(path))
 	m.Update(tea.ModeReportMsg{Mode: ansi.ModeLightDark, Value: ansi.ModeNotRecognized})
 	m.openThemePicker()
 	m.input.SetValue("Light Modern")
@@ -528,20 +528,20 @@ func TestUnsupportedTerminalSavesConfirmedThemeBeforeExit(t *testing.T) {
 		t.Fatal("preview wrote preferences")
 	}
 	drain(t, m, m.selectPickerChoice())
-	saved, err := config.LoadLayout(path)
+	saved, err := config.LoadPreferences(path)
 	if err != nil || saved.Appearance.Theme.Dark != "light_modern" || saved.Appearance.Theme.Light != "" {
 		t.Fatalf("confirmation not saved before exit: %+v, %v", saved, err)
 	}
 	// No quit, terminal appearance event, or exit-time save is involved.
 	next := tabWorkspace(t, 0)
-	next.SetLayout(saved)
+	next.SetPreferences(saved)
 	next.Update(tea.ModeReportMsg{Mode: ansi.ModeLightDark, Value: ansi.ModePermanentlyReset})
 	if next.committedTheme().ID != "light_modern" {
 		t.Fatal("unsupported terminal lost saved choice")
 	}
-	next.SetLayoutStore(config.NewLayoutStore(path))
+	next.SetPreferencesStore(config.NewPreferencesStore(path))
 	drain(t, next, next.setTestTheme("dark_plus"))
-	saved, err = config.LoadLayout(path)
+	saved, err = config.LoadPreferences(path)
 	if err != nil || saved.Appearance.Theme.Dark != "dark_plus" || saved.Appearance.Theme.Light != "" {
 		t.Fatalf("remembered pair not saved: %+v %v", saved, err)
 	}
@@ -553,7 +553,7 @@ func TestThemeSaveFailureRemainsVisible(t *testing.T) {
 		t.Fatal(err)
 	}
 	m := tabWorkspace(t, 0)
-	m.SetLayoutStore(config.NewLayoutStore(filepath.Join(parent, "layout.json")))
+	m.SetPreferencesStore(config.NewPreferencesStore(filepath.Join(parent, "vl.config.json")))
 	drain(t, m, m.setTestTheme("light_plus"))
 	if m.committedTheme().ID != "light_plus" || !strings.Contains(m.notice, "Save preferences:") {
 		t.Fatal("save failure was silent or discarded selection")

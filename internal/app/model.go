@@ -151,7 +151,8 @@ type Model struct {
 	startupTheme            *theme.Theme
 	statusBarStyle          string
 	appearance              appearanceState
-	layoutStore             *config.LayoutStore
+	preferencesStore        *config.PreferencesStore
+	reloadRequested         bool
 	themeNotifications      bool
 	themeNotificationsOwned bool
 	ctx                     context.Context
@@ -644,7 +645,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 	case searchMsg:
 		return m, m.applySearchResults(msg)
 
-	case layoutSavedMsg:
+	case preferencesSavedMsg:
 		if msg.err != nil {
 			m.notice = m.tr("Save preferences: %s", m.tr(msg.err.Error()))
 		}
@@ -1311,7 +1312,13 @@ func (m *Model) saveEditor(closeAfter bool) tea.Cmd {
 }
 
 func (m *Model) saveDocument(d *editor.Document) error {
-	if err := d.Save(); err != nil {
+	var err error
+	if m.preferencesStore != nil {
+		err = m.preferencesStore.SaveFile(d.Path, d.Save)
+	} else {
+		err = d.Save()
+	}
+	if err != nil {
 		return err
 	}
 	for i := range m.tabs {

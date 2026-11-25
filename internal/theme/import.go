@@ -12,6 +12,7 @@ import (
 
 	"github.com/MoeForge/moego/json"
 	"github.com/MoeForge/moego/regexp"
+	"github.com/foursmith/vl/internal/jsonc"
 )
 
 type themeContribution struct {
@@ -155,6 +156,14 @@ func ImportVSCode(dest string, dirs []string) (int, error) {
 	return count, errors.Join(problems...)
 }
 
+func readJSONC(name string, value any) error {
+	data, err := readThemeFile(name)
+	if err != nil {
+		return err
+	}
+	return jsonc.Unmarshal(data, value)
+}
+
 func importExtension(dest, dir string) (int, error) {
 	var manifest extensionManifest
 	if err := readJSONC(filepath.Join(dir, "package.json"), &manifest); err != nil {
@@ -185,7 +194,7 @@ func importExtension(dest, dir string) (int, error) {
 	}
 	var labels map[string]string
 	if data, err := read("package.nls.json"); err == nil {
-		_ = decodeJSONC(data, &labels)
+		_ = jsonc.Unmarshal(data, &labels)
 	}
 
 	count := 0

@@ -12,6 +12,57 @@ import (
 	"github.com/foursmith/vl/internal/config"
 )
 
+func TestOpenConfigurationFromStandalonePalette(t *testing.T) {
+	dir := t.TempDir()
+	file := filepath.Join(dir, "file.txt")
+	if err := os.WriteFile(file, nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, "vl.config.json")
+	if err := os.WriteFile(path, []byte("{}\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	m, err := NewEditor(t.Context(), file, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer m.Close()
+	store := config.NewPreferencesStore(path)
+	if _, err := store.Load(); err != nil {
+		t.Fatal(err)
+	}
+	m.SetPreferencesStore(store)
+
+	press(m, "ctrl+p")
+	m.input.SetValue(">open configuration file")
+	rows := m.filteredActions()
+	if len(rows) != 1 || rows[0].id != string(commandOpenConfig) || rows[0].key != "Ctrl+," {
+		t.Fatalf("unexpected configuration actions: %v", rows)
+	}
+	press(m, "enter")
+	doc := m.document()
+	if m.modal != "" || filepath.Base(doc.Path) != "vl.config.json" || len(m.tabs) != 2 {
+		t.Fatal("palette did not open the configuration in a new tab")
+	}
+	const edited = "{\n  \"vim\": {\"enable\": false}\n}\n"
+	doc.Edit(edited)
+	m.Update(tea.KeyPressMsg{Code: ',', Mod: tea.ModCtrl})
+	if len(m.tabs) != 2 || m.document() != doc || !doc.Dirty() {
+		t.Fatal("reopening did not reuse the dirty tab")
+	}
+	pending := store.Prepare(config.Preferences{Language: "zh-CN"})
+	press(m, "ctrl+s")
+	if doc.Dirty() {
+		t.Fatal("configuration was not saved")
+	}
+	if err := pending(); err == nil {
+		t.Fatal("preference writer accepted a stale disk snapshot")
+	}
+	if data, err := os.ReadFile(path); err != nil || string(data) != edited {
+		t.Fatalf("configuration on disk = %q, %v", data, err)
+	}
+}
+
 func TestEditorModeGoToFileListsCurrentDirectory(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.Mkdir(filepath.Join(dir, "subdir"), 0700); err != nil {
@@ -192,7 +243,7 @@ func TestEditorStartupHighlightsWithSavedTheme(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer m.Close()
-	m.SetLayout(config.Layout{Appearance: config.Appearance{Theme: config.ThemePreferences{Dark: "light_modern"}}})
+	m.SetPreferences(config.Preferences{Appearance: config.Appearance{Theme: config.ThemePreferences{Dark: "light_modern"}}})
 	tab := &m.tabs[m.activeTab]
 	before := tab.highlightJob.seq
 	batch := m.Init()().(tea.BatchMsg)

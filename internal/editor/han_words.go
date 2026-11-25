@@ -23,17 +23,17 @@ type HanDictionary struct {
 	unknownWords func() *hanHMM
 }
 
-var installedHanDictionary = sync.OnceValue(func() *HanDictionary {
-	dir, err := config.Dir()
-	if err != nil {
-		return nil
-	}
-	return loadHanDictionaryFromDir(filepath.Join(dir, "extra"))
-})
-
-// InstalledHanDictionary loads the user's dictionary once, on first use.
-// It returns nil if the dictionary is unavailable.
-func InstalledHanDictionary() *HanDictionary { return installedHanDictionary() }
+// NewInstalledHanDictionaryLoader loads the user's dictionary on first use.
+// A new session gets a fresh loader so it can see changes to the dictionary.
+func NewInstalledHanDictionaryLoader() func() *HanDictionary {
+	return sync.OnceValue(func() *HanDictionary {
+		dir, err := config.Dir()
+		if err != nil {
+			return nil
+		}
+		return loadHanDictionaryFromDir(filepath.Join(dir, "extra"))
+	})
+}
 
 func loadHanDictionaryFromDir(dir string) *HanDictionary {
 	for _, name := range []string{"dict.txt", "dict.txt.small", "dict.txt.big"} {

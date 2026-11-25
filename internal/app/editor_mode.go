@@ -39,6 +39,7 @@ func (m *Model) editorActions() []action {
 		tabReason = m.tr("No active tab")
 	}
 	actions := []action{
+		m.commandAction(commandOpenConfig, "Preferences: Open Configuration File", "", ""),
 		{"theme.select", m.tr("Appearance: Color Theme"), "", "", m.openThemePicker},
 		{"statusBar.style", m.tr("Appearance: Status Bar Style"), "", "", m.openStatusBarStylePicker},
 		{"editor.toggleVim", m.tr("Preferences: Toggle Vim Mode"), "", "", func() tea.Cmd {
@@ -52,6 +53,7 @@ func (m *Model) editorActions() []action {
 		{"edit.replace", m.tr("Find: Replace Current View"), "", docReason, m.openFileReplace},
 		m.commandAction(commandFind, "Find: Search Current View", "", ""),
 		m.commandAction(commandRefresh, "Refresh", "", ""),
+		m.commandAction(commandReload, "Reload VL", "", ""),
 		m.commandAction(commandQuit, "Quit", "", ""),
 	}
 	return append(actions, m.textEditorActions()...)

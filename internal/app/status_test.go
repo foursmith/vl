@@ -232,7 +232,7 @@ func TestStatusBarStylePickerPersistsAndRestores(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	t.Cleanup(m.Close)
 	path := filepath.Join(t.TempDir(), "layout.json")
-	m.SetLayoutStore(config.NewLayoutStore(path))
+	m.SetPreferencesStore(config.NewPreferencesStore(path))
 
 	for _, editorOnly := range []bool{false, true} {
 		m.editorOnly = editorOnly
@@ -248,22 +248,22 @@ func TestStatusBarStylePickerPersistsAndRestores(t *testing.T) {
 		}
 		m.input.SetValue("Pure")
 		drain(t, m, m.selectPickerChoice())
-		saved, err := config.LoadLayout(path)
+		saved, err := config.LoadPreferences(path)
 		if err != nil || saved.Appearance.StatusBarStyle != statusBarPure || m.statusBarStyle != statusBarPure || m.modal != "" {
 			t.Fatalf("Pure was not applied and saved: %+v, %v", saved, err)
 		}
-		m.SetLayout(config.Layout{Appearance: config.Appearance{StatusBarStyle: "unknown"}})
+		m.SetPreferences(config.Preferences{Appearance: config.Appearance{StatusBarStyle: "unknown"}})
 		if m.statusBarStyle != statusBarStandard {
 			t.Fatal("unknown style should use Standard")
 		}
-		m.SetLayout(saved)
+		m.SetPreferences(saved)
 		m.openStatusBarStylePicker()
 		if m.palette[1].key != "Current" {
 			t.Fatal("saved Pure was not restored")
 		}
 		m.input.SetValue("Standard")
 		drain(t, m, m.selectPickerChoice())
-		saved, err = config.LoadLayout(path)
+		saved, err = config.LoadPreferences(path)
 		if err != nil || saved.Appearance.StatusBarStyle != "" || m.statusBarStyle != statusBarStandard {
 			t.Fatalf("Standard was not applied and saved: %+v, %v", saved, err)
 		}

@@ -132,6 +132,9 @@ func (m *Model) initializeRepository() tea.Cmd {
 	})
 }
 
+func (m *Model) LastCommand() string      { return m.lastCommand }
+func (m *Model) SetLastCommand(id string) { m.lastCommand = id }
+
 func (m *Model) commandActions() []action {
 	actions := m.actions()
 	slices.SortFunc(actions, func(a, b action) int {
@@ -761,14 +764,32 @@ func (m *Model) askDiscard(title string, run func() tea.Cmd) tea.Cmd {
 }
 
 func (m *Model) quit() tea.Cmd {
+	return m.leaveSession(false)
+}
+
+func (m *Model) ReloadRequested() bool { return m.reloadRequested }
+
+func (m *Model) leaveSession(reload bool) tea.Cmd {
 	if m.busy {
-		m.notice = m.tr("Wait for the current Git operation before quitting")
+		if reload {
+			m.notice = m.tr("Wait for the current Git operation before reloading")
+		} else {
+			m.notice = m.tr("Wait for the current Git operation before quitting")
+		}
 		return nil
 	}
-	if m.hasDirtyTabs() {
-		return m.confirmLeavingWorkspace(m.tr("Save changes before quitting?"), func() tea.Cmd { return tea.Quit })
+	leave := func() tea.Cmd {
+		m.reloadRequested = reload
+		return tea.Quit
 	}
-	return tea.Quit
+	if m.hasDirtyTabs() {
+		title := "Save changes before quitting?"
+		if reload {
+			title = "Save changes before reloading?"
+		}
+		return m.confirmLeavingWorkspace(m.tr(title), leave)
+	}
+	return leave()
 }
 
 func (m *Model) findNext() tea.Cmd {

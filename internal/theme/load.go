@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/MoeForge/moego/json"
+	"github.com/foursmith/vl/internal/jsonc"
 )
 
 // Theme is immutable after loading and can be shared by background syntax jobs.
@@ -120,7 +121,7 @@ func loadSource(filename, kind string, read func(string) ([]byte, error)) (theme
 			parsed, err = readPlist(data)
 			d = &parsed
 		} else {
-			err = decodeJSONC(data, &d)
+			err = jsonc.Unmarshal(data, &d)
 		}
 		if err != nil {
 			return fmt.Errorf("theme %s: %w", name, err)

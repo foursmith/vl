@@ -42,6 +42,7 @@ var workbenchKeybindings = []workbenchShortcut{
 	{binding: binding("Ctrl+G", "Go to File", "ctrl+g"), context: fromSearch, command: commandFiles},
 	{binding: binding("Ctrl+R", "Open Recent Workspace", "ctrl+r"), context: workspaceOnly | fromSidebarSearch, command: commandRecent},
 	{binding: binding("Ctrl+P", "Commands", "ctrl+p"), context: fromSearch, command: commandPalette},
+	{binding: binding("Ctrl+,", "Open Configuration File", "ctrl+,"), context: fromSearch, command: commandOpenConfig},
 	{binding: binding("Ctrl+Shift+F", "Search", "ctrl+shift+f", "ctrl+shift+F"), context: workspaceOnly | fromSearch, command: commandSearch},
 	{binding: binding("Ctrl+1", "First sidebar tab", "ctrl+1"), context: workspaceOnly | fromSearch, command: sidebarTabCommands[0]},
 	{binding: binding("Ctrl+2", "Second sidebar tab", "ctrl+2"), context: workspaceOnly | fromSearch, command: sidebarTabCommands[1]},

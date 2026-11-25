@@ -2,10 +2,12 @@ package app
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
+	"github.com/foursmith/vl/internal/config"
 	gitservice "github.com/foursmith/vl/internal/git"
 )
 
@@ -64,6 +66,10 @@ func TestDefaultWorkbenchShortcutActions(t *testing.T) {
 		{commandPalette, false, []tea.KeyPressMsg{ctrl('p')}, func(m *Model, _ tea.Cmd) bool {
 			return m.commandPicker()
 		}},
+		{commandOpenConfig, true, []tea.KeyPressMsg{ctrl(',')}, func(m *Model, _ tea.Cmd) bool {
+			return m.document() != nil && filepath.Base(m.document().Path) == "vl.config.json" &&
+				m.document().Text == "{}\n" && !m.sidebar && !m.tabs[m.activeTab].preview
+		}},
 		{commandSearch, false, []tea.KeyPressMsg{ctrlShift('f'), ctrlShift('F')}, sidebarSection(search)},
 		{sidebarTabCommands[0], false, []tea.KeyPressMsg{ctrl('1')}, sidebarSection(explorer)},
 		{sidebarTabCommands[1], false, []tea.KeyPressMsg{ctrl('2')}, sidebarSection(search)},
@@ -111,6 +117,8 @@ func TestDefaultWorkbenchShortcutActions(t *testing.T) {
 				m.openFile("file1.go")
 				m.sidebar = test.sidebar
 				switch test.command {
+				case commandOpenConfig:
+					m.SetPreferencesStore(config.NewPreferencesStore(filepath.Join(t.TempDir(), "vl", "vl.config.json")))
 				case commandQuit:
 					m.document().Insert("unsaved")
 				case commandCopy, commandCut:

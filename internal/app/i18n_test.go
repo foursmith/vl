@@ -18,7 +18,7 @@ func TestDisplayLanguagePickerPersistsAndRestores(t *testing.T) {
 	m := tabWorkspace(t, 0)
 	defer m.Close()
 	path := filepath.Join(t.TempDir(), "layout.json")
-	m.SetLayoutStore(config.NewLayoutStore(path))
+	m.SetPreferencesStore(config.NewPreferencesStore(path))
 	m.openPalette()
 	m.input.SetValue(">language")
 	m.syncQuickPicker()
@@ -36,17 +36,17 @@ func TestDisplayLanguagePickerPersistsAndRestores(t *testing.T) {
 	if m.displayLanguage != i18n.Chinese || m.modal != "" {
 		t.Fatal("language not applied immediately")
 	}
-	saved, err := config.LoadLayout(path)
+	saved, err := config.LoadPreferences(path)
 	if err != nil || saved.Language != "zh-CN" {
 		t.Fatalf("not persisted: %#v, %v", saved, err)
 	}
 	restored := New(context.Background(), &gitservice.Repository{Root: t.TempDir()}, false)
 	defer restored.Close()
-	restored.SetLayout(saved)
+	restored.SetPreferences(saved)
 	if restored.tr("Changes") != "更改" {
 		t.Fatal("saved language not restored in another workspace")
 	}
-	restored.SetLayout(config.Layout{Language: "invalid"})
+	restored.SetPreferences(config.Preferences{Language: "invalid"})
 	if restored.tr("Changes") != "Changes" {
 		t.Fatal("invalid saved language did not fall back")
 	}
