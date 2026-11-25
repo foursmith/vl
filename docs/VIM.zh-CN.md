@@ -49,7 +49,7 @@ vl 实现了 Vim 的一部分功能，包括可视模式下按字符和按行选
 
 `w`、`b`、`e` 移动和 `iw`、`aw` 文本对象使用 Vim 默认的 UTF-8 字符类别。例如 `foo_中文かな。🙂` 会分成 `foo_`、`中文`、`かな`、`。` 和 `🙂`。 `w` 和 `b` 也会在空行停靠。
 
-在 `~/.config/vl/vl.config.json` 中开启 `features.chineseWordSegmentation` 后，Vim 按词移动和鼠标双击选词会使用中文分词。关闭 Vim 模式后，双击选词仍然可用。
+在 `~/.config/vl/vl.config.json` 中开启 `features.chineseWordSegmentation` 后，Vim 按词移动、`Ctrl+←` / `Ctrl+→` 和鼠标双击选词都会使用中文分词。关闭 Vim 模式时，方向键快捷键和双击选词仍然适用。
 
 ```json
 {

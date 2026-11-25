@@ -155,7 +155,7 @@ func (m *Model) pasteText(msg tea.PasteMsg) tea.Cmd {
 	return nil
 }
 
-func editBufferKey(buffer *editor.Buffer, key string) bool {
+func editBufferKey(buffer *editor.Buffer, key string, dictionary func() *editor.HanDictionary) bool {
 	switch key {
 	case "backspace", "delete":
 		buffer.Delete(key == "backspace")
@@ -163,7 +163,7 @@ func editBufferKey(buffer *editor.Buffer, key string) bool {
 		move := strings.ReplaceAll(key, "shift+", "")
 		switch move {
 		case leftArrow, rightArrow, "home", "end", "ctrl+left", "ctrl+right":
-			buffer.Move(move, move != key)
+			buffer.MoveWithDictionary(move, move != key, dictionary)
 		default:
 			return false
 		}
@@ -179,7 +179,7 @@ func (m *Model) editDocument(d *editor.Document, msg tea.KeyPressMsg, k string, 
 	switch {
 	case m.vimDisabled && matchesShortcut(k, dismissKey):
 		d.ClearSelection()
-	case editBufferKey(&d.Buffer, k):
+	case editBufferKey(&d.Buffer, k, m.hanDictionary):
 	case matchesShortcut(k, pickerKeys.Accept):
 		d.Insert("\n")
 	case k == "tab":

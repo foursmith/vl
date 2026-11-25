@@ -77,8 +77,9 @@ mode is on or off. Read-only diffs support select all and copy.
 Drag to select text in the editor or an input field.
 Double-click to select a word using the [Vim word boundaries](VIM.md#motions-and-search),
 even with Vim mode off. Triple-click to select a line or the whole value in a
-single-line input. In input fields, `Ctrl+Left` and `Ctrl+Right` move
-to the previous or next word start, using whitespace as the boundary.
+single-line input. In the editor and input fields, `Ctrl+Left` and `Ctrl+Right`
+move to the previous or next word start. They split at whitespace and honor
+[Chinese word segmentation](VIM.md#motions-and-search) when enabled.
 Hold `Shift` with a movement key to extend the selection.
 
 ### Terminal compatibility

@@ -20,16 +20,16 @@ func TestInputUsesExplicitBindings(t *testing.T) {
 		{Code: tea.KeyDelete, Mod: tea.ModCtrl},
 		{Code: 'h', Mod: tea.ModCtrl},
 	} {
-		input.update(msg)
+		input.update(msg, nil)
 		if input.Value() != "one two" || input.Position() != 3 || input.buffer.Anchor != -1 {
 			t.Fatalf("%s changed input to %q at %d with anchor %d", msg, input.Value(), input.Position(), input.buffer.Anchor)
 		}
 	}
-	input.update(tea.KeyPressMsg{Code: tea.KeyLeft, Mod: tea.ModCtrl})
+	input.update(tea.KeyPressMsg{Code: tea.KeyLeft, Mod: tea.ModCtrl}, nil)
 	if input.Position() != 0 {
 		t.Fatalf("Ctrl+Left moved the cursor to %d, want 0", input.Position())
 	}
-	input.update(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModCtrl | tea.ModShift})
+	input.update(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModCtrl | tea.ModShift}, nil)
 	if got := input.buffer.SelectedText(); got != "one " {
 		t.Fatalf("Ctrl+Shift+Right selected %q, want %q", got, "one ")
 	}
@@ -39,22 +39,22 @@ func TestInputEditsWholeGraphemes(t *testing.T) {
 	input := newInput()
 	input.Focus()
 	input.SetValue("中e\u0301👩‍💻")
-	input.update(tea.KeyPressMsg{Code: tea.KeyLeft})
-	input.update(tea.KeyPressMsg{Code: tea.KeyBackspace})
+	input.update(tea.KeyPressMsg{Code: tea.KeyLeft}, nil)
+	input.update(tea.KeyPressMsg{Code: tea.KeyBackspace}, nil)
 	if got := input.Value(); got != "中👩‍💻" {
 		t.Fatalf("Backspace left %q", got)
 	}
-	input.update(tea.KeyPressMsg{Code: tea.KeyDelete})
+	input.update(tea.KeyPressMsg{Code: tea.KeyDelete}, nil)
 	if got := input.Value(); got != "中" {
 		t.Fatalf("Delete left %q", got)
 	}
 	input.SetValue("中\uFFFD")
-	input.update(tea.PasteMsg{Content: "\uFFFD"})
+	input.update(tea.PasteMsg{Content: "\uFFFD"}, nil)
 	if got := input.Value(); got != "中\uFFFD\uFFFD" {
 		t.Fatalf("replacing and pasting input left %q", got)
 	}
 	input.SetValue(strings.Repeat("a", inputRuneLimit-1))
-	input.update(tea.PasteMsg{Content: "e\u0301"})
+	input.update(tea.PasteMsg{Content: "e\u0301"}, nil)
 	if len(input.Value()) != inputRuneLimit-1 {
 		t.Fatal("pasting at the input limit split a grapheme")
 	}

@@ -112,12 +112,14 @@ func keepHanWord(word []byte, frequency int) bool {
 // hanWordRun caches the most recently visited sequence of Han characters.
 // Each rune stores its distance from the start of the word containing it.
 type hanWordRun struct {
-	start int
-	words []uint8
+	dictionary *HanDictionary
+	start      int
+	words      []uint8
 }
 
 func (run *hanWordRun) class(dict *HanDictionary, text string, pos, offset int) int {
-	if pos < run.start || pos-run.start >= len(run.words) {
+	if run.dictionary != dict || pos < run.start || pos-run.start >= len(run.words) {
+		run.dictionary = dict
 		start, end := offset, offset
 		run.start = pos
 		for start > 0 {

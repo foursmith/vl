@@ -375,11 +375,27 @@ func TestVimChineseWordsThroughWorkbench(t *testing.T) {
 	}
 	m := flashModel(t, "中文分词测试 foo")
 	d := m.document()
+	wordRight := tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModCtrl}
+	selectWordLeft := tea.KeyPressMsg{Code: tea.KeyLeft, Mod: tea.ModCtrl | tea.ModShift}
+	m.Update(wordRight)
+	if d.Cursor != 7 {
+		t.Fatalf("Ctrl+Right with segmentation off moved to %d, want 7", d.Cursor)
+	}
+	d.SetPosition(0, 0)
 	press(m, "w")
 	if d.Cursor != 7 {
 		t.Fatalf("default word boundary at %d", d.Cursor)
 	}
 	m.SetPreferences(config.Preferences{Features: config.Features{ChineseWordSegmentation: true}})
+	d.SetPosition(0, 0)
+	press(m, "i")
+	m.Update(wordRight)
+	m.Update(wordRight)
+	m.Update(selectWordLeft)
+	if d.Cursor != 2 || d.SelectedText() != "分词" {
+		t.Fatalf("word selection in Insert mode: cursor %d, selected %q", d.Cursor, d.SelectedText())
+	}
+	press(m, "esc")
 	d.SetPosition(0, 0)
 	press(m, "w")
 	if d.Cursor != 2 {
@@ -393,6 +409,11 @@ func TestVimChineseWordsThroughWorkbench(t *testing.T) {
 	}
 
 	m.setVimDisabled(true)
+	d.SetPosition(0, 0)
+	m.Update(wordRight)
+	if d.Cursor != 2 {
+		t.Fatalf("Ctrl+Right with Vim mode off moved to %d, want 2", d.Cursor)
+	}
 	x, y := m.mainX()+editorGutterWidth+4, m.contentRow()
 	clickText(t, m, x, y)
 	clickText(t, m, x, y)
@@ -400,6 +421,10 @@ func TestVimChineseWordsThroughWorkbench(t *testing.T) {
 		t.Fatalf("double-click with Vim mode off selected %q", got)
 	}
 	m.prompt("newFile", "Prompt", "中文测试")
+	m.Update(selectWordLeft)
+	if got := m.input.buffer.SelectedText(); got != "测试" {
+		t.Fatalf("Ctrl+Shift+Left in input selected %q, want 测试", got)
+	}
 	l := m.dialogLayout()
 	x, y = l.x+8, l.y+2
 	clickText(t, m, x, y)

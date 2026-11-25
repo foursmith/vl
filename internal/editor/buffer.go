@@ -3,7 +3,6 @@ package editor
 import (
 	"sort"
 	"strings"
-	"unicode"
 	"unicode/utf8"
 )
 
@@ -305,6 +304,11 @@ func (d *Buffer) positionAt(offset int) (int, int) {
 }
 
 func (d *Buffer) Move(key string, selectText bool) {
+	d.MoveWithDictionary(key, selectText, nil)
+}
+
+// MoveWithDictionary uses Chinese word boundaries for Ctrl+Left and Ctrl+Right.
+func (d *Buffer) MoveWithDictionary(key string, selectText bool, dictionary func() *HanDictionary) {
 	d.selectionKind = 0
 	d.Cursor = d.snap(d.Cursor, false)
 	if !selectText && d.Anchor >= 0 && d.Anchor != d.Cursor && (key == "left" || key == "right") {
@@ -348,42 +352,8 @@ func (d *Buffer) Move(key string, selectText bool) {
 		if line+1 < len(d.lines) {
 			d.Cursor = d.lineOffsets[line+1] + min(col, d.LineRuneCount(line+1))
 		}
-	case "ctrl+left":
-		offset := d.ByteOffset(d.Cursor)
-		for offset > 0 {
-			r, size := utf8.DecodeLastRuneInString(d.Text[:offset])
-			if !unicode.IsSpace(r) {
-				break
-			}
-			offset -= size
-			d.Cursor--
-		}
-		for offset > 0 {
-			r, size := utf8.DecodeLastRuneInString(d.Text[:offset])
-			if unicode.IsSpace(r) {
-				break
-			}
-			offset -= size
-			d.Cursor--
-		}
-	case "ctrl+right":
-		offset := d.ByteOffset(d.Cursor)
-		for offset < len(d.Text) {
-			r, size := utf8.DecodeRuneInString(d.Text[offset:])
-			if unicode.IsSpace(r) {
-				break
-			}
-			offset += size
-			d.Cursor++
-		}
-		for offset < len(d.Text) {
-			r, size := utf8.DecodeRuneInString(d.Text[offset:])
-			if !unicode.IsSpace(r) {
-				break
-			}
-			offset += size
-			d.Cursor++
-		}
+	case "ctrl+left", "ctrl+right":
+		d.Cursor = d.adjacentWordStart(key == "ctrl+right", dictionary)
 	}
 	d.Cursor = d.snap(d.Cursor, key == "ctrl+right" || key == "right")
 }

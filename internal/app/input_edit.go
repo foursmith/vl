@@ -67,7 +67,7 @@ func (i *textInput) edit(action commandID) tea.Cmd {
 	return nil
 }
 
-func (i *textInput) update(msg tea.Msg) tea.Cmd {
+func (i *textInput) update(msg tea.Msg, dictionary func() *editor.HanDictionary) tea.Cmd {
 	if !i.Focused() {
 		return nil
 	}
@@ -80,7 +80,7 @@ func (i *textInput) update(msg tea.Msg) tea.Cmd {
 		if msg.Text != "" {
 			i.insert(msg.Text)
 		} else {
-			editBufferKey(&i.buffer, msg.String())
+			editBufferKey(&i.buffer, msg.String(), dictionary)
 		}
 	case tea.PasteMsg:
 		i.insert(msg.Content)

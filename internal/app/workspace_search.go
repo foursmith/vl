@@ -353,7 +353,7 @@ func (m *Model) searchInput(msg tea.Msg) tea.Cmd {
 		return nil
 	}
 	before := field.Value()
-	cmd := field.update(msg)
+	cmd := field.update(msg, m.hanDictionary)
 	if s.focus != 1 && before != field.Value() {
 		return tea.Batch(cmd, m.scheduleSearch(150*time.Millisecond))
 	}

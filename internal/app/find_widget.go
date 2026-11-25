@@ -176,7 +176,7 @@ func (m *Model) navigateFileFind(direction int) {
 func (m *Model) fileFindInput(msg tea.Msg) tea.Cmd {
 	field := m.findWidget.field()
 	before := field.Value()
-	cmd := field.update(msg)
+	cmd := field.update(msg, m.hanDictionary)
 	if before == field.Value() {
 		return cmd
 	}

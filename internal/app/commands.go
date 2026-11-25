@@ -366,7 +366,7 @@ func (m *Model) updateModal(msg tea.KeyPressMsg) tea.Cmd {
 
 func (m *Model) updateDialogInput(msg tea.Msg) tea.Cmd {
 	before := m.input.Value()
-	cmd := m.input.update(msg)
+	cmd := m.input.update(msg, m.hanDictionary)
 	if m.input.Value() != before {
 		m.syncQuickPicker()
 		m.selectPickerIndex(0)
