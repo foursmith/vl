@@ -763,14 +763,15 @@ func (m *Model) editorLines() []string {
 			for spanIndex < len(spans) && j >= spans[spanIndex].End {
 				spanIndex++
 			}
-			if spanIndex < len(spans) && j >= spans[spanIndex].Start {
+			inSpan := spanIndex < len(spans) && j >= spans[spanIndex].Start
+			if inSpan {
 				fg = spans[spanIndex].Color
 				font = spans[spanIndex].Font
 				if spans[spanIndex].Background != "" {
 					cellBG = theme.Composite(spans[spanIndex].Background, bg)
 				}
 			}
-			if depth, ok := guides.depths[offset+j]; ok {
+			if depth, ok := guides.bracketDepth(offset + j); ok && (!inSpan || !spans[spanIndex].IgnoreBrackets) {
 				if color := m.colors.BracketColor(depth); color != "" {
 					fg = color
 				}

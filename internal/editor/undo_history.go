@@ -33,7 +33,7 @@ type undoRecord struct {
 func appendUndoStack(data []byte, base string, states []editState) []byte {
 	for i := len(states) - 1; i >= 0; i-- {
 		state := states[i]
-		start, end, nextEnd := undoChangedRange(base, state.text)
+		start, end, nextEnd := ChangedByteRange(base, state.text)
 		record := undoRecord{
 			Start: uint32(start), Remove: uint32(end - start), InsertBytes: uint32(nextEnd - start),
 			Cursor: int32(state.cursor), Anchor: int32(state.anchor), SelectionKind: state.selectionKind,
@@ -45,7 +45,9 @@ func appendUndoStack(data []byte, base string, states []editState) []byte {
 	return data
 }
 
-func undoChangedRange(before, after string) (start, end, nextEnd int) {
+// ChangedByteRange returns a shared prefix and the end of each changed range,
+// on UTF-8 rune boundaries.
+func ChangedByteRange(before, after string) (start, end, nextEnd int) {
 	limit := min(len(before), len(after))
 	for start < limit && before[start] == after[start] {
 		start++
@@ -54,17 +56,21 @@ func undoChangedRange(before, after string) (start, end, nextEnd int) {
 	for start > 0 && start < len(before) && !utf8.RuneStart(before[start]) {
 		start--
 	}
-	end, nextEnd = len(before), len(after)
-	for end > start && nextEnd > start && before[end-1] == after[nextEnd-1] {
-		end--
-		nextEnd--
+	suffix := CommonSuffixBytes(before[start:], after[start:])
+	return start, len(before) - suffix, len(after) - suffix
+}
+
+// CommonSuffixBytes counts shared trailing bytes without splitting a rune.
+func CommonSuffixBytes(before, after string) int {
+	suffix, limit := 0, min(len(before), len(after))
+	for suffix < limit && before[len(before)-1-suffix] == after[len(after)-1-suffix] {
+		suffix++
 	}
 	// Equal trailing bytes may also be part of different runes.
-	for end < len(before) && !utf8.RuneStart(before[end]) {
-		end++
-		nextEnd++
+	for suffix > 0 && !utf8.RuneStart(before[len(before)-suffix]) {
+		suffix--
 	}
-	return start, end, nextEnd
+	return suffix
 }
 
 func readUndoStack(data *[]byte, base string, count int, budget *int) ([]editState, bool) {

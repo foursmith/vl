@@ -76,15 +76,16 @@ type tab struct {
 	scrollWidth      int
 	highlightText    string
 	highlightSource  []string
-	spans            [][]highlight.Span
+	spans            map[int][]highlight.Span
+	bracketSpans     map[int][]highlight.Span
 	highlightJob     highlightJob
 	highlighter      *highlight.Session
 	syntax           highlight.LanguageInfo
 	syntaxRecord     string
-	syntaxPending    bool
 	renderKey        editorRenderKey
 	renderedRows     map[int]editorRenderedRow
 	guides           *editorGuides
+	lastBrackets     bracketSnapshot
 	markdown         markdownLayout
 	markdownImages   *markdownImageCache
 	topImageOffset   int
@@ -612,13 +613,6 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 				next = tea.Batch(next, cmd)
 			}
 		}
-		if cmd := m.scheduleHighlight(); cmd != nil {
-			if next == nil {
-				next = cmd
-			} else {
-				next = tea.Batch(next, cmd)
-			}
-		}
 		if m.flash != nil && !m.flashValid() {
 			m.cancelFlash()
 		}
@@ -635,6 +629,14 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 		if timelineContent != nil && !m.mainShowsSidebar() {
 			if m.fileHistoryAnchor() == timelineTab {
 				m.renderFrame = frameCache{content: timelineContent, reuseRegions: true}
+			}
+		}
+		// Scheduling highlights doesn't change any region until work returns.
+		if cmd := m.scheduleHighlight(); cmd != nil {
+			if next == nil {
+				next = cmd
+			} else {
+				next = tea.Batch(next, cmd)
 			}
 		}
 	}()
@@ -747,7 +749,11 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 	case highlightStartMsg:
 		return m, m.startHighlight(msg.request)
 	case highlightResultMsg:
-		m.finishHighlight(msg)
+		return m, m.finishHighlight(msg)
+	case bracketHighlightStartMsg:
+		return m, m.startBracketHighlight(msg.request)
+	case bracketHighlightResultMsg:
+		m.finishBracketHighlight(msg)
 	case diffSyntaxMsg:
 		if d := msg.target; d != nil && msg.seq == d.diffSeq && msg.raw == d.patch.Raw && msg.ctx.Err() == nil {
 			d.diffSyntax = msg.spans

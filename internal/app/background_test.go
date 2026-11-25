@@ -173,7 +173,7 @@ func TestEditorRunsKeepSyntaxSelectionCursorAndFocus(t *testing.T) {
 	m.sidebar = false
 	m.ensureEditor()
 	m.tabs[0].highlightText = d.Text
-	m.tabs[0].spans = [][]highlight.Span{{{Start: 0, End: 2, Color: theme.Builtin("dark_modern").Palette().GitAdded, Font: theme.Italic}}}
+	m.tabs[0].spans = map[int][]highlight.Span{0: {{Start: 0, End: 2, Color: theme.Builtin("dark_modern").Palette().GitAdded, Font: theme.Italic}}}
 	first := uv.NewStyledString(m.editorLines()[0]).Lines(ansi.GraphemeWidth)[0]
 	selected := false
 	for _, cell := range first {

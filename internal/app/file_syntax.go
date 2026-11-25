@@ -87,7 +87,6 @@ func (m *Model) setFileSyntax(record string, language highlight.LanguageInfo) {
 			t.diff.clearSyntax()
 		} else {
 			t.clearHighlight()
-			t.syntaxPending = true
 		}
 	}
 }

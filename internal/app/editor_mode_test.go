@@ -239,9 +239,9 @@ func TestEditorStartupHighlightsWithSavedTheme(t *testing.T) {
 	defer m.Close()
 	m.SetPreferences(config.Preferences{Appearance: config.Appearance{Theme: config.ThemePreferences{Dark: "light_modern"}}})
 	tab := &m.tabs[m.activeTab]
-	before := tab.highlightJob.seq
+	before := tab.highlightJob.ctx
 	batch := m.Init()().(tea.BatchMsg)
-	if !tab.highlightJob.pending || tab.highlightJob.seq == before {
+	if tab.highlightJob.ctx == nil || tab.highlightJob.ctx == before {
 		t.Fatal("startup did not replace the pending theme-restoration job")
 	}
 	drain(t, m, batch[len(batch)-1])

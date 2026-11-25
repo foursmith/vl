@@ -5,11 +5,12 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"unicode/utf8"
 
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/foursmith/vl/internal/highlight"
+	"github.com/foursmith/vl/internal/editor"
 	"github.com/foursmith/vl/internal/theme"
 )
 
@@ -38,6 +39,18 @@ type editorGuides struct {
 	rows       []*indentGuide
 	pairs      []bracketPair
 	depths     map[int]int
+	edit       bracketEdit
+}
+
+type bracketSnapshot struct {
+	text   string
+	pairs  []bracketPair
+	depths map[int]int
+}
+
+// Translate surviving bracket positions while new syntax is pending.
+type bracketEdit struct {
+	start, oldEnd, newEnd, lineShift int
 }
 
 func (t *tab) editorGuides(source []string) *editorGuides {
@@ -46,12 +59,12 @@ func (t *tab) editorGuides(source []string) *editorGuides {
 	}
 	g := &editorGuides{path: t.doc.Path, text: t.doc.Text}
 	t.guides = g
-	if len(t.doc.Text) > highlight.MaxBytes || t.documentLanguage().ID == "text" {
+	if len(t.doc.Text) > maxEditorHighlightBytes || t.documentLanguage().ID == "text" {
 		return g
 	}
 	g.indents = make([]int, len(source))
 	g.rows = make([]*indentGuide, len(source))
-	hasSyntax := t.highlightText == t.doc.Text && len(t.spans) == len(source)
+	hasSyntax := t.highlightText == t.doc.Text && t.bracketSpans != nil
 	if hasSyntax {
 		g.depths = make(map[int]int)
 	}
@@ -92,7 +105,7 @@ func (t *tab) editorGuides(source []string) *editorGuides {
 		if !hasSyntax || !strings.ContainsAny(prefix, "()[]{}") {
 			continue
 		}
-		spans := t.spans[line]
+		spans := t.bracketSpans[line]
 		span, runeColumn := 0, -1
 		for _, r := range text {
 			runeColumn++
@@ -123,22 +136,62 @@ func (t *tab) editorGuides(source []string) *editorGuides {
 			}
 		}
 	}
+	if hasSyntax {
+		t.lastBrackets = bracketSnapshot{g.text, g.pairs, g.depths}
+	} else if last := t.lastBrackets; len(last.pairs) != 0 {
+		g.pairs, g.depths = last.pairs, last.depths
+		start, oldEnd, newEnd := editor.ChangedByteRange(last.text, g.text)
+		prefix := utf8.RuneCountInString(g.text[:start])
+		before, after := last.text[start:oldEnd], g.text[start:newEnd]
+		g.edit = bracketEdit{
+			start: prefix, oldEnd: prefix + utf8.RuneCountInString(before),
+			newEnd:    prefix + utf8.RuneCountInString(after),
+			lineShift: strings.Count(after, "\n") - strings.Count(before, "\n"),
+		}
+	}
 	return g
 }
 
+func (g *editorGuides) bracketDepth(offset int) (int, bool) {
+	if offset >= g.edit.start && offset < g.edit.newEnd {
+		return 0, false
+	}
+	if offset >= g.edit.newEnd {
+		offset += g.edit.oldEnd - g.edit.newEnd
+	}
+	depth, ok := g.depths[offset]
+	return depth, ok
+}
+
 func (g *editorGuides) activeBracket(cursor int, colors theme.Palette) bracketGuide {
-	first := sort.Search(len(g.pairs), func(i int) bool { return g.pairs[i].close.offset >= cursor })
+	oldCursor := cursor
+	if cursor >= g.edit.start {
+		oldCursor = g.edit.oldEnd + max(0, cursor-g.edit.newEnd)
+	}
+	first := sort.Search(len(g.pairs), func(i int) bool { return g.pairs[i].close.offset >= oldCursor })
 	for _, pair := range g.pairs[first:] {
-		if pair.open.offset <= cursor {
+		open, openOK := g.edit.position(pair.open)
+		close, closeOK := g.edit.position(pair.close)
+		if openOK && closeOK && open.offset <= cursor && close.offset >= cursor {
 			return bracketGuide{
-				start:  pair.open.line,
-				end:    pair.close.line,
-				column: min(g.indents[pair.open.line], g.indents[pair.close.line]),
+				start:  open.line,
+				end:    close.line,
+				column: min(g.indents[open.line], g.indents[close.line]),
 				color:  colors.BracketGuide(pair.depth),
 			}
 		}
 	}
 	return bracketGuide{}
+}
+
+func (e bracketEdit) position(pos bracketPosition) (bracketPosition, bool) {
+	if pos.offset < e.start {
+		return pos, true
+	}
+	if pos.offset < e.oldEnd {
+		return bracketPosition{}, false
+	}
+	return bracketPosition{pos.line + e.lineShift, pos.offset + e.newEnd - e.oldEnd}, true
 }
 
 func (g *editorGuides) decorate(rendered string, line, gutter, left int, bracket bracketGuide, colors theme.Palette) string {

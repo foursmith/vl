@@ -4,12 +4,58 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
 )
+
+func TestEditorBracketColorsStayVisibleWhileHighlightRefreshes(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "sample.go")
+	source := "package main\nfunc f() {\n  call(\"字\", n)\n}\n"
+	if err := os.WriteFile(path, []byte(source), 0600); err != nil {
+		t.Fatal(err)
+	}
+	m, err := NewEditor(context.Background(), path, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(m.Close)
+	drain(t, m, m.scheduleHighlight())
+
+	check := func(stage string, closingRow int) {
+		t.Helper()
+		rows := m.editorLines()
+		for _, endpoint := range []struct {
+			row   int
+			glyph byte
+		}{{2, '('}, {closingRow, ')'}} {
+			row := rows[endpoint.row]
+			plain := ansi.Strip(row)
+			index := strings.IndexByte(plain, endpoint.glyph)
+			if index < 0 {
+				t.Fatalf("%s: bracket %q missing from %q", stage, endpoint.glyph, plain)
+			}
+			column := ansi.StringWidth(plain[:index])
+			cell := uv.NewStyledString(ansi.Cut(row, column, column+1)).Lines(ansi.GraphemeWidth)[0][0]
+			if cell.Content != string(endpoint.glyph) || !sameColor(cell.Style.Fg, lipgloss.Color(m.colors.BracketColor(1))) {
+				t.Fatalf("%s: bracket %q lost its nesting color at column %d: %+v", stage, endpoint.glyph, column, cell)
+			}
+		}
+	}
+	check("initial render", 2)
+	d := m.document()
+	d.SetPosition(2, 13)
+	d.Insert("界\n  ")
+	check("after edit", 3)
+	request := m.scheduleHighlight()().(highlightStartMsg).request
+	brackets := m.finishHighlight(m.startHighlight(request)().(highlightResultMsg))
+	check("after viewport highlight", 3)
+	drain(t, m, brackets)
+	check("after bracket refresh", 3)
+}
 
 func TestEditorGuidesFollowActiveBracketAndIndentation(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "page.tsx")

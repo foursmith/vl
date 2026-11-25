@@ -2,15 +2,67 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/foursmith/vl/internal/highlight"
 )
+
+func TestPendingHighlightPreservesEditedRowColors(t *testing.T) {
+	const header = "package sample\n"
+	for _, tc := range []struct{ name, before, after string }{
+		{"insert", "var 名 = 42\n", "var 名字 = 42\n"},
+		{"split", "var 名 = 42\n", "var 名 =\n  42\n"},
+		{"join", "var 名 =\n  42\n", "var 名 = 42\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := tabWorkspace(t, 1)
+			m.openFile("file0.go")
+			d := m.document()
+			d.Edit(header + tc.before)
+			drain(t, m, m.scheduleHighlight())
+			colorAt := func(rows []string, token string) string {
+				t.Helper()
+				for _, row := range rows {
+					text := ansi.Strip(row)
+					if start := strings.Index(text, token); start >= 0 {
+						column := ansi.StringWidth(text[:start])
+						cell := uv.NewStyledString(ansi.Cut(row, column, column+1)).Lines(ansi.GraphemeWidth)[0][0]
+						if cell.Style.Fg != nil {
+							r, g, b, _ := cell.Style.Fg.RGBA()
+							return fmt.Sprintf("#%02X%02X%02X", r>>8, g>>8, b>>8)
+						}
+					}
+				}
+				t.Fatalf("no color found for %q", token)
+				return ""
+			}
+			before := m.editorLines()
+			d.Edit(header + tc.after)
+			pending := m.editorLines()
+			for _, token := range []string{"var", "42"} {
+				want := colorAt(before, token)
+				if want == m.colors.Foreground {
+					t.Fatalf("fixture token %q did not start highlighted", token)
+				}
+				if got := colorAt(pending, token); got != want {
+					t.Fatalf("pending color for %q = %s, want %s", token, got, want)
+				}
+			}
+			drain(t, m, m.scheduleHighlight())
+			if m.tabs[0].highlightText != d.Text {
+				t.Fatal("fresh highlight did not replace the fallback")
+			}
+		})
+	}
+}
 
 func TestHighlightSessionSurvivesEditsAndUndo(t *testing.T) {
 	m := tabWorkspace(t, 1)
@@ -20,8 +72,10 @@ func TestHighlightSessionSurvivesEditsAndUndo(t *testing.T) {
 		request := m.scheduleHighlight()().(highlightStartMsg).request
 		m.finishHighlight(m.startHighlight(request)().(highlightResultMsg))
 		want := new(highlight.Session).Lines(m.ctx, highlight.Language(m.document().Path), request.text, request.theme)
-		if !reflect.DeepEqual(m.tabs[0].spans, want) {
-			t.Fatal("incremental app result differs from fresh highlight")
+		for _, row := range request.rows {
+			if !reflect.DeepEqual(m.tabs[0].spans[row], want[row]) {
+				t.Fatalf("incremental app result differs from fresh highlight at row %d", row)
+			}
 		}
 	}
 	complete()
@@ -35,11 +89,53 @@ func TestHighlightSessionSurvivesEditsAndUndo(t *testing.T) {
 	}
 }
 
+func TestEditorHighlightFollowsViewportAndKeepsIncomingState(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	m.openFile("file0.go")
+	_, resize := m.Update(tea.WindowSizeMsg{Width: 100, Height: 15})
+	drain(t, m, resize)
+	d := m.document()
+	d.Edit("package sample\n/*\n" + strings.Repeat("var n = 1\n", 100) + "*/\nvar n = 2\n")
+	drain(t, m, m.scheduleHighlight())
+	tab := &m.tabs[0]
+	if len(tab.spans) > 2*m.contentHeight() || len(tab.spans[2]) == 0 {
+		t.Fatalf("initial highlight should cover only the area around the viewport, got %d rows", len(tab.spans))
+	}
+	const target = 75
+	tab.top = target
+	drain(t, m, m.scheduleHighlight())
+	want := new(highlight.Session).Lines(m.ctx, tab.documentLanguage(), d.Text, m.colorTheme)
+	if got := tab.spans[target]; len(got) == 0 || !reflect.DeepEqual(got, want[target]) {
+		t.Fatalf("highlight for a scrolled-in line inside a comment = %#v, want %#v", got, want[target])
+	}
+	if _, cached := tab.spans[2]; cached {
+		t.Fatal("highlight cache retained the old viewport")
+	}
+}
+
+func TestEditorHighlightSizeLimit(t *testing.T) {
+	m := tabWorkspace(t, 1)
+	m.openFile("file0.go")
+	d := m.document()
+	const prefix, padding = "package sample\n", "// padding in the rest of the file\n"
+	const limit = 2048 << 10
+	count := (limit - len(prefix) - 2) / len(padding)
+	text := prefix + strings.Repeat(padding, count) + "//" +
+		strings.Repeat("x", limit-len(prefix)-len(padding)*count-2)
+	for _, size := range []int{limit, limit + 1, limit} {
+		d.Edit((text + "x")[:size])
+		drain(t, m, m.scheduleHighlight())
+		if colored := len(m.tabs[0].spans[0]) != 0; colored != (size == limit) {
+			t.Fatalf("first line highlight at %d bytes = %t", size, colored)
+		}
+	}
+}
+
 func TestHighlightingRejectsCancelledAndStaleText(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	m.openFile("file0.go")
 	first := m.scheduleHighlight()
-	if first == nil || !m.tabs[0].highlightJob.pending {
+	if first == nil || m.tabs[0].highlightJob.ctx == nil {
 		t.Fatal("highlight work was not deferred")
 	}
 	old := first().(highlightStartMsg).request
@@ -48,7 +144,7 @@ func TestHighlightingRejectsCancelledAndStaleText(t *testing.T) {
 	if old.ctx.Err() == nil {
 		t.Fatal("new text did not cancel old tokenization")
 	}
-	stale := [][]highlight.Span{{{Start: 0, End: 1, Color: "#FF0000"}}}
+	stale := map[int][]highlight.Span{0: {{Start: 0, End: 1, Color: "#FF0000"}}}
 	m.finishHighlight(highlightResultMsg{old, stale})
 	if m.tabs[0].highlightText == old.text {
 		t.Fatal("stale highlight replaced current syntax")
@@ -83,7 +179,7 @@ func TestClosingTabCancelsHighlightJob(t *testing.T) {
 	}
 }
 
-func TestInsertRetainsUnchangedHighlightUntilNormal(t *testing.T) {
+func TestInsertRefreshesHighlightBeforeReturningToNormal(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "notes.md")
 	source := "# Heading\n\n```go\nvar x = 1\n```\n"
 	if err := os.WriteFile(path, []byte(source), 0600); err != nil {
@@ -109,10 +205,9 @@ func TestInsertRetainsUnchangedHighlightUntilNormal(t *testing.T) {
 	}
 
 	drain(t, m, press(m, "i"))
-	_, cmd := m.Update(tea.PasteMsg{Content: "typing\n"})
-	drain(t, m, cmd)
-	if tab := &m.tabs[0]; !tab.vim.InsertMode || tab.highlightJob.pending || tab.highlightText != source {
-		t.Fatal("inserting text started another highlight pass")
+	_, cmd := m.Update(tea.PasteMsg{Content: "## New heading\n"})
+	if tab := &m.tabs[0]; !tab.vim.InsertMode || tab.highlightJob.ctx == nil || tab.highlightText != source {
+		t.Fatal("inserting text did not schedule a background highlight pass")
 	}
 	if got := editorText(0); got != heading {
 		t.Fatalf("highlight above edit changed: %q, want %q", got, heading)
@@ -121,8 +216,8 @@ func TestInsertRetainsUnchangedHighlightUntilNormal(t *testing.T) {
 		t.Fatalf("highlight below inserted line did not follow it: %q, want %q", got, code)
 	}
 
-	drain(t, m, press(m, "esc"))
-	if tab := &m.tabs[0]; tab.vim.InsertMode || tab.highlightText != d.Text {
-		t.Fatal("returning to Normal did not publish updated highlighting")
+	drain(t, m, cmd)
+	if tab := &m.tabs[0]; !tab.vim.InsertMode || tab.highlightText != d.Text || len(tab.spans[1]) == 0 {
+		t.Fatal("the new heading was not highlighted in Insert mode")
 	}
 }
