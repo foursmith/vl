@@ -19,15 +19,20 @@ type Preferences struct {
 	Language   string     `json:"language,omitempty"`
 	Appearance Appearance `json:"appearance,omitzero"`
 	Features   Features   `json:"features,omitzero"`
+	Vim        Vim        `json:"vim,omitzero"`
 }
 
 type Features struct {
-	VimMode                 *bool             `json:"vimMode,omitempty"`
 	ChineseWordSegmentation bool              `json:"chineseWordSegmentation,omitempty"`
 	AutoSwitchInputMethod   InputMethodSwitch `json:"autoSwitchInputMethod,omitzero"`
 }
 
-func (f Features) VimEnabled() bool { return f.VimMode == nil || *f.VimMode }
+type Vim struct {
+	Enable *bool  `json:"enable,omitempty"`
+	Leader string `json:"leader,omitempty"`
+}
+
+func (v Vim) Enabled() bool { return v.Enable == nil || *v.Enable }
 
 type Appearance struct {
 	Theme          ThemePreferences   `json:"theme,omitzero"`

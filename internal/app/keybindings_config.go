@@ -111,6 +111,10 @@ func configuredBinding(raw json.RawMessage) (key.Binding, error) {
 	default:
 		return key.Binding{}, errors.New("keys must be a shortcut or an array of shortcuts")
 	}
+	return shortcutBinding(shortcuts)
+}
+
+func shortcutBinding(shortcuts []string) (key.Binding, error) {
 	var names []string
 	var display string
 	for _, shortcut := range shortcuts {

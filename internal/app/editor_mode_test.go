@@ -44,7 +44,7 @@ func TestOpenConfigurationFromStandalonePalette(t *testing.T) {
 	if m.modal != "" || filepath.Base(doc.Path) != "vl.config.json" || len(m.tabs) != 2 {
 		t.Fatal("palette did not open the configuration in a new tab")
 	}
-	const edited = "{\n  \"features\": {\"vimMode\": false}\n}\n"
+	const edited = "{\n  \"vim\": {\"enable\": false}\n}\n"
 	doc.Edit(edited)
 	m.Update(tea.KeyPressMsg{Code: ',', Mod: tea.ModCtrl})
 	if len(m.tabs) != 2 || m.document() != doc || !doc.Dirty() {

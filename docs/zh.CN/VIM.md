@@ -1,6 +1,6 @@
 # Vim 键位
 
-Vim 模式默认开启。按 `Ctrl+P`，运行「首选项：切换 Vim 模式」可立即切换。也可在 `~/.config/vl/vl.config.json` 中将 `features.vimMode` 设为 `false`。
+Vim 模式默认开启。按 `Ctrl+P`，运行「首选项：切换 Vim 模式」可立即切换。也可在 `~/.config/vl/vl.config.json` 中将 `vim.enable` 设为 `false`。`vim.leader` 默认为 `"Space"`，可设为 `","` 或 `"Alt+,"` 等按键。修改配置文件后，运行「重新加载 VL」。
 
 开启 Vim 模式后，文本文件打开时进入普通模式。`i` 进入插入模式，`v` 进入可视模式，`Esc` 或 `Ctrl+[` 回到普通模式。只读 Diff 同样支持移动、选择、复制和跳转。通用操作见[键盘快捷键](KEYBINDINGS.md)。
 
@@ -25,7 +25,7 @@ Vim 的默认行为见[移动命令](https://vimhelp.org/motion.txt.html)、[撤
 
 编辑区的 `p` 和 `P` 从无名寄存器粘贴。这个寄存器在编辑标签页之间共享，存放 `y` 复制的文本，以及 `d`、`c`、`x`、`s` 删除的文本。
 
-使用系统剪贴板时，按 `Ctrl+C`、`Ctrl+X`、`Ctrl+V`，或使用 [Space 快捷键](KEYBINDINGS.md#用空格切标签保存和关闭)。在资源管理器中，`yy` 和 `p` 用于复制和粘贴文件。
+使用系统剪贴板时，按 `Ctrl+C`、`Ctrl+X`、`Ctrl+V`，或使用 [Leader 快捷键](KEYBINDINGS.md#使用-leader-键)。在资源管理器中，`yy` 和 `p` 用于复制和粘贴文件。
 
 可视块模式、宏、命名寄存器、标记跳转和下文未列出的 Ex 命令暂不支持。
 
@@ -188,4 +188,4 @@ Surround 支持引号、反引号和 `() [] {} <>`。输入成对括号中的任
 
 带 `!` 的保存命令也会检查只读状态和磁盘改动。若文件名与命令相同，打开时在文件名前加 `./`。单文件模式下，关闭最后一个标签会退出 VL。
 
-`Space` 也可用于切换标签、保存和关闭。见[工作台快捷键](KEYBINDINGS.md#用空格切标签保存和关闭)。
+Leader 序列也可用于切换标签、保存和关闭。见[工作台快捷键](KEYBINDINGS.md#使用-leader-键)。

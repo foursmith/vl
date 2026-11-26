@@ -29,6 +29,10 @@ func (m *Model) leaderKey(k string) (bool, tea.Cmd) {
 	if !m.leaderAvailable() {
 		return false, nil
 	}
+	prefix := m.leaderPrefix
+	if !prefix.Enabled() {
+		prefix = defaultLeaderPrefix
+	}
 	if target != "" && target == m.tabs[m.activeTab].clickKey() {
 		if handled, cmd := m.runLeaderShortcut(k); handled {
 			return true, cmd
@@ -39,9 +43,9 @@ func (m *Model) leaderKey(k string) (bool, tea.Cmd) {
 		}
 		// Unknown letters cancel without editing or operating on hunks. Modified
 		// keys, focus switching and command palettes keep their workbench meaning.
-		return matchesShortcut(k, dismissKey) || matchesShortcut(k, leaderKeys.Prefix) || len(k) == 1, nil
+		return matchesShortcut(k, dismissKey) || matchesShortcut(k, prefix) || len(k) == 1, nil
 	}
-	if !matchesShortcut(k, leaderKeys.Prefix) {
+	if !matchesShortcut(k, prefix) {
 		return false, nil
 	}
 	if m.editorDocument() != nil {

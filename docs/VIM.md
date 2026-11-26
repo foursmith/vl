@@ -1,6 +1,6 @@
 # Vim keys in VL
 
-Vim mode is enabled by default. Press `Ctrl+P` and choose **Preferences: Toggle Vim Mode** to switch immediately, or set `features.vimMode` to `false` in `~/.config/vl/vl.config.json`.
+Vim mode is enabled by default. Press `Ctrl+P` and choose **Preferences: Toggle Vim Mode** to switch immediately, or set `vim.enable` to `false` in `~/.config/vl/vl.config.json`. Set `vim.leader` to a key such as `","` or `"Alt+,"` to change the Leader key. The default is `"Space"`. Run **Reload VL** after editing the file.
 
 In Vim mode, text files open in Normal. Press `i` for Insert, `v` for Visual, and `Esc` or `Ctrl+[` to return to Normal. Read-only diffs share the same motions, selections, yanks, and jumps. See [Keyboard shortcuts](KEYBINDINGS.md) for workbench controls.
 
@@ -27,7 +27,7 @@ For Vim's defaults, see [motions](https://vimhelp.org/motion.txt.html),
 
 In the editor, `p` and `P` paste from the unnamed register. Editor tabs share this register. It holds text yanked with `y` or removed with `d`, `c`, `x`, or `s`.
 
-To use the system clipboard, press `Ctrl+C`, `Ctrl+X`, or `Ctrl+V`, or use the [Space shortcuts](KEYBINDINGS.md#use-space-for-tabs-saving-and-closing). In Explorer, `yy` copies files and `p` pastes them.
+To use the system clipboard, press `Ctrl+C`, `Ctrl+X`, or `Ctrl+V`, or use the [Leader shortcuts](KEYBINDINGS.md#use-the-leader-key). In Explorer, `yy` copies files and `p` pastes them.
 
 Visual block, macros, named registers, mark jumps, and Ex commands beyond those listed below are unsupported.
 
@@ -204,4 +204,4 @@ In Normal mode, press `:`, type the command, then press `Enter`.
 
 Save commands with `!` still check for read-only files and changes on disk. To open a file named after one of these commands, prefix its name with `./`. In single-file mode, closing the last tab exits VL.
 
-Use `Space` sequences to switch tabs, save, and close. See [Workbench shortcuts](KEYBINDINGS.md#use-space-for-tabs-saving-and-closing).
+Use Leader sequences to switch tabs, save, and close. See [Workbench shortcuts](KEYBINDINGS.md#use-the-leader-key).

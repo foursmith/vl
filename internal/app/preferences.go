@@ -1,6 +1,8 @@
 package app
 
 import (
+	"strings"
+
 	tea "charm.land/bubbletea/v2"
 	"github.com/foursmith/vl/internal/config"
 	"github.com/foursmith/vl/internal/editor"
@@ -29,25 +31,26 @@ func (m *Model) Preferences() config.Preferences {
 	if m.displayLanguage != i18n.English {
 		language = string(m.displayLanguage)
 	}
-	var vimMode *bool
-	if m.vimDisabled {
-		vimMode = new(false)
-	}
 	return config.Preferences{
 		Language:   language,
 		Appearance: appearance,
 		Features: config.Features{
-			VimMode:                 vimMode,
 			ChineseWordSegmentation: m.hanDictionary != nil,
 			AutoSwitchInputMethod:   m.autoSwitchInputMethod,
 		},
+		Vim: config.Vim{Enable: new(!m.vimDisabled), Leader: m.vimLeader},
 	}
 }
 
 func (m *Model) SetPreferences(preferences config.Preferences) {
 	features := preferences.Features
 	m.autoSwitchInputMethod = features.AutoSwitchInputMethod
-	m.setVimDisabled(!features.VimEnabled())
+	m.setVimDisabled(!preferences.Vim.Enabled())
+	if m.vimLeader != preferences.Vim.Leader {
+		m.cancelLeader()
+		m.vimLeader = preferences.Vim.Leader
+		m.leaderPrefix, _ = shortcutBinding([]string{strings.TrimSpace(m.vimLeader)})
+	}
 	m.hanDictionary = nil
 	if features.ChineseWordSegmentation {
 		m.hanDictionary = editor.NewInstalledHanDictionaryLoader()

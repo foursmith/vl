@@ -210,9 +210,10 @@ func (v *Vim) JumpTo(d *Document, offset int) {
 	}
 }
 
-// AcceptsLeader reserves Space for commands that take literal input.
-// Workspace commands are parsed by the app, not by the text editing engine.
-func (v *Vim) AcceptsLeader() bool { return !v.InsertMode && v.surround == nil && v.pending != "r" }
+// AcceptsLeader reports whether a workbench sequence can start here.
+func (v *Vim) AcceptsLeader() bool {
+	return !v.InsertMode && v.surround == nil && v.pending != "r" && v.pending != `"`
+}
 
 // Read-only documents share motions, text objects, selection and yank commands.
 // Reject mutations before interpreting them so they cannot enter Insert or

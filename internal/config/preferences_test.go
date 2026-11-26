@@ -20,13 +20,13 @@ func TestPreferencesPath(t *testing.T) {
 func TestPreferencesRoundTripAndInvalidFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vl", "vl.config.json")
 	got, err := LoadPreferences(path)
-	if err != nil || !got.Equal(Preferences{}) || !got.Features.VimEnabled() {
+	if err != nil || !got.Equal(Preferences{}) || !got.Vim.Enabled() {
 		t.Fatalf("missing preferences: %+v, %v", got, err)
 	}
-	want := Preferences{Appearance: Appearance{Theme: ThemePreferences{Dark: "dark_plus", Light: "light_plus"}, Sidebar: SidebarPreferences{Side: "right", Width: 52}},
+	want := Preferences{Vim: Vim{Enable: new(false), Leader: ","}, Appearance: Appearance{Theme: ThemePreferences{Dark: "dark_plus", Light: "light_plus"}, Sidebar: SidebarPreferences{Side: "right", Width: 52}},
 		Features: Features{
-			VimMode: new(false), ChineseWordSegmentation: true,
-			AutoSwitchInputMethod: InputMethodSwitch{Enable: true, Cmd: []string{"im-select", "com.apple.keylayout.ABC"}},
+			ChineseWordSegmentation: true,
+			AutoSwitchInputMethod:   InputMethodSwitch{Enable: true, Cmd: []string{"im-select", "com.apple.keylayout.ABC"}},
 		},
 	}
 	store := NewPreferencesStore(path)
@@ -34,7 +34,7 @@ func TestPreferencesRoundTripAndInvalidFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	got, err = LoadPreferences(path)
-	if err != nil || !got.Equal(want) || got.Features.VimEnabled() {
+	if err != nil || !got.Equal(want) || got.Vim.Enabled() {
 		t.Fatalf("loaded %+v, %v", got, err)
 	}
 	if err := store.Prepare(Preferences{})(); err != nil {
@@ -138,7 +138,7 @@ func TestPreferencesJSONCUpdatesKeepCommentsAndUnrelatedValues(t *testing.T) {
 }
 
 func TestPreferencesRejectMalformedJSONC(t *testing.T) {
-	for _, source := range []string{`{ /* unclosed`, `{ , }`, `{"features": {"vimMode": false,, }}`, `{features: 'false'}`} {
+	for _, source := range []string{`{ /* unclosed`, `{ , }`, `{"vim": {"enable": false,, }}`, `{features: 'false'}`} {
 		if _, err := decodePreferences([]byte(source)); err == nil {
 			t.Errorf("accepted malformed JSONC %q", source)
 		}

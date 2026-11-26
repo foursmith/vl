@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/foursmith/vl/internal/config"
 	"github.com/foursmith/vl/internal/editor"
 )
 
@@ -536,6 +537,55 @@ func TestDiffLeaderSelectsTabsWithoutSpacePaging(t *testing.T) {
 		t.Fatal("f must use shared Flash without paging")
 	}
 	press(m, "esc")
+}
+
+func TestConfiguredVimLeader(t *testing.T) {
+	m := flashModel(t, "abc")
+	defer m.Close()
+	m.SetPreferences(config.Preferences{Vim: config.Vim{Leader: ","}})
+
+	press(m, " ")
+	if m.leaderActive() {
+		t.Fatal("Space still starts a leader sequence")
+	}
+	press(m, ",")
+	if !m.leaderActive() || m.Preferences().Vim.Leader != "," {
+		t.Fatal("custom leader was not applied and retained")
+	}
+	press(m, "esc")
+	press(m, "l")
+	press(m, "r")
+	press(m, ",")
+	if m.document().Text != "a,c" || m.leaderActive() {
+		t.Fatalf("custom leader intercepted replacement: %q", m.document().Text)
+	}
+	press(m, "i")
+	press(m, ",")
+	if m.document().Text != "a,,c" || m.leaderActive() {
+		t.Fatalf("custom leader intercepted Insert input: %q", m.document().Text)
+	}
+	press(m, "esc")
+
+	for _, leader := range []string{"Space", "invalid key"} {
+		m.SetPreferences(config.Preferences{Vim: config.Vim{Leader: leader}})
+		m.Update(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
+		if !m.leaderActive() {
+			t.Fatalf("leader %q did not use Space", leader)
+		}
+	}
+}
+
+func TestConfiguredVimLeaderInDiff(t *testing.T) {
+	m := reviewWorkspace(t, false)
+	m.SetPreferences(config.Preferences{Vim: config.Vim{Leader: "Alt+,"}})
+	m.Update(tea.KeyPressMsg{Code: ',', Mod: tea.ModAlt})
+	if !m.leaderActive() {
+		t.Fatal("custom leader did not start in Diff")
+	}
+	press(m, "q")
+	if m.diffOpen {
+		t.Fatal("custom leader did not close Diff")
+	}
 }
 
 func TestDiffLeaderClosesOnlyCurrentTab(t *testing.T) {

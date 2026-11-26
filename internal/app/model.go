@@ -125,6 +125,8 @@ type Model struct {
 	findWidget                         findWidgetState
 	navigationState                    navigationState
 	leaderTarget                       string
+	leaderPrefix                       key.Binding
+	vimLeader                          string
 	explorerYankRoot, explorerYankPath string
 	flash                              *flashState
 	pathCompletion                     *pathCompletion

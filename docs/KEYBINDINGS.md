@@ -24,9 +24,11 @@ Press keys joined with `+` together. Press sequences such as `gg` and `Space w` 
 
 Closing tabs, switching workspaces, and quitting prompt when there are unsaved changes. In single-file mode, `Ctrl+G` lists files in the current file's directory, and closing the last tab quits. The arrow keys rotate the welcome artwork when it is visible and the main area has focus.
 
-### Use Space for tabs, saving, and closing
+### Use the Leader key
 
-These sequences work in a focused editor in Vim Normal or Visual mode, and in image tabs.
+These sequences work in a focused text editor or Diff in Vim Normal or Visual mode, and in image tabs.
+
+The examples use the default Leader key, `Space`. If you set `vim.leader`, press your configured key in its place. Empty or invalid values use `Space`.
 
 | Sequence | To |
 | --- | --- |

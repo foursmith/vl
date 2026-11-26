@@ -172,10 +172,11 @@ var gitKeys = struct {
 	Push:         binding("P", "Push", "P", "shift+p"),
 }
 
+var defaultLeaderPrefix = binding("Space", "Leader", "space", " ")
+
 var leaderKeys = struct {
-	Prefix, Previous, Next, Save, Close, SaveClose key.Binding
+	Previous, Next, Save, Close, SaveClose key.Binding
 }{
-	Prefix:    binding("Space", "Leader", "space", " "),
 	Previous:  binding("←", "Previous tab", leftArrow),
 	Next:      binding("→", "Next tab", rightArrow),
 	Save:      binding("w", "Save", "w"),
