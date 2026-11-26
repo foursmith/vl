@@ -60,9 +60,19 @@ func (m *Model) editableDocumentFocused(d *editor.Document) bool {
 		m.modal == "" && m.contextMenu == nil && !m.sidebar && !m.fileFindFocused()
 }
 
+func documentClipboardTarget(d *editor.Document, cut bool) clipboardApply {
+	return guardDocumentClipboard(d, func(m *Model, text string) tea.Cmd {
+		if cut {
+			text = ""
+		}
+		m.insertClipboardText(text)
+		return nil
+	})
+}
+
 // Capture the selection before the clipboard operation starts. A delayed
 // result cannot edit a different buffer or a selection the user has moved.
-func documentClipboardTarget(d *editor.Document, cut bool) clipboardApply {
+func guardDocumentClipboard(d *editor.Document, apply clipboardApply) clipboardApply {
 	value := d.Text
 	start, end := d.Selection()
 	return func(m *Model, text string) tea.Cmd {
@@ -72,11 +82,7 @@ func documentClipboardTarget(d *editor.Document, cut bool) clipboardApply {
 		if currentStart, currentEnd := d.Selection(); currentStart != start || currentEnd != end {
 			return nil
 		}
-		if cut {
-			text = ""
-		}
-		m.insertClipboardText(text)
-		return nil
+		return apply(m, text)
 	}
 }
 

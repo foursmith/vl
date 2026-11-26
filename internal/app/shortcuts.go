@@ -14,13 +14,13 @@ func (m *Model) leaderActive() bool {
 }
 
 func (m *Model) leaderKey(k string) (bool, tea.Cmd) {
-	pending := m.leaderActive()
-	m.leaderTarget = ""
+	target, operator := m.leaderTarget, m.leaderOperator
+	m.leaderTarget, m.leaderOperator = "", ""
 	if !m.leaderAvailable() {
 		return false, nil
 	}
-	if pending {
-		if handled, cmd := m.runLeaderShortcut(k); handled {
+	if target != "" && target == m.tabs[m.activeTab].clickKey() {
+		if handled, cmd := m.runLeaderShortcut(k, operator); handled {
 			return true, cmd
 		}
 		if matchesShortcut(k, dismissKey) && m.editorDocument() != nil {
@@ -42,10 +42,17 @@ func (m *Model) leaderKey(k string) (bool, tea.Cmd) {
 	return true, nil
 }
 
-func (m *Model) runLeaderShortcut(k string) (bool, tea.Cmd) {
+func (m *Model) runLeaderShortcut(k, operator string) (bool, tea.Cmd) {
+	if operator != "" {
+		if k != operator {
+			return false, nil
+		}
+		return true, m.vimClipboardWrite(k)
+	}
 	switch {
 	case len(k) == 1 && k[0] >= '1' && k[0] <= '9':
 		m.selectShortcutTab(int(k[0] - '1'))
+		return true, nil
 	case matchesShortcut(k, leaderKeys.Previous):
 		return true, m.executeCommand(commandPreviousTab, "")
 	case matchesShortcut(k, leaderKeys.Next):
@@ -56,10 +63,24 @@ func (m *Model) runLeaderShortcut(k string) (bool, tea.Cmd) {
 		return true, m.executeCommand(commandClose, "")
 	case matchesShortcut(k, leaderKeys.SaveClose):
 		return true, m.executeCommand(commandSaveAndClose, "")
-	default:
+	}
+	d := m.editorDocument()
+	if d == nil {
 		return false, nil
 	}
-	return true, nil
+	switch k {
+	case "p", "P":
+		return true, m.vimClipboardPut(d, k)
+	case "d", "c", "y", "x":
+		if m.tabs[m.activeTab].vim.VisualMode {
+			return true, m.vimClipboardWrite(k)
+		}
+		if k != "x" {
+			m.leaderTarget, m.leaderOperator = m.tabs[m.activeTab].clickKey(), k
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (m *Model) selectShortcutTab(index int) {

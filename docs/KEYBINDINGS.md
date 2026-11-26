@@ -35,6 +35,8 @@ These sequences work in a focused editor in Vim Normal or Visual mode, and in im
 | `Space w` / `Space q` / `Space z` | Save / close / save and close. Saving applies to editable files. |
 | `Space Esc` | Cancel the sequence. |
 
+For Space-prefixed clipboard commands, see [Vim keys](VIM.md#where-vl-differs-from-vim).
+
 ## Move through lists
 
 | How far | Press |

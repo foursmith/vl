@@ -25,6 +25,8 @@ Vim 的默认行为见[移动命令](https://vimhelp.org/motion.txt.html)、[撤
 
 **剪贴板。** `y` 复制到无名寄存器，`d`、`c`、`x` 和 `s` 也将删除的文本写入其中。`p` / `P` 从这个跨标签页共享的寄存器粘贴。`Ctrl+C` / `Ctrl+X` / `Ctrl+V` 使用[系统剪贴板](KEYBINDINGS.md#文字编辑)，资源管理器的 `yy` / `p` 则用于复制和粘贴文件。
 
+普通模式下，`Space dd`、`Space cc`、`Space yy` 将整行写入系统剪贴板。可视模式下，`Space d`、`Space x`、`Space c`、`Space y` 写入选区。两种模式下，`Space p` / `Space P` 都从系统剪贴板读取并粘贴。
+
 可视块模式、宏、命名寄存器、标记跳转和下文未列出的 Ex 命令暂不支持。
 
 ## 光标移动与搜索

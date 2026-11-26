@@ -124,7 +124,7 @@ type Model struct {
 	workbenchKeymap                    *workbenchKeymap
 	findWidget                         findWidgetState
 	navigationState                    navigationState
-	leaderTarget                       string
+	leaderTarget, leaderOperator       string
 	explorerYankRoot, explorerYankPath string
 	flash                              *flashState
 	pathCompletion                     *pathCompletion

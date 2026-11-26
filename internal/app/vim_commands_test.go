@@ -349,6 +349,42 @@ func TestVimReplaceWithSpace(t *testing.T) {
 	}
 }
 
+func TestVimLeaderClipboardOperators(t *testing.T) {
+	for _, tt := range []struct {
+		keys, text, copied string
+		insert, readOnly   bool
+	}{
+		{" dd", "two", "one\n", false, false},
+		{" cc", "\ntwo", "one\n", true, false},
+		{" yy", "one\ntwo", "one\n", false, true},
+		{"v d", "ne\ntwo", "o", false, false},
+		{"V c", "\ntwo", "one\n", true, false},
+		{"V y", "one\ntwo", "one\n", false, true},
+		{"v x", "ne\ntwo", "o", false, false},
+		{" dd", "one\ntwo", "", false, true},
+		{" dP", "one\ntwo", "", false, false},
+	} {
+		t.Run(tt.keys, func(t *testing.T) {
+			m := flashModel(t, "one\ntwo")
+			d := m.document()
+			d.ReadOnly = tt.readOnly
+			var cmd tea.Cmd
+			for _, key := range tt.keys {
+				if cmd != nil {
+					t.Fatal("clipboard command started before the sequence completed")
+				}
+				cmd = press(m, string(key))
+			}
+			v := &m.tabs[0].vim
+			if d.Text != tt.text || m.vimRegister != tt.copied || (cmd != nil) != (tt.copied != "") ||
+				v.InsertMode != tt.insert || v.VisualMode || m.leaderActive() {
+				t.Fatalf("text = %q, register = %q, clipboard command = %t, mode = %s, leader = %v",
+					d.Text, m.vimRegister, cmd != nil, v.Label(), m.leaderActive())
+			}
+		})
+	}
+}
+
 func TestVimLeaderSelectsTabByNumber(t *testing.T) {
 	m := tabWorkspace(t, 3)
 	defer m.Close()

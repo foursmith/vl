@@ -27,6 +27,8 @@ For Vim's defaults, see [motions](https://vimhelp.org/motion.txt.html),
 
 **Clipboard.** `y` yanks to the unnamed register. `d`, `c`, `x`, and `s` also store deleted text there. `p` / `P` paste from that register, which is shared across editor tabs. `Ctrl+C` / `Ctrl+X` / `Ctrl+V` use the [system clipboard](KEYBINDINGS.md#text-editing). Explorer's `yy` / `p` copy and paste files.
 
+Use `Space dd`, `Space cc`, or `Space yy` to write a line to the system clipboard. In Visual, use `Space d`, `Space x`, `Space c`, or `Space y` for the selection. In either mode, `Space p` and `Space P` paste from the system clipboard.
+
 Visual block, macros, named registers, mark jumps, and Ex commands beyond those listed below are unsupported.
 
 ## Motions and search

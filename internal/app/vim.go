@@ -127,3 +127,38 @@ func (m *Model) vimKey(k string) (bool, tea.Cmd) {
 	}
 	return true, nil
 }
+
+func (m *Model) vimClipboardWrite(key string) tea.Cmd {
+	d := m.editorDocument()
+	if d == nil {
+		return nil
+	}
+	v := &m.tabs[m.activeTab].vim
+	if !v.VisualMode {
+		v.Handle(d, key, m.vimRegister)
+	}
+	_, text := v.Handle(d, key, m.vimRegister)
+	m.ensureTextCursor()
+	if text != "" {
+		m.vimRegister = text
+	}
+	return writeClipboard(text, nil)
+}
+
+func (m *Model) vimClipboardPut(d *editor.Document, key string) tea.Cmd {
+	if !m.editableDocumentFocused(d) {
+		return nil
+	}
+	v := &m.tabs[m.activeTab].vim
+	visual, linewise := v.VisualMode, v.VisualLine
+	return readClipboard(guardDocumentClipboard(d, func(m *Model, text string) tea.Cmd {
+		v := &m.tabs[m.activeTab].vim
+		if m.vimDisabled || m.leaderActive() || m.flash != nil || v.InsertMode || v.CommandPending() ||
+			v.VisualMode != visual || v.VisualLine != linewise {
+			return nil
+		}
+		v.Handle(d, key, text)
+		m.ensureTextCursor()
+		return nil
+	}))
+}
