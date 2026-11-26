@@ -22,6 +22,18 @@ Put options before the path. Quote paths containing spaces, such as `vl "my proj
 | `--icons=false` | Use plain-text icons when you haven’t selected a Nerd Font. |
 | `--theme ID` | Start with a bundled or previously imported theme, such as `dark_modern` or `light_modern`. |
 
+## Resume a workspace in Rex
+
+On a Rex Server that supports OSC 7577, vl can reopen the current workspace in the same pane after the server restarts. vl restores saved tabs, the selected sidebar view, and file positions. The resumed process uses saved preferences and default startup options.
+
+Add this rule to your Rex `init.lua` to allow workspaces under your home directory. For projects stored elsewhere, use their parent directory in place of `~`. Make sure `vl` is on your shell's `PATH`, then run `rex config reload`. [Rex resume rules](https://www.superlogical.com/rex/docs/customize/resume-rules#adding-a-rule)
+
+```lua
+rex.set("resume.trust.vl", {
+  command = { "vl", rex.match.under("~") },
+})
+```
+
 ## Print a file preview
 
 `vl preview` prints the file to standard output. To print lines 41 through 60 with their original line numbers, run the following from this repository’s root.

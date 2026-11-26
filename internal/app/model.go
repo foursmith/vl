@@ -156,6 +156,7 @@ type Model struct {
 	appearance              appearanceState
 	preferencesStore        *config.PreferencesStore
 	reloadRequested         bool
+	quitRequested           bool
 	themeNotifications      bool
 	themeNotificationsOwned bool
 	ctx                     context.Context

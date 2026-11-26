@@ -22,6 +22,18 @@
 | `--icons=false` | 使用纯文本图标，适合终端没有选用 Nerd Font 时。 |
 | `--theme ID` | 按 ID 选用内置或已导入的主题，例如 `dark_modern` 或 `light_modern`。 |
 
+## 在 Rex 中恢复工作区
+
+在支持 OSC 7577 的 Rex Server 中，Server 重启后，vl 可以在原来的分屏重新打开当前工作区，恢复已保存的标签页、侧栏视图和文件位置。恢复时使用已保存的偏好和默认启动选项。
+
+在 Rex 的 `init.lua` 中添加下面的规则，允许恢复家目录下的工作区。如果项目放在其他位置，把 `~` 换成项目的上级目录。确认 shell 的 `PATH` 中有 `vl`，再运行 `rex config reload` 应用配置。 [Rex 恢复规则](https://www.superlogical.com/rex/docs/customize/resume-rules#adding-a-rule)
+
+```lua
+rex.set("resume.trust.vl", {
+  command = { "vl", rex.match.under("~") },
+})
+```
+
 ## 输出文件预览
 
 `vl preview` 把文件内容输出到标准输出。在本仓库的根目录运行以下命令，可输出第 41 到 60 行并显示原始行号。

@@ -779,6 +779,7 @@ func (m *Model) leaveSession(reload bool) tea.Cmd {
 	}
 	leave := func() tea.Cmd {
 		m.reloadRequested = reload
+		m.quitRequested = !reload
 		return tea.Quit
 	}
 	if m.hasDirtyTabs() {

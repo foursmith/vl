@@ -45,6 +45,11 @@ Run 'vl preview --help' for preview options.
 `
 
 func main() {
+	resumeToken := os.Getenv("OSC7577_TOKEN")
+	_ = os.Unsetenv("OSC7577_TOKEN")
+	if !term.IsTerminal(os.Stdout.Fd()) {
+		resumeToken = ""
+	}
 	if len(os.Args) > 1 && os.Args[1] == "preview" {
 		os.Exit(runPreview(os.Args[2:], os.Stdout, os.Stderr))
 	}
@@ -91,7 +96,7 @@ func main() {
 				os.Exit(2)
 			}
 		}
-		path, err = runSession(path, *icons, *displayLanguage, selectedTheme)
+		path, err = runSession(path, *icons, *displayLanguage, selectedTheme, resumeToken)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
@@ -100,8 +105,8 @@ func main() {
 }
 
 // Reload uses the same bootstrap and teardown as a regular session.
-func runSession(path string, icons bool, displayLanguage string, selectedTheme *theme.Theme) (string, error) {
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM)
+func runSession(path string, icons bool, displayLanguage string, selectedTheme *theme.Theme, resumeToken string) (string, error) {
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGHUP)
 	defer cancel()
 	m, repo, editorOnly, err := startupModel(ctx, path, icons)
 	if err != nil {
@@ -154,7 +159,7 @@ func runSession(path string, icons bool, displayLanguage string, selectedTheme *
 		if _, line, column, locationErr := startupLocation(path); locationErr == nil && line > 0 {
 			m.SetEditorPosition(line, column)
 		}
-		m, err = runProgram(ctx, m, nil)
+		m, err = runProgram(ctx, m, nil, "")
 		if saveErr := m.SaveFilePositions(); saveErr != nil {
 			fmt.Fprintln(os.Stderr, "Save file positions:", saveErr)
 		}
@@ -169,7 +174,7 @@ func runSession(path string, icons bool, displayLanguage string, selectedTheme *
 			sessionPath = loadWorkspace(updated, next)
 			repo = next
 			return updated
-		})
+		}, resumeToken)
 		saveWorkspace(m, sessionPath)
 	}
 	m.Close()
@@ -271,7 +276,7 @@ func saveWorkspace(m *app.Model, sessionPath string) {
 	}
 }
 
-func runProgram(ctx context.Context, m *app.Model, switchWorkspace func(*app.Model, *git.Repository) *app.Model) (*app.Model, error) {
+func runProgram(ctx context.Context, m *app.Model, switchWorkspace func(*app.Model, *git.Repository) *app.Model, resumeToken string) (*app.Model, error) {
 	// Use the same bounds as Bubble Tea's WindowSizeMsg validation.
 	const maxDimension, maxCells = 4096, 1 << 20
 	if width, height, err := term.GetSize(os.Stdout.Fd()); err == nil &&
@@ -279,6 +284,7 @@ func runProgram(ctx context.Context, m *app.Model, switchWorkspace func(*app.Mod
 		m.SetTerminalSize(width, height)
 	}
 	runtime := app.NewRuntime(m, switchWorkspace)
+	runtime.SetResumeToken(resumeToken)
 	defer func() {
 		current := runtime.Current()
 		fmt.Fprint(os.Stdout, current.ImageCleanupSequence()+current.ThemeNotificationRestoreSequence())
@@ -288,6 +294,11 @@ func runProgram(ctx context.Context, m *app.Model, switchWorkspace func(*app.Mod
 		options = append(options, tea.WithColorProfile(colorprofile.ASCII))
 	}
 	_, err := tea.NewProgram(runtime, options...).Run()
+	if err == nil && ctx.Err() == nil {
+		if clear := runtime.ResumeClearSequence(); clear != "" {
+			fmt.Fprint(os.Stdout, clear)
+		}
+	}
 	return runtime.Current(), err
 }
 

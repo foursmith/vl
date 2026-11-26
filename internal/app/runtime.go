@@ -14,6 +14,7 @@ type Runtime struct {
 	generation      uint64
 	switchWorkspace func(*Model, *gitservice.Repository) *Model
 	inputMethod     inputMethodSwitcher
+	resumeToken     string
 }
 
 type workspaceResult struct {
@@ -28,7 +29,7 @@ func NewRuntime(m *Model, switchWorkspace func(*Model, *gitservice.Repository) *
 func (r *Runtime) Current() *Model { return r.current }
 func (r *Runtime) View() tea.View  { return r.current.View() }
 func (r *Runtime) Init() tea.Cmd {
-	return workspaceCommand(r.generation, tea.Batch(r.current.Init(), r.current.prepareImageUploads(),
+	return workspaceCommand(r.generation, tea.Batch(r.current.Init(), r.current.prepareImageUploads(), r.reportResume(),
 		r.inputMethod.update(r.current, r.current.wantsEnglishInput())))
 }
 
@@ -105,6 +106,9 @@ func (r *Runtime) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var inputMethod tea.Cmd
 	if english := old.wantsEnglishInput(); english != wasEnglish {
 		inputMethod = r.inputMethod.update(old, english)
+	}
+	if _, resumed := msg.(tea.ResumeMsg); resumed {
+		cmd = tea.Batch(cmd, r.reportResume())
 	}
 	return r, workspaceCommand(r.generation, tea.Batch(cmd, r.current.prepareImageUploads(), expireFeedback, inputMethod))
 }
