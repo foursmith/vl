@@ -1,9 +1,5 @@
 # Configure VL
 
-<p align="center">
-  English · <a href="zh.CN/CONFIGURATION.md">简体中文</a>
-</p>
-
 ## Edit settings
 
 Press `Ctrl+,` to open `~/.config/vl/vl.config.json`. It accepts JSONC comments and trailing commas. After making a manual edit, save with `Ctrl+S`, then run **Reload VL** from the command palette.

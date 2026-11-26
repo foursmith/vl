@@ -1,9 +1,5 @@
 # Automatic input method switching
 
-<p align="center">
-  English · <a href="zh.CN/INPUT-METHOD.md">简体中文</a>
-</p>
-
 VL can switch to your preferred input method when you return to keyboard navigation.
 
 ## Enable switching

@@ -1,9 +1,5 @@
 # 命令行
 
-<p align="center">
-  <a href="../CLI.md">English</a> · 简体中文
-</p>
-
 ## 打开工作区或文件
 
 | 命令 | 用途 |

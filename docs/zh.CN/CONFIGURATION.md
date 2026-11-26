@@ -1,9 +1,5 @@
 # VL 配置
 
-<p align="center">
-  <a href="../CONFIGURATION.md">English</a> · 简体中文
-</p>
-
 ## 编辑配置
 
 按 `Ctrl+,` 打开 `~/.config/vl/vl.config.json`。配置支持 JSONC 注释和尾逗号。手动修改后，按 `Ctrl+S` 保存，再从命令面板执行**重新加载 VL**。

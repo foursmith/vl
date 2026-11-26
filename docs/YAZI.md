@@ -1,9 +1,5 @@
 # Yazi integration
 
-<p align="center">
-  English · <a href="zh.CN/YAZI.md">简体中文</a>
-</p>
-
 Use VL 0.1.3 or newer. Check that `vl preview --help` works in the shell that launches Yazi.
 
 ## Preview code

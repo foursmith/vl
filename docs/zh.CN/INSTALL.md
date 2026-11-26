@@ -1,9 +1,5 @@
 # 安装
 
-<p align="center">
-  <a href="../INSTALL.md">English</a> · 简体中文
-</p>
-
 选择适合你系统的安装方式。
 
 ## Homebrew

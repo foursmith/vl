@@ -1,9 +1,5 @@
 # Install
 
-<p align="center">
-  English · <a href="zh.CN/INSTALL.md">简体中文</a>
-</p>
-
 Choose an installation method for your system.
 
 ## Homebrew

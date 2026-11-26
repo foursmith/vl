@@ -1,9 +1,5 @@
 # 快速上手
 
-<p align="center">
-  <a href="../GETTING-STARTED.md">English</a> · 简体中文
-</p>
-
 [安装 VL](INSTALL.md)。要显示文件图标，请安装 [Nerd Font](https://github.com/ryanoasis/nerd-fonts) 并在终端的字体设置中选用它。其他功能所需的工具见[可选依赖](INSTALL.md#可选依赖)。
 
 在终端进入项目目录，运行以下命令。

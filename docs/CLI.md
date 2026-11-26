@@ -1,9 +1,5 @@
 # Command line
 
-<p align="center">
-  English · <a href="zh.CN/CLI.md">简体中文</a>
-</p>
-
 ## Open a workspace or file
 
 | Command | What it does |

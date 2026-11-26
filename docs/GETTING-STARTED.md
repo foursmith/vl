@@ -1,9 +1,5 @@
 # Quickstart
 
-<p align="center">
-  English · <a href="zh.CN/GETTING-STARTED.md">简体中文</a>
-</p>
-
 [Install VL](INSTALL.md). To display file icons, install a [Nerd Font](https://github.com/ryanoasis/nerd-fonts) and select it in your terminal’s font settings. See [optional dependencies](INSTALL.md#optional-dependencies) for other features.
 
 Run this from a project directory.

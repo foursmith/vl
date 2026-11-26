@@ -1,7 +1,3 @@
-<p align="center">
-  <a href="../VIM.md">English</a> · 简体中文
-</p>
-
 # Vim 键位
 
 Vim 模式默认开启。按 `Ctrl+P`，运行「首选项：切换 Vim 模式」可立即切换。也可在 `~/.config/vl/vl.config.json` 中将 `features.vimMode` 设为 `false`。

@@ -1,9 +1,5 @@
 # 中文分词
 
-<p align="center">
-  <a href="../CHINESE-WORD-SEGMENTATION.md">English</a> · 简体中文
-</p>
-
 开启后，Vim 按词移动、`Ctrl+←` / `Ctrl+→` 和鼠标双击选词都会按中文词语的边界操作。关闭 Vim 模式时，方向键快捷键和双击选词仍然适用。
 
 ## 开启中文分词

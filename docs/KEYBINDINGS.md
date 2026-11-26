@@ -1,7 +1,3 @@
-<p align="center">
-  English · <a href="zh.CN/KEYBINDINGS.md">简体中文</a>
-</p>
-
 # Keyboard shortcuts
 
 | To find | Press |

@@ -1,9 +1,5 @@
 # Chinese word segmentation
 
-<p align="center">
-  English · <a href="zh.CN/CHINESE-WORD-SEGMENTATION.md">简体中文</a>
-</p>
-
 Use Chinese word boundaries for Vim word motions, `Ctrl+Left` / `Ctrl+Right`, and double-click selection. The arrow shortcuts and double-click selection also work with Vim mode off.
 
 ## Enable segmentation

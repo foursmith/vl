@@ -1,7 +1,3 @@
-<p align="center">
-  <a href="../KEYBINDINGS.md">English</a> · 简体中文
-</p>
-
 # 键盘快捷键
 
 | 想做什么 | 按键 |

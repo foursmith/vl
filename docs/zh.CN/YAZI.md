@@ -1,9 +1,5 @@
 # Yazi 集成
 
-<p align="center">
-  <a href="../YAZI.md">English</a> · 简体中文
-</p>
-
 使用 VL 0.1.3 或更高版本，并确认启动 Yazi 的 shell 能运行 `vl preview --help`。
 
 ## 预览代码

@@ -1,9 +1,5 @@
 # 自动切换输入法
 
-<p align="center">
-  <a href="../INPUT-METHOD.md">English</a> · 简体中文
-</p>
-
 回到键盘导航时，VL 可以自动切换到指定的输入法。
 
 ## 开启自动切换

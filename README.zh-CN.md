@@ -36,11 +36,57 @@
 
 ## 安装
 
+### Homebrew
+
 ```sh
 brew install foursmith/tap/vl
 ```
 
-Go、Windows、安装脚本、源码构建和 Homebrew 可选依赖的用法见[安装文档](https://vl.foursmith.com/zh-CN/docs/install)。
+在 macOS 上，用以下命令安装可选工具和 Nerd Font。
+
+```sh
+brew install git ripgrep gh resvg font-jetbrains-mono-nerd-font
+```
+
+在终端的字体设置中选用 **JetBrainsMono Nerd Font Mono** 来显示文件图标。要审阅 GitHub PR，再运行 `gh auth login`。Markdown 中的远程图片可以用 macOS 自带的 `curl` 加载。
+
+### Go
+
+需要 Go 1.27.3 或更高版本。
+
+```sh
+go install github.com/foursmith/vl/cmd/vl@latest
+```
+
+### macOS 和 Linux
+
+```sh
+curl -fsSL https://github.com/foursmith/vl/releases/latest/download/install.sh | sh
+```
+
+安装到 `~/.local/bin`。如果找不到 `vl` 命令，把这个目录加到 `PATH`。
+
+### Windows (PowerShell)
+
+```powershell
+Invoke-RestMethod -UseBasicParsing https://github.com/foursmith/vl/releases/latest/download/install.ps1 | Invoke-Expression
+```
+
+安装到 `%LOCALAPPDATA%\vl\bin`，并自动加入用户的 `PATH`。
+
+### 从源码构建
+
+需要 Go 1.27.3 或更高版本。
+
+```sh
+git clone https://github.com/foursmith/vl.git
+cd vl
+make build
+```
+
+在仓库目录下运行 `./bin/vl`。
+
+各功能所需的工具见[可选依赖](https://vl.foursmith.com/zh-CN/docs/install#可选依赖)。
 
 ## 快速上手
 
