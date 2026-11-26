@@ -146,7 +146,7 @@ function WorkbenchSection(props: { locale: Locale }) {
 function WorkbenchDetails(props: { workflow: (typeof workflows)[number]; locale: Locale }) {
   return (
     <>
-      <div class="page-gutter lg:px-6">
+      <div class="landing-gutter">
         <h2 class="mb-3 text-lg font-semibold">{props.workflow.label[props.locale]}</h2>
         <p class="max-w-[52ch] leading-relaxed text-muted">{props.workflow.description[props.locale]}</p>
         <div class="mt-3 flex flex-wrap gap-x-4 gap-y-2">
@@ -159,7 +159,7 @@ function WorkbenchDetails(props: { workflow: (typeof workflows)[number]; locale:
       </div>
       <dl class="divide-y divide-line border-t border-line lg:grid lg:auto-rows-[minmax(min-content,1fr)]" aria-label={labels[props.locale].shortcuts}>
         {props.workflow.keys.map(({ keys, action }) => (
-          <div class="page-gutter grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-2.5 text-sm lg:px-6 lg:max-xl:py-1.5">
+          <div class="landing-gutter grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-2.5 text-sm lg:max-xl:py-1.5">
             <dt class="text-muted">{action[props.locale]}</dt>
             <dd class="flex gap-1">{keys.map((key) => <kbd>{key}</kbd>)}</dd>
           </div>
@@ -189,7 +189,7 @@ export function Landing(props: { locale: Locale }) {
 
   return (
     <div class="site-frame">
-      <SiteHeader locale={props.locale} />
+      <SiteHeader locale={props.locale} gutter="landing-gutter" />
 
       <main>
         <section aria-labelledby="hero-title">
@@ -243,7 +243,7 @@ export function Landing(props: { locale: Locale }) {
       </main>
 
       <footer class="border-t border-line font-mono text-sm text-muted">
-        <div class="page-gutter flex min-h-17 flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 lg:px-6">
+        <div class="landing-gutter flex min-h-17 flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3">
           <a class="site-link" href={`${repository}/blob/main/LICENSE`}>MIT</a>
           <a class="site-link" href={`${repository}/releases`}>{labels[props.locale].releases}</a>
         </div>

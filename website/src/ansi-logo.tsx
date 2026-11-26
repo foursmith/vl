@@ -29,7 +29,7 @@ const terminalLabels = {
 
 function TerminalSidebar() {
   return (
-    <aside class="landing-gutter row-span-2 grid auto-rows-[1.25rem] grid-cols-[minmax(0,13rem)] content-start bg-canvas" aria-hidden="true">
+    <aside class="landing-gutter row-span-2 grid auto-rows-[1.25rem] grid-cols-[minmax(0,13rem)] content-start border-e border-line bg-canvas" aria-hidden="true">
       {/* vl reserves the second navigation row for badges. */}
       <div class="row-span-2 grid grid-rows-2">
         <div class="flex items-center justify-between">

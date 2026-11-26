@@ -4,7 +4,7 @@ import { docs, repository } from "./docs-paths"
 import { ChevronDown, SearchTriggerContent } from "./header-parts"
 import { localizedPath, locales, type Locale } from "./locales"
 
-export function SiteHeader(props: { locale: Locale }) {
+export function SiteHeader(props: { locale: Locale; gutter?: "landing-gutter" }) {
   const pathname = useLocation({ select: (location) => location.pathname })
   const labels = locales[props.locale]
   const pages = docs[props.locale]
@@ -14,7 +14,7 @@ export function SiteHeader(props: { locale: Locale }) {
 
   return (
     <header class="sticky top-0 z-10 border-b border-line bg-canvas">
-      <div class="page-gutter grid grid-cols-[auto_1fr] grid-rows-[3rem_2.5rem] items-center gap-x-4 whitespace-nowrap sm:min-h-14 sm:grid-cols-[auto_auto_1fr] sm:grid-rows-1 sm:gap-x-6">
+      <div class={`${props.gutter ?? "page-gutter"} grid grid-cols-[auto_1fr] grid-rows-[3rem_2.5rem] items-center gap-x-4 whitespace-nowrap sm:min-h-14 sm:grid-cols-[auto_auto_1fr] sm:grid-rows-1 sm:gap-x-6`}>
         <a class="col-start-1 row-start-1" href={home} aria-label={labels.home}>
           <img src={logo} alt="" width="40" height="24" class="h-auto w-8 sm:w-10" />
         </a>
