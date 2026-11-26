@@ -1,14 +1,16 @@
-```
-░▒▒▒▒░       ▒▒▒▒▒   ▒▒▒▒▒
-░▒▓▓▓▓      ▓▓▓▓▓▓   ▒▓▓▓▓
-░░▒▓▓▓▓    ▒▓▓▓▓▓▓   ▒▓▓▓▓
-░░░▒▓▓▓▒  ░▓▓▓▓▓▓░   ▒▓▓▓▓
- ░░░▒▓▓▓░░▓▓▓▓▓▓░    ▓▓▓▓▓
+<div align="center">
+<pre>
+░▒▒▒▒░       ▒▒▒▒▒   ▒▒▒▒▒&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+░▒▓▓▓▓      ▓▓▓▓▓▓   ▒▓▓▓▓&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+░░▒▓▓▓▓    ▒▓▓▓▓▓▓   ▒▓▓▓▓&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+░░░▒▓▓▓▒  ░▓▓▓▓▓▓░   ▒▓▓▓▓&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ ░░░▒▓▓▓░░▓▓▓▓▓▓░    ▓▓▓▓▓&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
   ░░░▓▓▓▓▓▓▓▓▓▓▒     ▓▓▓▓▓░░░░░░░░░
    ░░░▓▓▓▓▓▓▓▓▒      ▓▓▓▓▓▓▓▓▓▓▓▓▓▒
     ░░▒▒▒▒▒▒▓▒       ▒▒▒▒▒▒▒▒▒▒▒▒▒▒
      ░▒▒▒▒▒▒▓        ▒▒▒▒▒▒▒▒▒▒▒▒▒▒
-```
+</pre>
+</div>
 
 <p align="center">
   English · <a href="README.zh-CN.md">简体中文</a>

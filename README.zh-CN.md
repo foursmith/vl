@@ -1,14 +1,16 @@
-```
-░▒▒▒▒░       ▒▒▒▒▒   ▒▒▒▒▒
-░▒▓▓▓▓      ▓▓▓▓▓▓   ▒▓▓▓▓
-░░▒▓▓▓▓    ▒▓▓▓▓▓▓   ▒▓▓▓▓
-░░░▒▓▓▓▒  ░▓▓▓▓▓▓░   ▒▓▓▓▓
- ░░░▒▓▓▓░░▓▓▓▓▓▓░    ▓▓▓▓▓
+<div align="center">
+<pre>
+░▒▒▒▒░       ▒▒▒▒▒   ▒▒▒▒▒&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+░▒▓▓▓▓      ▓▓▓▓▓▓   ▒▓▓▓▓&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+░░▒▓▓▓▓    ▒▓▓▓▓▓▓   ▒▓▓▓▓&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+░░░▒▓▓▓▒  ░▓▓▓▓▓▓░   ▒▓▓▓▓&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ ░░░▒▓▓▓░░▓▓▓▓▓▓░    ▓▓▓▓▓&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
   ░░░▓▓▓▓▓▓▓▓▓▓▒     ▓▓▓▓▓░░░░░░░░░
    ░░░▓▓▓▓▓▓▓▓▒      ▓▓▓▓▓▓▓▓▓▓▓▓▓▒
     ░░▒▒▒▒▒▒▓▒       ▒▒▒▒▒▒▒▒▒▒▒▒▒▒
      ░▒▒▒▒▒▒▓        ▒▒▒▒▒▒▒▒▒▒▒▒▒▒
-```
+</pre>
+</div>
 
 <p align="center">
   <a href="README.md">English</a> · 简体中文
