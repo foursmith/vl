@@ -23,6 +23,7 @@ type flashState struct {
 	doc                                      *editor.Document
 	text, query                              string
 	operator                                 string
+	register                                 editor.VimRegister
 	cursor, anchor, top, left, width, height int
 	visual, linewise                         bool
 	targets                                  []flashTarget
@@ -33,14 +34,13 @@ type flashState struct {
 	marks                                    map[int]string
 }
 
-func (m *Model) startFlash(operator string) tea.Cmd {
+func (m *Model) startFlash(operator string, register editor.VimRegister) {
 	d := m.editorDocument()
 	t := &m.tabs[m.activeTab]
 	t.vim.CancelPending()
 	top, left, width, _ := m.textViewport()
-	m.flash = &flashState{operator: operator, doc: d, text: d.Text, cursor: d.Cursor, anchor: d.Anchor, top: top, left: left, width: width, height: m.contentHeight(), visual: t.vim.VisualMode, linewise: t.vim.VisualLine}
+	m.flash = &flashState{operator: operator, register: register, doc: d, text: d.Text, cursor: d.Cursor, anchor: d.Anchor, top: top, left: left, width: width, height: m.contentHeight(), visual: t.vim.VisualMode, linewise: t.vim.VisualLine}
 	m.flashRevision++
-	return nil
 }
 func (m *Model) cancelFlash() {
 	if m.flash != nil {
@@ -140,11 +140,9 @@ func (m *Model) finishFlash(offset int) tea.Cmd {
 	}
 	m.cancelFlash()
 	v := &m.tabs[m.activeTab].vim
-	if text := v.ApplyFlash(f.doc, offset, f.query, f.operator); text != "" {
-		m.vimRegister = text
-	}
+	value := v.ApplyFlash(f.doc, offset, f.query, f.operator)
 	m.ensureTextCursor()
-	return nil
+	return m.storeVimRegister(value, f.register)
 }
 func (m *Model) rebuildFlash() {
 	f := m.flash

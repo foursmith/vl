@@ -198,8 +198,8 @@ func TestFlashSingleEntryAndOperators(t *testing.T) {
 		}
 		press(m, ",")
 		cmd := m.flashKey(tea.KeyPressMsg{Code: tea.KeyEnter})
-		if cmd != nil || m.vimRegister != "a," {
-			t.Fatalf("%s produced a command or wrong register text: %q", operator, m.vimRegister)
+		if cmd != nil || m.vimRegister.Text != "a," {
+			t.Fatalf("%s produced a command or wrong register text: %q", operator, m.vimRegister.Text)
 		}
 		switch operator {
 		case "d":

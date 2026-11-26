@@ -84,14 +84,14 @@ func TestVimDeleteAndAddSurround(t *testing.T) {
 		{"add motion", "hello world", 0, []string{"y", "s", "w", ")"}, "(hello )world"},
 		{"add end motion", "hello world", 0, []string{"y", "s", "e", ")"}, "(hello) world"},
 		{"add reverse motion", "hello world", 3, []string{"y", "s", "0", "]"}, "[hel]lo world"},
-		{"add empty motion", "hello", 0, []string{"y", "s", "0", "\""}, "hello"},
+		{"add empty motion", "hello", 0, []string{"y", "s", "0", "]"}, "hello"},
 		{"add line", "hello world\nnext", 3, []string{"y", "s", "s", ")"}, "(hello world)\nnext"},
 		{"add empty line", "", 0, []string{"y", "s", "s", "\""}, `""`},
 		{"add counted word", "one two three", 1, []string{"2", "y", "s", "i", "w", "]"}, "[one two] three"},
 		{"add counted lines", "one\ntwo\nthree", 0, []string{"2", "y", "s", "s", "]"}, "[one\ntwo]\nthree"},
 		{"add empty object", "()", 0, []string{"y", "s", "i", "(", "]"}, "([])"},
 		{"add unicode", "👩‍💻é 中", 0, []string{"y", "s", "i", "W", "\""}, "\"👩‍💻é\" 中"},
-		{"cancel range", "hello", 0, []string{"y", "s", "i", "w", "esc", "\""}, "hello"},
+		{"cancel range", "hello", 0, []string{"y", "s", "i", "w", "esc", "]"}, "hello"},
 		{"cancel delete", "(hello)", 2, []string{"d", "s", "esc", "("}, "(hello)"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -169,7 +169,7 @@ func TestVimSurroundFlashRangeAndRepeat(t *testing.T) {
 	if d.Text != "[a,][b,]c" {
 		t.Fatal("Flash surround repeat:", d.Text)
 	}
-	if copied != "" || replayed != "" {
+	if copied.Text != "" || replayed != "" {
 		t.Fatal("Flash surround changed the register")
 	}
 }
@@ -190,7 +190,7 @@ func TestVimSurroundMotions(t *testing.T) {
 	d = &Document{Buffer: Buffer{Text: "hello", Anchor: -1}}
 	v = &Vim{}
 	vimKeys(d, v, "y", "s", "i", "w")
-	if handled, _ := v.Handle(d, "f1", ""); handled || v.CommandPending() || d.Text != "hello" {
+	if handled, _ := v.Handle(d, "f1", VimRegisterValue{}); handled || v.CommandPending() || d.Text != "hello" {
 		t.Fatal("function shortcut trapped by pending surround")
 	}
 }

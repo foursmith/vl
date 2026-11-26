@@ -34,7 +34,8 @@ func (v *Vim) firstNonblank(d *Document) {
 	}
 	d.SetPosition(row, col)
 }
-func (v *Vim) motion(d *Document, key string, n int) bool {
+func (v *Vim) motion(d *Document, key string, count int) bool {
+	n := max(1, count)
 	row, _ := d.Position()
 	switch key {
 	case "h", "l":
@@ -63,8 +64,16 @@ func (v *Vim) motion(d *Document, key string, n int) bool {
 	case "L", "$":
 		d.SetPosition(row+n-1, 0)
 		d.Move("end", false)
-	case "G":
-		d.SetPosition(n-1, 0)
+	case "G", "gg":
+		last := len(d.Lines()) - 1
+		if last > 0 && d.Text[len(d.Text)-1] == '\n' {
+			last--
+		}
+		target := min(n-1, last)
+		if key == "G" && count == 0 {
+			target = last
+		}
+		d.SetPosition(target, 0)
 	case "w", "b", "e":
 		v.moveWord(d, key, n)
 	default:

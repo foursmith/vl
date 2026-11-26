@@ -223,7 +223,7 @@ func (m *Model) contextMenuOverlay(base []string) []string {
 }
 
 func (m *Model) openContextMenu(x, y int) tea.Cmd {
-	m.leaderTarget = ""
+	m.cancelLeader()
 	if m.modal != "" || m.width < 30 || m.height < 8 {
 		return nil
 	}

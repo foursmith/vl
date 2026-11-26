@@ -35,7 +35,7 @@ These sequences work in a focused editor in Vim Normal or Visual mode, and in im
 | `Space w` / `Space q` / `Space z` | Save / close / save and close. Saving applies to editable files. |
 | `Space Esc` | Cancel the sequence. |
 
-For Space-prefixed clipboard commands, see [Vim keys](VIM.md#where-vl-differs-from-vim).
+Use `Space dd`, `Space cc`, or `Space yy` to write a line to the system clipboard. The operators also take motions and text objects, as in `Space yw` and `Space yiw`. In Visual, use `Space d`, `Space x`, `Space c`, or `Space y` for the selection. In either mode, `Space p` and `Space P` paste from the system clipboard.
 
 ## Move through lists
 

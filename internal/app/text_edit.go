@@ -41,7 +41,7 @@ func (m *Model) executeTextEdit(command commandID) tea.Cmd {
 	}
 	m.cancelFlash()
 	m.stopTextDrag()
-	m.leaderTarget = ""
+	m.cancelLeader()
 	m.pathCompletion = nil
 	m.navigationState = navigationState{}
 	if command == commandCopy {

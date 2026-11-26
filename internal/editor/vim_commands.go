@@ -139,15 +139,30 @@ func (v *Vim) indent(d *Document, right, keepVisual bool) {
 	v.clearPending()
 }
 
-// Register text ending in a newline pastes as whole lines. Visual paste
-// replaces the current inclusive selection.
-func (v *Vim) put(d *Document, text string, after bool) {
-	text = strings.ReplaceAll(text, "\r\n", "\n")
-	if len(d.Text)+len(text) > MaxFileSize {
+func (v *Vim) put(d *Document, value VimRegisterValue, after bool) {
+	text := value.Text
+	start, replaced := 0, 0
+	visualLine := v.VisualMode && v.VisualLine
+	if v.VisualMode {
+		var end int
+		start, end = d.Selection()
+		first, last := d.ByteOffset(start), d.ByteOffset(end)
+		replaced = last - first
+		if visualLine {
+			terminated := last > first && d.Text[last-1] == '\n'
+			switch {
+			case terminated && !value.Linewise:
+				text += "\n"
+			case !terminated && value.Linewise:
+				text = strings.TrimSuffix(text, "\n")
+			}
+		}
+	}
+	if len(d.Text)-replaced+len(text) > MaxFileSize {
 		return
 	}
 	d.BeginEditGroup()
-	linewise := !v.VisualMode && strings.HasSuffix(text, "\n")
+	linewise := !v.VisualMode && value.Linewise
 	prefix := false
 	if !v.VisualMode {
 		d.ClearSelection()
@@ -167,13 +182,13 @@ func (v *Vim) put(d *Document, text string, after bool) {
 		} else if after && d.LineRuneCount(row) > 0 {
 			d.Cursor = d.next(d.Cursor)
 		}
+		start, _ = d.Selection()
 	}
-	start, _ := d.Selection()
 	d.Insert(text)
 	d.EndEditGroup()
 	v.VisualMode, v.VisualLine = false, false
 	d.Cursor = d.previous(start + utf8.RuneCountInString(text))
-	if linewise {
+	if linewise || visualLine {
 		d.Cursor = start
 		if prefix {
 			d.Cursor++

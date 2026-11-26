@@ -27,33 +27,33 @@ func (v *Vim) visualLineRange(d *Document) (first, last int) {
 	return min(anchor, row), max(anchor, row)
 }
 
-func (v *Vim) handleVisual(d *Document, key string) (bool, string) {
+func (v *Vim) handleVisual(d *Document, key string) (bool, VimRegisterValue) {
 	if appendVimCount(&v.count, key) {
-		return true, ""
+		return true, VimRegisterValue{}
 	}
 	if v.pending == "i" || v.pending == "a" {
 		v.handleVisualPending(d, key)
-		return true, ""
+		return true, VimRegisterValue{}
 	}
-	n, hadCount := max(1, v.count), v.count > 0
+	count := v.count
 	if key == "i" || key == "a" {
-		v.beginPending(key, n)
-		return true, ""
+		v.beginPending(key, count)
+		return true, VimRegisterValue{}
 	}
 	if v.pending == "g" {
 		v.handleVisualPending(d, key)
-		return true, ""
+		return true, VimRegisterValue{}
 	}
 	if key == "g" {
-		v.beginPending(key, n)
-		return true, ""
+		v.beginPending(key, count)
+		return true, VimRegisterValue{}
 	}
 	v.clearPending()
 
 	switch key {
 	case "S":
 		v.beginVisualSurround(d)
-		return true, ""
+		return true, VimRegisterValue{}
 	case "v", "V":
 		linewise := key == "V"
 		if v.VisualLine == linewise {
@@ -62,18 +62,18 @@ func (v *Vim) handleVisual(d *Document, key string) (bool, string) {
 			v.VisualLine = linewise
 			v.SyncVisual(d)
 		}
-		return true, ""
+		return true, VimRegisterValue{}
 	case "o":
 		d.Cursor, v.visualAnchor = v.visualAnchor, d.Cursor
 		v.SyncVisual(d)
-		return true, ""
+		return true, VimRegisterValue{}
 	case "J":
 		first, last := v.visualLineRange(d)
 		v.VisualMode, v.VisualLine = false, false
 		d.ClearSelection()
 		joinLines(d, first, max(first+1, last))
 		v.clamp(d)
-		return true, ""
+		return true, VimRegisterValue{}
 	case "y", "d", "x", "c":
 		start, end := d.Selection()
 		linewise := v.VisualLine
@@ -86,14 +86,11 @@ func (v *Vim) handleVisual(d *Document, key string) (bool, string) {
 		v.syncCursor(d)
 		return true, copied
 	case "pgup", "pgdown":
-		return false, ""
+		return false, VimRegisterValue{}
 	}
-	if key == "G" && !hadCount {
-		n = len(d.Lines())
-	}
-	v.motion(d, motionKey(key), n)
+	v.motion(d, motionKey(key), count)
 	v.SyncVisual(d)
-	return true, ""
+	return true, VimRegisterValue{}
 }
 
 func (v *Vim) handleVisualPending(d *Document, key string) {
@@ -102,7 +99,7 @@ func (v *Vim) handleVisualPending(d *Document, key string) {
 	switch pending {
 	case "g":
 		if key == "g" {
-			d.SetPosition(count-1, 0)
+			v.motion(d, "gg", count)
 		} else if key == "c" {
 			d.ToggleComments()
 			v.VisualMode, v.VisualLine = false, false

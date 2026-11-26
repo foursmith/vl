@@ -29,10 +29,10 @@ func (v *Vim) FlashOperator() (string, bool) {
 	}
 	return "", false
 }
-func (v *Vim) ApplyFlash(d *Document, target int, query, operator string) string {
+func (v *Vim) ApplyFlash(d *Document, target int, query, operator string) VimRegisterValue {
 	if operator == "" {
 		v.JumpTo(d, target)
-		return ""
+		return VimRegisterValue{}
 	}
 	edit := &vimFlashEdit{operator: operator, query: query, forward: target >= d.Cursor}
 	for _, position := range flashTextPositions(d, query) {
@@ -54,14 +54,14 @@ func (v *Vim) ApplyFlash(d *Document, target int, query, operator string) string
 	}
 	return copied
 }
-func (v *Vim) applyFlashRange(d *Document, target int, operator string) string {
+func (v *Vim) applyFlashRange(d *Document, target int, operator string) VimRegisterValue {
 	target = d.snap(target, false)
 	low, high := min(d.Cursor, target), d.next(max(d.Cursor, target))
 	if operator == "ys" {
 		v.beginSurround(d, "y", 1)
 		v.surround.phase = surroundTarget
 		v.surround.bounds = surroundBounds{low, low, high, high}
-		return ""
+		return VimRegisterValue{}
 	}
 	copied := v.operate(d, operator, low, high, false)
 	v.syncCursor(d)

@@ -1,6 +1,9 @@
 package app
 
-import tea "charm.land/bubbletea/v2"
+import (
+	tea "charm.land/bubbletea/v2"
+	"github.com/foursmith/vl/internal/editor"
+)
 
 func (m *Model) leaderAvailable() bool {
 	if m.sidebar || m.modal != "" || m.contextMenu != nil || m.activeTab < 0 || m.activeTab >= len(m.tabs) {
@@ -13,14 +16,21 @@ func (m *Model) leaderActive() bool {
 	return m.leaderTarget != "" && m.leaderAvailable() && m.leaderTarget == m.tabs[m.activeTab].clickKey()
 }
 
+func (m *Model) cancelLeader() {
+	if m.vimRegisterPending() {
+		m.tabs[m.activeTab].vim.CancelPending()
+	}
+	m.leaderTarget = ""
+}
+
 func (m *Model) leaderKey(k string) (bool, tea.Cmd) {
-	target, operator := m.leaderTarget, m.leaderOperator
-	m.leaderTarget, m.leaderOperator = "", ""
+	target := m.leaderTarget
+	m.leaderTarget = ""
 	if !m.leaderAvailable() {
 		return false, nil
 	}
 	if target != "" && target == m.tabs[m.activeTab].clickKey() {
-		if handled, cmd := m.runLeaderShortcut(k, operator); handled {
+		if handled, cmd := m.runLeaderShortcut(k); handled {
 			return true, cmd
 		}
 		if matchesShortcut(k, dismissKey) && m.editorDocument() != nil {
@@ -42,13 +52,7 @@ func (m *Model) leaderKey(k string) (bool, tea.Cmd) {
 	return true, nil
 }
 
-func (m *Model) runLeaderShortcut(k, operator string) (bool, tea.Cmd) {
-	if operator != "" {
-		if k != operator {
-			return false, nil
-		}
-		return true, m.vimClipboardWrite(k)
-	}
+func (m *Model) runLeaderShortcut(k string) (bool, tea.Cmd) {
 	switch {
 	case len(k) == 1 && k[0] >= '1' && k[0] <= '9':
 		m.selectShortcutTab(int(k[0] - '1'))
@@ -69,16 +73,13 @@ func (m *Model) runLeaderShortcut(k, operator string) (bool, tea.Cmd) {
 		return false, nil
 	}
 	switch k {
-	case "p", "P":
-		return true, m.vimClipboardPut(d, k)
-	case "d", "c", "y", "x":
-		if m.tabs[m.activeTab].vim.VisualMode {
-			return true, m.vimClipboardWrite(k)
+	case "d", "c", "y", "p", "P", "x":
+		v := &m.tabs[m.activeTab].vim
+		if k == "x" && !v.VisualMode {
+			return false, nil
 		}
-		if k != "x" {
-			m.leaderTarget, m.leaderOperator = m.tabs[m.activeTab].clickKey(), k
-			return true, nil
-		}
+		v.SelectRegister(editor.ClipboardRegister)
+		return m.vimKey(k)
 	}
 	return false, nil
 }

@@ -124,11 +124,11 @@ type Model struct {
 	workbenchKeymap                    *workbenchKeymap
 	findWidget                         findWidgetState
 	navigationState                    navigationState
-	leaderTarget, leaderOperator       string
+	leaderTarget                       string
 	explorerYankRoot, explorerYankPath string
 	flash                              *flashState
 	pathCompletion                     *pathCompletion
-	vimRegister                        string
+	vimRegister                        editor.VimRegisterValue
 	vimDisabled                        bool
 	flashRevision                      uint64
 	displayLanguage                    i18n.Language
@@ -818,7 +818,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 	case tea.BlurMsg:
 		m.terminalBlurred = true
 		m.welcomeOrbit.dragging = false
-		m.leaderTarget = ""
+		m.cancelLeader()
 		m.imagePan = nil
 		m.stopTextDrag()
 		m.resizingSidebar = false
@@ -1007,7 +1007,7 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 	case tea.MouseClickMsg:
 		m.pathCompletion = nil
 		m.welcomeOrbit.dragging = false
-		m.leaderTarget = ""
+		m.cancelLeader()
 		m.navigationState = navigationState{}
 		m.cancelFlash()
 		if m.editing() {
@@ -1148,7 +1148,7 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		return m.flashKey(msg)
 	}
 	if m.modal != "" {
-		m.leaderTarget = ""
+		m.cancelLeader()
 		m.navigationState = navigationState{}
 		return m.updateModal(msg)
 	}
@@ -1164,7 +1164,7 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		m.pathCompletion = nil
 	}
 	if route.has(beforeInput) {
-		m.leaderTarget = ""
+		m.cancelLeader()
 		m.navigationState = navigationState{}
 		return m.executeCommand(route.command, "")
 	}
@@ -1200,7 +1200,7 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	if m.rotateWelcomeArt(k) {
 		return nil
 	}
-	if route.has(diffInput) || route.command == commandSave {
+	if route.has(diffInput) && !m.vimRegisterPending() || route.command == commandSave {
 		return m.executeCommand(route.command, "")
 	}
 	if d := m.editorDocument(); !m.sidebar && d != nil {
@@ -1208,7 +1208,7 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 			m.scrollTextHalfPage(k)
 			return nil
 		}
-		if matchesShortcut(k, pickerKeys.Accept) {
+		if matchesShortcut(k, pickerKeys.Accept) && !m.vimRegisterPending() {
 			if cmd, handled := m.enterMarkdownRemoteImage(); handled {
 				return cmd
 			}

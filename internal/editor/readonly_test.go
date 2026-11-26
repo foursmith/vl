@@ -11,7 +11,7 @@ func TestReadOnlyVimRejectsMutationsAndSupportsYank(t *testing.T) {
 		d := &Document{Buffer: Buffer{ReadOnly: true, Text: source, Anchor: -1}}
 		v := &Vim{}
 		for _, key := range keys {
-			v.Handle(d, key, "")
+			v.Handle(d, key, VimRegisterValue{})
 		}
 		if d.Text != source || d.Dirty() || v.InsertMode {
 			t.Fatalf("read-only mutation via %v", keys)

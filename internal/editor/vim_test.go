@@ -5,17 +5,17 @@ import (
 )
 
 func vimKeys(d *Document, v *Vim, keys ...string) string {
-	var copied string
+	var copied VimRegisterValue
 	for _, k := range keys {
 		handled, text := v.Handle(d, k, copied)
-		if text != "" {
+		if text.Text != "" {
 			copied = text
 		}
 		if !handled && v.InsertMode {
 			d.Insert(k)
 		}
 	}
-	return copied
+	return copied.Text
 }
 func TestVimBasicEdits(t *testing.T) {
 	for _, tt := range []struct {
@@ -38,6 +38,10 @@ func TestVimBasicEdits(t *testing.T) {
 		{"delete final line", "one\ntwo", []string{"j", "d", "d"}, "one"},
 		{"delete terminated line", "one\ntwo\n", []string{"j", "d", "d"}, "one\n"},
 		{"delete final blank", "one\n", []string{"j", "d", "d"}, "one"},
+		{"delete to last line", "one\ntwo\nthree\n", []string{"d", "G"}, ""},
+		{"delete to counted line", "one\ntwo\nthree", []string{"d", "2", "G"}, "three"},
+		{"delete to first line", "one\ntwo\nthree", []string{"j", "d", "g", "g"}, "three"},
+		{"change to last line", "one\ntwo\nthree\n", []string{"j", "c", "G", "X", "esc"}, "one\nX\n"},
 		{"line paste below", "one\ntwo", []string{"y", "y", "p"}, "one\none\ntwo"},
 		{"line paste at eof", "one", []string{"y", "y", "p"}, "one\none"},
 		{"line paste above", "one", []string{"y", "y", "P"}, "one\none"},
@@ -163,14 +167,61 @@ func TestVimResetAndIndependentSessions(t *testing.T) {
 func TestVimRegisterAcrossEditors(t *testing.T) {
 	a := &Document{Buffer: Buffer{Text: "one\ntwo", Anchor: -1}}
 	av := &Vim{}
-	text := vimKeys(a, av, "l", "y", "y")
-	if a.Cursor != 1 || text != "one\n" {
+	vimKeys(a, av, "l", "y")
+	_, copied := av.Handle(a, "y", VimRegisterValue{})
+	if a.Cursor != 1 || copied != (VimRegisterValue{Text: "one\n", Linewise: true}) {
 		t.Fatal("line copy moved cursor or omitted register text")
 	}
 	b := &Document{Buffer: Buffer{Text: "other", Anchor: -1}}
 	bv := &Vim{}
-	bv.Handle(b, "p", text)
+	bv.Handle(b, "p", copied)
 	if b.Text != "other\none" {
 		t.Fatal(b.Text)
+	}
+}
+
+func TestVimYankToLastLine(t *testing.T) {
+	d := &Document{Buffer: Buffer{Text: "one\ntwo\nthree\n", Anchor: -1}}
+	v := &Vim{}
+	vimKeys(d, v, "G")
+	if row, _ := d.Position(); row != 2 {
+		t.Fatalf("G moved to line %d, want the last text line", row+1)
+	}
+	vimKeys(d, v, "k", "l", "y")
+	_, copied := v.Handle(d, "G", VimRegisterValue{})
+	if copied != (VimRegisterValue{Text: "two\nthree\n", Linewise: true}) || d.Cursor != 5 {
+		t.Fatalf("yG copied %+v and left cursor at %d", copied, d.Cursor)
+	}
+}
+
+func TestVimPutRegisterValues(t *testing.T) {
+	for _, tt := range []struct {
+		name, want string
+		keys       []string
+		value      VimRegisterValue
+	}{
+		{"characterwise with newline", "oX\nne\ntwo", []string{"p"}, VimRegisterValue{Text: "X\n"}},
+		{"replace a line with characters", "X\ntwo", []string{"V", "p"}, VimRegisterValue{Text: "X"}},
+		{"replace the unterminated last line", "one\nX", []string{"j", "V", "p"}, VimRegisterValue{Text: "X\n", Linewise: true}},
+		{"counted characterwise put", "oXXXne\ntwo", []string{"3", "p"}, VimRegisterValue{Text: "X"}},
+		{"counted linewise put", "one\nX\nX\ntwo", []string{"2", "p"}, VimRegisterValue{Text: "X\n", Linewise: true}},
+		{"repeat a counted put", "oXXXXXXne\ntwo", []string{"3", "p", "."}, VimRegisterValue{Text: "X"}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			d := &Document{Buffer: Buffer{Text: "one\ntwo", Anchor: -1}}
+			v := &Vim{}
+			for _, key := range tt.keys {
+				v.Handle(d, key, tt.value)
+			}
+			if d.Text != tt.want {
+				t.Fatalf("put = %q, want %q", d.Text, tt.want)
+			}
+			if tt.keys[len(tt.keys)-1] == "p" {
+				vimKeys(d, v, "u")
+				if d.Text != "one\ntwo" {
+					t.Fatalf("undo put = %q", d.Text)
+				}
+			}
+		})
 	}
 }

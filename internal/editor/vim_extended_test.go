@@ -89,12 +89,12 @@ func TestVimRepeatChanges(t *testing.T) {
 func TestVimRepeatInsertEditingAndSafety(t *testing.T) {
 	d := &Document{Buffer: Buffer{Text: "abc def", Cursor: 2, Anchor: -1}}
 	v := &Vim{}
-	v.Handle(d, "i", "")
-	v.Handle(d, "backspace", "")
+	v.Handle(d, "i", VimRegisterValue{})
+	v.Handle(d, "backspace", VimRegisterValue{})
 	d.Delete(true)
-	v.Handle(d, "X", "")
+	v.Handle(d, "X", VimRegisterValue{})
 	d.Insert("X")
-	v.Handle(d, "esc", "")
+	v.Handle(d, "esc", VimRegisterValue{})
 	if d.Text != "aXc def" {
 		t.Fatal(d.Text)
 	}
@@ -106,20 +106,20 @@ func TestVimRepeatInsertEditingAndSafety(t *testing.T) {
 	d = &Document{Buffer: Buffer{Text: "abcdef", Anchor: -1}}
 	v = &Vim{}
 	vimKeys(d, v, "x", "i")
-	v.Handle(d, "left", "")
+	v.Handle(d, "left", VimRegisterValue{})
 	d.Move("left", false)
-	v.Handle(d, "Q", "")
+	v.Handle(d, "Q", VimRegisterValue{})
 	d.Insert("Q")
-	v.Handle(d, "esc", "")
+	v.Handle(d, "esc", VimRegisterValue{})
 	vimKeys(d, v, ".")
 	if d.Text != "bcdef" {
 		t.Fatal("unsafe insert replaced previous repeat:", d.Text)
 	}
 	d = &Document{Buffer: Buffer{Text: "abc", Anchor: -1}}
 	v = &Vim{}
-	v.Handle(d, "p", "X")
+	v.Handle(d, "p", VimRegisterValue{Text: "X"})
 	d.SetPosition(0, 3)
-	v.Handle(d, ".", "new register text")
+	v.Handle(d, ".", VimRegisterValue{Text: "new register text"})
 	if d.Text != "aXbcX" {
 		t.Fatal("register repeat:", d.Text)
 	}
@@ -141,7 +141,7 @@ func TestVimFlashOperatorsAndRepeat(t *testing.T) {
 		if d.Text != tt.want {
 			t.Fatalf("%s: %q", tt.op, d.Text)
 		}
-		if copied != "a," {
+		if copied.Text != "a," {
 			t.Fatal("Flash operator register:", copied)
 		}
 		if tt.op == "d" {

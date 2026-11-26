@@ -339,7 +339,7 @@ func TestVimWordObjectsThroughWorkbench(t *testing.T) {
 		t.Fatal("object prefix edited text or entered Insert")
 	}
 	handled, cmd := m.vimKey("w")
-	if !handled || d.Text != "alpha gamma" || cmd != nil || m.vimRegister != "beta " {
+	if !handled || d.Text != "alpha gamma" || cmd != nil || m.vimRegister.Text != "beta " {
 		t.Fatal("daw did not delete into the unnamed register")
 	}
 	press(m, "u")
@@ -404,8 +404,8 @@ func TestVimChineseWordsThroughWorkbench(t *testing.T) {
 	for _, key := range []string{"d", "i", "w"} {
 		press(m, key)
 	}
-	if d.Text != "中文测试 foo" || m.vimRegister != "分词" {
-		t.Fatalf("text = %q, register = %q", d.Text, m.vimRegister)
+	if d.Text != "中文测试 foo" || m.vimRegister.Text != "分词" {
+		t.Fatalf("text = %q, register = %q", d.Text, m.vimRegister.Text)
 	}
 
 	m.setVimDisabled(true)

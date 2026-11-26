@@ -17,7 +17,7 @@ func (m *Model) setVimDisabled(disabled bool) {
 	}
 	m.vimDisabled = disabled
 	m.cancelFlash()
-	m.leaderTarget = ""
+	m.cancelLeader()
 	m.pathCompletion = nil
 	m.renderFrame = frameCache{}
 	for i := range m.tabs {
@@ -78,9 +78,17 @@ func (m *Model) vimQuit(discard bool) tea.Cmd {
 	return m.finishClose()
 }
 
+func (m *Model) vimRegisterPending() bool {
+	return m.activeTab >= 0 && m.activeTab < len(m.tabs) && m.tabs[m.activeTab].vim.RegisterPending()
+}
+
 func (m *Model) vimKey(k string) (bool, tea.Cmd) {
 	v := &m.tabs[m.activeTab].vim
 	d := m.editorDocument()
+	register := v.Register()
+	if register == editor.ClipboardRegister && !v.CommandPending() && (k == "p" || k == "P") {
+		return true, m.vimClipboardPut(d, k == "p", v.TakePutCount())
+	}
 	if !v.InsertMode && !v.CommandPending() && (k == "pgup" || k == "pgdown") {
 		rows := m.contentHeight()
 		if k == "pgup" {
@@ -88,13 +96,17 @@ func (m *Model) vimKey(k string) (bool, tea.Cmd) {
 		}
 		before, _ := d.Position()
 		v.MovePage(d, rows)
+		if v.RegisterPending() {
+			v.CancelPending()
+		}
 		m.moveAcrossFolds(before)
 		m.ensureTextCursor()
 		return true, nil
 	}
 	if k == "f" {
 		if operator, ok := v.FlashOperator(); ok {
-			return true, m.startFlash(operator)
+			m.startFlash(operator, register)
+			return true, nil
 		}
 	}
 	if !v.InsertMode && !v.VisualMode && (k == ":" || k == "/" || k == "n") && !v.CommandPending() {
@@ -111,7 +123,7 @@ func (m *Model) vimKey(k string) (bool, tea.Cmd) {
 	before, _ := d.Position()
 	vertical := !v.InsertMode && !v.CommandPending() && (k == "j" || k == "k" || k == "up" || k == "down")
 	v.HanDictionary = m.hanDictionary
-	handled, text := v.Handle(d, k, m.vimRegister)
+	handled, value := v.Handle(d, k, m.vimRegister)
 	if !handled {
 		return false, nil
 	}
@@ -119,33 +131,27 @@ func (m *Model) vimKey(k string) (bool, tea.Cmd) {
 		m.moveAcrossFolds(before)
 	}
 	m.ensureTextCursor()
-	if text != "" {
-		m.vimRegister = text
-	}
 	if action := v.TakeFoldAction(); action != "" && m.editing() {
 		m.editorFold(action)
 	}
-	return true, nil
+	if k == "." {
+		register = editor.UnnamedRegister
+	}
+	return true, m.storeVimRegister(value, register)
 }
 
-func (m *Model) vimClipboardWrite(key string) tea.Cmd {
-	d := m.editorDocument()
-	if d == nil {
+func (m *Model) storeVimRegister(value editor.VimRegisterValue, register editor.VimRegister) tea.Cmd {
+	if value.Text == "" {
 		return nil
 	}
-	v := &m.tabs[m.activeTab].vim
-	if !v.VisualMode {
-		v.Handle(d, key, m.vimRegister)
+	m.vimRegister = value
+	if register == editor.ClipboardRegister {
+		return writeClipboard(value.Text, nil)
 	}
-	_, text := v.Handle(d, key, m.vimRegister)
-	m.ensureTextCursor()
-	if text != "" {
-		m.vimRegister = text
-	}
-	return writeClipboard(text, nil)
+	return nil
 }
 
-func (m *Model) vimClipboardPut(d *editor.Document, key string) tea.Cmd {
+func (m *Model) vimClipboardPut(d *editor.Document, after bool, count int) tea.Cmd {
 	if !m.editableDocumentFocused(d) {
 		return nil
 	}
@@ -153,11 +159,12 @@ func (m *Model) vimClipboardPut(d *editor.Document, key string) tea.Cmd {
 	visual, linewise := v.VisualMode, v.VisualLine
 	return readClipboard(guardDocumentClipboard(d, func(m *Model, text string) tea.Cmd {
 		v := &m.tabs[m.activeTab].vim
-		if m.vimDisabled || m.leaderActive() || m.flash != nil || v.InsertMode || v.CommandPending() ||
+		if m.vimDisabled || m.leaderActive() || m.flash != nil || v.InsertMode || v.CommandPending() || v.RegisterPending() ||
 			v.VisualMode != visual || v.VisualLine != linewise {
 			return nil
 		}
-		v.Handle(d, key, text)
+		// The system clipboard exposes plain text, so its line type is inferred here.
+		v.Put(d, editor.VimRegisterValue{Text: text, Linewise: strings.HasSuffix(text, "\n")}, after, count)
 		m.ensureTextCursor()
 		return nil
 	}))

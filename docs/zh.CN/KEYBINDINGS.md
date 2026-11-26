@@ -35,7 +35,7 @@
 | `Space w` / `Space q` / `Space z` | 保存 / 关闭 / 保存并关闭。保存适用于可编辑文件。 |
 | `Space Esc` | 取消序列。 |
 
-使用空格前缀访问系统剪贴板的按键见 [Vim 键位](VIM.md)。
+普通模式下，`Space dd`、`Space cc`、`Space yy` 将整行写入系统剪贴板。这些操作符也可以接移动命令或文本对象，例如 `Space yw` 和 `Space yiw`。可视模式下，`Space d`、`Space x`、`Space c`、`Space y` 写入选区。两种模式下，`Space p` / `Space P` 都从系统剪贴板读取并粘贴。
 
 ## 在列表里移动
 

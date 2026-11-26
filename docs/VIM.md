@@ -25,9 +25,9 @@ For Vim's defaults, see [motions](https://vimhelp.org/motion.txt.html),
 [undo and redo](https://vimhelp.org/undo.txt.html), and the
 [command index](https://vimhelp.org/index.txt.html).
 
-**Clipboard.** `y` yanks to the unnamed register. `d`, `c`, `x`, and `s` also store deleted text there. `p` / `P` paste from that register, which is shared across editor tabs. `Ctrl+C` / `Ctrl+X` / `Ctrl+V` use the [system clipboard](KEYBINDINGS.md#text-editing). Explorer's `yy` / `p` copy and paste files.
+In the editor, `p` and `P` paste from the unnamed register. Editor tabs share this register. It holds text yanked with `y` or removed with `d`, `c`, `x`, or `s`.
 
-Use `Space dd`, `Space cc`, or `Space yy` to write a line to the system clipboard. In Visual, use `Space d`, `Space x`, `Space c`, or `Space y` for the selection. In either mode, `Space p` and `Space P` paste from the system clipboard.
+To use the system clipboard, press `Ctrl+C`, `Ctrl+X`, or `Ctrl+V`, or use the [Space shortcuts](KEYBINDINGS.md#use-space-for-tabs-saving-and-closing). In Explorer, `yy` copies files and `p` pastes them.
 
 Visual block, macros, named registers, mark jumps, and Ex commands beyond those listed below are unsupported.
 
@@ -71,7 +71,7 @@ See [Chinese word segmentation](CHINESE-WORD-SEGMENTATION.md) to use Chinese wor
 | `gcu` / `gcgc` | Remove the current block comment or adjacent line comments |
 | `D` / `C` | Delete / change to end of line |
 | `J` | Join the current line with the next. `3J` joins three lines. |
-| `p` / `P` | Put after / before the cursor. Linewise text goes below / above. |
+| `p` / `P` | Put after / before the cursor. Linewise text goes below / above. `3p` puts three copies. |
 | `u` / `U` | Undo / redo. Both take a count. |
 | `.` / `3.` | Repeat the last change once / three times |
 | `Tab` / `Shift+Tab` | Indent / outdent the current line |
@@ -94,6 +94,7 @@ Change drops you into Insert. Counts before and after the operator multiply.
 | `cw` | Change through the end of the word. From whitespace, change up to the next word. |
 | `d0` / `d^` / `d$` | Delete to the start of the line / first nonblank / end of the line |
 | `dj` / `dk` | Delete the current line and the line below / above |
+| `dG` / `dgg` | Delete through the last / first line, inclusive |
 | `2dd` / `d2w` / `2d3w` | Delete two lines / use two `w` motions / use six `w` motions |
 | `diw` / `daw` | Delete the word / the word plus adjacent whitespace |
 | `ci"` / `da(` / `yi{` | Change inside quotes / delete a pair of parentheses and its contents / yank inside braces |
@@ -155,7 +156,7 @@ mode, the jump extends the selection. The interaction follows
 | `df` / `cf` / `yf` | Delete / change / yank through the first character of the target |
 | `ysf` | Pick a target, then type a delimiter to surround the range |
 
-Flash operators use the unnamed register. Dot repeat for `df` and `cf` looks
+Flash operators use the selected register. Dot repeat for `df` and `cf` looks
 for the same literal target again.
 
 ## Surround

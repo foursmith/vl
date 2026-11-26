@@ -51,7 +51,7 @@ func TestVimToggleComments(t *testing.T) {
 			}
 			defer m.Close()
 			doc := m.document()
-			m.vimRegister = "keep clipboard"
+			m.vimRegister = editor.VimRegisterValue{Text: "keep clipboard"}
 			for _, key := range tc.keys {
 				press(m, string(key))
 			}
@@ -75,8 +75,8 @@ func TestVimToggleComments(t *testing.T) {
 			for _, key := range tc.keys {
 				press(m, string(key))
 			}
-			if doc.Text != tc.original || m.vimRegister != "keep clipboard" {
-				t.Fatalf("uncomment = %q, register = %q", doc.Text, m.vimRegister)
+			if doc.Text != tc.original || m.vimRegister.Text != "keep clipboard" {
+				t.Fatalf("uncomment = %q, register = %q", doc.Text, m.vimRegister.Text)
 			}
 		})
 	}
@@ -329,8 +329,8 @@ func TestVimUnnamedRegister(t *testing.T) {
 			t.Fatalf("%s did not stay in the Vim editor", key)
 		}
 	}
-	if source.Text != "two\none" || m.vimRegister != "one\n" {
-		t.Fatalf("ddp = %q, register = %q", source.Text, m.vimRegister)
+	if source.Text != "two\none" || m.vimRegister.Text != "one\n" {
+		t.Fatalf("ddp = %q, register = %q", source.Text, m.vimRegister.Text)
 	}
 	target := &editor.Document{Buffer: editor.Buffer{Text: "three", Anchor: -1}}
 	m.tabs = append(m.tabs, tab{doc: target})
@@ -357,6 +357,12 @@ func TestVimLeaderClipboardOperators(t *testing.T) {
 		{" dd", "two", "one\n", false, false},
 		{" cc", "\ntwo", "one\n", true, false},
 		{" yy", "one\ntwo", "one\n", false, true},
+		{" yiw", "one\ntwo", "one", false, false},
+		{`"+yiw`, "one\ntwo", "one", false, false},
+		{`"+yiw`, "one\ntwo", "one", false, true},
+		{" yw", "one\ntwo", "one", false, true},
+		{" diw", "\ntwo", "one", false, false},
+		{" ciw", "\ntwo", "one", true, false},
 		{"v d", "ne\ntwo", "o", false, false},
 		{"V c", "\ntwo", "one\n", true, false},
 		{"V y", "one\ntwo", "one\n", false, true},
@@ -376,12 +382,50 @@ func TestVimLeaderClipboardOperators(t *testing.T) {
 				cmd = press(m, string(key))
 			}
 			v := &m.tabs[0].vim
-			if d.Text != tt.text || m.vimRegister != tt.copied || (cmd != nil) != (tt.copied != "") ||
-				v.InsertMode != tt.insert || v.VisualMode || m.leaderActive() {
+			if d.Text != tt.text || m.vimRegister.Text != tt.copied || (cmd != nil) != (tt.copied != "") ||
+				v.InsertMode != tt.insert || v.VisualMode || v.RegisterPending() || m.leaderActive() {
 				t.Fatalf("text = %q, register = %q, clipboard command = %t, mode = %s, leader = %v",
-					d.Text, m.vimRegister, cmd != nil, v.Label(), m.leaderActive())
+					d.Text, m.vimRegister.Text, cmd != nil, v.Label(), m.leaderActive())
 			}
 		})
+	}
+}
+
+func TestVimClipboardRegisterEndsWithCommand(t *testing.T) {
+	m := flashModel(t, "one two")
+	for _, keys := range []string{`"+h`, `"+yi`, " yi"} {
+		for _, key := range keys {
+			press(m, string(key))
+		}
+		press(m, "esc")
+		press(m, "y")
+		press(m, "i")
+		if cmd := press(m, "w"); cmd != nil || m.vimRegister.Text != "one" {
+			t.Fatalf("%q left the clipboard selected for the next command", keys)
+		}
+	}
+}
+
+func TestVimClipboardOperatorCancelsOnBlur(t *testing.T) {
+	m := flashModel(t, "one two")
+	press(m, " ")
+	press(m, "y")
+	m.Update(tea.BlurMsg{})
+	if m.leaderActive() || m.tabs[0].vim.CommandPending() {
+		t.Fatal("clipboard operator survived window blur")
+	}
+}
+
+func TestVimClipboardOperatorFollowsFlash(t *testing.T) {
+	m := flashModel(t, "one two")
+	press(m, " ")
+	press(m, "y")
+	flashQuery(m, "two")
+	if m.flash == nil || len(m.flash.targets) != 1 {
+		t.Fatal("expected one Flash target")
+	}
+	if cmd := press(m, m.flash.targets[0].label); cmd == nil || m.vimRegister.Text != "one t" || m.leaderActive() {
+		t.Fatalf("clipboard command = %t, register = %q, leader = %t", cmd != nil, m.vimRegister.Text, m.leaderActive())
 	}
 }
 

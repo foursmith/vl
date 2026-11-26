@@ -43,7 +43,7 @@ func TestReadOnlyDiffSharesVimMotionsSelectionAndSearch(t *testing.T) {
 		}
 		selected := m.review.SelectedText()
 		press(m, "y")
-		if m.vimRegister != selected {
+		if m.vimRegister.Text != selected {
 			t.Fatal("Visual yank did not set the unnamed register")
 		}
 		if m.tabs[m.activeTab].vim.VisualMode || m.diffSelection.active {
@@ -158,13 +158,14 @@ func TestSharedLeaderCancelsAcrossDialogsAndBlur(t *testing.T) {
 		if len(m.tabs) != count {
 			t.Fatal("leader survived a dialog")
 		}
-		for _, key := range []string{"y", "p"} {
+		for _, key := range []string{"g", "v"} {
 			original := m.editorDocument().Text
 			press(m, " ")
 			if cmd := press(m, key); cmd != nil {
 				t.Fatal("unknown leader key produced a command")
 			}
-			if m.editorDocument().Text != original || m.tabs[m.activeTab].vim.CommandPending() {
+			v := &m.tabs[m.activeTab].vim
+			if m.editorDocument().Text != original || v.CommandPending() || v.VisualMode {
 				t.Fatal("unknown leader key leaked into Vim")
 			}
 		}

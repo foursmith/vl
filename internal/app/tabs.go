@@ -121,7 +121,7 @@ func (m *Model) editing() bool { return m.document() != nil }
 // selectTab changes the displayed content while leaving keyboard focus where it is.
 func (m *Model) selectTab(index int) {
 	m.blurFileFind()
-	m.leaderTarget = ""
+	m.cancelLeader()
 	if m.activeTab >= 0 && m.activeTab < len(m.tabs) && m.activeTab != index {
 		m.rememberFilePosition(&m.tabs[m.activeTab])
 	}

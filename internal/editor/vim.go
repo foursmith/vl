@@ -5,6 +5,19 @@ import (
 	"strings"
 )
 
+type VimRegister uint8
+
+const (
+	UnnamedRegister VimRegister = iota
+	ClipboardRegister
+)
+
+// VimRegisterValue preserves how text was selected as well as its contents.
+type VimRegisterValue struct {
+	Text     string
+	Linewise bool
+}
+
 // Vim interprets basic modal commands against the existing document model.
 // Its zero value starts in Normal mode.
 type Vim struct {
@@ -13,6 +26,7 @@ type Vim struct {
 	HanDictionary          func() *HanDictionary
 	visualAnchor           int
 	pending                string
+	register               VimRegister
 	count, prefixCount     int
 	foldAction             string
 	record                 *vimRecording
@@ -50,12 +64,14 @@ func (v *Vim) Reset(d *Document) {
 	d.EndEditGroup()
 	v.InsertMode = false
 	v.VisualMode, v.VisualLine = false, false
+	v.register = UnnamedRegister
 	v.clearPending()
 	d.ClearSelection()
 	v.clamp(d)
 }
 
 func (v *Vim) CancelPending() {
+	v.register = UnnamedRegister
 	v.clearPending()
 	if v.InsertMode && v.record != nil {
 		v.record.unsafe = true
@@ -67,6 +83,12 @@ func (v *Vim) CancelPending() {
 func (v *Vim) CommandPending() bool {
 	return v.pending != "" || v.surround != nil
 }
+
+func (v *Vim) Register() VimRegister { return v.register }
+
+func (v *Vim) SelectRegister(register VimRegister) { v.register = register }
+
+func (v *Vim) RegisterPending() bool { return v.pending == `"` || v.register != UnnamedRegister }
 
 const maxVimCount = 9999
 
@@ -113,17 +135,39 @@ func (v *Vim) insert(d *Document) {
 }
 
 // Handle processes a key and records text changes for dot repeat.
-// The result reports whether Vim consumed the key and text for the unnamed register.
-func (v *Vim) Handle(d *Document, key, register string) (bool, string) {
+// The result reports whether Vim consumed the key and text for the selected register.
+func (v *Vim) Handle(d *Document, key string, register VimRegisterValue) (bool, VimRegisterValue) {
+	if v.pending == `"` {
+		switch key {
+		case "+":
+			v.count = v.prefixCount
+			v.pending, v.prefixCount = "", 0
+			v.SelectRegister(ClipboardRegister)
+		case "esc":
+			v.Reset(d)
+		default:
+			v.CancelPending()
+		}
+		return true, VimRegisterValue{}
+	}
+	if key == `"` && !v.InsertMode && !v.CommandPending() {
+		v.beginPending(key, v.count)
+		return true, VimRegisterValue{}
+	}
+	if v.register != UnnamedRegister {
+		defer func() {
+			if !v.CommandPending() && v.count == 0 {
+				v.register = UnnamedRegister
+			}
+		}()
+	}
 	if d.ReadOnly && !v.readOnlyKey(key) {
 		v.CancelPending()
-		return true, ""
+		return true, VimRegisterValue{}
 	}
 	if !v.InsertMode && !v.CommandPending() && (key == "p" || key == "P") {
-		v.clearPending()
-		v.record = nil
-		v.putAndRecord(d, register, key == "p")
-		return true, ""
+		v.Put(d, register, key == "p", v.TakePutCount())
+		return true, VimRegisterValue{}
 	}
 	if key == "." && !v.InsertMode && !v.VisualMode && !v.CommandPending() {
 		count := max(1, v.count)
@@ -170,7 +214,7 @@ func (v *Vim) Handle(d *Document, key, register string) (bool, string) {
 }
 
 // handleKey is also used for replay, which must leave the last change intact.
-func (v *Vim) handleKey(d *Document, key string) (bool, string) {
+func (v *Vim) handleKey(d *Document, key string) (bool, VimRegisterValue) {
 	if key == "esc" {
 		if v.InsertMode {
 			row, col := d.Position()
@@ -179,23 +223,23 @@ func (v *Vim) handleKey(d *Document, key string) (bool, string) {
 			}
 		}
 		v.Reset(d)
-		return true, ""
+		return true, VimRegisterValue{}
 	}
 	if v.InsertMode {
-		return false, ""
+		return false, VimRegisterValue{}
 	}
 	if v.surround != nil {
-		return v.handleSurround(d, key), ""
+		return v.handleSurround(d, key), VimRegisterValue{}
 	}
 	if !v.CommandPending() && v.handleCommand(d, key) {
-		return true, ""
+		return true, VimRegisterValue{}
 	}
 	if v.VisualMode && d.Anchor < 0 {
 		v.VisualMode, v.VisualLine = false, false
 	}
 	if strings.HasPrefix(key, "ctrl+") || strings.HasPrefix(key, "alt+") || strings.HasPrefix(key, "shift+") || strings.HasPrefix(key, "f") && len(key) > 1 {
 		v.clearPending()
-		return false, ""
+		return false, VimRegisterValue{}
 	}
 	if v.VisualMode {
 		return v.handleVisual(d, key)
@@ -203,11 +247,11 @@ func (v *Vim) handleKey(d *Document, key string) (bool, string) {
 	return v.handleNormal(d, key)
 }
 
-func (v *Vim) handleNormal(d *Document, key string) (bool, string) {
+func (v *Vim) handleNormal(d *Document, key string) (bool, VimRegisterValue) {
 	v.clamp(d)
 	d.Anchor = -1
 	if v.pending != "r" && appendVimCount(&v.count, key) {
-		return true, ""
+		return true, VimRegisterValue{}
 	}
 	if v.pending != "" {
 		copied := v.handleNormalPending(d, key)
@@ -217,22 +261,18 @@ func (v *Vim) handleNormal(d *Document, key string) (bool, string) {
 	switch key {
 	case "d", "c", "y", "g", "z", "r":
 		v.beginPending(key, v.count)
-		return true, ""
+		return true, VimRegisterValue{}
 	}
 
-	hadCount := v.count > 0
-	n := max(1, v.count)
+	count := v.count
 	v.clearPending()
-	if key == "G" && !hadCount {
-		n = len(d.Lines())
-	}
-
-	if v.motion(d, motionKey(key), n) {
+	if v.motion(d, motionKey(key), count) {
 		v.clamp(d)
-		return true, ""
+		return true, VimRegisterValue{}
 	}
+	n := max(1, count)
 	row, _ := d.Position()
-	var copied string
+	var copied VimRegisterValue
 	switch key {
 	case "v", "V":
 		v.startVisual(d, key == "V")
@@ -284,46 +324,46 @@ func (v *Vim) handleNormal(d *Document, key string) (bool, string) {
 			d.Redo()
 		}
 	case "pgup", "pgdown":
-		return false, ""
+		return false, VimRegisterValue{}
 	}
 	// Consume unmapped keys too, so they cannot insert text in Normal mode.
 	v.syncCursor(d)
 	return true, copied
 }
 
-func (v *Vim) handleNormalPending(d *Document, key string) string {
+func (v *Vim) handleNormalPending(d *Document, key string) VimRegisterValue {
 	op, count := v.pending, v.pendingCount()
 	hadCount := v.prefixCount > 0 || v.count > 0
 	v.clearPending()
 	switch op {
 	case "r":
 		replaceCharacter(d, key, count)
-		return ""
+		return VimRegisterValue{}
 	case "g":
 		switch key {
 		case "g":
-			d.SetPosition(count-1, 0)
+			v.motion(d, "gg", count)
 		case "c":
 			if !hadCount {
 				count = 0
 			}
 			v.beginPending("gc", count)
 		}
-		return ""
+		return VimRegisterValue{}
 	case "gc":
 		v.commentMotion(d, key, count, hadCount)
-		return ""
+		return VimRegisterValue{}
 	case "gcg", "gca", "gci":
 		v.commentTarget(d, op, key, count)
-		return ""
+		return VimRegisterValue{}
 	case "z":
 		switch key {
 		case "a", "c", "o", "M", "R", "C", "O":
 			v.foldAction = key
 		}
-		return ""
+		return VimRegisterValue{}
 	}
-	return v.handleOperator(d, op, key, count)
+	return v.handleOperator(d, op, key, count, hadCount)
 }
 
 func (v *Vim) syncCursor(d *Document) {

@@ -293,9 +293,6 @@ func (m *Model) statusLayout() []statusSegment {
 	}
 	if m.leaderActive() {
 		mode = "LEADER"
-		if m.leaderOperator != "" {
-			mode += " · " + m.leaderOperator
-		}
 	}
 	if mode != "" {
 		if flash := m.flashLabel(); flash != "" {

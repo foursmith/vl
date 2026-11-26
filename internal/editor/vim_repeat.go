@@ -19,7 +19,7 @@ type vimChange struct {
 	keys      []string
 	selection *vimSelection
 	insert    *vimInsertEdit
-	putText   string
+	putValue  VimRegisterValue
 	after     bool
 	flash     *vimFlashEdit
 }
@@ -119,12 +119,12 @@ func (v *Vim) selectForRepeat(d *Document, shape *vimSelection) {
 	}
 	v.SyncVisual(d)
 }
-func (v *Vim) repeatChange(d *Document, count int) string {
+func (v *Vim) repeatChange(d *Document, count int) VimRegisterValue {
 	change := v.lastChange
 	if change == nil {
-		return ""
+		return VimRegisterValue{}
 	}
-	var register string
+	var register VimRegisterValue
 	for range count {
 		if len(d.Text) >= MaxFileSize {
 			break
@@ -133,13 +133,13 @@ func (v *Vim) repeatChange(d *Document, count int) string {
 			break
 		}
 		v.selectForRepeat(d, change.selection)
-		if change.putText != "" {
-			v.put(d, change.putText, change.after)
+		if change.putValue.Text != "" {
+			v.put(d, change.putValue, change.after)
 		} else {
 			if change.flash != nil {
 				edit := change.flash
 				if target, ok := flashEditTarget(d, edit); ok {
-					if text := v.applyFlashRange(d, target, edit.operator); text != "" {
+					if text := v.applyFlashRange(d, target, edit.operator); text.Text != "" {
 						register = text
 					}
 					if edit.operator == "ys" {
@@ -150,7 +150,7 @@ func (v *Vim) repeatChange(d *Document, count int) string {
 				}
 			} else {
 				for _, key := range change.keys {
-					if _, text := v.handleKey(d, key); text != "" {
+					if _, text := v.handleKey(d, key); text.Text != "" {
 						register = text
 					}
 				}
@@ -178,14 +178,31 @@ func (v *Vim) repeatChange(d *Document, count int) string {
 	}
 	return register
 }
-func (v *Vim) putAndRecord(d *Document, text string, after bool) {
-	if text == "" {
+
+// TakePutCount consumes the command state before a put reads its register.
+func (v *Vim) TakePutCount() int {
+	count := max(1, v.count)
+	v.CancelPending()
+	return count
+}
+
+// Put applies the same insertion and repeat rules to any register source.
+func (v *Vim) Put(d *Document, value VimRegisterValue, after bool, count int) {
+	if d.ReadOnly || value.Text == "" || count < 1 {
 		return
 	}
+	value.Text = strings.ReplaceAll(value.Text, "\r\n", "\n")
+	if value.Linewise && !strings.HasSuffix(value.Text, "\n") {
+		value.Text += "\n"
+	}
+	if len(value.Text) > MaxFileSize/count {
+		return
+	}
+	value.Text = strings.Repeat(value.Text, count)
 	before := d.Text
 	shape := v.repeatSelection(d)
-	v.put(d, text, after)
+	v.put(d, value, after)
 	if before != d.Text {
-		v.lastChange = &vimChange{putText: text, after: after, selection: shape}
+		v.lastChange = &vimChange{putValue: value, after: after, selection: shape}
 	}
 }

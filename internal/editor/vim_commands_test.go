@@ -150,7 +150,7 @@ func TestVimRegisterYank(t *testing.T) {
 func TestVimRegisterPut(t *testing.T) {
 	d := &Document{Buffer: Buffer{Text: "abc", Anchor: -1}}
 	v := &Vim{}
-	v.Handle(d, "p", "👩‍💻")
+	v.Handle(d, "p", VimRegisterValue{Text: "👩‍💻"})
 	if d.Text != "a👩‍💻bc" {
 		t.Fatal(d.Text)
 	}
@@ -160,7 +160,7 @@ func TestVimRegisterPut(t *testing.T) {
 	}
 	d.SetPosition(0, 0)
 	vimKeys(d, v, "v", "l")
-	v.Handle(d, "p", "X")
+	v.Handle(d, "p", VimRegisterValue{Text: "X"})
 	if d.Text != "Xc" || v.VisualMode {
 		t.Fatal(d.Text)
 	}

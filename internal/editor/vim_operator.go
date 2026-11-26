@@ -48,37 +48,38 @@ func replaceCharacter(d *Document, key string, count int) {
 	d.EndEditGroup()
 }
 
-func (v *Vim) handleOperator(d *Document, op, key string, count int) string {
+func (v *Vim) handleOperator(d *Document, op, key string, count int, hadCount bool) VimRegisterValue {
 	switch op {
 	case "di", "da", "ci", "ca", "yi", "ya":
 		if start, end, ok := v.textObject(d, key, op[1] == 'i', count); ok {
 			return v.operate(d, op[:1], start, end, false)
 		}
-		return ""
+		return VimRegisterValue{}
+	case "dg", "cg", "yg":
+		if key == "g" {
+			return v.operateMotion(d, op[:1], "gg", count)
+		}
+		return VimRegisterValue{}
 	}
 
 	switch key {
 	case "s":
 		v.beginSurround(d, op, count)
-	case "i", "a":
+	case "i", "a", "g":
 		v.beginPending(op+key, count)
 	case op:
-		return v.operateLines(d, op, count)
-	case "j", "k":
 		row, _ := d.Position()
-		first, last := row, row+count
-		if key == "k" {
-			first, last = max(0, row-count), row
-		}
-		d.SetPosition(first, 0)
-		return v.operateLines(d, op, last-first+1)
+		return v.operateLineRange(d, op, row, row+count-1)
 	default:
+		if key == "G" && !hadCount {
+			count = 0
+		}
 		return v.operateMotion(d, op, key, count)
 	}
-	return ""
+	return VimRegisterValue{}
 }
 
-func (v *Vim) operateMotion(d *Document, op, key string, count int) string {
+func (v *Vim) operateMotion(d *Document, op, key string, count int) VimRegisterValue {
 	start := d.Cursor
 	if op == "c" && key == "w" && wordClass(d.wordRuneAt(start)) != 0 {
 		// Include the current word, even when the cursor is on its last character.
@@ -86,10 +87,15 @@ func (v *Vim) operateMotion(d *Document, op, key string, count int) string {
 		return v.operate(d, op, start, d.next(d.Cursor), false)
 	}
 	if !v.motion(d, key, count) {
-		return ""
+		return VimRegisterValue{}
 	}
 	end := d.Cursor
 	switch key {
+	case "j", "k", "G", "gg":
+		first, _ := d.positionAt(start)
+		last, _ := d.Position()
+		d.Cursor = start
+		return v.operateLineRange(d, op, first, last)
 	case "w":
 		startRow, _ := d.positionAt(start)
 		endRow, _ := d.Position()
@@ -112,14 +118,13 @@ func (v *Vim) operateMotion(d *Document, op, key string, count int) string {
 	return v.operate(d, op, start, end, false)
 }
 
-func (v *Vim) operateLines(d *Document, op string, n int) string {
+func (v *Vim) operateLineRange(d *Document, op string, first, last int) VimRegisterValue {
+	first, last = min(first, last), max(first, last)
 	cursor := d.Cursor
-	row, _ := d.Position()
-	last := min(row+n, len(d.Lines()))
-	start := d.LineOffset(row)
+	start := d.LineOffset(first)
 	end := d.runeCount
-	if last < len(d.Lines()) {
-		end = d.LineOffset(last)
+	if last+1 < len(d.Lines()) {
+		end = d.LineOffset(last + 1)
 	}
 	copied := v.operate(d, op, start, end, true)
 	if op == "y" {
@@ -128,7 +133,7 @@ func (v *Vim) operateLines(d *Document, op string, n int) string {
 	return copied
 }
 
-func (v *Vim) operate(d *Document, op string, start, end int, linewise bool) string {
+func (v *Vim) operate(d *Document, op string, start, end int, linewise bool) VimRegisterValue {
 	if start > end {
 		start, end = end, start
 	}
@@ -139,9 +144,9 @@ func (v *Vim) operate(d *Document, op string, start, end int, linewise bool) str
 	d.SelectRange(start, end)
 	text := d.SelectedText()
 	hasNewline := strings.HasSuffix(text, "\n")
-	register := text
+	register := VimRegisterValue{Text: text, Linewise: linewise}
 	if linewise && !hasNewline {
-		register += "\n"
+		register.Text += "\n"
 	}
 	if op == "y" {
 		d.Cursor = start

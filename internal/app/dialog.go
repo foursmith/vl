@@ -37,7 +37,7 @@ func (m *Model) showDialog(kind, title string) {
 	if kind != "githubPublish" {
 		m.githubPublish = nil
 	}
-	m.leaderTarget = ""
+	m.cancelLeader()
 	m.resizingSidebar = false
 	m.modal, m.modalTitle = kind, title
 	m.dialogTop = 0
