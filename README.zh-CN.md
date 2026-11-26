@@ -10,13 +10,11 @@
     ░░▒▒▒▒▒▒▓▒       ▒▒▒▒▒▒▒▒▒▒▒▒▒▒
      ░▒▒▒▒▒▒▓        ▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 </pre>
-</div>
-
-<p align="center">
+<p>
   <a href="README.md">English</a> · 简体中文
 </p>
-
-**在终端里像用 VS Code 一样读代码、审阅 Git 改动，顺手改几行。**
+<p><strong>在终端里像用 VS Code 一样读代码、审阅 Git 改动，顺手改几行。</strong></p>
+</div>
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="./website/src/assets/browse-dark.webp">

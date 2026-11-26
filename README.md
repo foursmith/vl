@@ -10,13 +10,11 @@
     ░░▒▒▒▒▒▒▓▒       ▒▒▒▒▒▒▒▒▒▒▒▒▒▒
      ░▒▒▒▒▒▒▓        ▒▒▒▒▒▒▒▒▒▒▒▒▒▒
 </pre>
-</div>
-
-<p align="center">
+<p>
   English · <a href="README.zh-CN.md">简体中文</a>
 </p>
-
-**Read code, review Git diffs, and make quick edits right in your terminal, just like in VS Code.**
+<p><strong>Read code, review Git diffs, and make quick edits right in your terminal, just like in VS Code.</strong></p>
+</div>
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="./website/src/assets/browse-dark.webp">
