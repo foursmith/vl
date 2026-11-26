@@ -240,7 +240,7 @@ export function Landing(props: { locale: Locale }) {
 
       <footer class="border-t border-line font-mono text-sm text-muted">
         <div class="page-gutter flex min-h-17 flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 lg:px-6">
-          <a class="site-link" href={`${repository}/blob/main/LICENSE`}>MPL 2.0</a>
+          <a class="site-link" href={`${repository}/blob/main/LICENSE`}>MIT</a>
           <a class="site-link" href={`${repository}/releases`}>{labels[props.locale].releases}</a>
         </div>
       </footer>
