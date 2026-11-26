@@ -6,6 +6,7 @@ import { tanstackStart } from "@tanstack/solid-start/plugin/vite"
 import { defineConfig } from "vite"
 import { renderMarkdownDocs } from "./markdown.ts"
 import { sitePaths, siteUrl } from "./src/docs-paths.ts"
+import { localeCodes, localizedPath, searchCorpusPath } from "./src/locales.ts"
 
 let clientOutputDirectory: string
 
@@ -54,8 +55,7 @@ export default defineConfig({
     tanstackStart({
       client: { entry: "client.ts" },
       router: { codeSplittingOptions: { defaultBehavior: [] } },
-      server: { build: { inlineCss: true } },
-      pages: sitePaths.map((path) => ({ path })),
+      pages: [...sitePaths, ...localeCodes.map((locale) => localizedPath(searchCorpusPath, locale))].map((path) => ({ path })),
       prerender: {
         enabled: true,
         autoStaticPathsDiscovery: false,

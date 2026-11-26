@@ -29,10 +29,10 @@ const terminalLabels = {
 
 function TerminalSidebar() {
   return (
-    <aside class="row-span-2 grid auto-rows-[1.25rem] content-start bg-canvas" aria-hidden="true">
+    <aside class="landing-gutter row-span-2 grid auto-rows-[1.25rem] grid-cols-[minmax(0,13rem)] content-start bg-canvas" aria-hidden="true">
       {/* vl reserves the second navigation row for badges. */}
       <div class="row-span-2 grid grid-rows-2">
-        <div class="flex items-center justify-between px-2.5">
+        <div class="flex items-center justify-between">
           <span class="size-1.5 rounded-xs bg-accent/65" />
           <span class="size-1.5 rounded-xs bg-terminal-icon" />
           <span class="size-1.5 rounded-xs bg-terminal-icon" />
@@ -40,11 +40,11 @@ function TerminalSidebar() {
           <span class="size-1.5 rounded-xs bg-terminal-icon" />
         </div>
       </div>
-      <div class="flex items-center px-2.5">
+      <div class="flex items-center">
         <span class="h-1 w-2/5 rounded-full bg-accent/28" />
       </div>
       {sidebarRows.map((shape) => (
-        <div class="flex items-center px-2.5">
+        <div class="flex items-center">
         <span class={`h-1 rounded-full bg-terminal-line ${shape}`} />
         </div>
       ))}
@@ -57,18 +57,18 @@ export function AnsiTerminal(props: { locale: Locale }) {
 
   return (
     <div class="@container overflow-hidden bg-canvas font-mono">
-      <div class="grid grid-cols-[minmax(0,min(28%,12rem))_minmax(0,1fr)] bg-workspace">
+      <div class="landing-columns grid bg-workspace">
         <TerminalSidebar />
         <div
           data-wordmark
-          class="@container grid min-h-[clamp(10.75rem,37cqi,26rem)] min-w-0 touch-none cursor-grab place-items-center px-3 py-4 focus-visible:-outline-offset-2 active:cursor-grabbing sm:px-6"
+          class="landing-gutter @container grid min-w-0 touch-none cursor-grab justify-items-center pt-5 focus-visible:-outline-offset-2 active:cursor-grabbing sm:pt-7"
           role="group"
           aria-label={copy.rotation}
           tabindex={0}
         >
           <h1
             id="hero-title"
-            class="grid w-[min(38rem,74cqi)]"
+            class="grid w-[min(35rem,88cqi)]"
             style={{
               "aspect-ratio": wordmarkAspect,
               "grid-template-rows": `repeat(${firstFrame.length}, minmax(0, 1fr))`,
@@ -80,14 +80,14 @@ export function AnsiTerminal(props: { locale: Locale }) {
             ))}
           </h1>
         </div>
-        <div class="col-start-2 grid justify-items-center px-3 pb-6 text-xs leading-snug text-muted sm:px-6 sm:pb-8 sm:text-sm">
-          <p class="sm:mb-4">{copy.drag}</p>
-          <dl class="hidden w-full max-w-[44ch] grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-5 gap-y-1 sm:grid" aria-label={copy.shortcuts}>
+        <div class="landing-gutter col-start-2 grid justify-items-center gap-3 pb-5 text-xs leading-snug text-muted sm:pb-7 sm:text-sm">
+          <p>{copy.drag}</p>
+          <dl class="hidden grid-cols-[minmax(0,max-content)_auto] items-baseline gap-x-6 gap-y-1 sm:grid" aria-label={copy.shortcuts}>
             {homeShortcuts.map(({ command, keys }) => (
               <div class="contents">
                 <dt>{command[props.locale]}</dt>
                 <dd class="text-end">
-                  <kbd class="rounded-none border-0 bg-line/55 px-1 py-0 text-[inherit] text-inherit">{keys}</kbd>
+                  <kbd class="border-0 bg-line/55 px-1 py-0 text-[inherit] text-inherit">{keys}</kbd>
                 </dd>
               </div>
             ))}

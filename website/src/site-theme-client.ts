@@ -1,14 +1,14 @@
-import { siteThemes, themeStorageKey } from "./site-theme"
+import { themeStorageKey, type SiteTheme } from "./site-theme"
 
 export function enableSiteTheme() {
   const root = document.documentElement
-  const buttons = document.querySelectorAll<HTMLButtonElement>("[data-site-theme]")
+  const button = document.querySelector<HTMLButtonElement>("[data-toggle-site-theme]")
   const lightPreviews = document.querySelectorAll<HTMLSourceElement>("[data-light-preview]")
   const browserColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
 
-  function applyTheme(theme: (typeof siteThemes)[number]) {
+  function applyTheme(theme: SiteTheme) {
     root.dataset.theme = theme
-    buttons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.siteTheme === theme)))
+    button?.setAttribute("aria-pressed", String(theme === "light"))
     lightPreviews.forEach((source) => { source.media = theme === "light" ? "all" : "not all" })
     if (browserColor) browserColor.content = getComputedStyle(root).getPropertyValue("--color-canvas").trim()
   }
@@ -24,14 +24,13 @@ export function enableSiteTheme() {
     }
   })
 
-  buttons.forEach((button, index) => button.addEventListener("click", () => {
-    const theme = siteThemes[index]
-    if (root.dataset.theme === theme) return
+  button?.addEventListener("click", () => {
+    const theme = root.dataset.theme === "light" ? "dark" : "light"
     applyTheme(theme)
     try {
       localStorage.setItem(themeStorageKey, theme)
     } catch {
       // Theme switching still works on the current page if storage is unavailable.
     }
-  }))
+  })
 }

@@ -14,6 +14,7 @@ import { Route as Char123LocaleChar125IndexRouteImport } from './routes/{-$local
 import { Route as Char123LocaleChar125DocsRouteImport } from './routes/{-$locale}.docs'
 import { Route as Char123LocaleChar125DocsIndexRouteImport } from './routes/{-$locale}.docs.index'
 import { Route as Char123LocaleChar125DocsSlugRouteImport } from './routes/{-$locale}.docs.$slug'
+import { Route as Char123LocaleChar125DocsSearchDotjsonRouteImport } from './routes/{-$locale}.docs.search[.]json'
 
 const Char123LocaleChar125Route = Char123LocaleChar125RouteImport.update({
   id: '/{-$locale}',
@@ -44,17 +45,25 @@ const Char123LocaleChar125DocsSlugRoute =
     path: '/$slug',
     getParentRoute: () => Char123LocaleChar125DocsRoute,
   } as any)
+const Char123LocaleChar125DocsSearchDotjsonRoute =
+  Char123LocaleChar125DocsSearchDotjsonRouteImport.update({
+    id: '/search.json',
+    path: '/search.json',
+    getParentRoute: () => Char123LocaleChar125DocsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/{-$locale}': typeof Char123LocaleChar125RouteWithChildren
   '/{-$locale}/docs': typeof Char123LocaleChar125DocsRouteWithChildren
   '/{-$locale}/': typeof Char123LocaleChar125IndexRoute
   '/{-$locale}/docs/$slug': typeof Char123LocaleChar125DocsSlugRoute
+  '/{-$locale}/docs/search.json': typeof Char123LocaleChar125DocsSearchDotjsonRoute
   '/{-$locale}/docs/': typeof Char123LocaleChar125DocsIndexRoute
 }
 export interface FileRoutesByTo {
   '/{-$locale}': typeof Char123LocaleChar125IndexRoute
   '/{-$locale}/docs/$slug': typeof Char123LocaleChar125DocsSlugRoute
+  '/{-$locale}/docs/search.json': typeof Char123LocaleChar125DocsSearchDotjsonRoute
   '/{-$locale}/docs': typeof Char123LocaleChar125DocsIndexRoute
 }
 export interface FileRoutesById {
@@ -63,6 +72,7 @@ export interface FileRoutesById {
   '/{-$locale}/docs': typeof Char123LocaleChar125DocsRouteWithChildren
   '/{-$locale}/': typeof Char123LocaleChar125IndexRoute
   '/{-$locale}/docs/$slug': typeof Char123LocaleChar125DocsSlugRoute
+  '/{-$locale}/docs/search.json': typeof Char123LocaleChar125DocsSearchDotjsonRoute
   '/{-$locale}/docs/': typeof Char123LocaleChar125DocsIndexRoute
 }
 export interface FileRouteTypes {
@@ -72,15 +82,21 @@ export interface FileRouteTypes {
     | '/{-$locale}/docs'
     | '/{-$locale}/'
     | '/{-$locale}/docs/$slug'
+    | '/{-$locale}/docs/search.json'
     | '/{-$locale}/docs/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/{-$locale}' | '/{-$locale}/docs/$slug' | '/{-$locale}/docs'
+  to:
+    | '/{-$locale}'
+    | '/{-$locale}/docs/$slug'
+    | '/{-$locale}/docs/search.json'
+    | '/{-$locale}/docs'
   id:
     | '__root__'
     | '/{-$locale}'
     | '/{-$locale}/docs'
     | '/{-$locale}/'
     | '/{-$locale}/docs/$slug'
+    | '/{-$locale}/docs/search.json'
     | '/{-$locale}/docs/'
   fileRoutesById: FileRoutesById
 }
@@ -125,17 +141,27 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof Char123LocaleChar125DocsSlugRouteImport
       parentRoute: typeof Char123LocaleChar125DocsRoute
     }
+    '/{-$locale}/docs/search.json': {
+      id: '/{-$locale}/docs/search.json'
+      path: '/search.json'
+      fullPath: '/{-$locale}/docs/search.json'
+      preLoaderRoute: typeof Char123LocaleChar125DocsSearchDotjsonRouteImport
+      parentRoute: typeof Char123LocaleChar125DocsRoute
+    }
   }
 }
 
 interface Char123LocaleChar125DocsRouteChildren {
   Char123LocaleChar125DocsSlugRoute: typeof Char123LocaleChar125DocsSlugRoute
+  Char123LocaleChar125DocsSearchDotjsonRoute: typeof Char123LocaleChar125DocsSearchDotjsonRoute
   Char123LocaleChar125DocsIndexRoute: typeof Char123LocaleChar125DocsIndexRoute
 }
 
 const Char123LocaleChar125DocsRouteChildren: Char123LocaleChar125DocsRouteChildren =
   {
     Char123LocaleChar125DocsSlugRoute: Char123LocaleChar125DocsSlugRoute,
+    Char123LocaleChar125DocsSearchDotjsonRoute:
+      Char123LocaleChar125DocsSearchDotjsonRoute,
     Char123LocaleChar125DocsIndexRoute: Char123LocaleChar125DocsIndexRoute,
   }
 

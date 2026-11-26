@@ -2,7 +2,7 @@ import { AnsiTerminal } from "./ansi-logo"
 import { docs, repository } from "./docs-paths"
 import type { Locale } from "./locales"
 import { SiteHeader } from "./site-header"
-import { screenshots, screenshotSizes, screenshotSrcset } from "./workbench-images"
+import { screenshots } from "./workbench-images"
 
 const workflows = [
   {
@@ -19,9 +19,9 @@ const workflows = [
       { keys: ["Ctrl+R"], action: { en: "Open recent workspaces", "zh-CN": "打开最近的工作区" } },
     ],
     imageDescription: { en: "vl showing README.md with an inline image, the file tree, and the Markdown outline", "zh-CN": "vl 中打开的 README.md，包含内嵌图片，左侧显示文件树和 Markdown 大纲" },
-    guide: "usage",
-    fragment: { en: "browse-and-search-code", "zh-CN": "浏览和搜索代码" },
-    link: { en: "Browse and search code", "zh-CN": "浏览和搜索代码" },
+    links: [
+      { guide: "usage", fragment: { en: "browse-and-search-code", "zh-CN": "浏览和搜索代码" }, label: { en: "Browse and search code", "zh-CN": "浏览和搜索代码" } },
+    ],
   },
   {
     label: { en: "Review Git diffs", "zh-CN": "审阅 Git 改动" },
@@ -37,29 +37,30 @@ const workflows = [
       { keys: ["F7"], action: { en: "Open the diff menu", "zh-CN": "打开差异菜单" } },
     ],
     imageDescription: { en: "vl showing the staged changes to package.json in a side-by-side diff", "zh-CN": "vl 中并排显示 package.json 已暂存的改动" },
-    guide: "usage",
-    fragment: { en: "review-git-changes", "zh-CN": "审阅-git-改动" },
-    link: { en: "Review Git changes", "zh-CN": "审阅 Git 改动" },
+    links: [
+      { guide: "usage", fragment: { en: "review-git-changes", "zh-CN": "审阅-git-改动" }, label: { en: "Review Git changes", "zh-CN": "审阅 Git 改动" } },
+    ],
   },
   {
     label: { en: "Make quick edits", "zh-CN": "顺手改几行" },
-    description: { en: "Jump to the line you need, edit with Vim keys, and save.", "zh-CN": "打开文件直接跳到要改的那一行，用 Vim 键位改完就在终端里保存。" },
+    description: { en: "Jump to the line you need and edit and save in the terminal. Use Vim keys or turn off Vim mode to type directly.", "zh-CN": "打开文件直接跳到要改的那一行，在终端里编辑并保存。可以用 Vim 键位，也可以关闭 Vim 模式后直接输入。" },
     keys: [
+      { keys: ["Ctrl+C"], action: { en: "Copy", "zh-CN": "复制" } },
+      { keys: ["Ctrl+V"], action: { en: "Paste", "zh-CN": "粘贴" } },
+      { keys: ["Ctrl+X"], action: { en: "Cut", "zh-CN": "剪切" } },
+      { keys: ["Ctrl+S"], action: { en: "Save", "zh-CN": "保存" } },
       { keys: ["i", "a"], action: { en: "Enter Insert mode", "zh-CN": "进入插入模式" } },
       { keys: ["Esc"], action: { en: "Return to Normal mode", "zh-CN": "返回普通模式" } },
-      { keys: ["ciw"], action: { en: "Change the current word", "zh-CN": "改写光标所在的词" } },
       { keys: ["dd"], action: { en: "Delete the current line", "zh-CN": "删除当前行" } },
       { keys: ["gcc"], action: { en: "Toggle the line comment", "zh-CN": "切换当前行的注释" } },
-      { keys: ["u", "U"], action: { en: "Undo / redo", "zh-CN": "撤销 / 重做" } },
-      { keys: ["."], action: { en: "Repeat the last edit", "zh-CN": "重复上次编辑" } },
-      { keys: [":w"], action: { en: "Save the file", "zh-CN": "保存文件" } },
     ],
     imageDescription: { en: "vl's single-file editor with the cursor in install.sh", "zh-CN": "光标位于 vl 单文件编辑器中打开的 install.sh" },
-    guide: "vim",
-    link: { en: "Vim editing guide", "zh-CN": "Vim 编辑指南" },
+    links: [
+      { guide: "shortcuts", fragment: { en: "text-editing", "zh-CN": "文字编辑" }, label: { en: "Text editing shortcuts", "zh-CN": "文字编辑快捷键" } },
+      { guide: "vim", label: { en: "Vim editing guide", "zh-CN": "Vim 编辑指南" } },
+    ],
   },
 ] as const
-
 
 const metrics = [
   { value: "~10", unit: "MB", label: { en: "Executable size", "zh-CN": "可执行文件大小" } },
@@ -113,21 +114,19 @@ function WorkbenchSection(props: { locale: Locale }) {
   return (
     <div id="features" class="landing-section divide-y divide-line">
       {workflows.map((workflow, index) => {
-        const { Dark, Light } = screenshots[index]
+        const { dark, light, darkHeight } = screenshots[index]
         const screenshotOnLeft = index % 2 === 1
 
         return (
           <article class={`grid ${screenshotOnLeft ? "lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]" : "lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]"}`}>
             <figure class={`self-start lg:row-start-1 ${screenshotOnLeft ? "lg:col-start-1" : "lg:col-start-2"}`}>
               <picture>
-                <source data-light-preview media="not all" srcset={screenshotSrcset(Light)} sizes={screenshotSizes} width="1440" height="1003" />
+                <source data-light-preview media="not all" srcset={light} width="1440" height="1003" />
                 <img
                   class="w-full"
-                  src={Dark.src}
-                  srcset={screenshotSrcset(Dark)}
-                  sizes={screenshotSizes}
+                  src={dark}
                   width="1440"
-                  height={Dark.height}
+                  height={darkHeight}
                   alt={workflow.imageDescription[props.locale]}
                   loading="lazy"
                   decoding="async"
@@ -145,15 +144,18 @@ function WorkbenchSection(props: { locale: Locale }) {
 }
 
 function WorkbenchDetails(props: { workflow: (typeof workflows)[number]; locale: Locale }) {
-  const guide = docs[props.locale][props.workflow.guide]
-  const fragment = "fragment" in props.workflow ? `#${props.workflow.fragment[props.locale]}` : ""
-
   return (
     <>
       <div class="page-gutter lg:px-6">
         <h2 class="mb-3 text-lg font-semibold">{props.workflow.label[props.locale]}</h2>
         <p class="max-w-[52ch] leading-relaxed text-muted">{props.workflow.description[props.locale]}</p>
-        <a class="site-link text-link mt-3" href={guide.path + fragment}>{props.workflow.link[props.locale]}</a>
+        <div class="mt-3 flex flex-wrap gap-x-4 gap-y-2">
+          {props.workflow.links.map((link) => {
+            const guide = docs[props.locale][link.guide]
+            const fragment = "fragment" in link ? `#${link.fragment[props.locale]}` : ""
+            return <a class="site-link text-link" href={guide.path + fragment}>{link.label[props.locale]}</a>
+          })}
+        </div>
       </div>
       <dl class="divide-y divide-line border-t border-line lg:grid lg:auto-rows-[minmax(min-content,1fr)]" aria-label={labels[props.locale].shortcuts}>
         {props.workflow.keys.map(({ keys, action }) => (
@@ -169,9 +171,9 @@ function WorkbenchDetails(props: { workflow: (typeof workflows)[number]; locale:
 
 function UsageSection(props: { locale: Locale }) {
   return (
-    <div id="usage" class="landing-section landing-summary-row grid gap-px bg-line sm:grid-cols-2 lg:grid-cols-4">
+    <div id="usage" class="landing-section landing-summary-row grid gap-px bg-line sm:grid-cols-2 lg:grid-cols-4 lg:gap-0 lg:divide-x lg:divide-line">
       {modes.map(({ command, title }) => (
-        <article class="page-gutter flex min-w-0 flex-col justify-center bg-canvas py-5 sm:py-6">
+        <article class="landing-gutter flex min-w-0 flex-col justify-center bg-canvas py-5 sm:py-6 lg:py-4">
           <h2 class="mb-2.5 text-sm font-medium text-muted">{title[props.locale]}</h2>
           <code class="block text-sm text-accent">{command}</code>
         </article>
@@ -192,48 +194,50 @@ export function Landing(props: { locale: Locale }) {
       <main>
         <section aria-labelledby="hero-title">
           <AnsiTerminal locale={props.locale} />
-          <div class="landing-summary-row grid gap-px border-t border-line bg-line md:grid-cols-4">
-            <div class="page-gutter flex flex-col justify-center gap-2 bg-canvas py-5 sm:py-6 md:col-span-3">
-              <p class="text-[clamp(1.375rem,2.4vw,2rem)] leading-tight font-semibold tracking-[-0.035em] text-ink">
-                {copy.intro}
-              </p>
-              <p class="text-sm leading-relaxed text-muted">{copy.controls}</p>
+          <div class="lg:grid lg:auto-rows-fr">
+            <div class="landing-summary-row grid border-t border-line md:landing-columns">
+              <div class="grid gap-px border-line bg-line font-mono text-sm max-md:order-last max-md:grid-cols-2 max-md:border-t md:border-e">
+                <a
+                  class="landing-gutter flex min-h-11 items-center justify-between gap-2 bg-canvas font-medium text-accent hover:bg-workspace focus-visible:-outline-offset-2"
+                  href={install.path}
+                >
+                  {copy.install}
+                  <span class="text-lg leading-none" aria-hidden="true">→</span>
+                </a>
+                <a
+                  class="landing-gutter flex min-h-11 items-center justify-between gap-2 bg-canvas text-muted hover:bg-workspace focus-visible:-outline-offset-2"
+                  href={usage.path}
+                >
+                  {usage.title}
+                  <span class="text-lg leading-none" aria-hidden="true">→</span>
+                </a>
+              </div>
+              <div class="landing-gutter flex flex-col justify-center gap-2 bg-canvas py-5 text-center sm:py-6 lg:py-4">
+                <p class="text-[clamp(1.375rem,2.4vw,2rem)] leading-tight font-semibold tracking-[-0.035em] text-ink">
+                  {copy.intro}
+                </p>
+                <p class="text-sm leading-relaxed text-muted">{copy.controls}</p>
+              </div>
             </div>
-            <div class="grid gap-px bg-line font-mono text-sm max-md:grid-cols-2">
-              <a
-                class="page-gutter flex min-h-11 items-center justify-between gap-2 bg-canvas font-medium text-accent hover:bg-workspace focus-visible:-outline-offset-2"
-                href={install.path}
-              >
-                {copy.install}
-                <span class="text-lg leading-none" aria-hidden="true">→</span>
-              </a>
-              <a
-                class="page-gutter flex min-h-11 items-center justify-between gap-2 bg-canvas text-muted hover:bg-workspace focus-visible:-outline-offset-2"
-                href={usage.path}
-              >
-                {usage.title}
-                <span class="text-lg leading-none" aria-hidden="true">→</span>
-              </a>
-            </div>
+
+            <UsageSection locale={props.locale} />
+
+            <dl class="landing-summary-row grid grid-cols-2 gap-px border-t border-line bg-line md:grid-cols-4 lg:gap-0 lg:divide-x lg:divide-line" aria-label={metricsHint} title={metricsHint}>
+              {metrics.map(({ value, unit, label, detail }) => (
+                <div class="landing-gutter flex flex-col gap-2 bg-canvas py-5 sm:gap-3 sm:py-7 lg:gap-2 lg:py-4">
+                  <dt class="order-last font-mono text-xs text-muted sm:text-sm">
+                    {label[props.locale]}
+                    {detail && <span class="mt-1 block text-xs">{detail[props.locale]}</span>}
+                  </dt>
+                  <dd class="flex items-baseline gap-1.5">
+                    <span class="text-[clamp(1.65rem,3vw,2.25rem)] leading-none font-semibold tracking-tight tabular-nums">{value}</span>
+                    <span class="text-sm text-muted sm:text-base">{unit}</span>
+                  </dd>
+                </div>
+              ))}
+            </dl>
           </div>
         </section>
-
-        <UsageSection locale={props.locale} />
-
-        <dl class="landing-summary-row grid grid-cols-2 gap-px border-t border-line bg-line md:grid-cols-4" aria-label={metricsHint} title={metricsHint}>
-          {metrics.map(({ value, unit, label, detail }) => (
-            <div class="page-gutter flex flex-col gap-2 bg-canvas py-5 sm:gap-3 sm:py-7">
-              <dt class="order-last font-mono text-xs text-muted sm:text-sm">
-                {label[props.locale]}
-                {detail && <span class="mt-1 block text-xs">{detail[props.locale]}</span>}
-              </dt>
-              <dd class="flex items-baseline gap-1.5">
-                <span class="text-[clamp(1.65rem,3vw,2.25rem)] leading-none font-semibold tracking-tight tabular-nums">{value}</span>
-                <span class="text-sm text-muted sm:text-base">{unit}</span>
-              </dd>
-            </div>
-          ))}
-        </dl>
 
         <WorkbenchSection locale={props.locale} />
       </main>

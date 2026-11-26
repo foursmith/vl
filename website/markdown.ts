@@ -19,7 +19,7 @@ import darkVs from "../internal/theme/themes/dark_vs.json" with { type: "json" }
 import lightModern from "../internal/theme/themes/light_modern.json" with { type: "json" }
 import lightPlus from "../internal/theme/themes/light_plus.json" with { type: "json" }
 import lightVs from "../internal/theme/themes/light_vs.json" with { type: "json" }
-import { docs, repository, type Document, type RenderedDocument } from "./src/docs-paths.ts"
+import { docs, repository, type Document, type RenderedDocument, type SearchSection } from "./src/docs-paths.ts"
 import { localeCodes, locales, type Locale } from "./src/locales.ts"
 
 const repoRoot = fileURLToPath(new URL("../", import.meta.url))
@@ -97,6 +97,8 @@ async function renderDocument(doc: Document, text: string, locale: Locale): Prom
     node.properties.href = targetPath + (fragment ? `#${fragment}` : "")
   })
 
+  const searchSections = collectSearchSections(tree, doc.title)
+
   visit(tree, "element", (node, index, parent) => {
     if (index === undefined || !parent) return
     if (node.tagName === "table") {
@@ -115,7 +117,32 @@ async function renderDocument(doc: Document, text: string, locale: Locale): Prom
     }
   })
 
-  return { html: markdown.stringify(tree), headings }
+  return { html: markdown.stringify(tree), headings, searchSections }
+}
+
+function collectSearchSections(tree: Root, title: string): SearchSection[] {
+  const sections: SearchSection[] = []
+  let fragment = ""
+  let heading: string | undefined
+  let parts: string[] = []
+
+  function finishSection() {
+    const text = parts.join(" ").replace(/\s+/g, " ").trim()
+    if (heading !== undefined || text) sections.push([fragment, heading ?? title, text])
+    parts = []
+  }
+
+  for (const child of tree.children) {
+    if (child.type === "element" && /^h[1-6]$/.test(child.tagName)) {
+      finishSection()
+      fragment = child.tagName === "h1" ? "" : String(child.properties.id ?? "")
+      heading = toString(child).trim()
+    } else {
+      parts.push(toString(child))
+    }
+  }
+  finishSection()
+  return sections
 }
 
 export function renderMarkdownDocs(): Plugin {

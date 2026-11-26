@@ -7,9 +7,9 @@ bun install --frozen-lockfile
 bun run dev
 ```
 
-`bun run build` prerenders both languages into `dist/client/` and builds the Pagefind search index.
-Run `bun run preview` to serve the production build locally and
-`bun run typecheck` to check the TypeScript sources.
+`bun run build` prerenders both languages and their document search data into `dist/client/`.
+Run `bun run preview` after building to serve the static files and test Cloudflare redirects locally.
+Run `bun run typecheck` to check the TypeScript sources.
 
 Add documentation to `../docs/` and its Chinese translation to `../docs/zh.CN/` with the same filename.
 Register the page in `src/docs-paths.ts` to add it to navigation, the sitemap, and the build.

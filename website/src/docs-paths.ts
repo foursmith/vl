@@ -160,4 +160,8 @@ export function findDoc(locale: Locale, slug: string) {
 export type RenderedDocument = {
   html: string
   headings: { id: string; title: string; depth: number }[]
+  searchSections: SearchSection[]
 }
+
+export type SearchSection = [fragment: string, heading: string, text: string]
+export type SearchDocument = [path: string, title: string, sections: SearchSection[]]

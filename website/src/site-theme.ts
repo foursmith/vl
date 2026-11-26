@@ -1,4 +1,4 @@
-export const siteThemes = ["dark", "light"] as const
+export type SiteTheme = "dark" | "light"
 export const themeStorageKey = "vl-site-theme"
 
 export const themeInit = `try {

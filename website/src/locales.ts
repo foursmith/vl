@@ -1,14 +1,14 @@
 export const localeCodes = ["en", "zh-CN"] as const
 export type Locale = (typeof localeCodes)[number]
+export const searchCorpusPath = "/docs/search.json"
 
 export const locales = {
   en: {
     home: "VL home",
     docs: "Docs",
+    shortcuts: "Shortcuts",
     navigation: "Main navigation",
-    theme: "Color theme",
-    dark: "Dark",
-    light: "Light",
+    lightMode: "Light mode",
     documentation: "Documentation",
     allDocs: "All documentation",
     searchDocs: "Search docs",
@@ -27,10 +27,9 @@ export const locales = {
   "zh-CN": {
     home: "VL 首页",
     docs: "文档",
+    shortcuts: "快捷键",
     navigation: "主导航",
-    theme: "配色主题",
-    dark: "深色",
-    light: "浅色",
+    lightMode: "浅色模式",
     documentation: "文档导航",
     allDocs: "所有文档",
     searchDocs: "搜索文档",

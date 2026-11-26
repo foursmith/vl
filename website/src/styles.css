@@ -15,7 +15,6 @@
 
 @layer base {
   html {
-    --tab-height: 2.5rem;
     --site-header-height: calc(5.5rem + 1px);
     color-scheme: dark;
     font-synthesis: none;
@@ -69,7 +68,19 @@
 }
 
 @utility landing-summary-row {
-  @apply lg:min-h-37;
+  @apply lg:min-h-28;
+}
+
+@utility landing-gutter {
+  @apply px-3 sm:px-6;
+}
+
+@utility landing-columns {
+  grid-template-columns: min(28%, 12rem) minmax(0, 1fr);
+
+  @variant lg {
+    grid-template-columns: 1fr 3fr;
+  }
 }
 
 @utility section-title {
@@ -103,27 +114,22 @@
     @apply static border-0;
   }
 
-  .control,
-  .tab {
-    @apply inline-flex shrink-0 cursor-pointer items-center justify-center whitespace-nowrap text-muted hover:text-ink focus-visible:-outline-offset-2;
-  }
-
-  .tab {
-    min-height: var(--tab-height);
-    @apply border-e border-b border-line border-b-transparent px-2 font-mono text-[0.6875rem] hover:bg-line/60 sm:px-6 sm:text-xs;
-  }
-
-  .tab[aria-pressed="true"] {
-    @apply border-b-accent bg-canvas text-ink;
-  }
-
-  .site-theme-button {
-    min-height: 2rem;
-    @apply px-3 last:border-e-0;
-  }
-
   .control {
-    @apply min-h-9 rounded-sm border border-transparent font-sans text-sm leading-none font-medium hover:bg-line;
+    @apply inline-flex shrink-0 cursor-pointer items-center justify-center whitespace-nowrap text-muted hover:text-ink focus-visible:-outline-offset-2;
+    @apply min-h-9 border border-transparent font-sans text-sm leading-none font-medium hover:bg-line;
+  }
+
+  .header-icon {
+    @apply inline-flex h-9 min-w-8 shrink-0 cursor-pointer items-center justify-center text-ink hover:bg-workspace hover:text-ink sm:w-9;
+  }
+
+  .header-icon svg {
+    @apply size-[1.125rem] shrink-0;
+  }
+
+  html[data-theme="light"] [data-theme-icon="dark"],
+  html:not([data-theme="light"]) [data-theme-icon="light"] {
+    display: none;
   }
 
   .control-icon {
@@ -131,7 +137,7 @@
   }
 
   .code-box {
-    @apply rounded-sm border border-line bg-canvas;
+    @apply border border-line bg-canvas;
   }
 
   .code-block {
@@ -167,7 +173,7 @@
   }
 
   kbd {
-    @apply rounded-xs border border-line px-1.5 py-0.5 text-xs whitespace-nowrap text-ink;
+    @apply border border-line px-1.5 py-0.5 text-xs whitespace-nowrap text-ink;
   }
 
   html[data-theme="light"] .docs-frame main {
@@ -195,19 +201,35 @@
   }
 
   .doc-search-button {
-    @apply cursor-pointer border border-line px-2.5 py-1.5 text-start text-sm text-muted hover:bg-workspace hover:text-ink;
+    @apply gap-2 text-sm md:w-52 md:border md:border-line md:bg-workspace md:px-2.5 md:text-muted md:hover:text-ink;
   }
 
   .doc-search {
-    @apply fixed inset-x-0 top-[min(12dvh,5rem)] mx-auto max-h-[80dvh] w-[min(36rem,calc(100%-2rem))] overflow-y-auto border border-line bg-workspace text-ink shadow-xl;
+    @apply fixed inset-x-0 top-[min(12dvh,5rem)] z-30 mx-auto w-[min(40rem,calc(100%-2rem))] border border-line bg-workspace whitespace-normal text-ink shadow-xl;
   }
 
-  .doc-search::backdrop {
-    @apply bg-black/55;
+  .doc-search-backdrop {
+    @apply fixed inset-0 z-20 bg-black/55;
+  }
+
+  .doc-search-field {
+    @apply flex items-center gap-3 px-4 py-2 text-muted;
+  }
+
+  .doc-search-results {
+    @apply max-h-[min(58dvh,28rem)] overflow-y-auto;
+  }
+
+  .doc-search-results:has([data-slot="command-item"]) {
+    @apply border-t border-line p-1;
   }
 
   .doc-search-results a {
-    @apply block border-t border-line px-4 py-3 text-sm hover:bg-accent/10 focus-visible:-outline-offset-2;
+    @apply block px-3 py-2.5 text-sm hover:text-ink focus-visible:-outline-offset-2;
+  }
+
+  .doc-search-results a[data-highlighted] {
+    @apply bg-accent/10;
   }
 
   .doc-search-results span {
@@ -215,7 +237,7 @@
   }
 
   .doc-search-results p {
-    @apply mt-1 wrap-anywhere text-muted;
+    @apply mt-1 line-clamp-2 wrap-anywhere text-muted;
   }
 
   .doc-outline {
@@ -277,7 +299,7 @@
   }
 
   .doc-table {
-    @apply overflow-x-auto rounded-sm border border-line;
+    @apply overflow-x-auto border border-line;
   }
 
   .doc-table table {

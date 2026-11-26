@@ -12,7 +12,8 @@ function matchedLocale(matches: ReadonlyArray<{ context: object }>): Locale {
 export const Route = createRootRoute({
   head: ({ matches }) => {
     const locale = matchedLocale(matches)
-    const imageUrl = new URL(locale === "en" ? "og.png?v=3" : "og.zh-CN.png", siteUrl).href
+    const imageFile = locale === "en" ? "og.png" : "og.zh-CN.png"
+    const imageUrl = new URL(`${imageFile}?v=4`, siteUrl).href
     const { siteTitle: title, description, imageAlt } = locales[locale]
     return {
       meta: [

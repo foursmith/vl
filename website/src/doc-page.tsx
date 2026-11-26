@@ -35,9 +35,6 @@ export function DocPage(props: { doc: Document; locale: Locale }) {
       <div class={showOutline() ? "grid lg:grid-cols-[minmax(0,1fr)_12rem]" : ""}>
         <article
           class="doc-body page-gutter min-w-0 py-7 sm:py-10"
-          data-doc-path={props.doc.path}
-          data-pagefind-body=""
-          data-pagefind-meta={`url[data-doc-path], title:${props.doc.title}`}
           innerHTML={content().html}
         />
         {showOutline() && (

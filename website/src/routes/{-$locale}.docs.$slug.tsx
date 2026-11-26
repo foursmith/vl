@@ -8,7 +8,7 @@ export const Route = createFileRoute("/{-$locale}/docs/$slug")({
     if (!doc) throw notFound()
     return { doc }
   },
-  head: ({ match: { context: { locale, doc } } }) => docHead(doc, locale),
+  head: ({ match: { context: { locale, doc } } }) => doc ? docHead(doc, locale) : {},
   component: Page,
 })
 
