@@ -425,9 +425,6 @@ func (m *Model) statusLine() string {
 		if pureStyle && segment.id == "vim" && modeBackground != "" {
 			fg, bg = "#FFFFFF", modeBackground
 		}
-		if m.hoveredStatusLanguage(segment) {
-			fg, bg = theme.Readable(m.colors.HoverForeground, m.colors.Hover), m.colors.Hover
-		}
 		text.WriteString(row(" "+segment.text+" ", segment.width, fg, bg))
 		x = segment.x + segment.width
 	}
