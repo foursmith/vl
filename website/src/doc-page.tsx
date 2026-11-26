@@ -1,8 +1,9 @@
+import documents from "virtual:vl-documents"
 import { pageLinks, siteUrl, type Document, type RenderedDocument } from "./docs-paths"
 import { locales, type Locale } from "./locales"
 
 export function docHead(doc: Document, locale: Locale) {
-  const title = `${doc.title} · vl`
+  const title = `${doc.title} · VL`
   const url = new URL(doc.path, siteUrl).href
   return {
     meta: [
@@ -18,23 +19,35 @@ export function docHead(doc: Document, locale: Locale) {
   }
 }
 
-export function DocPage(props: { content: RenderedDocument; locale: Locale }) {
+export function DocPage(props: { doc: Document; locale: Locale }) {
   const labels = locales[props.locale]
+  const content = () => documents[props.doc.source]!
+  const showOutline = () => content().headings.length >= 5
 
   return (
     <>
-      <details class="page-gutter border-b border-line py-3 md:hidden">
-        <summary class="cursor-pointer text-sm font-medium">{labels.onThisPage}</summary>
-        <SectionLinks headings={props.content.headings} label={labels.onThisPage} />
-      </details>
-      <div class="grid md:grid-cols-[minmax(0,1fr)_14rem] lg:grid-cols-[minmax(0,1fr)_17rem]">
-        <article class="doc-body page-gutter min-w-0 py-7 sm:py-10" innerHTML={props.content.html} />
-        <aside class="hidden min-w-0 border-s border-line md:block">
-          <div class="doc-outline sticky overflow-auto px-5 py-8 lg:px-6">
-            <h2 class="text-sm font-semibold">{labels.onThisPage}</h2>
-            <SectionLinks headings={props.content.headings} label={labels.onThisPage} />
-          </div>
-        </aside>
+      {showOutline() && (
+        <details class="page-gutter border-b border-line py-3 lg:hidden">
+          <summary class="cursor-pointer text-sm font-medium">{labels.onThisPage}</summary>
+          <SectionLinks headings={content().headings} label={labels.onThisPage} />
+        </details>
+      )}
+      <div class={showOutline() ? "grid lg:grid-cols-[minmax(0,1fr)_12rem]" : ""}>
+        <article
+          class="doc-body page-gutter min-w-0 py-7 sm:py-10"
+          data-doc-path={props.doc.path}
+          data-pagefind-body=""
+          data-pagefind-meta={`url[data-doc-path], title:${props.doc.title}`}
+          innerHTML={content().html}
+        />
+        {showOutline() && (
+          <aside class="hidden min-w-0 border-s border-line lg:block">
+            <div class="doc-outline sticky overflow-auto px-4 py-8">
+              <h2 class="text-sm font-semibold">{labels.onThisPage}</h2>
+              <SectionLinks headings={content().headings} label={labels.onThisPage} />
+            </div>
+          </aside>
+        )}
       </div>
     </>
   )

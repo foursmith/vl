@@ -1,4 +1,4 @@
-# Releasing vl
+# Releasing VL
 
 The [Release workflow](../.github/workflows/release.yml) builds every target in
 one Linux job. It runs `make check` and cross-compiles with CGO disabled for

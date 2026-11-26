@@ -1,11 +1,17 @@
 import { NoHydration, type JSX } from "@solidjs/web"
-import { createRootRoute, HeadContent, Scripts, useLocation } from "@tanstack/solid-router"
-import { localizedPath, localeForPath, locales } from "../locales"
+import { createRootRoute, HeadContent, Scripts, useMatches } from "@tanstack/solid-router"
+import { localizedPath, locales, type Locale } from "../locales"
 import { siteUrl } from "../docs-paths"
+import { themeInit } from "../site-theme"
+
+function matchedLocale(matches: ReadonlyArray<{ context: object }>): Locale {
+  const context = matches.at(-1)?.context
+  return context && "locale" in context && context.locale === "zh-CN" ? "zh-CN" : "en"
+}
 
 export const Route = createRootRoute({
   head: ({ matches }) => {
-    const locale = localeForPath(matches.at(-1)?.pathname ?? "/")
+    const locale = matchedLocale(matches)
     const imageUrl = new URL(locale === "en" ? "og.png?v=3" : "og.zh-CN.png", siteUrl).href
     const { siteTitle: title, description, imageAlt } = locales[locale]
     return {
@@ -46,13 +52,14 @@ export const Route = createRootRoute({
 })
 
 function RootDocument(props: { children: JSX.Element }) {
-  const locale = useLocation({ select: (location) => localeForPath(location.pathname) })
+  const locale = useMatches({ select: matchedLocale })
 
   return (
     <NoHydration>
       <html lang={locale()}>
         <head>
           <meta charset="utf-8" />
+          <script innerHTML={themeInit} />
           <HeadContent />
         </head>
         <body>

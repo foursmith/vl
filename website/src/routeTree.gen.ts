@@ -9,299 +9,156 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as DocsRouteImport } from './routes/docs'
-import { Route as DocsIndexRouteImport } from './routes/docs.index'
-import { Route as DocsInstallRouteImport } from './routes/docs.install'
-import { Route as DocsShortcutsRouteImport } from './routes/docs.shortcuts'
-import { Route as DocsVimRouteImport } from './routes/docs.vim'
-import { Route as ZhCNIndexRouteImport } from './routes/zh-CN.index'
-import { Route as ZhCNDocsRouteImport } from './routes/zh-CN.docs'
-import { Route as ZhCNDocsIndexRouteImport } from './routes/zh-CN.docs.index'
-import { Route as ZhCNDocsInstallRouteImport } from './routes/zh-CN.docs.install'
-import { Route as ZhCNDocsShortcutsRouteImport } from './routes/zh-CN.docs.shortcuts'
-import { Route as ZhCNDocsVimRouteImport } from './routes/zh-CN.docs.vim'
+import { Route as Char123LocaleChar125RouteImport } from './routes/{-$locale}'
+import { Route as Char123LocaleChar125IndexRouteImport } from './routes/{-$locale}.index'
+import { Route as Char123LocaleChar125DocsRouteImport } from './routes/{-$locale}.docs'
+import { Route as Char123LocaleChar125DocsIndexRouteImport } from './routes/{-$locale}.docs.index'
+import { Route as Char123LocaleChar125DocsSlugRouteImport } from './routes/{-$locale}.docs.$slug'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const Char123LocaleChar125Route = Char123LocaleChar125RouteImport.update({
+  id: '/{-$locale}',
+  path: '/{-$locale}',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DocsRoute = DocsRouteImport.update({
-  id: '/docs',
-  path: '/docs',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DocsIndexRoute = DocsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => DocsRoute,
-} as any)
-const DocsInstallRoute = DocsInstallRouteImport.update({
-  id: '/install',
-  path: '/install',
-  getParentRoute: () => DocsRoute,
-} as any)
-const DocsShortcutsRoute = DocsShortcutsRouteImport.update({
-  id: '/shortcuts',
-  path: '/shortcuts',
-  getParentRoute: () => DocsRoute,
-} as any)
-const DocsVimRoute = DocsVimRouteImport.update({
-  id: '/vim',
-  path: '/vim',
-  getParentRoute: () => DocsRoute,
-} as any)
-const ZhCNIndexRoute = ZhCNIndexRouteImport.update({
-  id: '/zh-CN/',
-  path: '/zh-CN/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ZhCNDocsRoute = ZhCNDocsRouteImport.update({
-  id: '/zh-CN/docs',
-  path: '/zh-CN/docs',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ZhCNDocsIndexRoute = ZhCNDocsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ZhCNDocsRoute,
-} as any)
-const ZhCNDocsInstallRoute = ZhCNDocsInstallRouteImport.update({
-  id: '/install',
-  path: '/install',
-  getParentRoute: () => ZhCNDocsRoute,
-} as any)
-const ZhCNDocsShortcutsRoute = ZhCNDocsShortcutsRouteImport.update({
-  id: '/shortcuts',
-  path: '/shortcuts',
-  getParentRoute: () => ZhCNDocsRoute,
-} as any)
-const ZhCNDocsVimRoute = ZhCNDocsVimRouteImport.update({
-  id: '/vim',
-  path: '/vim',
-  getParentRoute: () => ZhCNDocsRoute,
-} as any)
+const Char123LocaleChar125IndexRoute =
+  Char123LocaleChar125IndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => Char123LocaleChar125Route,
+  } as any)
+const Char123LocaleChar125DocsRoute =
+  Char123LocaleChar125DocsRouteImport.update({
+    id: '/docs',
+    path: '/docs',
+    getParentRoute: () => Char123LocaleChar125Route,
+  } as any)
+const Char123LocaleChar125DocsIndexRoute =
+  Char123LocaleChar125DocsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => Char123LocaleChar125DocsRoute,
+  } as any)
+const Char123LocaleChar125DocsSlugRoute =
+  Char123LocaleChar125DocsSlugRouteImport.update({
+    id: '/$slug',
+    path: '/$slug',
+    getParentRoute: () => Char123LocaleChar125DocsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/docs': typeof DocsRouteWithChildren
-  '/docs/install': typeof DocsInstallRoute
-  '/docs/shortcuts': typeof DocsShortcutsRoute
-  '/docs/vim': typeof DocsVimRoute
-  '/zh-CN/docs': typeof ZhCNDocsRouteWithChildren
-  '/docs/': typeof DocsIndexRoute
-  '/zh-CN/': typeof ZhCNIndexRoute
-  '/zh-CN/docs/install': typeof ZhCNDocsInstallRoute
-  '/zh-CN/docs/shortcuts': typeof ZhCNDocsShortcutsRoute
-  '/zh-CN/docs/vim': typeof ZhCNDocsVimRoute
-  '/zh-CN/docs/': typeof ZhCNDocsIndexRoute
+  '/{-$locale}': typeof Char123LocaleChar125RouteWithChildren
+  '/{-$locale}/docs': typeof Char123LocaleChar125DocsRouteWithChildren
+  '/{-$locale}/': typeof Char123LocaleChar125IndexRoute
+  '/{-$locale}/docs/$slug': typeof Char123LocaleChar125DocsSlugRoute
+  '/{-$locale}/docs/': typeof Char123LocaleChar125DocsIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/docs/install': typeof DocsInstallRoute
-  '/docs/shortcuts': typeof DocsShortcutsRoute
-  '/docs/vim': typeof DocsVimRoute
-  '/docs': typeof DocsIndexRoute
-  '/zh-CN': typeof ZhCNIndexRoute
-  '/zh-CN/docs/install': typeof ZhCNDocsInstallRoute
-  '/zh-CN/docs/shortcuts': typeof ZhCNDocsShortcutsRoute
-  '/zh-CN/docs/vim': typeof ZhCNDocsVimRoute
-  '/zh-CN/docs': typeof ZhCNDocsIndexRoute
+  '/{-$locale}': typeof Char123LocaleChar125IndexRoute
+  '/{-$locale}/docs/$slug': typeof Char123LocaleChar125DocsSlugRoute
+  '/{-$locale}/docs': typeof Char123LocaleChar125DocsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/docs': typeof DocsRouteWithChildren
-  '/docs/install': typeof DocsInstallRoute
-  '/docs/shortcuts': typeof DocsShortcutsRoute
-  '/docs/vim': typeof DocsVimRoute
-  '/zh-CN/docs': typeof ZhCNDocsRouteWithChildren
-  '/docs/': typeof DocsIndexRoute
-  '/zh-CN/': typeof ZhCNIndexRoute
-  '/zh-CN/docs/install': typeof ZhCNDocsInstallRoute
-  '/zh-CN/docs/shortcuts': typeof ZhCNDocsShortcutsRoute
-  '/zh-CN/docs/vim': typeof ZhCNDocsVimRoute
-  '/zh-CN/docs/': typeof ZhCNDocsIndexRoute
+  '/{-$locale}': typeof Char123LocaleChar125RouteWithChildren
+  '/{-$locale}/docs': typeof Char123LocaleChar125DocsRouteWithChildren
+  '/{-$locale}/': typeof Char123LocaleChar125IndexRoute
+  '/{-$locale}/docs/$slug': typeof Char123LocaleChar125DocsSlugRoute
+  '/{-$locale}/docs/': typeof Char123LocaleChar125DocsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/'
-    | '/docs'
-    | '/docs/install'
-    | '/docs/shortcuts'
-    | '/docs/vim'
-    | '/zh-CN/docs'
-    | '/docs/'
-    | '/zh-CN/'
-    | '/zh-CN/docs/install'
-    | '/zh-CN/docs/shortcuts'
-    | '/zh-CN/docs/vim'
-    | '/zh-CN/docs/'
+    | '/{-$locale}'
+    | '/{-$locale}/docs'
+    | '/{-$locale}/'
+    | '/{-$locale}/docs/$slug'
+    | '/{-$locale}/docs/'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/docs/install'
-    | '/docs/shortcuts'
-    | '/docs/vim'
-    | '/docs'
-    | '/zh-CN'
-    | '/zh-CN/docs/install'
-    | '/zh-CN/docs/shortcuts'
-    | '/zh-CN/docs/vim'
-    | '/zh-CN/docs'
+  to: '/{-$locale}' | '/{-$locale}/docs/$slug' | '/{-$locale}/docs'
   id:
     | '__root__'
-    | '/'
-    | '/docs'
-    | '/docs/install'
-    | '/docs/shortcuts'
-    | '/docs/vim'
-    | '/zh-CN/docs'
-    | '/docs/'
-    | '/zh-CN/'
-    | '/zh-CN/docs/install'
-    | '/zh-CN/docs/shortcuts'
-    | '/zh-CN/docs/vim'
-    | '/zh-CN/docs/'
+    | '/{-$locale}'
+    | '/{-$locale}/docs'
+    | '/{-$locale}/'
+    | '/{-$locale}/docs/$slug'
+    | '/{-$locale}/docs/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  DocsRoute: typeof DocsRouteWithChildren
-  ZhCNDocsRoute: typeof ZhCNDocsRouteWithChildren
-  ZhCNIndexRoute: typeof ZhCNIndexRoute
+  Char123LocaleChar125Route: typeof Char123LocaleChar125RouteWithChildren
 }
 
 declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/{-$locale}': {
+      id: '/{-$locale}'
+      path: '/{-$locale}'
+      fullPath: '/{-$locale}'
+      preLoaderRoute: typeof Char123LocaleChar125RouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/docs': {
-      id: '/docs'
+    '/{-$locale}/': {
+      id: '/{-$locale}/'
+      path: '/'
+      fullPath: '/{-$locale}/'
+      preLoaderRoute: typeof Char123LocaleChar125IndexRouteImport
+      parentRoute: typeof Char123LocaleChar125Route
+    }
+    '/{-$locale}/docs': {
+      id: '/{-$locale}/docs'
       path: '/docs'
-      fullPath: '/docs'
-      preLoaderRoute: typeof DocsRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/{-$locale}/docs'
+      preLoaderRoute: typeof Char123LocaleChar125DocsRouteImport
+      parentRoute: typeof Char123LocaleChar125Route
     }
-    '/docs/': {
-      id: '/docs/'
+    '/{-$locale}/docs/': {
+      id: '/{-$locale}/docs/'
       path: '/'
-      fullPath: '/docs/'
-      preLoaderRoute: typeof DocsIndexRouteImport
-      parentRoute: typeof DocsRoute
+      fullPath: '/{-$locale}/docs/'
+      preLoaderRoute: typeof Char123LocaleChar125DocsIndexRouteImport
+      parentRoute: typeof Char123LocaleChar125DocsRoute
     }
-    '/docs/install': {
-      id: '/docs/install'
-      path: '/install'
-      fullPath: '/docs/install'
-      preLoaderRoute: typeof DocsInstallRouteImport
-      parentRoute: typeof DocsRoute
-    }
-    '/docs/shortcuts': {
-      id: '/docs/shortcuts'
-      path: '/shortcuts'
-      fullPath: '/docs/shortcuts'
-      preLoaderRoute: typeof DocsShortcutsRouteImport
-      parentRoute: typeof DocsRoute
-    }
-    '/docs/vim': {
-      id: '/docs/vim'
-      path: '/vim'
-      fullPath: '/docs/vim'
-      preLoaderRoute: typeof DocsVimRouteImport
-      parentRoute: typeof DocsRoute
-    }
-    '/zh-CN/': {
-      id: '/zh-CN/'
-      path: '/zh-CN'
-      fullPath: '/zh-CN/'
-      preLoaderRoute: typeof ZhCNIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/zh-CN/docs': {
-      id: '/zh-CN/docs'
-      path: '/zh-CN/docs'
-      fullPath: '/zh-CN/docs'
-      preLoaderRoute: typeof ZhCNDocsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/zh-CN/docs/': {
-      id: '/zh-CN/docs/'
-      path: '/'
-      fullPath: '/zh-CN/docs/'
-      preLoaderRoute: typeof ZhCNDocsIndexRouteImport
-      parentRoute: typeof ZhCNDocsRoute
-    }
-    '/zh-CN/docs/install': {
-      id: '/zh-CN/docs/install'
-      path: '/install'
-      fullPath: '/zh-CN/docs/install'
-      preLoaderRoute: typeof ZhCNDocsInstallRouteImport
-      parentRoute: typeof ZhCNDocsRoute
-    }
-    '/zh-CN/docs/shortcuts': {
-      id: '/zh-CN/docs/shortcuts'
-      path: '/shortcuts'
-      fullPath: '/zh-CN/docs/shortcuts'
-      preLoaderRoute: typeof ZhCNDocsShortcutsRouteImport
-      parentRoute: typeof ZhCNDocsRoute
-    }
-    '/zh-CN/docs/vim': {
-      id: '/zh-CN/docs/vim'
-      path: '/vim'
-      fullPath: '/zh-CN/docs/vim'
-      preLoaderRoute: typeof ZhCNDocsVimRouteImport
-      parentRoute: typeof ZhCNDocsRoute
+    '/{-$locale}/docs/$slug': {
+      id: '/{-$locale}/docs/$slug'
+      path: '/$slug'
+      fullPath: '/{-$locale}/docs/$slug'
+      preLoaderRoute: typeof Char123LocaleChar125DocsSlugRouteImport
+      parentRoute: typeof Char123LocaleChar125DocsRoute
     }
   }
 }
 
-interface DocsRouteChildren {
-  DocsInstallRoute: typeof DocsInstallRoute
-  DocsShortcutsRoute: typeof DocsShortcutsRoute
-  DocsVimRoute: typeof DocsVimRoute
-  DocsIndexRoute: typeof DocsIndexRoute
+interface Char123LocaleChar125DocsRouteChildren {
+  Char123LocaleChar125DocsSlugRoute: typeof Char123LocaleChar125DocsSlugRoute
+  Char123LocaleChar125DocsIndexRoute: typeof Char123LocaleChar125DocsIndexRoute
 }
 
-const DocsRouteChildren: DocsRouteChildren = {
-  DocsInstallRoute: DocsInstallRoute,
-  DocsShortcutsRoute: DocsShortcutsRoute,
-  DocsVimRoute: DocsVimRoute,
-  DocsIndexRoute: DocsIndexRoute,
+const Char123LocaleChar125DocsRouteChildren: Char123LocaleChar125DocsRouteChildren =
+  {
+    Char123LocaleChar125DocsSlugRoute: Char123LocaleChar125DocsSlugRoute,
+    Char123LocaleChar125DocsIndexRoute: Char123LocaleChar125DocsIndexRoute,
+  }
+
+const Char123LocaleChar125DocsRouteWithChildren =
+  Char123LocaleChar125DocsRoute._addFileChildren(
+    Char123LocaleChar125DocsRouteChildren,
+  )
+
+interface Char123LocaleChar125RouteChildren {
+  Char123LocaleChar125DocsRoute: typeof Char123LocaleChar125DocsRouteWithChildren
+  Char123LocaleChar125IndexRoute: typeof Char123LocaleChar125IndexRoute
 }
 
-const DocsRouteWithChildren = DocsRoute._addFileChildren(DocsRouteChildren)
-
-interface ZhCNDocsRouteChildren {
-  ZhCNDocsInstallRoute: typeof ZhCNDocsInstallRoute
-  ZhCNDocsShortcutsRoute: typeof ZhCNDocsShortcutsRoute
-  ZhCNDocsVimRoute: typeof ZhCNDocsVimRoute
-  ZhCNDocsIndexRoute: typeof ZhCNDocsIndexRoute
+const Char123LocaleChar125RouteChildren: Char123LocaleChar125RouteChildren = {
+  Char123LocaleChar125DocsRoute: Char123LocaleChar125DocsRouteWithChildren,
+  Char123LocaleChar125IndexRoute: Char123LocaleChar125IndexRoute,
 }
 
-const ZhCNDocsRouteChildren: ZhCNDocsRouteChildren = {
-  ZhCNDocsInstallRoute: ZhCNDocsInstallRoute,
-  ZhCNDocsShortcutsRoute: ZhCNDocsShortcutsRoute,
-  ZhCNDocsVimRoute: ZhCNDocsVimRoute,
-  ZhCNDocsIndexRoute: ZhCNDocsIndexRoute,
-}
-
-const ZhCNDocsRouteWithChildren = ZhCNDocsRoute._addFileChildren(
-  ZhCNDocsRouteChildren,
-)
+const Char123LocaleChar125RouteWithChildren =
+  Char123LocaleChar125Route._addFileChildren(Char123LocaleChar125RouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  DocsRoute: DocsRouteWithChildren,
-  ZhCNDocsRoute: ZhCNDocsRouteWithChildren,
-  ZhCNIndexRoute: ZhCNIndexRoute,
+  Char123LocaleChar125Route: Char123LocaleChar125RouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

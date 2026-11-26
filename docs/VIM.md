@@ -1,16 +1,16 @@
 <p align="center">
-  English · <a href="VIM.zh-CN.md">简体中文</a>
+  English · <a href="zh.CN/VIM.md">简体中文</a>
 </p>
 
-# Vim keys in vl
+# Vim keys in VL
 
 Vim mode is enabled by default. Press `Ctrl+P` and choose **Preferences: Toggle Vim Mode** to switch immediately, or set `features.vimMode` to `false` in `~/.config/vl/vl.config.json`.
 
 In Vim mode, text files open in Normal. Press `i` for Insert, `v` for Visual, and `Esc` or `Ctrl+[` to return to Normal. Read-only diffs share the same motions, selections, yanks, and jumps. See [Keyboard shortcuts](KEYBINDINGS.md) for workbench controls.
 
-## Where vl differs from Vim
+## Where VL differs from Vim
 
-| Key | In vl | In stock Vim |
+| Key | In VL | In stock Vim |
 | --- | --- | --- |
 | `H` / `L` | First nonblank / end of the current line. Think `^` / `$`. | Top / bottom of the window |
 | `f`, `df`, `cf`, `yf` | Flash jump, or an operator up to a labeled target in the viewport | `f{char}` finds a character on the current line |
@@ -56,25 +56,7 @@ In Normal mode, `/` opens Find and `n` jumps to the next match and restores hidd
 
 ### Chinese word segmentation
 
-Set `features.chineseWordSegmentation` in `~/.config/vl/vl.config.json` to use Chinese word boundaries for Vim word motions, `Ctrl+Left` / `Ctrl+Right`, and double-click selection. The latter two also work with Vim mode off.
-
-```json
-{
-  "features": {
-    "chineseWordSegmentation": true
-  }
-}
-```
-
-Download one Jieba dictionary into `~/.config/vl/extra/` and reopen vl. If more than one dictionary is present, vl checks the rows from top to bottom and uses the first usable file.
-
-| Dictionary | Download size | Vocabulary |
-| --- | ---: | --- |
-| [`dict.txt`](https://raw.githubusercontent.com/fxsjy/jieba/v0.42.1/jieba/dict.txt) | 4.84 MiB | Jieba's standard dictionary. |
-| [`dict.txt.small`](https://raw.githubusercontent.com/fxsjy/jieba/v0.42.1/extra_dict/dict.txt.small) | 1.48 MiB | The fewest entries and the smallest download. |
-| [`dict.txt.big`](https://raw.githubusercontent.com/fxsjy/jieba/v0.42.1/extra_dict/dict.txt.big) | 8.19 MiB | The most entries, with broader coverage of Traditional Chinese. |
-
-For unknown-word recognition, also download [CppJieba's `hmm_model.utf8`](https://raw.githubusercontent.com/yanyiwu/cppjieba/v5.6.7/dict/hmm_model.utf8) into that directory.
+See [Chinese word segmentation](CHINESE-WORD-SEGMENTATION.md) to use Chinese word boundaries with Vim word motions.
 
 ## Editing in Normal mode
 
@@ -221,6 +203,6 @@ In Normal mode, press `:`, type the command, then press `Enter`.
 | `:q!` | Close the current editor and discard its unsaved changes |
 | `:wq` / `:wq!` | Save the current file and close its editor |
 
-Save commands with `!` still check for read-only files and changes on disk. To open a file named after one of these commands, prefix its name with `./`. In single-file mode, closing the last tab exits vl.
+Save commands with `!` still check for read-only files and changes on disk. To open a file named after one of these commands, prefix its name with `./`. In single-file mode, closing the last tab exits VL.
 
 Use `Space` sequences to switch tabs, save, and close. See [Workbench shortcuts](KEYBINDINGS.md#use-space-for-tabs-saving-and-closing).

@@ -34,10 +34,10 @@ function TerminalSidebar() {
       <div class="row-span-2 grid grid-rows-2">
         <div class="flex items-center justify-between px-2.5">
           <span class="size-1.5 rounded-xs bg-accent/65" />
-          <span class="size-1.5 rounded-xs bg-[#33363b]" />
-          <span class="size-1.5 rounded-xs bg-[#33363b]" />
-          <span class="size-1.5 rounded-xs bg-[#33363b]" />
-          <span class="size-1.5 rounded-xs bg-[#33363b]" />
+          <span class="size-1.5 rounded-xs bg-terminal-icon" />
+          <span class="size-1.5 rounded-xs bg-terminal-icon" />
+          <span class="size-1.5 rounded-xs bg-terminal-icon" />
+          <span class="size-1.5 rounded-xs bg-terminal-icon" />
         </div>
       </div>
       <div class="flex items-center px-2.5">
@@ -45,7 +45,7 @@ function TerminalSidebar() {
       </div>
       {sidebarRows.map((shape) => (
         <div class="flex items-center px-2.5">
-          <span class={`h-1 rounded-full bg-[#30343a] ${shape}`} />
+        <span class={`h-1 rounded-full bg-terminal-line ${shape}`} />
         </div>
       ))}
     </aside>

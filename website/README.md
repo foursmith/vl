@@ -7,9 +7,12 @@ bun install --frozen-lockfile
 bun run dev
 ```
 
-`bun run build` prerenders the landing page and documentation into `dist/client/` for static hosting.
+`bun run build` prerenders both languages into `dist/client/` and builds the Pagefind search index.
 Run `bun run preview` to serve the production build locally and
 `bun run typecheck` to check the TypeScript sources.
+
+Add documentation to `../docs/` and its Chinese translation to `../docs/zh.CN/` with the same filename.
+Register the page in `src/docs-paths.ts` to add it to navigation, the sitemap, and the build.
 
 ## Deploy
 

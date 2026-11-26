@@ -1,16 +1,16 @@
 <p align="center">
-  <a href="VIM.md">English</a> · 简体中文
+  <a href="../VIM.md">English</a> · 简体中文
 </p>
 
-# vl 的 Vim 键位
+# Vim 键位
 
 Vim 模式默认开启。按 `Ctrl+P`，运行「首选项：切换 Vim 模式」可立即切换。也可在 `~/.config/vl/vl.config.json` 中将 `features.vimMode` 设为 `false`。
 
-开启 Vim 模式后，文本文件打开时进入普通模式。`i` 进入插入模式，`v` 进入可视模式，`Esc` 或 `Ctrl+[` 回到普通模式。只读 Diff 同样支持移动、选择、复制和跳转。通用操作见[键盘快捷键](KEYBINDINGS.zh-CN.md)。
+开启 Vim 模式后，文本文件打开时进入普通模式。`i` 进入插入模式，`v` 进入可视模式，`Esc` 或 `Ctrl+[` 回到普通模式。只读 Diff 同样支持移动、选择、复制和跳转。通用操作见[键盘快捷键](KEYBINDINGS.md)。
 
-## vl 与 Vim 的区别
+## VL 与 Vim 的区别
 
-| 按键 | vl | 原生 Vim |
+| 按键 | VL | 原生 Vim |
 | --- | --- | --- |
 | `H` / `L` | 跳到当前行第一个非空白字符 / 行尾，相当于 `^` / `$` | 跳到窗口顶部 / 底部 |
 | `f`、`df`、`cf`、`yf` | 用 Flash 跳转，或从光标处操作到视口内标了标签的目标 | `f{char}` 在当前行查找字符 |
@@ -27,7 +27,7 @@ Vim 模式默认开启。按 `Ctrl+P`，运行「首选项：切换 Vim 模式�
 
 Vim 的默认行为见[移动命令](https://vimhelp.org/motion.txt.html)、[撤销和重做](https://vimhelp.org/undo.txt.html)和[命令索引](https://vimhelp.org/index.txt.html)。
 
-**剪贴板。** `y` 复制到无名寄存器，`d`、`c`、`x` 和 `s` 也将删除的文本写入其中。`p` / `P` 从这个跨标签页共享的寄存器粘贴。`Ctrl+C` / `Ctrl+X` / `Ctrl+V` 使用[系统剪贴板](KEYBINDINGS.zh-CN.md#文字编辑)，资源管理器的 `yy` / `p` 则用于复制和粘贴文件。
+**剪贴板。** `y` 复制到无名寄存器，`d`、`c`、`x` 和 `s` 也将删除的文本写入其中。`p` / `P` 从这个跨标签页共享的寄存器粘贴。`Ctrl+C` / `Ctrl+X` / `Ctrl+V` 使用[系统剪贴板](KEYBINDINGS.md#文字编辑)，资源管理器的 `yy` / `p` 则用于复制和粘贴文件。
 
 可视块模式、宏、命名寄存器、标记跳转和下文未列出的 Ex 命令暂不支持。
 
@@ -49,29 +49,11 @@ Vim 的默认行为见[移动命令](https://vimhelp.org/motion.txt.html)、[撤
 
 `w`、`b`、`e` 移动和 `iw`、`aw` 文本对象使用 Vim 默认的 UTF-8 字符类别。例如 `foo_中文かな。🙂` 会分成 `foo_`、`中文`、`かな`、`。` 和 `🙂`。`w` 和 `b` 也会停在空行。
 
-普通模式下，`/` 打开查找框，`n` 跳到下一处并恢复已隐藏的高亮。跳转时匹配项会滚到视图中央。更多操作见[查找和替换](KEYBINDINGS.zh-CN.md#查找和替换)。
+普通模式下，`/` 打开查找框，`n` 跳到下一处并恢复已隐藏的高亮。跳转时匹配项会滚到视图中央。更多操作见[查找和替换](KEYBINDINGS.md#查找和替换)。
 
 ### 中文分词
 
-在 `~/.config/vl/vl.config.json` 中开启 `features.chineseWordSegmentation` 后，Vim 按词移动、`Ctrl+←` / `Ctrl+→` 和鼠标双击选词都会使用中文分词。关闭 Vim 模式时，方向键快捷键和双击选词仍然适用。
-
-```json
-{
-  "features": {
-    "chineseWordSegmentation": true
-  }
-}
-```
-
-任选一个 Jieba 词典下载到 `~/.config/vl/extra/`，再重开 vl。如果目录里有多个版本，vl 会按表格从上到下的顺序使用第一个可用文件。
-
-| 词典 | 下载大小 | 词汇覆盖 |
-| --- | ---: | --- |
-| [`dict.txt`](https://raw.githubusercontent.com/fxsjy/jieba/v0.42.1/jieba/dict.txt) | 4.84 MiB | Jieba 默认使用的标准词典。 |
-| [`dict.txt.small`](https://raw.githubusercontent.com/fxsjy/jieba/v0.42.1/extra_dict/dict.txt.small) | 1.48 MiB | 词条最少，下载文件也最小。 |
-| [`dict.txt.big`](https://raw.githubusercontent.com/fxsjy/jieba/v0.42.1/extra_dict/dict.txt.big) | 8.19 MiB | 词条最多，繁体词汇覆盖更广。 |
-
-如果还想识别生词，可以把 [CppJieba 的 `hmm_model.utf8`](https://raw.githubusercontent.com/yanyiwu/cppjieba/v5.6.7/dict/hmm_model.utf8) 下载到同一目录。
+要让 Vim 按中文词语移动，参见[中文分词配置](CHINESE-WORD-SEGMENTATION.md)。
 
 ## 普通模式下的编辑
 
@@ -147,9 +129,9 @@ Vim 的默认行为见[移动命令](https://vimhelp.org/motion.txt.html)、[撤
 
 `Tab` 在光标处插入一级缩进，`Shift+Tab` 减少当前行的一级缩进。各模式都沿用文件现有的制表符或空格缩进宽度。
 
-`Esc` / `Ctrl+[` 回到普通模式。光标移动、选区和剪贴板操作见[文字编辑快捷键](KEYBINDINGS.zh-CN.md#文字编辑)。
+`Esc` / `Ctrl+[` 回到普通模式。光标移动、选区和剪贴板操作见[文字编辑快捷键](KEYBINDINGS.md#文字编辑)。
 
-输入 `./` 或 `../` 可补全相对于当前文件的路径。确认目录后会补上 `/` 并列出其内容。含空格的路径需要引号。[选择补全候选项](KEYBINDINGS.zh-CN.md#在列表里移动)
+输入 `./` 或 `../` 可补全相对于当前文件的路径。确认目录后会补上 `/` 并列出其内容。含空格的路径需要引号。[选择补全候选项](KEYBINDINGS.md#在列表里移动)
 
 ## Flash
 
@@ -205,6 +187,6 @@ Surround 支持引号、反引号和 `() [] {} <>`。输入成对括号中的任
 | `:q!` | 关闭当前编辑器并丢弃未保存的更改 |
 | `:wq` / `:wq!` | 保存当前文件并关闭编辑器 |
 
-带 `!` 的保存命令也会检查只读状态和磁盘改动。若文件名与命令相同，打开时在文件名前加 `./`。单文件模式下，关闭最后一个标签会退出 vl。
+带 `!` 的保存命令也会检查只读状态和磁盘改动。若文件名与命令相同，打开时在文件名前加 `./`。单文件模式下，关闭最后一个标签会退出 VL。
 
-`Space` 也可用于切换标签、保存和关闭。见[工作台快捷键](KEYBINDINGS.zh-CN.md#用空格切标签保存和关闭)。
+`Space` 也可用于切换标签、保存和关闭。见[工作台快捷键](KEYBINDINGS.md#用空格切标签保存和关闭)。

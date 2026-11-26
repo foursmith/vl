@@ -684,8 +684,8 @@ func TestConfiguredSidebarTabShortcuts(t *testing.T) {
 
 func TestKeybindingsExampleMatchesDefaults(t *testing.T) {
 	var example string
-	for _, name := range []string{"KEYBINDINGS.md", "KEYBINDINGS.zh-CN.md"} {
-		doc, err := os.ReadFile(filepath.Join("..", "..", "docs", name))
+	for _, name := range []string{"KEYBINDINGS.md", "zh.CN/KEYBINDINGS.md"} {
+		doc, err := os.ReadFile(filepath.Join("..", "..", "docs", filepath.FromSlash(name)))
 		if err != nil {
 			t.Fatal(err)
 		}

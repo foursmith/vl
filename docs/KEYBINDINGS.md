@@ -1,5 +1,5 @@
 <p align="center">
-  English · <a href="KEYBINDINGS.zh-CN.md">简体中文</a>
+  English · <a href="zh.CN/KEYBINDINGS.md">简体中文</a>
 </p>
 
 # Keyboard shortcuts
@@ -146,7 +146,7 @@ Pickers and context menus also accept `Ctrl+G`, `Ctrl+P`, `Ctrl+R` (workspace on
 
 ## Terminal compatibility
 
-Your terminal may intercept `Ctrl+Shift+T` or `Ctrl+Shift+F`, or fail to distinguish `Ctrl+1` through `Ctrl+5`. Use the named action in the command palette, click a sidebar icon, or cycle sidebar views with `Tab` / `Shift+Tab` while the sidebar has focus. Some terminals copy their own selection or send `Ctrl+V` as a paste event. Use the editor menu to copy a vl selection when needed.
+Your terminal may intercept `Ctrl+Shift+T` or `Ctrl+Shift+F`, or fail to distinguish `Ctrl+1` through `Ctrl+5`. Use the named action in the command palette, click a sidebar icon, or cycle sidebar views with `Tab` / `Shift+Tab` while the sidebar has focus. Some terminals copy their own selection or send `Ctrl+V` as a paste event. Use the editor menu to copy a VL selection when needed.
 
 ## Shortcuts you can currently customize
 
@@ -202,4 +202,4 @@ After editing and saving the file, run **Reload VL** from the command palette.
 
 Omit an entry to use its default. Set `keys` to a shortcut such as `F8` or `Alt+1`, an array of alternative shortcuts, or `[]` to leave the action without a shortcut. Key names are case-insensitive. Write `Shift+S` for the shifted key.
 
-Bindings use the action's built-in focus rules. vl reports and skips entries with unknown commands, invalid keys, or a custom `when` condition.
+Bindings use the action's built-in focus rules. VL reports and skips entries with unknown commands, invalid keys, or a custom `when` condition.

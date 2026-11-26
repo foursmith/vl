@@ -14,139 +14,52 @@
   <a href="README.md">English</a> · 简体中文
 </p>
 
-**在终端里像用 VSCode 一样读代码、审阅 Git 改动，顺手改几行。**
+**在终端里像用 VS Code 一样读代码、审阅 Git 改动，顺手改几行。**
 
-在项目目录里运行 `vl .` 就能开始。
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./website/src/assets/browse-dark.webp">
+  <source media="(prefers-color-scheme: light)" srcset="./website/src/assets/browse-light.webp">
+  <img src="./website/src/assets/browse-light.webp" alt="VL 中打开的 Markdown 文件，旁边显示文件树和大纲">
+</picture>
 
-## 特色
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./website/src/assets/diff-dark.webp">
+  <source media="(prefers-color-scheme: light)" srcset="./website/src/assets/diff-light.webp">
+  <img src="./website/src/assets/diff-light.webp" alt="VL 中并排显示的 Git 暂存改动">
+</picture>
 
-- 熟悉的 VSCode 界面和体验，但是更快更小，没有任何多余的功能, 只需要 10MB 的二进制文件。
-- 丝滑的鼠标操作搭配高效的 [VIM 键位](./docs/VIM.zh-CN.md)，并且针对中文用户进行专门优化。
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./website/src/assets/edit-dark.webp">
+  <source media="(prefers-color-scheme: light)" srcset="./website/src/assets/edit-light.webp">
+  <img src="./website/src/assets/edit-light.webp" alt="VL 在单文件模式下编辑 Shell 脚本">
+</picture>
 
 ## 安装
-
-### Homebrew
 
 ```sh
 brew install foursmith/tap/vl
 ```
 
-### Go
+Go、Windows、安装脚本、源码构建和 Homebrew 可选依赖的用法见[安装文档](https://vl.foursmith.com/zh-CN/docs/install)。
 
-需要 Go 1.27.3 或更高版本。
+## 快速上手
 
-```sh
-go install github.com/foursmith/vl/cmd/vl@latest
-```
+在项目目录下运行 `vl .`，打开工作台。
 
-### macOS 和 Linux
+在终端字体设置中选用 Nerd Font 来显示文件图标，也可以运行 `vl --icons=false .` 使用纯文本图标。
 
-```sh
-curl -fsSL https://github.com/foursmith/vl/releases/latest/download/install.sh | sh
-```
+文本文件默认以 **Vim 普通模式（Normal）** 打开。按 `i` 开始输入，按 `Esc` 返回普通模式。想关闭 Vim 键位，按 `Ctrl+P` 打开命令面板，选择「切换 Vim 模式」（**Toggle Vim Mode**）。
 
-安装到 `~/.local/bin`。
+- `Ctrl+G` 按文件名或路径找文件。
+- `Ctrl+Shift+F` 搜索工作区里的文件内容。
+- `Ctrl+3` 在 Git 仓库中打开「更改」视图。
 
-### Windows (PowerShell)
+## 文档
 
-```powershell
-Invoke-RestMethod -UseBasicParsing https://github.com/foursmith/vl/releases/latest/download/install.ps1 | Invoke-Expression
-```
-
-安装到 `%LOCALAPPDATA%\vl\bin`，并自动加入用户的 `PATH`。
-
-### 从源码构建
-
-需要 Go 1.27.3 或更高版本。
-
-```sh
-git clone https://github.com/foursmith/vl.git
-cd vl
-make build
-```
-
-在仓库目录下运行 `./bin/vl`。
-
-## 用法
-
-### 可选依赖
-
-- Git 仓库功能需要 Git。[Git](https://git-scm.com/)
-- 安装 ripgrep（`rg`）可加快工作区搜索。[ripgrep](https://github.com/BurntSushi/ripgrep)
-- GitHub 拉取请求需要 `gh`，安装后运行 `gh auth login`。[GitHub CLI](https://cli.github.com/)
-- Markdown 远程图片需要 `curl`。
-- SVG 预览需要 `resvg`。[resvg](https://github.com/linebender/resvg)
-- 文件图标需要在终端中选用 Nerd Font。[Nerd Fonts](https://github.com/ryanoasis/nerd-fonts)
-
-### 运行模式
-
-- `vl .` 打开工作台。`Ctrl+G` 按名称或路径找文件，`Ctrl+Shift+F` 搜索文件内容。
-- `vl path/to/file` 在编辑器中打开单个文件。
-- `vl preview path/to/file` 输出带语法高亮的代码。
-
-点击状态栏中的语言，或在命令面板选择**更改语法高亮**。设置按文件保存，也适用于 `vl preview`。**自动检测**根据文件名或 shebang 判断语言，**纯文本**关闭高亮。
-
-想换键位时，在命令面板执行「首选项：打开快捷键文件」。 [默认快捷键和配置示例](docs/KEYBINDINGS.zh-CN.md)
-
-### 自动切换输入法
-
-按 `Ctrl+,` 或在命令面板选择**首选项：打开配置文件**。配置文件支持 JSONC 注释和尾逗号。添加以下字段，按 `Ctrl+S` 保存，再从命令面板执行**重新加载 VL**。
-
-```json
-{
-  "features": {
-    "autoSwitchInputMethod": {
-      "enable": true,
-      "cmd": ["im-select", "com.apple.keylayout.ABC"]
-    }
-  }
-}
-```
-
-离开输入框、退出 Insert 模式或回到终端后，如果焦点在导航区域，vl 会运行这条命令。启动时焦点在导航区域也会触发。将 `enable` 设为 `false` 即可关闭。
-
-示例使用 [im-select](https://github.com/daipeihust/im-select) 切换到 macOS 的 ABC 输入源。请根据系统填写程序和参数，例如 Windows 的 `["im-select.exe", "1033"]`，或 Linux 上 Fcitx 5 的 `["fcitx5-remote", "-c"]`。程序必须位于 `PATH` 中，也可以填写绝对路径。
-
-### Yazi 集成
-
-#### 预览代码
-
-需要 Yazi 26.9.1 或更高版本。先安装预览插件。
-
-```sh
-ya pkg add foursmith/vl:vl-preview
-```
-
-在 `yazi.toml` 中添加以下配置，启用代码预览。
-
-```toml
-[[plugin.prepend_previewers]]
-mime = "text/*"
-run = "vl-preview"
-
-[[plugin.prepend_previewers]]
-mime = "application/{mbox,javascript,wine-extension-ini}"
-run = "vl-preview"
-```
-
-#### 打开文本文件
-
-在 `yazi.toml` 中添加以下配置，就能按 Enter 或 `o` 用 vl 打开文本文件。
-
-```toml
-[[opener.vl]]
-run = "vl -- %s1"
-block = true
-desc = "Edit in vl"
-
-[[open.prepend_rules]]
-mime = "text/*"
-use = ["vl", "reveal"]
-
-[[open.prepend_rules]]
-mime = "application/{json,ndjson,mbox,javascript,wine-extension-ini}"
-use = ["vl", "reveal"]
-```
+- [快速上手](https://vl.foursmith.com/zh-CN/docs/)涵盖浏览代码和审阅 Git 改动。
+- [命令行](https://vl.foursmith.com/zh-CN/docs/cli)涵盖启动参数、文件定位和 `vl preview`。
+- [键盘快捷键](https://vl.foursmith.com/zh-CN/docs/shortcuts)列出默认键位和自定义方法。
+- [VL 配置](https://vl.foursmith.com/zh-CN/docs/configuration)涵盖主题、输入法和集成。
 
 ## 开发
 
