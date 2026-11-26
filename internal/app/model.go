@@ -585,7 +585,12 @@ func (m *Model) Update(msg tea.Msg) (model tea.Model, next tea.Cmd) {
 			}
 		}
 		if !m.hoverOnly {
+			previousHistory := m.fileHistory
 			next = tea.Batch(next, m.syncFileHistory(), m.startAutoFetch())
+			if m.fileHistory != previousHistory {
+				// A Timeline change can alter the sidebar layout without returning a command.
+				scrolled = 0
+			}
 			if cmd := m.loadVisibleHistory(); cmd != nil {
 				next = tea.Batch(next, cmd)
 			}

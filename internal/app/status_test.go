@@ -102,6 +102,7 @@ func TestRevisionHoverAndFocusUseStatusNoticeArea(t *testing.T) {
 func TestStatusHintsFollowPreviewFocusAndFitNarrowWidth(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	t.Cleanup(m.Close)
+	m.gitUnavailable = true
 	m.items = []item{{file: "file0.go", label: "file0.go"}}
 	m.selected, m.sidebar = 0, true
 	m.openDocument("file0.go", true)

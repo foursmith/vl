@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -155,7 +156,6 @@ func TestWheelReusesUnchangedRenderRegions(t *testing.T) {
 			m := tabWorkspace(t, 1)
 			t.Cleanup(m.cancel)
 			m.SetSidebarLayout(38, right)
-			m.Update(tea.WindowSizeMsg{Width: 120, Height: 18})
 			m.openFile("file0.go")
 			m.sidebar = false
 			d := m.document()
@@ -166,6 +166,7 @@ func TestWheelReusesUnchangedRenderRegions(t *testing.T) {
 			}
 			// Fix the highlight state so unrelated work is not scheduled by Update.
 			m.tabs[m.activeTab].highlightText = d.Text
+			m.Update(tea.WindowSizeMsg{Width: 120, Height: 18})
 			m.View()
 
 			sidebar := &m.renderFrame.sidebar[0]
@@ -197,6 +198,11 @@ func TestWheelReusesUnchangedRenderRegions(t *testing.T) {
 func TestWheelAtBoundaryReusesWholeFrame(t *testing.T) {
 	m := tabWorkspace(t, 1)
 	t.Cleanup(m.cancel)
+	root, err := filepath.EvalSymlinks(m.repo.Root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.repo.Root = root
 	m.SetSidebarLayout(38, false)
 	m.Update(tea.WindowSizeMsg{Width: 120, Height: 18})
 	m.openFile("file0.go")
@@ -206,11 +212,18 @@ func TestWheelAtBoundaryReusesWholeFrame(t *testing.T) {
 	m.tabs[m.activeTab].highlightText = d.Text
 	m.items = []item{{file: "file0.go", label: "file0.go", key: "file0.go"}}
 
+	up := tea.MouseWheelMsg{X: m.mainX() + 8, Y: 5, Button: tea.MouseWheelUp}
+	beforeTimeline := m.View()
+	m.Update(up)
+	if m.fileHistory == nil || m.View().Content == beforeTimeline.Content {
+		t.Fatal("wheel did not refresh the frame when the Timeline appeared")
+	}
+	assertFreshHoverFrame(t, m)
+
 	initial := m.View()
 	if initial.Cursor == nil {
 		t.Fatal("expected a visible editor cursor")
 	}
-	up := tea.MouseWheelMsg{X: m.mainX() + 8, Y: 5, Button: tea.MouseWheelUp}
 	for _, msg := range []tea.Msg{
 		up,
 		tea.MouseWheelMsg{X: up.X, Y: up.Y, Button: tea.MouseWheelLeft},
