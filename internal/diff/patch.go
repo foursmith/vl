@@ -19,14 +19,14 @@ const (
 )
 
 type Line struct {
-	Text     string
-	Kind     Kind
-	Old, New int
-	Hunk     int
+	Text      string
+	Kind      Kind
+	noNewline bool
+	Old, New  int
+	Hunk      int
 }
 type Hunk struct {
 	header             string
-	start, end         int
 	oldStart, newStart int
 	oldCount, newCount int
 }
@@ -52,7 +52,7 @@ func (p Patch) HunkStartLine(index int) int {
 // lands at the deletion boundary on the new side.
 func (p Patch) MapOldLine(line int) int {
 	offset := 0
-	for _, pair := range p.Pairs() {
+	for _, pair := range p.pairs(false) {
 		old, newLine := 0, 0
 		if pair.Left != nil {
 			old = pair.Left.Old
@@ -94,7 +94,7 @@ func Parse(raw string) Patch {
 			newLine, _ = strconv.Atoi(match[3])
 			hunk = len(p.Hunks)
 			p.Hunks = append(p.Hunks, Hunk{
-				header: header, start: len(p.Lines), end: len(p.Lines) + 1,
+				header:   header,
 				oldStart: old, newStart: newLine,
 				oldCount: hunkCount(match[2]), newCount: hunkCount(match[4]),
 			})
@@ -114,8 +114,12 @@ func Parse(raw string) Patch {
 				line.Kind, line.Old, line.New = Context, old, newLine
 				old++
 				newLine++
+			case '\\':
+				previous := &p.Lines[len(p.Lines)-1]
+				if previous.Kind == Context || previous.Kind == Deleted || previous.Kind == Added {
+					previous.noNewline = true
+				}
 			}
-			p.Hunks[hunk].end++
 		} else {
 			hunk = -1
 			header += text + "\n"
@@ -141,7 +145,12 @@ type Pair struct {
 }
 
 func (p Patch) Pairs() []Pair {
+	return p.pairs(true)
+}
+
+func (p Patch) pairs(align bool) []Pair {
 	var pairs []Pair
+	budget := alignmentBudget
 	for i := 0; i < len(p.Lines); {
 		line := &p.Lines[i]
 		if line.Kind != Added && line.Kind != Deleted {
@@ -153,25 +162,32 @@ func (p Patch) Pairs() []Pair {
 	changes:
 		for ; i < len(p.Lines); i++ {
 			switch {
+			case p.Lines[i].Hunk != line.Hunk:
+				break changes
 			case p.Lines[i].Kind == Deleted:
 				left = append(left, &p.Lines[i])
 			case p.Lines[i].Kind == Added:
 				right = append(right, &p.Lines[i])
-			case p.Lines[i].Hunk == line.Hunk && strings.HasPrefix(p.Lines[i].Text, "\\"):
+			case strings.HasPrefix(p.Lines[i].Text, "\\"):
 				notes = append(notes, &p.Lines[i])
 			default:
 				break changes
 			}
 		}
-		for j := 0; j < max(len(left), len(right)); j++ {
-			pair := Pair{Hunk: line.Hunk}
-			if j < len(left) {
-				pair.Left = left[j]
+		if align {
+			pairs = alignChanges(pairs, left, right, line.Hunk, &budget)
+		} else {
+			// Source line mapping uses patch positions independently of visual alignment.
+			for j := 0; j < max(len(left), len(right)); j++ {
+				pair := Pair{Hunk: line.Hunk}
+				if j < len(left) {
+					pair.Left = left[j]
+				}
+				if j < len(right) {
+					pair.Right = right[j]
+				}
+				pairs = append(pairs, pair)
 			}
-			if j < len(right) {
-				pair.Right = right[j]
-			}
-			pairs = append(pairs, pair)
 		}
 		for _, note := range notes {
 			pairs = append(pairs, Pair{note, note, note.Hunk})

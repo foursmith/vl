@@ -118,16 +118,19 @@ func TestDiffSelectionSkipsMissingRowsAndStaysOnSide(t *testing.T) {
 	m.diffPath = "file.go"
 	m.patch = diff.Parse("@@ -1,2 +1,3 @@\n-old\n+new\n+extra\n same\n")
 	m.renderDiff()
-	first := 0
+	first, last := 0, 0
 	for i, p := range m.diffRows {
 		if p.Left != nil && p.Left.Kind == diff.Deleted {
 			first = i
+		}
+		if p.Left != nil && p.Left.Kind == diff.Context {
+			last = i
 			break
 		}
 	}
 	x := m.mainX() + m.diffGutter
 	m.Update(tea.MouseClickMsg{X: x, Y: editorContentRow + first, Button: tea.MouseLeft})
-	m.Update(tea.MouseMotionMsg{X: m.mainX() + m.mainWidth() - 1, Y: editorContentRow + first + 2, Button: tea.MouseLeft})
+	m.Update(tea.MouseMotionMsg{X: m.mainX() + m.mainWidth() - 1, Y: editorContentRow + last, Button: tea.MouseLeft})
 	if got := m.diffSelectedText(); got != "old\nsame" {
 		t.Fatalf("cross-column drag switched sides or copied placeholder: %q", got)
 	}

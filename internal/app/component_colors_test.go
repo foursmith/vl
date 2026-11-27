@@ -7,6 +7,7 @@ import (
 	"charm.land/lipgloss/v2"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/foursmith/vl/internal/diff"
 	gitservice "github.com/foursmith/vl/internal/git"
 	"github.com/foursmith/vl/internal/highlight"
 	"github.com/foursmith/vl/internal/theme"
@@ -118,13 +119,13 @@ func TestTokenAlphaUsesActualDiffAndSelectionSurfaces(t *testing.T) {
 	colors := theme.Builtin("dark_modern").Palette()
 	colors.Background = "#000000"
 	spans := []highlight.Span{{Start: 0, End: 1, Color: "#FFFFFFC0", Background: "#00004080"}}
-	rendered := diffCode(colors, "x", spans, 1, 0, colors.Background, "", diffRange{}, diffRange{})
+	rendered := diffCode(colors, "x", spans, 1, 0, colors.Background, "", nil, diffRange{})
 	cell := uv.NewStyledString(rendered).Lines(ansi.GraphemeWidth)[0][0]
 	if !sameColor(cell.Style.Bg, lipgloss.Color("#000020")) || !sameColor(cell.Style.Fg, lipgloss.Color("#C0C0C8")) {
 		t.Fatal("token alpha was composed before token/line background")
 	}
 	colors.EditorSelection = "#80000080"
-	rendered = diffCode(colors, "x", spans, 1, 0, colors.Background, "", diffRange{}, diffRange{0, 1})
+	rendered = diffCode(colors, "x", spans, 1, 0, colors.Background, "", nil, diffRange{0, 1})
 	cell = uv.NewStyledString(rendered).Lines(ansi.GraphemeWidth)[0][0]
 	if !sameColor(cell.Style.Bg, lipgloss.Color("#400010")) || !sameColor(cell.Style.Fg, lipgloss.Color("#D0C0C4")) {
 		t.Fatal("selection/token foreground ignored actual compositing order")
@@ -176,9 +177,9 @@ func TestHighContrastDecorationsRemainVisible(t *testing.T) {
 			}
 
 			p := m.colors
-			diff := diffCode(p, "changed", nil, 7, 0, p.AddedBackground, p.AddedText, diffRange{0, 7},
+			rendered := diffCode(p, "changed", nil, 7, 0, p.AddedBackground, p.AddedText, []diff.Range{{Start: 0, End: 7}},
 				diffRange{}, diffCodeOverlay{changeBorder: p.AddedBorder})
-			change := uv.NewStyledString(diff).Lines(ansi.GraphemeWidth)[0][0]
+			change := uv.NewStyledString(rendered).Lines(ansi.GraphemeWidth)[0][0]
 			if change.Style.Underline == 0 || sameColor(change.Style.Fg, change.Style.Bg) {
 				t.Fatalf("inline addition lost its underline or text: %+v", change)
 			}

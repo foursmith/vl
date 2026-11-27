@@ -2,7 +2,6 @@ package diff
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 )
 
@@ -32,21 +31,25 @@ func (p Patch) StagingPatch(path string, reverse bool, selected func(*Line) bool
 	}
 	var body strings.Builder
 	delta, applied := 0, 0
-	for _, h := range p.Hunks {
-		match := hunkPattern.FindStringSubmatch(p.Lines[h.start].Text)
-		source := 1
-		if reverse {
-			source = 3
+	pairs := p.Pairs()
+	for index, h := range p.Hunks {
+		for len(pairs) > 0 && pairs[0].Hunk < index {
+			pairs = pairs[1:]
 		}
-		start, _ := strconv.Atoi(match[source])
-		if match[source+1] != "0" {
-			start--
+		end := 0
+		for end < len(pairs) && pairs[end].Hunk == index {
+			end++
 		}
-
-		lines, oldCount, newCount, edits := p.stagingHunk(h, reverse, selected)
+		lines, oldCount, newCount, edits := stagingHunk(pairs[:end], reverse, selected)
+		pairs = pairs[end:]
 		if edits == 0 {
 			continue
 		}
+		sourceStart, sourceCount := h.oldStart, h.oldCount
+		if reverse {
+			sourceStart, sourceCount = h.newStart, h.newCount
+		}
+		start := hunkBefore(sourceStart, sourceCount)
 		fmt.Fprintf(&body, "@@ -%s +%s @@\n", stagingRange(start, oldCount), stagingRange(start+delta, newCount))
 		body.WriteString(lines)
 		delta += newCount - oldCount
@@ -79,20 +82,15 @@ func (p Patch) StagingPatch(path string, reverse bool, selected func(*Line) bool
 	return fmt.Sprintf("diff --git %s %s\n%s--- %s\n+++ %s\n%s", a, b, metadata, oldPath, newPath, body.String()), nil
 }
 
-type stagingLine struct {
-	line      *Line
-	noNewline bool
-}
-
 type stagingEdit struct {
 	marker byte
-	stagingLine
+	line   *Line
 }
 
-func (p Patch) stagingHunk(h Hunk, reverse bool, selected func(*Line) bool) (string, int, int, int) {
+func stagingHunk(pairs []Pair, reverse bool, selected func(*Line) bool) (string, int, int, int) {
 	var result, removals, additions []stagingEdit
 	oldCount, newCount, edits := 0, 0, 0
-	appendEdit := func(out *[]stagingEdit, marker byte, line stagingLine) {
+	appendEdit := func(out *[]stagingEdit, marker byte, line *Line) {
 		*out = append(*out, stagingEdit{marker, line})
 		if marker != '+' {
 			oldCount++
@@ -109,42 +107,31 @@ func (p Patch) stagingHunk(h Hunk, reverse bool, selected func(*Line) bool) (str
 		result = append(result, additions...)
 		removals, additions = removals[:0], additions[:0]
 	}
-	var before, after []stagingLine
-	flushGroup := func() {
-		for i := range max(len(before), len(after)) {
-			if i < len(before) {
-				if selected(before[i].line) {
-					appendEdit(&removals, '-', before[i])
-				} else {
-					flushEdits()
-					appendEdit(&result, ' ', before[i])
-				}
-			}
-			if i < len(after) && selected(after[i].line) {
-				appendEdit(&additions, '+', after[i])
-			}
-		}
-		flushEdits()
-		before, after = before[:0], after[:0]
-	}
-	lines := p.Lines[h.start+1 : h.end]
 	source, target := Deleted, Added
 	if reverse {
 		source, target = target, source
 	}
-	for i := range lines {
-		line := stagingLine{line: &lines[i], noNewline: i+1 < len(lines) && strings.HasPrefix(lines[i+1].Text, "\\")}
-		switch line.line.Kind {
-		case Context:
-			flushGroup()
-			appendEdit(&result, ' ', line)
-		case source:
-			before = append(before, line)
-		case target:
-			after = append(after, line)
+	// A one-sided insertion belongs between the same source lines as in the
+	// displayed alignment, even when the neighboring edits are skipped.
+	for _, pair := range pairs {
+		before, after := pair.Left, pair.Right
+		if reverse {
+			before, after = after, before
+		}
+		if before != nil {
+			switch {
+			case before.Kind == source && selected(before):
+				appendEdit(&removals, '-', before)
+			case before.Kind == source || before.Kind == Context:
+				flushEdits()
+				appendEdit(&result, ' ', before)
+			}
+		}
+		if after != nil && after.Kind == target && selected(after) {
+			appendEdit(&additions, '+', after)
 		}
 	}
-	flushGroup()
+	flushEdits()
 	return renderStagingEdits(result), oldCount, newCount, edits
 }
 
@@ -154,25 +141,26 @@ func renderStagingEdits(edits []stagingEdit) string {
 		lastTarget--
 	}
 	var result strings.Builder
-	write := func(edit stagingEdit) {
+	write := func(edit stagingEdit, noNewline bool) {
 		result.WriteByte(edit.marker)
 		result.WriteString(edit.line.Text[1:] + "\n")
-		if edit.noNewline {
+		if noNewline {
 			result.WriteString("\\ No newline at end of file\n")
 		}
 	}
 	for i, edit := range edits {
+		noNewline := edit.line.noNewline
 		// A line without a terminator can only be the last output line.
 		// Keep the source bytes when context becomes an interior line.
-		if edit.noNewline && i < lastTarget && edit.marker != '-' {
+		if noNewline && i < lastTarget && edit.marker != '-' {
 			if edit.marker == ' ' {
 				edit.marker = '-'
-				write(edit)
+				write(edit, true)
 				edit.marker = '+'
 			}
-			edit.noNewline = false
+			noNewline = false
 		}
-		write(edit)
+		write(edit, noNewline)
 	}
 	return result.String()
 }

@@ -276,7 +276,7 @@ func testKeybindings(t *testing.T, data []byte) *workbenchKeymap {
 func showShortcutTestDiff(m *Model) {
 	m.diffPath = "file0.go"
 	m.diffChange = &gitservice.Change{Path: m.diffPath, Worktree: 'M'}
-	m.patch = diff.Parse("diff --git a/file0.go b/file0.go\n--- a/file0.go\n+++ b/file0.go\n@@ -2 +2 @@\n-old\n+new\n@@ -5 +5 @@\n-old again\n+new again\n")
+	m.patch = diff.Parse("diff --git a/file0.go b/file0.go\n--- a/file0.go\n+++ b/file0.go\n@@ -2 +2 @@\n-old\n+OLD\n@@ -5 +5 @@\n-old again\n+OLD again\n")
 	m.initContextFolds("first\nold\nthird\nfourth\nold again\nlast\n")
 	showDiffFixture(m)
 	m.renderDiff()

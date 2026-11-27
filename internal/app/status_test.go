@@ -159,7 +159,8 @@ func TestStatusHintsFollowGitScopeAndSelection(t *testing.T) {
 	}
 	m.diffLoading = false
 	m.notice = ""
-	m.diffSelection = diffSelection{active: true, right: m.diffLayout.split, anchor: textPoint{0, 0}, cursor: textPoint{0, 3}}
+	row := m.reviewRows[0]
+	m.diffSelection = diffSelection{active: true, right: m.diffLayout.split, anchor: textPoint{row, 0}, cursor: textPoint{row, 3}}
 	if got := statusPart(t, m, "notice").text; !strings.HasPrefix(got, "s Stage Selected Ranges · d Discard Selected Ranges · S Stage File") {
 		t.Fatalf("selection hint = %q", got)
 	}

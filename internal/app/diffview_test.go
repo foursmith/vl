@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-	"unicode/utf8"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -52,7 +51,7 @@ func TestDiffResizeReusesRowsAndReflowsWhenSplitChanges(t *testing.T) {
 	m.split = true
 	showDiffFixture(m)
 	m.diffPath = "file.txt"
-	raw := "@@ -1 +1 @@\n-" + strings.Repeat("x", 160) + "\n+" + strings.Repeat("y", 160) + "\n"
+	raw := "@@ -1 +1 @@\n-" + strings.Repeat("x", 160) + "\n+" + strings.Repeat("x", 159) + "y\n"
 	m.patch = diff.Parse(raw)
 	m.renderDiff()
 	if !m.diffLayout.split {
@@ -83,7 +82,7 @@ func TestDiffResizeReusesRowsAndReflowsWhenSplitChanges(t *testing.T) {
 	m.diffLayout = diffLayoutKey{}
 	m.renderDiff()
 	if &m.patchMetrics.pairs[0] == pair || m.diffRows[0].Left == nil ||
-		m.diffEmphasis[m.diffRows[0].Left].end != 160 {
+		!reflect.DeepEqual(m.patchMetrics.inline[m.diffRows[0].Left], []diff.Range{{Start: 159, End: 160}}) {
 		t.Fatal("replacing a patch retained emphasis keyed to the old lines")
 	}
 }
@@ -154,7 +153,7 @@ func TestDiffThemeGuttersSyntaxAndMissingLines(t *testing.T) {
 	showDiffFixture(m)
 	m.split = true
 	m.diffPath = "file.go"
-	m.patch = diff.Parse("--- a/file.go\n+++ b/file.go\n@@ -9999,2 +9999,3 @@\n-var old = 1\n+var value = 2\n+// added\n same\n")
+	m.patch = diff.Parse("--- a/file.go\n+++ b/file.go\n@@ -9999,2 +9999,3 @@\n-var old = 1\n+var old = 2\n+// added\n same\n")
 	m.renderDiff()
 	m.diffSyntax = diffSpans(m.ctx, m.patch, m.diffPath, m.colorTheme, highlight.LanguageInfo{})
 	foundSyntax, foundPlaceholder := false, false
@@ -180,9 +179,7 @@ func TestDiffThemeGuttersSyntaxAndMissingLines(t *testing.T) {
 			}
 			for x, cell := range cells {
 				want := bg
-				changed := m.diffEmphasis[line]
-				col := x - m.diffGutter
-				if col >= changed.start && (col < changed.end || changed.end > utf8.RuneCountInString(line.Text[1:])) {
+				if line.Text != "+// added" && x-m.diffGutter == len("var old = ") {
 					want = theme.Builtin("dark_modern").Palette().AddedText
 					if line.Kind == diff.Deleted {
 						want = theme.Builtin("dark_modern").Palette().DeletedText
@@ -238,14 +235,55 @@ func TestDiffSyntaxResultsCannotReplaceNewPatch(t *testing.T) {
 }
 
 func TestDiffSyntaxFontsKeepDiffBackground(t *testing.T) {
-	line := diffCode(theme.Builtin("dark_modern").Palette(), "bold", []highlight.Span{{Start: 0, End: 4, Color: "#569CD6", Font: theme.Bold}}, 12, 0, theme.Builtin("dark_modern").Palette().AddedBackground, theme.Builtin("dark_modern").Palette().AddedText, diffRange{0, 5}, diffRange{})
+	p := theme.Builtin("dark_modern").Palette()
+	line := diffCode(p, "bold", []highlight.Span{{Start: 0, End: 4, Color: "#569CD6", Font: theme.Bold}}, 12, 0, p.AddedBackground, p.AddedText, []diff.Range{{Start: 0, End: 4}}, diffRange{})
 	cells := uv.NewStyledString(line).Lines(ansi.GraphemeWidth)[0]
 	for i, cell := range cells {
-		if !sameColor(cell.Style.Bg, lipgloss.Color(theme.Builtin("dark_modern").Palette().AddedText)) {
+		want := p.AddedBackground
+		if i < 4 {
+			want = p.AddedText
+		}
+		if !sameColor(cell.Style.Bg, lipgloss.Color(want)) {
 			t.Fatal("TextMate font reset diff background")
 		}
 		if i < 4 && cell.Style.Attrs&uv.AttrBold == 0 {
 			t.Fatal("diff lost bold syntax style")
+		}
+	}
+}
+
+func TestDiffPaintsSeparateInlineChangesInBothLayouts(t *testing.T) {
+	m := tabWorkspace(t, 0)
+	t.Cleanup(m.Close)
+	showDiffFixture(m)
+	m.diffPath = "file.go"
+	m.split = true
+	m.patch = diff.Parse("@@ -1 +1,2 @@\n-load(\"alpha\", keepMiddle(), 100)\n+audit(\"new event\")\n+load(\"beta\", keepMiddle(), 120)\n")
+	for _, width := range []int{180, 60} {
+		m.width = width
+		m.renderDiff()
+		right := m.diffLayout.split
+		pane, paneWidth := m.diffPane(right)
+		rendered := m.diffView()
+		for i, pair := range m.diffRows {
+			line := pair.Left
+			if right {
+				line = pair.Right
+			}
+			if line == nil || line.Kind != diff.Added {
+				continue
+			}
+			code := line.Text[1:]
+			cells := uv.NewStyledString(rendered[i]).Lines(ansi.GraphemeWidth)[0]
+			for col := 0; col < paneWidth-m.diffGutter; col++ {
+				want := m.colors.AddedBackground
+				if strings.HasPrefix(code, "load") && (col >= 6 && col < 10 || col == 28) {
+					want = m.colors.AddedText
+				}
+				if got := cells[pane+m.diffGutter+col].Style.Bg; !sameColor(got, lipgloss.Color(want)) {
+					t.Fatalf("width %d, %q at column %d: got %v, want %s", width, code, col, got, want)
+				}
+			}
 		}
 	}
 }

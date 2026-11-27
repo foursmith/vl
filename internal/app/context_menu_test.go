@@ -365,7 +365,7 @@ func TestDiffContextMenuStagesAndUnstagesMouseSelection(t *testing.T) {
 	run("config", "user.name", "Test")
 	run("config", "user.email", "test@example.test")
 	path := filepath.Join(m.repo.Root, "README.md")
-	before, after := "first\nsecond\nlast\n", "FIRST\nSECOND\nlast\n"
+	before, after := "first\nsecond\nlast\n", "audit event\nFIRST\nSECOND\nlast\n"
 	if err := os.WriteFile(path, []byte(before), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -432,6 +432,19 @@ func TestDiffContextMenuStagesAndUnstagesMouseSelection(t *testing.T) {
 		return cmd
 	}
 	open(false)
+	selectLine("+audit event")
+	drain(t, m, press(m, "s"))
+	if got := run("show", ":README.md"); got != "audit event\n"+before {
+		t.Fatalf("staging the inserted row changed other lines: %q", got)
+	}
+	open(true)
+	selectLine("+audit event")
+	drain(t, m, press(m, "s"))
+	if got := run("show", ":README.md"); got != before {
+		t.Fatalf("unstaging the inserted row changed other lines: %q", got)
+	}
+
+	open(false)
 	x, y := selectLine("+FIRST")
 	drain(t, m, clickButton(x, y, false, "Stage Selected Ranges"))
 	if got := run("show", ":README.md"); got != "FIRST\nsecond\nlast\n" {
@@ -472,7 +485,7 @@ func TestDiffContextMenuStagesAndUnstagesMouseSelection(t *testing.T) {
 	drain(t, m, clickButton(m.mainX()+2, m.contentRow(), true, "Discard Selected Ranges"))
 	drain(t, m, press(m, "enter"))
 	const staged = "FIRST\nsecond\nlast\n"
-	if got, err := os.ReadFile(path); err != nil || string(got) != staged {
+	if got, err := os.ReadFile(path); err != nil || string(got) != "audit event\n"+staged {
 		t.Fatalf("working file after discarding hunk: %q, %v", got, err)
 	}
 	if got := run("show", ":README.md"); got != staged {

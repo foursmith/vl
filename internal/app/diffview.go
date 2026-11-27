@@ -42,7 +42,6 @@ type diffState struct {
 	diffCancel       context.CancelFunc
 	diffSyntaxCancel context.CancelFunc
 	diffSyntax       map[*diff.Line][]highlight.Span
-	diffEmphasis     map[*diff.Line]diffRange
 	diffOpen         bool
 	diffCommit       string
 	diffPR           gitservice.PullRequest
@@ -87,7 +86,6 @@ func (d *diffState) clearSyntax() {
 
 func (d *diffState) clearContent() {
 	d.clearSyntax()
-	d.diffEmphasis = nil
 	d.patchMetrics = diffPatchMetrics{}
 	d.patch = diff.Patch{}
 	d.contextSource, d.contextFolds = nil, nil
@@ -288,6 +286,7 @@ type diffRange struct{ start, end int }
 type diffPatchMetrics struct {
 	first          *diff.Line
 	pairs          []diff.Pair
+	inline         map[*diff.Line][]diff.Range
 	width, largest int
 }
 
@@ -296,7 +295,6 @@ type diffPatchMetrics struct {
 func (d *diffState) measurePatch() diffPatchMetrics {
 	if len(d.patch.Lines) == 0 {
 		d.patchMetrics = diffPatchMetrics{}
-		d.diffEmphasis = nil
 		return d.patchMetrics
 	}
 	first := &d.patch.Lines[0]
@@ -311,34 +309,17 @@ func (d *diffState) measurePatch() diffPatchMetrics {
 		}
 	}
 	metrics.pairs = d.patch.Pairs()
-	d.diffEmphasis = diffEmphasis(metrics.pairs)
-	d.patchMetrics = metrics
-	return metrics
-}
-
-// Compute intraline emphasis once per patch.
-func diffEmphasis(pairs []diff.Pair) map[*diff.Line]diffRange {
-	ranges := make(map[*diff.Line]diffRange)
-	for _, pair := range pairs {
+	for _, pair := range metrics.pairs {
 		left, right := pair.Left, pair.Right
-		if left == nil && right != nil && right.Kind == diff.Added {
-			ranges[right] = diffRange{0, utf8.RuneCountInString(right.Text[1:]) + 1}
-		} else if right == nil && left != nil && left.Kind == diff.Deleted {
-			ranges[left] = diffRange{0, utf8.RuneCountInString(left.Text[1:]) + 1}
-		} else if left != nil && right != nil && left.Kind == diff.Deleted && right.Kind == diff.Added {
-			a, b := []rune(left.Text[1:]), []rune(right.Text[1:])
-			start, endA, endB := 0, len(a), len(b)
-			for start < min(endA, endB) && a[start] == b[start] {
-				start++
+		if left != nil && right != nil && left.Kind == diff.Deleted && right.Kind == diff.Added {
+			if metrics.inline == nil {
+				metrics.inline = make(map[*diff.Line][]diff.Range)
 			}
-			for endA > start && endB > start && a[endA-1] == b[endB-1] {
-				endA--
-				endB--
-			}
-			ranges[left], ranges[right] = diffRange{start, endA}, diffRange{start, endB}
+			metrics.inline[left], metrics.inline[right] = diff.InlineChanges(left.Text[1:], right.Text[1:])
 		}
 	}
-	return ranges
+	d.patchMetrics = metrics
+	return metrics
 }
 
 func (m *Model) highlightDiff() tea.Cmd {
@@ -562,7 +543,7 @@ func (m *Model) diffRow(line *diff.Line, width int, right bool, selected diffRan
 			overlay.flash = m.flash
 		}
 	}
-	return gutterText + diffCode(m.colors, code, m.diffSyntax[line], width-gutter, m.diffLeft, bg, emphasis, m.diffEmphasis[line], selected, overlay)
+	return gutterText + diffCode(m.colors, code, m.diffSyntax[line], width-gutter, m.diffLeft, bg, emphasis, m.patchMetrics.inline[line], selected, overlay)
 }
 
 type diffCodeOverlay struct {
@@ -574,7 +555,7 @@ type diffCodeOverlay struct {
 
 // Paint token runs only up to the visible right edge, preserving source rune
 // offsets for syntax and emphasis while clipping by terminal display columns.
-func diffCode(colors theme.Palette, code string, spans []highlight.Span, width, left int, bg, emphasis string, changed diffRange, selected diffRange, overlays ...diffCodeOverlay) string {
+func diffCode(colors theme.Palette, code string, spans []highlight.Span, width, left int, bg, emphasis string, changed []diff.Range, selected diffRange, overlays ...diffCodeOverlay) string {
 	if width <= 0 {
 		return ""
 	}
@@ -583,7 +564,7 @@ func diffCode(colors theme.Palette, code string, spans []highlight.Span, width, 
 		overlay = overlays[0]
 	}
 	matches := overlay.matches
-	matchIndex := 0
+	matchIndex, changeIndex := 0, 0
 	var out, run strings.Builder
 	color := colors.Foreground
 	var font theme.FontStyle
@@ -624,7 +605,10 @@ func diffCode(colors theme.Palette, code string, spans []highlight.Span, width, 
 			}
 		}
 		underline := ""
-		if runeColumn >= changed.start && runeColumn < changed.end {
+		for changeIndex < len(changed) && changed[changeIndex].End <= runeColumn {
+			changeIndex++
+		}
+		if changeIndex < len(changed) && changed[changeIndex].Start < column {
 			if emphasis != "" {
 				nextBG = emphasis
 			}
@@ -664,8 +648,5 @@ func diffCode(colors theme.Palette, code string, spans []highlight.Span, width, 
 		run.WriteString(ansi.Cut(display, max(0, left-start), min(visual-start, left+width-start)))
 	}
 	flush()
-	if emphasis != "" && changed.end > column {
-		bg = emphasis
-	}
 	return row(out.String(), width, colors.Foreground, bg)
 }
